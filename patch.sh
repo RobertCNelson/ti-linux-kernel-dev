@@ -54,4 +54,6 @@ tibsp () {
 	git pull ${GIT_OPTS} git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-3.12.y
 }
 
+tibsp
+
 echo "patch.sh ran successful"
