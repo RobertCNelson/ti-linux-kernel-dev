@@ -348,9 +348,9 @@ file_install_sgx () {
 	echo "[default]" > /etc/powervr.ini
 	echo "WindowSystem=libpvrPVR2D_FRONTWSEGL.so" >> /etc/powervr.ini
 
-	if [ ! \$(which devmem2) ] ; then
-	        dpkg -i ./tools/devmem2*_\${DPKG_ARCH}.deb
-	fi
+	#if [ ! \$(which devmem2) ] ; then
+	#        dpkg -i ./tools/devmem2*_\${DPKG_ARCH}.deb
+	#fi
 
 	touch /etc/powervr-esrev
 
@@ -506,12 +506,12 @@ pkg_helpers () {
 	cd "${DIR}/ignore/ti-sdk-pvr/pkg/tools"
 
 	#download devmem2
-	rm -f /tmp/index.html || true
-	wget --no-verbose --directory-prefix=/tmp http://ports.ubuntu.com/pool/universe/d/devmem2/
+	#rm -f /tmp/index.html || true
+	#wget --no-verbose --directory-prefix=/tmp http://ports.ubuntu.com/pool/universe/d/devmem2/
 
-	DEVMEM_ARMHF=$(cat /tmp/index.html | grep _armhf.deb | head -1 | awk -F"\"" '{print $8}')
+	#DEVMEM_ARMHF=$(cat /tmp/index.html | grep _armhf.deb | head -1 | awk -F"\"" '{print $8}')
 
-	wget -c --no-verbose http://ports.ubuntu.com/pool/universe/d/devmem2/${DEVMEM_ARMHF}
+	#wget -c --no-verbose http://ports.ubuntu.com/pool/universe/d/devmem2/${DEVMEM_ARMHF}
 }
 
 pkg_install_script () {
@@ -620,7 +620,7 @@ if [ -e ${DIR}/system.sh ] ; then
 #	build_sgx_modules release 6.x yes 0 all
 
 	clean_sgx_modules
-	build_sgx_modules release 8.x yes 0 all
+	build_sgx_modules release 8.x yes 1 all
 
 #	clean_sgx_modules
 #	build_sgx_modules release 9.x yes 0 all
