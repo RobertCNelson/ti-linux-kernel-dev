@@ -78,13 +78,13 @@ mmc_write_rootfs () {
 
 	if [ -f "${DIR}/deploy/GFX_5.00.00.01_libs.tar.gz" ] ; then
 		if [ ! -d "${location}/opt/sgx" ] ; then
-			mkdir -p "${location}/opt/sgx"
+			sudo mkdir -p "${location}/opt/sgx"
 		fi
-		cp -v "${DIR}/deploy/GFX_5.00.00.01_libs.tar.gz" "${location}/opt/sgx"
+		sudo cp -v "${DIR}/deploy/GFX_5.00.00.01_libs.tar.gz" "${location}/opt/sgx"
 	fi
 
 	if [ -f "${DIR}/deploy/GFX_Linux_5.00.00.01_examples.tar.gz" ] ; then
-		cp -v "${DIR}/deploy/GFX_Linux_5.00.00.01_examples.tar.gz" "${location}/opt/sgx"
+		sudo cp -v "${DIR}/deploy/GFX_Linux_5.00.00.01_examples.tar.gz" "${location}/opt/sgx"
 	fi
 }
 
