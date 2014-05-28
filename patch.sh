@@ -51,7 +51,7 @@ cleanup () {
 }
 
 tibsp () {
-	git pull ${GIT_OPTS} git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-3.12.y
+	git pull ${GIT_OPTS} git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-3.15.y
 }
 
 sgx () {
@@ -59,6 +59,6 @@ sgx () {
 }
 
 tibsp
-sgx
+#sgx
 
 echo "patch.sh ran successful"
