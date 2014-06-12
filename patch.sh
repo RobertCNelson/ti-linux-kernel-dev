@@ -28,6 +28,8 @@ if [ -f ${DIR}/system.sh ] ; then
 	. ${DIR}/system.sh
 fi
 
+. ${DIR}/version.sh
+
 if [ "${RUN_BISECT}" ] ; then
 	git="git apply"
 fi
@@ -51,14 +53,10 @@ cleanup () {
 }
 
 tibsp () {
-	git pull ${GIT_OPTS} git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-3.15.y
-}
-
-sgx () {
-	${git} "${DIR}/patches/sgx/0001-Revert-drm-remove-procfs-code-take-2.patch"
+	echo "git pulling: ti-linux-3.14.y"
+	git pull ${GIT_OPTS} git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-3.14.y
 }
 
 tibsp
-#sgx
 
 echo "patch.sh ran successful"

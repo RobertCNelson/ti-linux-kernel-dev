@@ -25,15 +25,15 @@ config="omap2plus_defconfig"
 toolchain="gcc_linaro_gnueabihf_4_8"
 
 #Kernel/Build
-KERNEL_REL=3.15
-KERNEL_TAG=${KERNEL_REL}-rc6
-BUILD=r0
+KERNEL_REL=3.14
+KERNEL_TAG=${KERNEL_REL}.7
+BUILD=ti-r0
 
 #v3.X-rcX + upto SHA
 #KERNEL_SHA=""
 
 #git branch
-BRANCH="ti-linux-3.15.y"
+BRANCH="ti-linux-3.14.y"
 
 BUILDREV=1.0
 DISTRO=cross
