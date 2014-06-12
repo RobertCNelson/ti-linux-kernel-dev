@@ -57,6 +57,12 @@ tibsp () {
 	git pull ${GIT_OPTS} git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-3.14.y
 }
 
+fixes () {
+	echo "dir: fixes"
+	${git} "${DIR}/patches/fixes/0001-drm-little-v3.15.x-in-here.patch"
+}
+
 tibsp
+fixes
 
 echo "patch.sh ran successful"
