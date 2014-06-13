@@ -87,8 +87,8 @@ check_if_set_then_disable () {
 #
 # General setup
 #
-config="CONFIG_LOCALVERSION_AUTO"
-check_config_disable
+#config="CONFIG_LOCALVERSION_AUTO"
+#check_config_disable
 config="CONFIG_KERNEL_GZIP"
 check_config_disable
 config="CONFIG_KERNEL_LZO"
