@@ -101,6 +101,7 @@ git_sgx_modules () {
 		git clone git://github.com/RobertCNelson/ti-sdk-pvr.git "${DIR}/ignore/ti-sdk-pvr/"
 		cd "${DIR}/ignore/ti-sdk-pvr/"
 		git checkout ${SGX_SHA} -b tmp-build
+		git revert --no-edit 2bad8cbb027817b869327cc7f206a3429c04c8de
 		cd ${DIR}/
 	else
 		cd "${DIR}/ignore/ti-sdk-pvr/"
@@ -111,6 +112,7 @@ git_sgx_modules () {
 		git fetch
 		git checkout ${SGX_SHA} -b tmp-build
 		git branch -D tmp-scratch &>/dev/null || true
+		git revert --no-edit 2bad8cbb027817b869327cc7f206a3429c04c8de
 		cd ${DIR}/
 	fi
 }
