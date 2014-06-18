@@ -54,11 +54,11 @@ tibsp () {
 	git pull ${GIT_OPTS} git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-3.12.y
 }
 
-sgx () {
-	${git} "${DIR}/patches/sgx/0001-Revert-drm-remove-procfs-code-take-2.patch"
-}
+#sgx () {
+#	${git} "${DIR}/patches/sgx/0001-Revert-drm-remove-procfs-code-take-2.patch"
+#}
 
 tibsp
-sgx
+#sgx
 
 echo "patch.sh ran successful"
