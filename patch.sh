@@ -59,7 +59,7 @@ tibsp () {
 
 fixes () {
 	echo "dir: fixes"
-	${git} "${DIR}/patches/fixes/0001-drm-little-v3.15.x-in-here.patch"
+#	${git} "${DIR}/patches/fixes/0001-drm-little-v3.15.x-in-here.patch"
 }
 
 tibsp
