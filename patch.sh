@@ -57,6 +57,7 @@ external_git () {
 	git_tag="ti-linux-3.14.y"
 	echo "pulling: ${git_tag}"
 	git pull ${git_opts} ${git_patchset} ${git_tag}
+	git pull ${git_opts} git://git.ti.com/~nmenon/ti-linux-kernel/ti-linux-x15-validate.git beagle-x15-v3.14
 }
 
 local_patch () {
