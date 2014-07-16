@@ -83,6 +83,242 @@ check_if_set_then_disable () {
 	fi
 }
 
+#TI:
+#audio_display.cfg
+##################################################
+# TI Audio/Display config options
+##################################################
+
+#CONFIG_BACKLIGHT_PWM=m
+config="CONFIG_BACKLIGHT_PWM"
+check_config_module
+
+#baseport.cfg
+##################################################
+# TI Baseport Config Options
+##################################################
+
+#connectivity.cfg
+##################################################
+# TI Connectivity Configs
+##################################################
+
+#USB Host
+#CONFIG_USB_EHCI_HCD=y
+#CONFIG_USB_XHCI_HCD=m
+#CONFIG_USB_TEST=m
+## CONFIG_USB_DEBUG is not set
+
+config="CONFIG_USB_EHCI_HCD"
+check_config_builtin
+config="CONFIG_USB_XHCI_HCD"
+check_config_builtin
+
+##USB MUSB support
+#CONFIG_USB_MUSB_HDRC=m
+#CONFIG_USB_MUSB_OMAP2PLUS=m
+#CONFIG_USB_MUSB_DSPS=m
+#CONFIG_TI_CPPI41=y
+#CONFIG_USB_TI_CPPI41_DMA=y
+#CONFIG_TWL6030_USB=m
+#CONFIG_TWL4030_USB=m
+
+##USB gadgets
+#CONFIG_USB_AUDIO=m
+#CONFIG_USB_ETH=m
+#CONFIG_USB_G_NCM=m
+#CONFIG_USB_GADGETFS=m
+#CONFIG_USB_FUNCTIONFS=m
+#CONFIG_USB_FUNCTIONFS_ETH=y
+#CONFIG_USB_FUNCTIONFS_RNDIS=y
+#CONFIG_USB_FUNCTIONFS_GENERIC=y
+#CONFIG_USB_MASS_STORAGE=m
+#CONFIG_USB_G_SERIAL=m
+#CONFIG_USB_MIDI_GADGET=m
+#CONFIG_USB_G_PRINTER=m
+#CONFIG_USB_CDC_COMPOSITE=m
+#CONFIG_USB_G_ACM_MS=m
+#CONFIG_USB_G_MULTI=m
+#CONFIG_USB_G_MULTI_CDC=y
+#CONFIG_USB_G_HID=m
+#CONFIG_USB_G_DBGP=m
+#CONFIG_USB_G_WEBCAM=m
+
+##USB Video
+#CONFIG_MEDIA_SUPPORT=m
+#CONFIG_MEDIA_CAMERA_SUPPORT=y
+#CONFIG_VIDEO_DEV=m
+#CONFIG_VIDEO_V4L2=m
+#CONFIG_VIDEOBUF2_CORE=m
+#CONFIG_VIDEOBUF2_MEMOPS=m
+#CONFIG_VIDEOBUF2_VMALLOC=m
+#CONFIG_MEDIA_USB_SUPPORT=y
+#CONFIG_USB_VIDEO_CLASS=m
+#CONFIG_USB_VIDEO_CLASS_INPUT_EVDEV=y
+#CONFIG_USB_GSPCA=m
+
+##USB device classes
+#CONFIG_USB_ACM=m
+#CONFIG_USB_SERIAL=m
+#CONFIG_USB_SERIAL_PL2303=m
+#CONFIG_USB_PRINTER=m
+
+#SATA
+CONFIG_ATA=y
+CONFIG_SATA_AHCI_PLATFORM=y
+
+config="CONFIG_ATA"
+check_config_builtin
+config="CONFIG_SATA_AHCI_PLATFORM"
+check_config_builtin
+
+#GPIO
+CONFIG_GPIO_PCF857X=y
+CONFIG_GPIO_PCA953X=y
+
+config="CONFIG_GPIO_PCF857X"
+check_config_builtin
+config="CONFIG_GPIO_PCA953X"
+check_config_builtin
+
+##IIO and ADC
+#CONFIG_IIO=m
+#CONFIG_IIO_BUFFER=y
+#CONFIG_IIO_BUFFER_CB=y
+#CONFIG_IIO_KFIFO_BUF=m
+#CONFIG_TI_AM335X_ADC=m
+
+config="CONFIG_IIO"
+check_config_module
+config="CONFIG_IIO_BUFFER"
+check_config_builtin
+config="CONFIG_IIO_BUFFER_CB"
+check_config_builtin
+config="CONFIG_IIO_KFIFO_BUF"
+check_config_module
+config="CONFIG_TI_AM335X_ADC"
+check_config_module
+
+##PWM
+#CONFIG_PWM=y
+#CONFIG_PWM_TIECAP=y
+#CONFIG_PWM_TIEHRPWM=y
+
+config="CONFIG_PWM"
+check_config_builtin
+config="CONFIG_PWM_TIECAP"
+check_config_builtin
+config="CONFIG_PWM_TIEHRPWM"
+check_config_builtin
+
+##Touchscreen
+#CONFIG_INPUT_TOUCHSCREEN=y
+#CONFIG_TOUCHSCREEN_ADS7846=y
+#CONFIG_TOUCHSCREEN_ATMEL_MXT=y
+#CONFIG_MFD_TI_AM335X_TSCADC=y
+#CONFIG_TOUCHSCREEN_TI_AM335X_TSC=y
+#CONFIG_TOUCHSCREEN_PIXCIR=m
+
+config="CONFIG_INPUT_TOUCHSCREEN"
+check_config_builtin
+config="CONFIG_TOUCHSCREEN_ADS7846"
+check_config_builtin
+config="CONFIG_TOUCHSCREEN_ATMEL_MXT"
+check_config_builtin
+config="CONFIG_MFD_TI_AM335X_TSCADC"
+check_config_builtin
+config="CONFIG_TOUCHSCREEN_TI_AM335X_TSC"
+check_config_builtin
+config="CONFIG_TOUCHSCREEN_PIXCIR"
+check_config_module
+
+##RTC
+#CONFIG_RTC_DRV_PALMAS=y
+
+config="CONFIG_RTC_DRV_PALMAS"
+check_config_builtin
+
+##Ethernet
+#CONFIG_TI_CPTS=y
+
+config="CONFIG_TI_CPTS"
+check_config_builtin
+
+##LED
+#CONFIG_LEDS_CLASS=y
+
+config="CONFIG_LEDS_CLASS"
+check_config_builtin
+
+##MTD
+#CONFIG_MTD_NAND_OMAP_BCH=y
+#CONFIG_MTD_TESTS=m
+
+##SPI
+#CONFIG_SPI_SPIDEV=y
+
+config="CONFIG_SPI_SPIDEV"
+check_config_builtin
+
+exit
+
+#ipc.cfg
+##################################################
+# TI IPC config options
+##################################################
+
+
+#power.cfg
+##################################################
+# TI Power config options
+##################################################
+#CONFIG_CPU_FREQ=y
+#CONFIG_CPU_FREQ_STAT=y
+## CONFIG_CPU_FREQ_STAT_DETAILS is not set
+## CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set
+## CONFIG_CPU_FREQ_DEFAULT_GOV_POWERSAVE is not set
+## CONFIG_CPU_FREQ_DEFAULT_GOV_USERSPACE is not set
+#CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y
+## CONFIG_CPU_FREQ_DEFAULT_GOV_CONSERVATIVE is not set
+#CONFIG_CPU_FREQ_GOV_PERFORMANCE=y
+## CONFIG_CPU_FREQ_GOV_POWERSAVE is not set
+## CONFIG_CPU_FREQ_GOV_USERSPACE is not set
+## CONFIG_CPU_FREQ_GOV_CONSERVATIVE is not set
+## CONFIG_ARM_OMAP2PLUS_CPUFREQ is not set
+#CONFIG_CPU_THERMAL=y
+## CONFIG_IMX_THERMAL is not set
+#CONFIG_TI_THERMAL=y
+#CONFIG_GENERIC_CPUFREQ_CPU0=y
+#CONFIG_VOLTAGE_DOMAIN_OMAP=y
+
+config="CONFIG_CPU_FREQ"
+check_config_builtin
+config="CONFIG_CPU_FREQ_STAT"
+check_config_builtin
+config="CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND"
+check_config_builtin
+config="CONFIG_CPU_FREQ_GOV_PERFORMANCE"
+check_config_builtin
+config="CONFIG_CPU_THERMAL"
+check_config_builtin
+config="CONFIG_TI_THERMAL"
+check_config_builtin
+config="CONFIG_GENERIC_CPUFREQ_CPU0"
+check_config_builtin
+config="CONFIG_VOLTAGE_DOMAIN_OMAP"
+check_config_builtin
+
+#system_test.cfg
+##################################################
+# TI System Test config options
+##################################################
+#CONFIG_DEBUG_KMEMLEAK=y
+#CONFIG_DEBUG_KMEMLEAK_EARLY_LOG_SIZE=4000
+#CONFIG_DEBUG_KMEMLEAK_TEST=n
+#CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF=n
+#CONFIG_DEBUG_INFO=y
+#CONFIG_RTC_DEBUG=y
+#CONFIG_TIGON3=m
 
 #
 # General setup
