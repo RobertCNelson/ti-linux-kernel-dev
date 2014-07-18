@@ -88,8 +88,8 @@ check_if_set_then_disable () {
 ##################################################
 # TI Audio/Display config options
 ##################################################
+CONFIG_BACKLIGHT_PWM=m
 
-#CONFIG_BACKLIGHT_PWM=m
 config="CONFIG_BACKLIGHT_PWM"
 check_config_module
 
@@ -97,17 +97,20 @@ check_config_module
 ##################################################
 # TI Baseport Config Options
 ##################################################
+CONFIG_CGROUPS=y
+
+config="CONFIG_CGROUPS"
+check_config_builtin
 
 #connectivity.cfg
 ##################################################
 # TI Connectivity Configs
 ##################################################
-
 #USB Host
-#CONFIG_USB_EHCI_HCD=y
-#CONFIG_USB_XHCI_HCD=m
-#CONFIG_USB_TEST=m
-## CONFIG_USB_DEBUG is not set
+CONFIG_USB_EHCI_HCD=y
+CONFIG_USB_XHCI_HCD=m
+CONFIG_USB_TEST=m
+# CONFIG_USB_DEBUG is not set
 
 config="CONFIG_USB_EHCI_HCD"
 check_config_builtin
@@ -115,13 +118,13 @@ config="CONFIG_USB_XHCI_HCD"
 check_config_builtin
 
 ##USB MUSB support
-#CONFIG_USB_MUSB_HDRC=m
-#CONFIG_USB_MUSB_OMAP2PLUS=m
-#CONFIG_USB_MUSB_DSPS=m
-#CONFIG_TI_CPPI41=y
-#CONFIG_USB_TI_CPPI41_DMA=y
-#CONFIG_TWL6030_USB=m
-#CONFIG_TWL4030_USB=m
+CONFIG_USB_MUSB_HDRC=m
+CONFIG_USB_MUSB_OMAP2PLUS=m
+CONFIG_USB_MUSB_DSPS=m
+CONFIG_TI_CPPI41=y
+CONFIG_USB_TI_CPPI41_DMA=y
+CONFIG_TWL6030_USB=m
+CONFIG_TWL4030_USB=m
 
 ##USB gadgets
 #CONFIG_USB_AUDIO=m
@@ -157,11 +160,11 @@ check_config_builtin
 #CONFIG_USB_VIDEO_CLASS_INPUT_EVDEV=y
 #CONFIG_USB_GSPCA=m
 
-##USB device classes
-#CONFIG_USB_ACM=m
-#CONFIG_USB_SERIAL=m
-#CONFIG_USB_SERIAL_PL2303=m
-#CONFIG_USB_PRINTER=m
+#USB device classes
+CONFIG_USB_ACM=m
+CONFIG_USB_SERIAL=m
+CONFIG_USB_SERIAL_PL2303=m
+CONFIG_USB_PRINTER=m
 
 #SATA
 CONFIG_ATA=y
@@ -181,12 +184,12 @@ check_config_builtin
 config="CONFIG_GPIO_PCA953X"
 check_config_builtin
 
-##IIO and ADC
-#CONFIG_IIO=m
-#CONFIG_IIO_BUFFER=y
-#CONFIG_IIO_BUFFER_CB=y
-#CONFIG_IIO_KFIFO_BUF=m
-#CONFIG_TI_AM335X_ADC=m
+#IIO and ADC
+CONFIG_IIO=m
+CONFIG_IIO_BUFFER=y
+CONFIG_IIO_BUFFER_CB=y
+CONFIG_IIO_KFIFO_BUF=m
+CONFIG_TI_AM335X_ADC=m
 
 config="CONFIG_IIO"
 check_config_module
@@ -199,10 +202,10 @@ check_config_module
 config="CONFIG_TI_AM335X_ADC"
 check_config_module
 
-##PWM
-#CONFIG_PWM=y
-#CONFIG_PWM_TIECAP=y
-#CONFIG_PWM_TIEHRPWM=y
+#PWM
+CONFIG_PWM=y
+CONFIG_PWM_TIECAP=y
+CONFIG_PWM_TIEHRPWM=y
 
 config="CONFIG_PWM"
 check_config_builtin
@@ -211,13 +214,13 @@ check_config_builtin
 config="CONFIG_PWM_TIEHRPWM"
 check_config_builtin
 
-##Touchscreen
-#CONFIG_INPUT_TOUCHSCREEN=y
-#CONFIG_TOUCHSCREEN_ADS7846=y
-#CONFIG_TOUCHSCREEN_ATMEL_MXT=y
-#CONFIG_MFD_TI_AM335X_TSCADC=y
-#CONFIG_TOUCHSCREEN_TI_AM335X_TSC=y
-#CONFIG_TOUCHSCREEN_PIXCIR=m
+#Touchscreen
+CONFIG_INPUT_TOUCHSCREEN=y
+CONFIG_TOUCHSCREEN_ADS7846=y
+CONFIG_TOUCHSCREEN_ATMEL_MXT=y
+CONFIG_MFD_TI_AM335X_TSCADC=y
+CONFIG_TOUCHSCREEN_TI_AM335X_TSC=y
+CONFIG_TOUCHSCREEN_PIXCIR=m
 
 config="CONFIG_INPUT_TOUCHSCREEN"
 check_config_builtin
@@ -232,35 +235,33 @@ check_config_builtin
 config="CONFIG_TOUCHSCREEN_PIXCIR"
 check_config_module
 
-##RTC
-#CONFIG_RTC_DRV_PALMAS=y
+#RTC
+CONFIG_RTC_DRV_PALMAS=y
 
 config="CONFIG_RTC_DRV_PALMAS"
 check_config_builtin
 
-##Ethernet
-#CONFIG_TI_CPTS=y
+#Ethernet
+CONFIG_TI_CPTS=y
 
 config="CONFIG_TI_CPTS"
 check_config_builtin
 
-##LED
-#CONFIG_LEDS_CLASS=y
+#LED
+CONFIG_LEDS_CLASS=y
 
 config="CONFIG_LEDS_CLASS"
 check_config_builtin
 
-##MTD
-#CONFIG_MTD_NAND_OMAP_BCH=y
-#CONFIG_MTD_TESTS=m
+#MTD
+CONFIG_MTD_NAND_OMAP_BCH=y
+CONFIG_MTD_TESTS=m
 
-##SPI
-#CONFIG_SPI_SPIDEV=y
+#SPI
+CONFIG_SPI_SPIDEV=y
 
 config="CONFIG_SPI_SPIDEV"
 check_config_builtin
-
-exit
 
 #ipc.cfg
 ##################################################
