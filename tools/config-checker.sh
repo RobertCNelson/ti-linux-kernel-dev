@@ -257,17 +257,30 @@ check_config_builtin
 CONFIG_MTD_NAND_OMAP_BCH=y
 CONFIG_MTD_TESTS=m
 
+config="CONFIG_MTD_NAND_OMAP_BCH"
+check_config_builtin
+config="CONFIG_MTD_TESTS"
+check_config_module
+
 #SPI
 CONFIG_SPI_SPIDEV=y
 
 config="CONFIG_SPI_SPIDEV"
 check_config_builtin
 
+#QSPI
+CONFIG_SPI_TI_QSPI=y
+CONFIG_MTD_M25P80=m
+
+config="CONFIG_SPI_TI_QSPI"
+check_config_builtin
+config="CONFIG_MTD_M25P80"
+check_config_module
+
 #ipc.cfg
 ##################################################
 # TI IPC config options
 ##################################################
-
 
 #power.cfg
 ##################################################
