@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2009-2013 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2014 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,11 +22,14 @@
 
 # Split out, so build_kernel.sh and build_deb.sh can share..
 
-git="git am"
-
+. ${DIR}/version.sh
 if [ -f ${DIR}/system.sh ] ; then
 	. ${DIR}/system.sh
 fi
+
+git="git am"
+#git_patchset=""
+#git_opts
 
 if [ "${RUN_BISECT}" ] ; then
 	git="git apply"
@@ -50,6 +53,20 @@ cleanup () {
 	exit
 }
 
+external_git () {
+	git_tag=""
+	echo "pulling: ${git_tag}"
+	git pull ${git_opts} ${git_patchset} ${git_tag}
+}
+
+local_patch () {
+	echo "dir: dir"
+	${git} "${DIR}/patches/dir/0001-patch.patch"
+}
+
+#external_git
+#local_patch
+
 tibsp () {
 	git pull ${GIT_OPTS} git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-3.12.y
 }
@@ -61,4 +78,19 @@ tibsp () {
 tibsp
 #sgx
 
+packaging_setup () {
+	cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
+	git commit -a -m 'packaging: sync with mainline' -s
+
+	git format-patch -1 -o "${DIR}/patches/packaging"
+}
+
+packaging () {
+	echo "dir: packaging"
+	${git} "${DIR}/patches/packaging/0001-packaging-sync-with-mainline.patch"
+	${git} "${DIR}/patches/packaging/0002-deb-pkg-install-dtbs-in-linux-image-package.patch"
+}
+
+#packaging_setup
+#packaging
 echo "patch.sh ran successful"
