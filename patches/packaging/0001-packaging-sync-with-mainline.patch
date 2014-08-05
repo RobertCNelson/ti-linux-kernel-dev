@@ -1,0 +1,93 @@
+From a0eecf57674cb18ab075b3348d23088cc4bcb42d Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Tue, 5 Aug 2014 16:47:47 -0500
+Subject: [PATCH] packaging: sync with mainline
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ scripts/package/builddeb | 32 +++++++++++++++++++++++---------
+ 1 file changed, 23 insertions(+), 9 deletions(-)
+
+diff --git a/scripts/package/builddeb b/scripts/package/builddeb
+index 6d02fd5d..35d5a58 100644
+--- a/scripts/package/builddeb
++++ b/scripts/package/builddeb
+@@ -35,13 +35,15 @@ create_package() {
+ 	sparc*)
+ 		debarch=sparc ;;
+ 	s390*)
+-		debarch=s390 ;;
++		debarch=s390$(grep -q CONFIG_64BIT=y $KCONFIG_CONFIG && echo x || true) ;;
+ 	ppc*)
+ 		debarch=powerpc ;;
+ 	parisc*)
+ 		debarch=hppa ;;
+ 	mips*)
+ 		debarch=mips$(grep -q CPU_LITTLE_ENDIAN=y $KCONFIG_CONFIG && echo el || true) ;;
++	arm64)
++		debarch=arm64 ;;
+ 	arm*)
+ 		debarch=arm$(grep -q CONFIG_AEABI=y $KCONFIG_CONFIG && echo el || true) ;;
+ 	*)
+@@ -130,7 +132,7 @@ if [ "$ARCH" = "um" ] ; then
+ 	cp System.map "$tmpdir/usr/lib/uml/modules/$version/System.map"
+ 	cp $KCONFIG_CONFIG "$tmpdir/usr/share/doc/$packagename/config"
+ 	gzip "$tmpdir/usr/share/doc/$packagename/config"
+-else 
++else
+ 	cp System.map "$tmpdir/boot/System.map-$version"
+ 	cp $KCONFIG_CONFIG "$tmpdir/boot/config-$version"
+ fi
+@@ -172,8 +174,15 @@ fi
+ 
+ # Install the maintainer scripts
+ # Note: hook scripts under /etc/kernel are also executed by official Debian
+-# kernel packages, as well as kernel packages built using make-kpkg
++# kernel packages, as well as kernel packages built using make-kpkg.
++# make-kpkg sets $INITRD to indicate whether an initramfs is wanted, and
++# so do we; recent versions of dracut and initramfs-tools will obey this.
+ debhookdir=${KDEB_HOOKDIR:-/etc/kernel}
++if grep -q '^CONFIG_BLK_DEV_INITRD=y' $KCONFIG_CONFIG; then
++	want_initrd=Yes
++else
++	want_initrd=No
++fi
+ for script in postinst postrm preinst prerm ; do
+ 	mkdir -p "$tmpdir$debhookdir/$script.d"
+ 	cat <<EOF > "$tmpdir/DEBIAN/$script"
+@@ -184,6 +193,9 @@ set -e
+ # Pass maintainer script parameters to hook scripts
+ export DEB_MAINT_PARAMS="\$*"
+ 
++# Tell initramfs builder whether it's wanted
++export INITRD=$want_initrd
++
+ test -d $debhookdir/$script.d && run-parts --arg="$version" --arg="/$installed_image_path" $debhookdir/$script.d
+ exit 0
+ EOF
+@@ -277,14 +289,16 @@ EOF
+ 
+ fi
+ 
+-# Build header package
+-(cd $srctree; find . -name Makefile\* -o -name Kconfig\* -o -name \*.pl > "$objtree/debian/hdrsrcfiles")
+-(cd $srctree; find arch/$SRCARCH/include include scripts -type f >> "$objtree/debian/hdrsrcfiles")
+-(cd $objtree; find arch/$SRCARCH/include Module.symvers include scripts -type f >> "$objtree/debian/hdrobjfiles")
++# Build kernel header package
++(cd $srctree; find . -name Makefile\* -o -name Kconfig\* -o -name \*.pl) > "$objtree/debian/hdrsrcfiles"
++(cd $srctree; find arch/$SRCARCH/include include scripts -type f) >> "$objtree/debian/hdrsrcfiles"
++(cd $srctree; find arch/$SRCARCH -name module.lds -o -name Kbuild.platforms -o -name Platform) >> "$objtree/debian/hdrsrcfiles"
++(cd $srctree; find $(find arch/$SRCARCH -name include -o -name scripts -type d) -type f) >> "$objtree/debian/hdrsrcfiles"
++(cd $objtree; find arch/$SRCARCH/include Module.symvers include scripts -type f) >> "$objtree/debian/hdrobjfiles"
+ destdir=$kernel_headers_dir/usr/src/linux-headers-$version
+ mkdir -p "$destdir"
+-(cd $srctree; tar -c -f - -T "$objtree/debian/hdrsrcfiles") | (cd $destdir; tar -xf -)
+-(cd $objtree; tar -c -f - -T "$objtree/debian/hdrobjfiles") | (cd $destdir; tar -xf -)
++(cd $srctree; tar -c -f - -T -) < "$objtree/debian/hdrsrcfiles" | (cd $destdir; tar -xf -)
++(cd $objtree; tar -c -f - -T -) < "$objtree/debian/hdrobjfiles" | (cd $destdir; tar -xf -)
+ (cd $objtree; cp $KCONFIG_CONFIG $destdir/.config) # copy .config manually to be where it's expected to be
+ ln -sf "/usr/src/linux-headers-$version" "$kernel_headers_dir/lib/modules/$version/build"
+ rm -f "$objtree/debian/hdrsrcfiles" "$objtree/debian/hdrobjfiles"
+-- 
+2.0.1
+

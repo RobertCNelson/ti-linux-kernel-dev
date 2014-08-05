@@ -28,7 +28,7 @@ if [ -f ${DIR}/system.sh ] ; then
 fi
 
 git="git am"
-#git_patchset=""
+git_patchset="git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git"
 #git_opts
 
 if [ "${RUN_BISECT}" ] ; then
@@ -54,9 +54,10 @@ cleanup () {
 }
 
 external_git () {
-	git_tag=""
+	git_tag="ti-linux-3.12.y"
 	echo "pulling: ${git_tag}"
 	git pull ${git_opts} ${git_patchset} ${git_tag}
+	git pull ${git_opts} git://git.ti.com/~nmenon/ti-linux-kernel/ti-linux-x15-validate.git beagle-x15
 }
 
 local_patch () {
@@ -64,19 +65,8 @@ local_patch () {
 	${git} "${DIR}/patches/dir/0001-patch.patch"
 }
 
-#external_git
+external_git
 #local_patch
-
-tibsp () {
-	git pull ${GIT_OPTS} git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-3.12.y
-}
-
-#sgx () {
-#	${git} "${DIR}/patches/sgx/0001-Revert-drm-remove-procfs-code-take-2.patch"
-#}
-
-tibsp
-#sgx
 
 packaging_setup () {
 	cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
@@ -89,8 +79,9 @@ packaging () {
 	echo "dir: packaging"
 	${git} "${DIR}/patches/packaging/0001-packaging-sync-with-mainline.patch"
 	${git} "${DIR}/patches/packaging/0002-deb-pkg-install-dtbs-in-linux-image-package.patch"
+	${git} "${DIR}/patches/packaging/0003-deb-pkg-install-dtbs-when-dtbs_install-didnt-exist.patch"
 }
 
 #packaging_setup
-#packaging
+packaging
 echo "patch.sh ran successful"
