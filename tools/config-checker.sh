@@ -74,7 +74,7 @@ check_if_set_then_set () {
 		check_config_builtin
 	fi
 }
-
+CONFIG_CMA_SIZE_MBYTES=16
 check_if_set_then_disable () {
 	unset test_config
 	test_config=$(grep "${if_config}=y" ${DIR}/patches/defconfig || true)
@@ -89,9 +89,57 @@ check_if_set_then_disable () {
 # TI Audio/Display config options
 ##################################################
 CONFIG_BACKLIGHT_PWM=m
+CONFIG_DRM=m
+CONFIG_DRM_KMS_HELPER=m
+CONFIG_DRM_KMS_FB_HELPER=y
+CONFIG_DRM_GEM_CMA_HELPER=y
+CONFIG_DRM_KMS_CMA_HELPER=y
+CONFIG_DRM_I2C_NXP_TDA998X=m
+CONFIG_DRM_TILCDC=m
+
+CONFIG_CMA_SIZE_MBYTES=24
+
+CONFIG_MEDIA_SUBDRV_AUTOSELECT=n
+CONFIG_MEDIA_SUPPORT=m
+CONFIG_V4L_PLATFORM_DRIVERS=y
+CONFIG_V4L2_MEM2MEM_DEV=m
+CONFIG_VIDEOBUF2_DMA_CONTIG=m
+CONFIG_V4L_MEM2MEM_DRIVERS=y
+CONFIG_VIDEO_TI_VPE=m
+CONFIG_VIDEO_OV2659=m
+CONFIG_VIDEO_AM437X_VPFE=m
 
 config="CONFIG_BACKLIGHT_PWM"
 check_config_module
+
+config="CONFIG_DRM"
+check_config_builtin
+config="CONFIG_DRM_KMS_HELPER"
+check_config_builtin
+config="CONFIG_DRM_KMS_FB_HELPER"
+check_config_builtin
+config="CONFIG_DRM_GEM_CMA_HELPER"
+check_config_builtin
+config="CONFIG_DRM_KMS_CMA_HELPER"
+check_config_builtin
+config="CONFIG_DRM_I2C_NXP_TDA998X"
+check_config_builtin
+config="CONFIG_DRM_TILCDC"
+check_config_builtin
+
+config="CONFIG_CMA_SIZE_MBYTES"
+value="24"
+check_config_value
+
+CONFIG_MEDIA_SUBDRV_AUTOSELECT=n
+CONFIG_MEDIA_SUPPORT=m
+CONFIG_V4L_PLATFORM_DRIVERS=y
+CONFIG_V4L2_MEM2MEM_DEV=m
+CONFIG_VIDEOBUF2_DMA_CONTIG=m
+CONFIG_V4L_MEM2MEM_DRIVERS=y
+CONFIG_VIDEO_TI_VPE=m
+CONFIG_VIDEO_OV2659=m
+CONFIG_VIDEO_AM437X_VPFE=m
 
 #baseport.cfg
 ##################################################
@@ -99,7 +147,11 @@ check_config_module
 ##################################################
 CONFIG_CGROUPS=y
 
+CONFIG_REGULATOR_GPIO=y
+
 config="CONFIG_CGROUPS"
+check_config_builtin
+config="CONFIG_REGULATOR_GPIO"
 check_config_builtin
 
 #connectivity.cfg
