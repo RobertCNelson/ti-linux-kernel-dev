@@ -97,6 +97,11 @@ CONFIG_DRM_KMS_CMA_HELPER=y
 CONFIG_DRM_I2C_NXP_TDA998X=m
 CONFIG_DRM_TILCDC=m
 
+CONFIG_DISPLAY_PANEL_TLC59108=m
+CONFIG_OMAP5_DSS_HDMI=y
+CONFIG_DISPLAY_CONNECTOR_HDMI=m
+CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015=m
+
 CONFIG_CMA_SIZE_MBYTES=24
 
 CONFIG_MEDIA_SUBDRV_AUTOSELECT=n
@@ -127,6 +132,15 @@ check_config_builtin
 config="CONFIG_DRM_TILCDC"
 check_config_builtin
 
+config="CONFIG_DISPLAY_PANEL_TLC59108"
+check_config_builtin
+config="CONFIG_OMAP5_DSS_HDMI"
+check_config_builtin
+config="CONFIG_DISPLAY_CONNECTOR_HDMI"
+check_config_builtin
+config="CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015"
+check_config_builtin
+
 config="CONFIG_CMA_SIZE_MBYTES"
 value="24"
 check_config_value
@@ -140,6 +154,25 @@ CONFIG_V4L_MEM2MEM_DRIVERS=y
 CONFIG_VIDEO_TI_VPE=m
 CONFIG_VIDEO_OV2659=m
 CONFIG_VIDEO_AM437X_VPFE=m
+
+config="CONFIG_MEDIA_SUPPORT"
+check_config_module
+config="CONFIG_MEDIA_CAMERA_SUPPORT"
+check_config_builtin
+config="CONFIG_V4L_PLATFORM_DRIVERS"
+check_config_builtin
+config="CONFIG_V4L2_MEM2MEM_DEV"
+check_config_module
+config="CONFIG_VIDEOBUF2_DMA_CONTIG"
+check_config_module
+config="CONFIG_V4L_MEM2MEM_DRIVERS"
+check_config_builtin
+config="CONFIG_VIDEO_TI_VPE"
+check_config_module
+config="CONFIG_VIDEO_OV2659"
+check_config_module
+config="CONFIG_VIDEO_AM437X_VPFE"
+check_config_module
 
 #baseport.cfg
 ##################################################
@@ -385,6 +418,9 @@ check_config_builtin
 #CONFIG_DEBUG_INFO=y
 #CONFIG_RTC_DEBUG=y
 #CONFIG_TIGON3=m
+
+config="CONFIG_SENSORS_TMP102"
+check_config_builtin
 
 #
 # General setup
