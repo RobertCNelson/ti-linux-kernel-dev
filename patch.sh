@@ -106,8 +106,36 @@ pinmux () {
 #cleanup
 }
 
+firmware () {
+	echo "dir: firmware"
+	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
+	#git checkout origin/next -b next
+
+	#commit fb0117edd5810a8d3bd9b1cd8abe34e12ff2d0ba
+	#Author: Dave Gerlach <d-gerlach@ti.com>
+	#Date:   Tue Aug 5 11:44:20 2014 -0500
+	#
+	#    CM3: Bump firmware release version to 0x187
+	#
+	#    This version, 0x187, adds support for the following:
+	#     - Further optimized IO DDR config on AM43xx platforms
+	#     - Remoteproc resource table for use with the linux kernel
+	#     - Standby support for am335x and am437x without any need for kernel
+	#       clockdomain control.
+	#
+	#    Implementations not using the resource table will not be affected by
+	#    this, but all future implementations within the linux kernel will use
+	#    remoteproc and require this firmware or higher.
+
+	#cp ../../amx3-cm3/bin/am335x-pm-firmware.elf ./firmware/
+	#git add -f ./firmware/am335x-pm-firmware.elf
+
+	${git} "${DIR}/patches/firmware/0001-firmware-am335x-pm-firmware.elf.patch"
+}
+
 ###
 pinmux
+firmware
 
 packaging_setup () {
 	cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
