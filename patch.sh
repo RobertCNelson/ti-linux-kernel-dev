@@ -108,6 +108,7 @@ pinmux () {
 
 capes () {
 	echo "dir: capes"
+
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wfile="arch/arm/boot/dts/am335x-bone-lcd4.dts"
@@ -121,12 +122,37 @@ capes () {
 		sed -i -e 's:am335x-boneblack-nxp-hdmi.dtsi:am335x-bone-lcd4.dtsi:g' ${wfile}
 		git add ${wfile}
 
-		git commit -a -m 'cape: lcd4' -s
+		git commit -a -m 'auto generated: cape: lcd4' -s
 		git format-patch -1
+		cp -v 0001-auto-generated-cape-lcd4.patch ../patches/capes/
 		exit
 	fi
 
-	${git} "${DIR}/patches/capes/0001-cape-lcd4.patch"
+	${git} "${DIR}/patches/capes/0001-auto-generated-cape-lcd4.patch"
+}
+
+dtb_makefile_append () {
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
+dtb_makefile () {
+	echo "dir: dtb_makefile"
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		device="am335x-bone-lcd4.dtb"
+		dtb_makefile_append
+
+		device="am335x-boneblack-lcd4.dtb"
+		dtb_makefile_append
+
+		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
+		git format-patch -1
+		cp -v 0001-auto-generated-capes-add-dtbs-to-makefile.patch ../patches/dtb_makefile/
+		exit
+	fi
+
+	${git} "${DIR}/patches/dtb_makefile/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
 }
 
 backport () {
@@ -165,6 +191,7 @@ firmware () {
 pinmux
 capes
 backport
+dtb_makefile
 firmware
 
 packaging_setup () {
