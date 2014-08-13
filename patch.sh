@@ -106,6 +106,34 @@ pinmux () {
 #cleanup
 }
 
+capes () {
+	echo "dir: capes"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wfile="arch/arm/boot/dts/am335x-bone-lcd4.dts"
+		cp arch/arm/boot/dts/am335x-bone.dts ${wfile}
+		echo "" >> ${wfile}
+		echo '#include "am335x-bone-lcd4.dtsi"' >> ${wfile}
+		git add ${wfile}
+
+		wfile="arch/arm/boot/dts/am335x-boneblack-lcd4.dts"
+		cp arch/arm/boot/dts/am335x-boneblack.dts ${wfile}
+		sed -i -e 's:am335x-boneblack-nxp-hdmi.dtsi:am335x-bone-lcd4.dtsi:g' ${wfile}
+		git add ${wfile}
+
+		git commit -a -m 'cape: lcd4' -s
+		git format-patch -1
+		exit
+	fi
+
+	${git} "${DIR}/patches/capes/0001-cape-lcd4.patch"
+}
+
+backport () {
+	echo "dir: backport"
+	${git} "${DIR}/patches/backport/0001-backport-gpio_backlight.c-from-v3.16.patch"
+}
+
 firmware () {
 	echo "dir: firmware"
 	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
@@ -135,6 +163,8 @@ firmware () {
 
 ###
 pinmux
+capes
+backport
 firmware
 
 packaging_setup () {
