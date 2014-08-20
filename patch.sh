@@ -324,7 +324,7 @@ beaglebone () {
 
 backport () {
 	echo "dir: backport"
-	${git} "${DIR}/patches/backport/0001-backport-gpio_backlight.c-from-v3.16.patch"
+	${git} "${DIR}/patches/backport/0001-backport-gpio_backlight.c-from-v3.15.10.patch"
 }
 
 firmware () {
@@ -356,6 +356,7 @@ firmware () {
 
 ###
 beaglebone
+backport
 firmware
 
 packaging_setup () {
