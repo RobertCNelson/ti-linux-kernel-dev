@@ -79,13 +79,32 @@ dtsi_append () {
 	git add ${wfile}
 }
 
-dtsi_drop_nxp_hdmi () {
-	sed -i -e 's:#include "am335x-boneblack-nxp-hdmi.dtsi":/* #include "am335x-boneblack-nxp-hdmi.dtsi" */:g' ${wfile}
+dtsi_append_custom () {
+	wfile="arch/arm/boot/dts/${dtb_name}.dts"
+	cp arch/arm/boot/dts/${base_dts}.dts ${wfile}
+	echo "" >> ${wfile}
+	echo "#include \"am335x-bone-${cape}.dtsi\"" >> ${wfile}
+	git add ${wfile}
+}
+
+dtsi_append_hdmi_no_audio () {
+	dtsi_append
+	echo "#include \"am335x-boneblack-nxp-hdmi-no-audio.dtsi\"" >> ${wfile}
+	git add ${wfile}
+}
+
+dtsi_drop_nxp_hdmi_audio () {
+	sed -i -e 's:#include "am335x-boneblack-nxp-hdmi-no-audio.dtsi":/* #include "am335x-boneblack-nxp-hdmi-no-audio.dtsi" */:g' ${wfile}
 	git add ${wfile}
 }
 
 dtsi_drop_emmc () {
 	sed -i -e 's:#include "am335x-boneblack-emmc.dtsi":/* #include "am335x-boneblack-emmc.dtsi" */:g' ${wfile}
+	git add ${wfile}
+}
+
+dts_drop_clkout2_pin () {
+	sed -i -e 's:pinctrl-0 = <\&clkout2_pin>;:/* pinctrl-0 = <\&clkout2_pin>; */:g' ${wfile}
 	git add ${wfile}
 }
 
@@ -115,12 +134,12 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/pinmux/0003-am335x-boneblack-split-out-emmc.patch"
 
-	# cp arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-boneblack-nxp-hdmi.dtsi
-	# gedit arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-boneblack-nxp-hdmi.dtsi &
-	# git add arch/arm/boot/dts/am335x-boneblack-nxp-hdmi.dtsi
-	# git commit -a -m 'am335x-boneblack: split out nxp hdmi' -s
+	# cp arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-no-audio.dtsi
+	# gedit arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-no-audio.dtsi &
+	# git add arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-no-audio.dtsi
+	# git commit -a -m 'am335x-boneblack: split out nxp hdmi no audio' -s
 
-	${git} "${DIR}/patches/beaglebone/pinmux/0004-am335x-boneblack-split-out-nxp-hdmi.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0004-am335x-boneblack-split-out-nxp-hdmi-no-audio.patch"
 
 	${git} "${DIR}/patches/beaglebone/pinmux/0005-am335x-bone-common-pinmux-i2c2.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0006-am335x-bone-common-pinmux-uart.patch"
@@ -137,8 +156,11 @@ beaglebone () {
 	#${git} "${DIR}/patches/beaglebone/dts/0001-am335x-boneblack-add-cpu0-opp-points.patch"
 
 	echo "dir: beaglebone/capes"
+	${git} "${DIR}/patches/beaglebone/capes/0001-cape-basic-proto-cape.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0002-cape-Argus-UPS-cape-support.patch"
 
 	#regenerate="enable"
+	echo "dir: beaglebone/generated"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		base_dts="am335x-bone"
 		cape="ttyO1"
@@ -165,12 +187,12 @@ beaglebone () {
 
 		cape="ttyO5"
 		dtsi_append
-		dtsi_drop_nxp_hdmi
+		dtsi_drop_nxp_hdmi_audio
 
 		git commit -a -m 'auto generated: cape: uarts' -s
-		git format-patch -1 -o ../patches/beaglebone/capes/
+		git format-patch -1 -o ../patches/beaglebone/generated/
 	else
-		${git} "${DIR}/patches/beaglebone/capes/0001-auto-generated-cape-uarts.patch"
+		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-cape-uarts.patch"
 	fi
 
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -183,9 +205,9 @@ beaglebone () {
 		dtsi_append
 
 		git commit -a -m 'auto generated: cape: audio' -s
-		git format-patch -2 -o ../patches/beaglebone/capes/
+		git format-patch -2 -o ../patches/beaglebone/generated/
 	else
-		${git} "${DIR}/patches/beaglebone/capes/0002-auto-generated-cape-audio.patch"
+		${git} "${DIR}/patches/beaglebone/generated/0002-auto-generated-cape-audio.patch"
 	fi
 
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -202,43 +224,78 @@ beaglebone () {
 		dtsi_append
 		cape="lcd7-01-00a3"
 		dtsi_append
-		cape="lcd7-01-00a4"
-		dtsi_append
 
 		base_dts="am335x-boneblack"
 		#lcd3 a2+
 		cape="lcd3-01-00a2"
 		dtsi_append
-		dtsi_drop_nxp_hdmi
+		dtsi_drop_nxp_hdmi_audio
 
 		#lcd4 a1+
 		cape="lcd4-01-00a1"
 		dtsi_append
-		dtsi_drop_nxp_hdmi
+		dtsi_drop_nxp_hdmi_audio
 
 		#drop emmc:
 		cape="lcd7-01-00a2"
 		dtsi_append
-		dtsi_drop_nxp_hdmi
+		dtsi_drop_nxp_hdmi_audio
 		dtsi_drop_emmc
 
 		#lcd4 a3+
 		cape="lcd7-01-00a3"
 		dtsi_append
-		dtsi_drop_nxp_hdmi
-		cape="lcd7-01-00a4"
-		dtsi_append
-		dtsi_drop_nxp_hdmi
+		dtsi_drop_nxp_hdmi_audio
 
 		git commit -a -m 'auto generated: cape: lcd' -s
-		git format-patch -3 -o ../patches/beaglebone/capes/
+		git format-patch -3 -o ../patches/beaglebone/generated/
 	else
-		${git} "${DIR}/patches/beaglebone/capes/0003-auto-generated-cape-lcd.patch"
+		${git} "${DIR}/patches/beaglebone/generated/0003-auto-generated-cape-lcd.patch"
 	fi
 
-	#last...
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cape="argus"
+
+		base_dts="am335x-bone"
+		dtb_name="${base_dts}-cape-bone-${cape}"
+		dtsi_append_custom
+		dts_drop_clkout2_pin
+
+		base_dts="am335x-boneblack"
+		dtb_name="${base_dts}-cape-bone-${cape}"
+		dtsi_append_custom
+		dts_drop_clkout2_pin
+
+		git commit -a -m 'auto generated: cape: argus' -s
+		git format-patch -4 -o ../patches/beaglebone/generated/
+	else
+		${git} "${DIR}/patches/beaglebone/generated/0004-auto-generated-cape-argus.patch"
+	fi
+
+	#last beaglebone/beaglebone black default
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wfile="arch/arm/boot/dts/am335x-bone.dts"
+		echo "" >> ${wfile}
+		echo "/* http://elinux.org/CircuitCo:Basic_Proto_Cape */" >> ${wfile}
+		echo "#include \"am335x-bone-basic-proto-cape.dtsi\"" >> ${wfile}
+
+		wfile="arch/arm/boot/dts/am335x-boneblack.dts"
+		echo "" >> ${wfile}
+		echo "/* http://elinux.org/CircuitCo:Basic_Proto_Cape */" >> ${wfile}
+		echo "#include \"am335x-bone-basic-proto-cape.dtsi\"" >> ${wfile}
+
+		git commit -a -m 'auto generated: cape: basic-proto-cape' -s
+		git format-patch -5 -o ../patches/beaglebone/generated/
+	else
+		${git} "${DIR}/patches/beaglebone/generated/0005-auto-generated-cape-basic-proto-cape.patch"
+	fi
+
+	#dtb makefile
 	if [ "x${regenerate}" = "xenable" ] ; then
 		device="am335x-bone-audio.dtb"
+		dtb_makefile_append
+
+		device="am335x-bone-cape-bone-argus.dtb"
 		dtb_makefile_append
 
 		device="am335x-bone-lcd3-01-00a2.dtb"
@@ -256,9 +313,6 @@ beaglebone () {
 		device="am335x-bone-lcd7-01-00a3.dtb"
 		dtb_makefile_append
 
-		device="am335x-bone-lcd7-01-00a4.dtb"
-		dtb_makefile_append
-
 		device="am335x-bone-ttyO1.dtb"
 		dtb_makefile_append
 
@@ -274,6 +328,9 @@ beaglebone () {
 		device="am335x-boneblack-audio.dtb"
 		dtb_makefile_append
 
+		device="am335x-boneblack-cape-bone-argus.dtb"
+		dtb_makefile_append
+
 		device="am335x-boneblack-lcd3-01-00a2.dtb"
 		dtb_makefile_append
 
@@ -284,9 +341,6 @@ beaglebone () {
 		dtb_makefile_append
 
 		device="am335x-boneblack-lcd7-01-00a3.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-lcd7-01-00a4.dtb"
 		dtb_makefile_append
 
 		device="am335x-boneblack-ttyO1.dtb"
@@ -302,15 +356,12 @@ beaglebone () {
 		dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
-		git format-patch -1 -o ../patches/beaglebone/dtb_makefile/
+		git format-patch -6 -o ../patches/beaglebone/generated/
 		exit
 	else
-		echo "dir: beaglebone/dtb_makefile"
-		${git} "${DIR}/patches/beaglebone/dtb_makefile/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
+		${git} "${DIR}/patches/beaglebone/generated/0006-auto-generated-capes-add-dtbs-to-makefile.patch"
 	fi
 
-	#must be last..
-	${git} "${DIR}/patches/beaglebone/capes/000x-cape-basic-proto-cape.patch"
 
 #	echo "dir: beaglebone/mac"
 #	${git} "${DIR}/patches/beaglebone/mac/0001-DT-doc-net-cpsw-mac-address-is-optional.patch"
