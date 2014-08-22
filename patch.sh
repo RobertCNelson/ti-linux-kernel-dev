@@ -147,8 +147,11 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0008-am335x-bone-common-pinmux-mcasp0.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0009-am335x-bone-common-pinmux-lcd.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0010-am335x-bone-common-pinmux-tscadc-4-wire.patch"
+	#${git} "${DIR}/patches/beaglebone/pinmux/0011-am335x-bone-common-pinmux-hdmi-audio.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0012-am335x-bone-common-pinmux-led-keys-lcd4-01-00a1-lcd7.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=10
+		number=12
 		cleanup
 	fi
 
@@ -272,7 +275,9 @@ beaglebone () {
 		${git} "${DIR}/patches/beaglebone/generated/0004-auto-generated-cape-argus.patch"
 	fi
 
+	####
 	#last beaglebone/beaglebone black default
+	echo "dir: beaglebone/generated/last"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wfile="arch/arm/boot/dts/am335x-bone.dts"
 		echo "" >> ${wfile}
@@ -285,9 +290,9 @@ beaglebone () {
 		echo "#include \"am335x-bone-basic-proto-cape.dtsi\"" >> ${wfile}
 
 		git commit -a -m 'auto generated: cape: basic-proto-cape' -s
-		git format-patch -5 -o ../patches/beaglebone/generated/
+		git format-patch -1 -o ../patches/beaglebone/generated/last/
 	else
-		${git} "${DIR}/patches/beaglebone/generated/0005-auto-generated-cape-basic-proto-cape.patch"
+		${git} "${DIR}/patches/beaglebone/generated/last/0001-auto-generated-cape-basic-proto-cape.patch"
 	fi
 
 	#dtb makefile
@@ -356,10 +361,10 @@ beaglebone () {
 		dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
-		git format-patch -6 -o ../patches/beaglebone/generated/
+		git format-patch -2 -o ../patches/beaglebone/generated/last/
 		exit
 	else
-		${git} "${DIR}/patches/beaglebone/generated/0006-auto-generated-capes-add-dtbs-to-makefile.patch"
+		${git} "${DIR}/patches/beaglebone/generated/last/0002-auto-generated-capes-add-dtbs-to-makefile.patch"
 	fi
 
 
