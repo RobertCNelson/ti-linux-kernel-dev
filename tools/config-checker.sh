@@ -114,6 +114,9 @@ CONFIG_VIDEO_TI_VPE=m
 CONFIG_VIDEO_OV2659=m
 CONFIG_VIDEO_AM437X_VPFE=m
 
+CONFIG_SND_AM335X_SOC_NXPTDA_EVM=m
+CONFIG_SND_OMAP_SOC_DRA7EVM=m
+
 config="CONFIG_BACKLIGHT_PWM"
 check_config_module
 
@@ -145,16 +148,6 @@ config="CONFIG_CMA_SIZE_MBYTES"
 value="24"
 check_config_value
 
-CONFIG_MEDIA_SUBDRV_AUTOSELECT=n
-CONFIG_MEDIA_SUPPORT=m
-CONFIG_V4L_PLATFORM_DRIVERS=y
-CONFIG_V4L2_MEM2MEM_DEV=m
-CONFIG_VIDEOBUF2_DMA_CONTIG=m
-CONFIG_V4L_MEM2MEM_DRIVERS=y
-CONFIG_VIDEO_TI_VPE=m
-CONFIG_VIDEO_OV2659=m
-CONFIG_VIDEO_AM437X_VPFE=m
-
 config="CONFIG_MEDIA_SUPPORT"
 check_config_module
 config="CONFIG_MEDIA_CAMERA_SUPPORT"
@@ -174,6 +167,11 @@ check_config_module
 config="CONFIG_VIDEO_AM437X_VPFE"
 check_config_module
 
+config="CONFIG_SND_AM335X_SOC_NXPTDA_EVM"
+check_config_module
+config="CONFIG_SND_OMAP_SOC_DRA7EVM"
+check_config_module
+
 #baseport.cfg
 ##################################################
 # TI Baseport Config Options
@@ -182,10 +180,23 @@ CONFIG_CGROUPS=y
 
 CONFIG_REGULATOR_GPIO=y
 
+# Crypto hardware accelerators
+CONFIG_CRYPTO_DEV_OMAP_SHAM=y
+CONFIG_CRYPTO_DEV_OMAP_AES=y
+CONFIG_CRYPTO_DEV_OMAP_DES=y
+
 config="CONFIG_CGROUPS"
 check_config_builtin
 config="CONFIG_REGULATOR_GPIO"
 check_config_builtin
+
+config="CONFIG_CRYPTO_DEV_OMAP_SHAM"
+check_config_builtin
+config="CONFIG_CRYPTO_DEV_OMAP_AES"
+check_config_builtin
+config="CONFIG_CRYPTO_DEV_OMAP_DES"
+check_config_builtin
+
 
 #connectivity.cfg
 ##################################################
@@ -367,6 +378,34 @@ check_config_module
 # TI IPC config options
 ##################################################
 
+# Mailbox
+CONFIG_OMAP2PLUS_MBOX=y
+
+# IOMMU
+CONFIG_OMAP_IOMMU=y
+CONFIG_OMAP_IOVMM=y
+CONFIG_OMAP_IOMMU_DEBUG=y
+
+# Remoteproc
+CONFIG_OMAP_REMOTEPROC=m
+CONFIG_OMAP_REMOTEPROC_WATCHDOG=y
+
+# RPMsg
+CONFIG_RPMSG_RPC=m
+
+config="CONFIG_OMAP2PLUS_MBOX"
+check_config_builtin
+config="CONFIG_OMAP_IOMMU"
+check_config_builtin
+config="CONFIG_OMAP_IOVMM"
+check_config_builtin
+config="CONFIG_OMAP_REMOTEPROC"
+check_config_module
+config="CONFIG_OMAP_REMOTEPROC_WATCHDOG"
+check_config_builtin
+config="CONFIG_RPMSG_RPC"
+check_config_module
+
 #power.cfg
 ##################################################
 # TI Power config options
@@ -421,6 +460,49 @@ check_config_builtin
 
 config="CONFIG_SENSORS_TMP102"
 check_config_builtin
+
+##################################################
+# TI WLCORE config options
+##################################################
+
+CONFIG_CFG80211=n
+CONFIG_MAC80211=n
+CONFIG_WL_TI=n
+CONFIG_WL12XX=n
+CONFIG_WL18XX=n
+CONFIG_WLCORE=n
+CONFIG_WLCORE_SDIO=n
+
+
+CONFIG_NL80211_TESTMODE=y
+CONFIG_RFKILL=y
+CONFIG_CRYPTO_TEST=m
+CONFIG_CRYPTO_ECB=y
+CONFIG_CRYPTO_ARC4=y
+CONFIG_CRYPTO_CCM=y
+
+
+CONFIG_NF_CONNTRACK=y
+CONFIG_NF_CONNTRACK_IPV4=y
+CONFIG_IP_NF_IPTABLES=y
+CONFIG_IP_NF_FILTER=y
+CONFIG_NF_NAT_IPV4=y
+CONFIG_IP_NF_TARGET_MASQUERADE=y
+
+config="CONFIG_NF_CONNTRACK"
+check_config_builtin
+config="CONFIG_NF_CONNTRACK_IPV4"
+check_config_builtin
+config="CONFIG_IP_NF_IPTABLES"
+check_config_builtin
+config="CONFIG_IP_NF_FILTER"
+check_config_builtin
+config="CONFIG_NF_NAT_IPV4"
+check_config_builtin
+config="CONFIG_IP_NF_TARGET_MASQUERADE"
+check_config_builtin
+
+#####################
 
 #
 # General setup

@@ -95,7 +95,7 @@ dtsi_append_hdmi_no_audio () {
 }
 
 dtsi_drop_nxp_hdmi_audio () {
-	sed -i -e 's:#include "am335x-boneblack-nxp-hdmi-no-audio.dtsi":/* #include "am335x-boneblack-nxp-hdmi-no-audio.dtsi" */:g' ${wfile}
+	sed -i -e 's:#include "am335x-boneblack-nxp-hdmi-audio.dtsi":/* #include "am335x-boneblack-nxp-hdmi-audio.dtsi" */:g' ${wfile}
 	git add ${wfile}
 }
 
@@ -115,6 +115,7 @@ beaglebone () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
+
 	# cp arch/arm/boot/dts/am335x-bone-common.dtsi arch/arm/boot/dts/am335x-bone-common-pinmux.dtsi
 	# gedit arch/arm/boot/dts/am335x-bone-common.dtsi arch/arm/boot/dts/am335x-bone-common-pinmux.dtsi &
 	# gedit arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-bone.dts &
@@ -135,30 +136,30 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/pinmux/0003-am335x-boneblack-split-out-emmc.patch"
 
-	# cp arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-no-audio.dtsi
-	# gedit arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-no-audio.dtsi &
-	# git add arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-no-audio.dtsi
-	# git commit -a -m 'am335x-boneblack: split out nxp hdmi no audio' -s
+	# cp arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-audio.dtsi
+	# gedit arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-audio.dtsi &
+	# git add arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-audio.dtsi
+	# git commit -a -m 'am335x-boneblack: split out nxp hdmi audio' -s
 
-	${git} "${DIR}/patches/beaglebone/pinmux/0004-am335x-boneblack-split-out-nxp-hdmi-no-audio.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0004-am335x-boneblack-split-out-nxp-hdmi-audio.patch"
 
+	# git commit -a -m 'am335x-bone: nxp hdmi no audio' -s
 
-	${git} "${DIR}/patches/beaglebone/pinmux/0005-am335x-bone-common-pinmux-i2c1-i2c2.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0006-am335x-bone-common-pinmux-uart1-uart2-uart4-uart5.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0007-am335x-bone-common-pinmux-spi0-spidev.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0008-am335x-bone-common-pinmux-mcasp-audio-cape-revb.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0009-am335x-bone-ti-tscadc-4-wire.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0010-am335x-bone-common-pinmux-led-gpio1_18-gpio1_28-gpio.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0011-am335x-bone-common-pinmux-gpio-backlight-gpio1_18.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0012-am335x-bone-common-pinmux-keymaps.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0013-am335x-bone-common-pinmux-lcd-panels.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0014-am335x-bone-capes-lcd3-lcd4-lcd7-4dcape-43-t-4dcape-.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0015-am335x-bone-cape-rtc-01-00a1.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0016-am335x-bone-cape-crypto-00a0.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0017-am335x-bone-common-pinmux-spi1-spidev.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0005-am335x-bone-nxp-hdmi-no-audio.patch"
 
-	#last: (hdmi audio needs to be backported..)
-	#${git} "${DIR}/patches/beaglebone/pinmux/0018-am335x-bone-common-pinmux-hdmi-audio.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0006-am335x-bone-common-pinmux-i2c1-i2c2.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0007-am335x-bone-common-pinmux-uart1-uart2-uart4-uart5.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0008-am335x-bone-common-pinmux-spi0-spidev.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0009-am335x-bone-common-pinmux-mcasp-audio-cape-revb.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0010-am335x-bone-ti-tscadc-4-wire.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0011-am335x-bone-common-pinmux-led-gpio1_18-gpio1_28-gpio.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0012-am335x-bone-common-pinmux-gpio-backlight-gpio1_18.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0013-am335x-bone-common-pinmux-keymaps.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0014-am335x-bone-common-pinmux-lcd-panels.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0015-am335x-bone-capes-lcd3-lcd4-lcd7-4dcape-43-t-4dcape-.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0016-am335x-bone-cape-rtc-01-00a1.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0017-am335x-bone-cape-crypto-00a0.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0018-am335x-bone-common-pinmux-spi1-spidev.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=18
@@ -217,6 +218,8 @@ beaglebone () {
 		base_dts="am335x-boneblack"
 		cape="audio"
 		dtsi_append
+		dtsi_drop_nxp_hdmi_audio
+		dtsi_append_hdmi_no_audio
 
 		git commit -a -m 'auto generated: cape: audio' -s
 		git format-patch -2 -o ../patches/beaglebone/generated/
