@@ -712,10 +712,10 @@ config="CONFIG_USB_MUSB_UX500"
 check_config_disable
 config="CONFIG_USB_MUSB_AM335X_CHILD"
 check_config_builtin
-config="CONFIG_USB_TI_CPPI41_DMA"
-check_config_disable
-config="CONFIG_MUSB_PIO_ONLY"
-check_config_builtin
+#config="CONFIG_USB_TI_CPPI41_DMA"
+#check_config_disable
+#config="CONFIG_MUSB_PIO_ONLY"
+#check_config_builtin
 
 #
 # USB Physical Layer drivers
@@ -890,5 +890,6 @@ config="CONFIG_NLS_CODEPAGE_437"
 check_config_builtin
 config="CONFIG_NLS_ISO8859_1"
 check_config_builtin
-
+config="CONFIG_PRUSS_REMOTEPROC"
+check_config_builtin
 #
