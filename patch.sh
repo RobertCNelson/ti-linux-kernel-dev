@@ -217,9 +217,8 @@ beaglebone () {
 
 		base_dts="am335x-boneblack"
 		cape="audio"
-		dtsi_append
-		dtsi_drop_nxp_hdmi_audio
 		dtsi_append_hdmi_no_audio
+		dtsi_drop_nxp_hdmi_audio
 
 		git commit -a -m 'auto generated: cape: audio' -s
 		git format-patch -2 -o ../patches/beaglebone/generated/
@@ -459,14 +458,15 @@ beaglebone () {
 	fi
 
 
-#	echo "dir: beaglebone/mac"
-#	${git} "${DIR}/patches/beaglebone/mac/0001-DT-doc-net-cpsw-mac-address-is-optional.patch"
-#	${git} "${DIR}/patches/beaglebone/mac/0002-net-cpsw-Add-missing-return-value.patch"
-#	${git} "${DIR}/patches/beaglebone/mac/0003-net-cpsw-header-Add-missing-include.patch"
-#	${git} "${DIR}/patches/beaglebone/mac/0004-net-cpsw-Replace-pr_err-by-dev_err.patch"
-#	${git} "${DIR}/patches/beaglebone/mac/0005-net-cpsw-Add-am33xx-MACID-readout.patch"
-#	${git} "${DIR}/patches/beaglebone/mac/0006-am33xx-define-syscon-control-module-device-node.patch"
-#	${git} "${DIR}/patches/beaglebone/mac/0007-arm-dts-am33xx-Add-syscon-phandle-to-cpsw-node.patch"
+	echo "dir: beaglebone/mac"
+	#[PATCH v5 0/7] net: cpsw: Support for am335x chip MACIDs
+	${git} "${DIR}/patches/beaglebone/mac/0001-DT-doc-net-cpsw-mac-address-is-optional.patch"
+	${git} "${DIR}/patches/beaglebone/mac/0002-net-cpsw-Add-missing-return-value.patch"
+	${git} "${DIR}/patches/beaglebone/mac/0003-net-cpsw-header-Add-missing-include.patch"
+	${git} "${DIR}/patches/beaglebone/mac/0004-net-cpsw-Replace-pr_err-by-dev_err.patch"
+	${git} "${DIR}/patches/beaglebone/mac/0005-net-cpsw-Add-am33xx-MACID-readout.patch"
+	${git} "${DIR}/patches/beaglebone/mac/0006-am33xx-define-syscon-control-module-device-node.patch"
+	${git} "${DIR}/patches/beaglebone/mac/0007-arm-dts-am33xx-Add-syscon-phandle-to-cpsw-node.patch"
 }
 
 backport () {
