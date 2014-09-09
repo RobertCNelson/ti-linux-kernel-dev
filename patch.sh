@@ -370,12 +370,12 @@ beaglebone () {
 		wfile="arch/arm/boot/dts/am335x-bone.dts"
 		echo "" >> ${wfile}
 		echo "/* http://elinux.org/CircuitCo:Basic_Proto_Cape */" >> ${wfile}
-		echo "#include \"am335x-bone-basic-proto-cape.dtsi\"" >> ${wfile}
+		echo "/* #include \"am335x-bone-basic-proto-cape.dtsi\" */" >> ${wfile}
 
 		wfile="arch/arm/boot/dts/am335x-boneblack.dts"
 		echo "" >> ${wfile}
 		echo "/* http://elinux.org/CircuitCo:Basic_Proto_Cape */" >> ${wfile}
-		echo "#include \"am335x-bone-basic-proto-cape.dtsi\"" >> ${wfile}
+		echo "/* #include \"am335x-bone-basic-proto-cape.dtsi\" */" >> ${wfile}
 
 		git commit -a -m 'auto generated: cape: basic-proto-cape' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/last/
@@ -478,7 +478,7 @@ beaglebone () {
 
 
 	echo "dir: beaglebone/mac"
-	#[PATCH v5 0/7] net: cpsw: Support for am335x chip MACIDs
+	#[PATCH v6 0/7] net: cpsw: Support for am335x chip MACIDs
 	${git} "${DIR}/patches/beaglebone/mac/0001-DT-doc-net-cpsw-mac-address-is-optional.patch"
 	${git} "${DIR}/patches/beaglebone/mac/0002-net-cpsw-Add-missing-return-value.patch"
 	${git} "${DIR}/patches/beaglebone/mac/0003-net-cpsw-header-Add-missing-include.patch"
@@ -498,24 +498,39 @@ firmware () {
 	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
 	#git checkout origin/next -b next
 
-	#commit fb0117edd5810a8d3bd9b1cd8abe34e12ff2d0ba
+	#commit fffeab4236d4129ab046bb7081a8ac244134ad89
 	#Author: Dave Gerlach <d-gerlach@ti.com>
-	#Date:   Tue Aug 5 11:44:20 2014 -0500
-	#
-	#    CM3: Bump firmware release version to 0x187
-	#
-	#    This version, 0x187, adds support for the following:
-	#     - Further optimized IO DDR config on AM43xx platforms
-	#     - Remoteproc resource table for use with the linux kernel
-	#     - Standby support for am335x and am437x without any need for kernel
-	#       clockdomain control.
-	#
-	#    Implementations not using the resource table will not be affected by
-	#    this, but all future implementations within the linux kernel will use
-	#    remoteproc and require this firmware or higher.
+	#Date:   Fri Aug 29 09:21:26 2014 -0500
 
-	#cp ../../amx3-cm3/bin/am335x-pm-firmware.elf ./firmware/
-	#git add -f ./firmware/am335x-pm-firmware.elf
+	#    CM3: Add board specific voltage scaling binaries
+	#
+	#    This CM3 firmware supports voltaeg scaling during low power modes
+	#    using i2c sequences sent to the PMIC. These sequences are both board
+	#    and PMIC specific. Add binaries containing the proper sequence to be
+	#    loaded by the software in use and copied to DMEM. Firmware still can
+	#    accept the offset of the wake and sleep sequence in IPC register 5 as
+	#    was done previously.
+	#
+	#    Currently firmware format contains 0x0C57 present as the first two
+	#    bytes followed by one byte defining offset to sleep sequence followed by
+	#    one byte defining offset to wake sequence. These can be used by software
+	#    running on MPU to facilitate loading of the sequences, which immediately
+	#    follow the offsets in the binary.
+	#
+	#    The CM3 i2c code expects each sequence to be a series of I2C transfers
+	#    in the form:
+	#
+	#    u8 length | u8 chip address | u8 byte0/reg address | u8 byte1 | u8 byteN ..
+	#
+	#    The length indicates the number of bytes to transfer, including the
+	#    register address. The length of each transfer is limited by the I2C
+	#    buffer size of 32 bytes.
+	#
+	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
+
+	#cp ../../amx3-cm3/bin/am* ./firmware/
+
+	#git add -f ./firmware/am*
 
 	${git} "${DIR}/patches/firmware/0001-firmware-am335x-pm-firmware.elf.patch"
 }
