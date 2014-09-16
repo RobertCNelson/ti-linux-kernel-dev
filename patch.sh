@@ -225,6 +225,7 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0017-am335x-bone-cape-crypto-00a0.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0018-am335x-bone-common-pinmux-spi1-spidev.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0019-bbb-exp-c-missed-audio.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0020-lcd4-fix-pinmux-collusions.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=18
