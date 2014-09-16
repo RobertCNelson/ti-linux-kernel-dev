@@ -68,6 +68,53 @@ local_patch () {
 external_git
 #local_patch
 
+backport () {
+	echo "dir: backport"
+	${git} "${DIR}/patches/backport/0001-backport-gpio_backlight.c-from-v3.15.10.patch"
+}
+
+firmware () {
+	echo "dir: firmware"
+	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
+	#git checkout origin/next -b next
+
+	#commit fffeab4236d4129ab046bb7081a8ac244134ad89
+	#Author: Dave Gerlach <d-gerlach@ti.com>
+	#Date:   Fri Aug 29 09:21:26 2014 -0500
+
+	#    CM3: Add board specific voltage scaling binaries
+	#
+	#    This CM3 firmware supports voltaeg scaling during low power modes
+	#    using i2c sequences sent to the PMIC. These sequences are both board
+	#    and PMIC specific. Add binaries containing the proper sequence to be
+	#    loaded by the software in use and copied to DMEM. Firmware still can
+	#    accept the offset of the wake and sleep sequence in IPC register 5 as
+	#    was done previously.
+	#
+	#    Currently firmware format contains 0x0C57 present as the first two
+	#    bytes followed by one byte defining offset to sleep sequence followed by
+	#    one byte defining offset to wake sequence. These can be used by software
+	#    running on MPU to facilitate loading of the sequences, which immediately
+	#    follow the offsets in the binary.
+	#
+	#    The CM3 i2c code expects each sequence to be a series of I2C transfers
+	#    in the form:
+	#
+	#    u8 length | u8 chip address | u8 byte0/reg address | u8 byte1 | u8 byteN ..
+	#
+	#    The length indicates the number of bytes to transfer, including the
+	#    register address. The length of each transfer is limited by the I2C
+	#    buffer size of 32 bytes.
+	#
+	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
+
+	#cp ../../amx3-cm3/bin/am* ./firmware/
+
+	#git add -f ./firmware/am*
+
+	${git} "${DIR}/patches/firmware/0001-firmware-am335x-pm-firmware.elf.patch"
+}
+
 dtb_makefile_append () {
 	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
@@ -110,21 +157,35 @@ dts_drop_clkout2_pin () {
 }
 
 beaglebone () {
+	echo "dir: beaglebone/pinmux-helper"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0001-BeagleBone-pinmux-helper.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0002-pinmux-helper-Add-runtime-configuration-capability.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0003-pinmux-helper-Switch-to-using-kmalloc.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0004-gpio-Introduce-GPIO-OF-helper.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0005-Add-dir-changeable-property-to-gpio-of-helper.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0006-am33xx.dtsi-add-ocp-label.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0007-beaglebone-added-expansion-header-to-dtb.patch"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=7
+		cleanup
+	fi
+
 	echo "dir: beaglebone/pinmux"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
-
-	# cp arch/arm/boot/dts/am335x-bone-common.dtsi arch/arm/boot/dts/am335x-bone-common-pinmux.dtsi
-	# gedit arch/arm/boot/dts/am335x-bone-common.dtsi arch/arm/boot/dts/am335x-bone-common-pinmux.dtsi &
+	# gedit arch/arm/boot/dts/am335x-bone-common.dtsi arch/arm/boot/dts/am335x-bone-common-pinmux.dtsi
 	# gedit arch/arm/boot/dts/am335x-boneblack.dts arch/arm/boot/dts/am335x-bone.dts &
-	# git add arch/arm/boot/dts/am335x-bone-common-pinmux.dtsi
 	# git commit -a -m 'am335x-bone-common: split out am33xx_pinmux' -s
 
 	${git} "${DIR}/patches/beaglebone/pinmux/0001-am335x-bone-common-split-out-am33xx_pinmux.patch"
 
-	# meld arch/arm/boot/dts/am335x-bone-common-pinmux.dtsi arch/arm/boot/dts/am335x-boneblack.dts
+	# gedit arch/arm/boot/dts/am335x-bone-common-pinmux.dtsi arch/arm/boot/dts/am335x-boneblack.dts
 	# git commit -a -m 'am335x-boneblack: split out am33xx_pinmux' -s
 
 	${git} "${DIR}/patches/beaglebone/pinmux/0002-am335x-boneblack-split-out-am33xx_pinmux.patch"
@@ -143,6 +204,9 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/pinmux/0004-am335x-boneblack-split-out-nxp-hdmi-audio.patch"
 
+	# cp arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-audio.dtsi arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-no-audio.dtsi
+	# gedit arch/arm/boot/dts/am335x-boneblack.dts  arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-no-audio.dtsi &
+	# git add arch/arm/boot/dts/am335x-boneblack-nxp-hdmi-no-audio.dtsi
 	# git commit -a -m 'am335x-bone: nxp hdmi no audio' -s
 
 	${git} "${DIR}/patches/beaglebone/pinmux/0005-am335x-bone-nxp-hdmi-no-audio.patch"
@@ -152,42 +216,27 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0008-am335x-bone-common-pinmux-spi0-spidev.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0009-am335x-bone-common-pinmux-mcasp-audio-cape-revb.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0010-am335x-bone-ti-tscadc-4-wire.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0011-am335x-bone-common-pinmux-led-gpio1_18-gpio1_28-gpio.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0012-am335x-bone-common-pinmux-gpio-backlight-gpio1_18.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0011-am335x-bone-common-pinmux-led.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0012-am335x-bone-common-pinmux-gpio-backlight.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0013-am335x-bone-common-pinmux-keymaps.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0014-am335x-bone-common-pinmux-lcd-panels.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0015-am335x-bone-capes-lcd3-lcd4-lcd7-4dcape-43-t-4dcape-.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0015-am335x-bone-cape-lcd.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0016-am335x-bone-cape-rtc-01-00a1.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0017-am335x-bone-cape-crypto-00a0.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0018-am335x-bone-common-pinmux-spi1-spidev.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0019-bbb-exp-c-missed-audio.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=18
 		cleanup
 	fi
 
-	echo "dir: beaglebone/pinmux-helper"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0001-BeagleBone-pinmux-helper.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0002-pinmux-helper-Add-runtime-configuration-capability.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0003-pinmux-helper-Switch-to-using-kmalloc.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0004-gpio-Introduce-GPIO-OF-helper.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0005-Add-dir-changeable-property-to-gpio-of-helper.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0006-am33xx.dtsi-add-ocp-label.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0007-beaglebone-added-expansion-header-to-dtb.patch"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=7
-		cleanup
-	fi
-#	${git} "${DIR}/patches/beaglebone/pinmux-helper/0008-bb.org_defconfig-add-GPIO_OF_HELPER.patch"
-
 	echo "dir: beaglebone/dts"
 	${git} "${DIR}/patches/beaglebone/dts/0001-hack-bbb-enable-1ghz-operation.patch"
 	#${git} "${DIR}/patches/beaglebone/dts/0001-am335x-boneblack-add-cpu0-opp-points.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0002-dts-am335x-bone-common-fixup-leds-to-match-3.8.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0003-ARM-dts-am335x-bone-Fix-model-name-and-update-compat.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0004-ARM-dts-am335x-boneblack-dcdc1-set-to-1.35v-for-ddr3.patch"
 
 	echo "dir: beaglebone/capes"
 	${git} "${DIR}/patches/beaglebone/capes/0001-cape-basic-proto-cape.patch"
@@ -363,6 +412,18 @@ beaglebone () {
 		${git} "${DIR}/patches/beaglebone/generated/0007-auto-generated-cape-4dcape.patch"
 	fi
 
+	if [ "x${regenerate}" = "xenable" ] ; then
+		base_dts="am335x-boneblack"
+		cape="bbb-exp-c"
+		dtsi_append
+		dtsi_drop_nxp_hdmi_audio
+
+		git commit -a -m 'auto generated: cape: bbb-exp-c' -s
+		git format-patch -8 -o ../patches/beaglebone/generated/
+	else
+		${git} "${DIR}/patches/beaglebone/generated/0008-auto-generated-cape-bbb-exp-c.patch"
+	fi
+
 	####
 	#last beaglebone/beaglebone black default
 	echo "dir: beaglebone/generated/last"
@@ -442,6 +503,9 @@ beaglebone () {
 		device="am335x-boneblack-4dcape-70t.dtb"
 		dtb_makefile_append
 
+		device="am335x-boneblack-bbb-exp-c.dtb"
+		dtb_makefile_append
+
 		device="am335x-boneblack-lcd3-01-00a2.dtb"
 		dtb_makefile_append
 
@@ -488,57 +552,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/mac/0007-arm-dts-am33xx-Add-syscon-phandle-to-cpsw-node.patch"
 }
 
-backport () {
-	echo "dir: backport"
-	${git} "${DIR}/patches/backport/0001-backport-gpio_backlight.c-from-v3.15.10.patch"
-}
-
-firmware () {
-	echo "dir: firmware"
-	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
-	#git checkout origin/next -b next
-
-	#commit fffeab4236d4129ab046bb7081a8ac244134ad89
-	#Author: Dave Gerlach <d-gerlach@ti.com>
-	#Date:   Fri Aug 29 09:21:26 2014 -0500
-
-	#    CM3: Add board specific voltage scaling binaries
-	#
-	#    This CM3 firmware supports voltaeg scaling during low power modes
-	#    using i2c sequences sent to the PMIC. These sequences are both board
-	#    and PMIC specific. Add binaries containing the proper sequence to be
-	#    loaded by the software in use and copied to DMEM. Firmware still can
-	#    accept the offset of the wake and sleep sequence in IPC register 5 as
-	#    was done previously.
-	#
-	#    Currently firmware format contains 0x0C57 present as the first two
-	#    bytes followed by one byte defining offset to sleep sequence followed by
-	#    one byte defining offset to wake sequence. These can be used by software
-	#    running on MPU to facilitate loading of the sequences, which immediately
-	#    follow the offsets in the binary.
-	#
-	#    The CM3 i2c code expects each sequence to be a series of I2C transfers
-	#    in the form:
-	#
-	#    u8 length | u8 chip address | u8 byte0/reg address | u8 byte1 | u8 byteN ..
-	#
-	#    The length indicates the number of bytes to transfer, including the
-	#    register address. The length of each transfer is limited by the I2C
-	#    buffer size of 32 bytes.
-	#
-	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
-
-	#cp ../../amx3-cm3/bin/am* ./firmware/
-
-	#git add -f ./firmware/am*
-
-	${git} "${DIR}/patches/firmware/0001-firmware-am335x-pm-firmware.elf.patch"
-}
-
 ###
-beaglebone
 backport
 firmware
+beaglebone
 
 packaging_setup () {
 	cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
