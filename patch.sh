@@ -121,7 +121,7 @@ dtb_makefile_append () {
 
 dtsi_append () {
 	wfile="arch/arm/boot/dts/${base_dts}-${cape}.dts"
-	cp arch/arm/boot/dts/${base_dts}.dts ${wfile}
+	cp arch/arm/boot/dts/${base_dts}-base.dts ${wfile}
 	echo "" >> ${wfile}
 	echo "#include \"am335x-bone-${cape}.dtsi\"" >> ${wfile}
 	git add ${wfile}
@@ -129,7 +129,7 @@ dtsi_append () {
 
 dtsi_append_custom () {
 	wfile="arch/arm/boot/dts/${dtb_name}.dts"
-	cp arch/arm/boot/dts/${base_dts}.dts ${wfile}
+	cp arch/arm/boot/dts/${base_dts}-base.dts ${wfile}
 	echo "" >> ${wfile}
 	echo "#include \"am335x-bone-${cape}.dtsi\"" >> ${wfile}
 	git add ${wfile}
@@ -229,9 +229,12 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0020-lcd4-fix-pinmux-collusions.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0021-lcd7-fix-pinmux-collusions.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0023-bbb-exp-c-fix-pinmux-collusions.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0024-pinmux-quiet-default-am335x-boneblack.dts.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0025-use-pinmux-helper-for-ttyOx.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0026-panel-disable-usart5.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=18
+		number=26
 		cleanup
 	fi
 
@@ -241,6 +244,7 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0002-dts-am335x-bone-common-fixup-leds-to-match-3.8.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0003-ARM-dts-am335x-bone-Fix-model-name-and-update-compat.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0004-ARM-dts-am335x-boneblack-dcdc1-set-to-1.35v-for-ddr3.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0005-add-base-files.patch"
 
 	echo "dir: beaglebone/capes"
 	${git} "${DIR}/patches/beaglebone/capes/0001-cape-basic-proto-cape.patch"

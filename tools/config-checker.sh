@@ -146,7 +146,7 @@ CONFIG_DRM_OMAP=y
 CONFIG_DRM_OMAP_NUM_CRTCS=2
 
 config="CONFIG_DRM"
-check_config_module
+check_config_builtin
 config="CONFIG_DRM_KMS_HELPER"
 check_config_module
 config="CONFIG_DRM_KMS_FB_HELPER"
