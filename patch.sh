@@ -169,8 +169,9 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0005-Add-dir-changeable-property-to-gpio-of-helper.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0006-am33xx.dtsi-add-ocp-label.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0007-beaglebone-added-expansion-header-to-dtb.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0008-bone-pinmux-helper-Add-support-for-mode-device-tree-.patch"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=7
+		number=8
 		cleanup
 	fi
 
@@ -553,6 +554,9 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/mac/0005-net-cpsw-Add-am33xx-MACID-readout.patch"
 	${git} "${DIR}/patches/beaglebone/mac/0006-am33xx-define-syscon-control-module-device-node.patch"
 	${git} "${DIR}/patches/beaglebone/mac/0007-arm-dts-am33xx-Add-syscon-phandle-to-cpsw-node.patch"
+
+	echo "dir: beaglebone/phy"
+	${git} "${DIR}/patches/beaglebone/phy/0001-cpsw-search-for-phy.patch"
 }
 
 ###
