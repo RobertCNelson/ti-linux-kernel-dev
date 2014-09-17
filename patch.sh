@@ -232,9 +232,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0024-pinmux-quiet-default-am335x-boneblack.dts.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0025-use-pinmux-helper-for-ttyOx.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0026-panel-disable-usart5.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0027-trivial-fix-tty0x.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=26
+		number=27
 		cleanup
 	fi
 
