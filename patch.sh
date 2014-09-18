@@ -234,9 +234,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0026-panel-disable-usart5.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0027-trivial-fix-tty0x.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0028-cape-bb-view-43.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0029-cape-audio-rev-a.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=28
+		number=29
 		cleanup
 	fi
 
@@ -246,6 +247,9 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0002-dts-am335x-bone-common-fixup-leds-to-match-3.8.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0003-ARM-dts-am335x-bone-Fix-model-name-and-update-compat.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0004-ARM-dts-am335x-boneblack-dcdc1-set-to-1.35v-for-ddr3.patch"
+
+	#patch -p1 < "${DIR}/patches/beaglebone/dts/0005-add-base-files.patch"
+	#exit
 	${git} "${DIR}/patches/beaglebone/dts/0005-add-base-files.patch"
 
 	echo "dir: beaglebone/capes"
@@ -289,6 +293,15 @@ beaglebone () {
 	fi
 
 	if [ "x${regenerate}" = "xenable" ] ; then
+		base_dts="am335x-bone"
+		cape="audio-reva"
+		dtsi_append
+
+		base_dts="am335x-boneblack"
+		cape="audio-reva"
+		dtsi_append_hdmi_no_audio
+		dtsi_drop_nxp_hdmi_audio
+
 		base_dts="am335x-bone"
 		cape="audio"
 		dtsi_append
@@ -472,6 +485,9 @@ beaglebone () {
 
 	#dtb makefile
 	if [ "x${regenerate}" = "xenable" ] ; then
+		device="am335x-bone-audio-reva.dtb"
+		dtb_makefile_append
+
 		device="am335x-bone-audio.dtb"
 		dtb_makefile_append
 
@@ -509,6 +525,9 @@ beaglebone () {
 		dtb_makefile_append
 
 		device="am335x-bone-ttyO5.dtb"
+		dtb_makefile_append
+
+		device="am335x-boneblack-audio-reva.dtb"
 		dtb_makefile_append
 
 		device="am335x-boneblack-audio.dtb"
