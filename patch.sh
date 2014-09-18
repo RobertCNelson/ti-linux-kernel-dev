@@ -233,9 +233,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0025-use-pinmux-helper-for-ttyOx.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0026-panel-disable-usart5.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0027-trivial-fix-tty0x.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0028-cape-bb-view-43.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=27
+		number=28
 		cleanup
 	fi
 
@@ -433,6 +434,22 @@ beaglebone () {
 		${git} "${DIR}/patches/beaglebone/generated/0008-auto-generated-cape-bbb-exp-c.patch"
 	fi
 
+	if [ "x${regenerate}" = "xenable" ] ; then
+		base_dts="am335x-bone"
+		cape="bb-view-43"
+		dtsi_append
+
+		base_dts="am335x-boneblack"
+		cape="bb-view-43"
+		dtsi_append
+		dtsi_drop_nxp_hdmi_audio
+
+		git commit -a -m 'auto generated: cape: bb-view-43' -s
+		git format-patch -9 -o ../patches/beaglebone/generated/
+	else
+		${git} "${DIR}/patches/beaglebone/generated/0009-auto-generated-cape-bb-view-43.patch"
+	fi
+
 	####
 	#last beaglebone/beaglebone black default
 	echo "dir: beaglebone/generated/last"
@@ -456,6 +473,9 @@ beaglebone () {
 	#dtb makefile
 	if [ "x${regenerate}" = "xenable" ] ; then
 		device="am335x-bone-audio.dtb"
+		dtb_makefile_append
+
+		device="am335x-bone-bb-view-43.dtb"
 		dtb_makefile_append
 
 		device="am335x-bone-cape-bone-argus.dtb"
@@ -492,6 +512,9 @@ beaglebone () {
 		dtb_makefile_append
 
 		device="am335x-boneblack-audio.dtb"
+		dtb_makefile_append
+
+		device="am335x-boneblack-bb-view-43.dtb"
 		dtb_makefile_append
 
 		device="am335x-boneblack-cape-bone-argus.dtb"
