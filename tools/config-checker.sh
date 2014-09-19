@@ -929,6 +929,8 @@ check_config_disable
 config="CONFIG_PREEMPT_NONE"
 check_config_disable
 config="CONFIG_PREEMPT_VOLUNTARY"
+check_config_disable
+config="CONFIG_PREEMPT"
 check_config_builtin
 config="CONFIG_ZSMALLOC"
 check_config_builtin
