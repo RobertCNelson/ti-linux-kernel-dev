@@ -170,8 +170,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0006-am33xx.dtsi-add-ocp-label.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0007-beaglebone-added-expansion-header-to-dtb.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0008-bone-pinmux-helper-Add-support-for-mode-device-tree-.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0009-pinmux-helper-add-P8_37_pinmux-P8_38_pinmux.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=8
+		number=9
 		cleanup
 	fi
 
@@ -212,32 +214,24 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/pinmux/0005-am335x-bone-nxp-hdmi-no-audio.patch"
 
-	${git} "${DIR}/patches/beaglebone/pinmux/0006-am335x-bone-common-pinmux-i2c1-i2c2.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0007-am335x-bone-common-pinmux-uart1-uart2-uart4-uart5.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0008-am335x-bone-common-pinmux-spi0-spidev.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0009-am335x-bone-common-pinmux-mcasp-audio-cape-revb.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0010-am335x-bone-ti-tscadc-4-wire.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0011-am335x-bone-common-pinmux-led.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0012-am335x-bone-common-pinmux-gpio-backlight.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0013-am335x-bone-common-pinmux-keymaps.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0014-am335x-bone-common-pinmux-lcd-panels.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0015-am335x-bone-cape-lcd.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0016-am335x-bone-cape-rtc-01-00a1.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0017-am335x-bone-cape-crypto-00a0.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0018-am335x-bone-common-pinmux-spi1-spidev.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0019-bbb-exp-c-missed-audio.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0020-lcd4-fix-pinmux-collusions.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0021-lcd7-fix-pinmux-collusions.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0023-bbb-exp-c-fix-pinmux-collusions.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0024-pinmux-quiet-default-am335x-boneblack.dts.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0025-use-pinmux-helper-for-ttyOx.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0026-panel-disable-usart5.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0027-trivial-fix-tty0x.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0028-cape-bb-view-43.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux/0029-cape-audio-rev-a.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0006-pinmux-bone-black-disable-pins-for-hdmi-audio-clkout.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0007-pinmux-i2c.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0008-pinmux-uart.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0009-pinmux-spi.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0010-node-4-wire-touchscreen.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0011-node-led-gpio.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0012-node-backlight-gpio.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0013-node-keymap.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0014-node-panel.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0015-cape-audio-revb.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0016-cape-audio-reva.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0017-cape-crypto-00a0.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0018-cape-rtc-01-00a1.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0019-cape-lcd.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0020-cape-basic-proto.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=29
+		number=20
 		cleanup
 	fi
 
@@ -248,13 +242,12 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0003-ARM-dts-am335x-bone-Fix-model-name-and-update-compat.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0004-ARM-dts-am335x-boneblack-dcdc1-set-to-1.35v-for-ddr3.patch"
 
-	#patch -p1 < "${DIR}/patches/beaglebone/dts/0005-add-base-files.patch"
+	#echo "patch -p1 < \"${DIR}/patches/beaglebone/dts/0005-add-base-files.patch\""
 	#exit
 	${git} "${DIR}/patches/beaglebone/dts/0005-add-base-files.patch"
 
 	echo "dir: beaglebone/capes"
-	${git} "${DIR}/patches/beaglebone/capes/0001-cape-basic-proto-cape.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0002-cape-Argus-UPS-cape-support.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
 
 	#regenerate="enable"
 	echo "dir: beaglebone/generated"
@@ -303,11 +296,11 @@ beaglebone () {
 		dtsi_drop_nxp_hdmi_audio
 
 		base_dts="am335x-bone"
-		cape="audio"
+		cape="audio-revb"
 		dtsi_append
 
 		base_dts="am335x-boneblack"
-		cape="audio"
+		cape="audio-revb"
 		dtsi_append_hdmi_no_audio
 		dtsi_drop_nxp_hdmi_audio
 
@@ -409,6 +402,19 @@ beaglebone () {
 	fi
 
 	if [ "x${regenerate}" = "xenable" ] ; then
+		base_dts="am335x-bone"
+		cape="4dcape-43"
+		dtsi_append
+
+		cape="4dcape-43t"
+		dtsi_append
+
+		cape="4dcape-70"
+		dtsi_append
+
+		cape="4dcape-70t"
+		dtsi_append
+
 		base_dts="am335x-boneblack"
 		cape="4dcape-43"
 		dtsi_append
@@ -436,6 +442,10 @@ beaglebone () {
 	fi
 
 	if [ "x${regenerate}" = "xenable" ] ; then
+		base_dts="am335x-bone"
+		cape="bbb-exp-c"
+		dtsi_append
+
 		base_dts="am335x-boneblack"
 		cape="bbb-exp-c"
 		dtsi_append
@@ -464,31 +474,12 @@ beaglebone () {
 	fi
 
 	####
-	#last beaglebone/beaglebone black default
-	echo "dir: beaglebone/generated/last"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wfile="arch/arm/boot/dts/am335x-bone.dts"
-		echo "" >> ${wfile}
-		echo "/* http://elinux.org/CircuitCo:Basic_Proto_Cape */" >> ${wfile}
-		echo "/* #include \"am335x-bone-basic-proto-cape.dtsi\" */" >> ${wfile}
-
-		wfile="arch/arm/boot/dts/am335x-boneblack.dts"
-		echo "" >> ${wfile}
-		echo "/* http://elinux.org/CircuitCo:Basic_Proto_Cape */" >> ${wfile}
-		echo "/* #include \"am335x-bone-basic-proto-cape.dtsi\" */" >> ${wfile}
-
-		git commit -a -m 'auto generated: cape: basic-proto-cape' -s
-		git format-patch -1 -o ../patches/beaglebone/generated/last/
-	else
-		${git} "${DIR}/patches/beaglebone/generated/last/0001-auto-generated-cape-basic-proto-cape.patch"
-	fi
-
 	#dtb makefile
 	if [ "x${regenerate}" = "xenable" ] ; then
 		device="am335x-bone-audio-reva.dtb"
 		dtb_makefile_append
 
-		device="am335x-bone-audio.dtb"
+		device="am335x-bone-audio-revb.dtb"
 		dtb_makefile_append
 
 		device="am335x-bone-bb-view-43.dtb"
@@ -498,6 +489,21 @@ beaglebone () {
 		dtb_makefile_append
 
 		device="am335x-bone-crypto-00a0.dtb"
+		dtb_makefile_append
+
+		device="am335x-bone-4dcape-43.dtb"
+		dtb_makefile_append
+
+		device="am335x-bone-4dcape-43t.dtb"
+		dtb_makefile_append
+
+		device="am335x-bone-4dcape-70.dtb"
+		dtb_makefile_append
+
+		device="am335x-bone-4dcape-70t.dtb"
+		dtb_makefile_append
+
+		device="am335x-bone-bbb-exp-c.dtb"
 		dtb_makefile_append
 
 		device="am335x-bone-lcd3-01-00a2.dtb"
@@ -530,7 +536,7 @@ beaglebone () {
 		device="am335x-boneblack-audio-reva.dtb"
 		dtb_makefile_append
 
-		device="am335x-boneblack-audio.dtb"
+		device="am335x-boneblack-audio-revb.dtb"
 		dtb_makefile_append
 
 		device="am335x-boneblack-bb-view-43.dtb"
@@ -585,10 +591,10 @@ beaglebone () {
 		dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
-		git format-patch -2 -o ../patches/beaglebone/generated/last/
+		git format-patch -1 -o ../patches/beaglebone/generated/last/
 		exit
 	else
-		${git} "${DIR}/patches/beaglebone/generated/last/0002-auto-generated-capes-add-dtbs-to-makefile.patch"
+		${git} "${DIR}/patches/beaglebone/generated/last/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
 	fi
 
 
