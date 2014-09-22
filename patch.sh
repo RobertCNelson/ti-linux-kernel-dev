@@ -76,39 +76,21 @@ backport () {
 firmware () {
 	echo "dir: firmware"
 	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
+	#cd amx3-cm3/
 	#git checkout origin/next -b next
 
-	#commit fffeab4236d4129ab046bb7081a8ac244134ad89
+	#commit 4e219d5053ee41b8fa8f85b48b1529ae4c6feb48
 	#Author: Dave Gerlach <d-gerlach@ti.com>
-	#Date:   Fri Aug 29 09:21:26 2014 -0500
-
-	#    CM3: Add board specific voltage scaling binaries
+	#Date:   Wed Sep 17 16:43:47 2014 -0500
 	#
-	#    This CM3 firmware supports voltaeg scaling during low power modes
-	#    using i2c sequences sent to the PMIC. These sequences are both board
-	#    and PMIC specific. Add binaries containing the proper sequence to be
-	#    loaded by the software in use and copied to DMEM. Firmware still can
-	#    accept the offset of the wake and sleep sequence in IPC register 5 as
-	#    was done previously.
+	#    CM3: Bump firmware release version to 0x189
 	#
-	#    Currently firmware format contains 0x0C57 present as the first two
-	#    bytes followed by one byte defining offset to sleep sequence followed by
-	#    one byte defining offset to wake sequence. These can be used by software
-	#    running on MPU to facilitate loading of the sequences, which immediately
-	#    follow the offsets in the binary.
-	#
-	#    The CM3 i2c code expects each sequence to be a series of I2C transfers
-	#    in the form:
-	#
-	#    u8 length | u8 chip address | u8 byte0/reg address | u8 byte1 | u8 byteN ..
-	#
-	#    The length indicates the number of bytes to transfer, including the
-	#    register address. The length of each transfer is limited by the I2C
-	#    buffer size of 32 bytes.
+	#    This version, 0x189, adds support for the following:
+	#     - IO Daisy Chain wake on am437x
 	#
 	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
 
-	#cp ../../amx3-cm3/bin/am* ./firmware/
+	#cp -v ../../amx3-cm3/bin/am* ./firmware/
 
 	#git add -f ./firmware/am*
 
