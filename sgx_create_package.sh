@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-VERSION="v2014.02-1"
+VERSION="v2014.09-1"
 
 unset DIR
 
@@ -30,7 +30,7 @@ SDK="5.01.01.01"
 sdk_version="5_01_01_01"
 SDK_DIR="5_01_01_01"
 SGX_SHA="origin/5.01.01.01-ti"
-#SGX_SHA="origin/master"
+#SGX_SHA="origin/${SDK}"
 
 http_ti="http://software-dl.ti.com/dsps/dsps_public_sw/gfxsdk/"
 sgx_file="Graphics_SDK_setuplinux_hardfp_${sdk_version}.bin"
@@ -198,6 +198,10 @@ installing_sgx_modules () {
 	mkdir -p ${DESTDIR}/etc/init.d/ || true
 	mkdir -p ${DESTDIR}/opt/ || true
 
+	mkdir -p ${DESTDIR}/opt/gfxmodules/gfx_rel_es$2 || true
+	cp -v "${DIR}"/ignore/ti-sdk-pvr/Graphics_SDK/gfx_rel_es$2/*.ko ${DESTDIR}/opt/gfxmodules/gfx_rel_es$2 || true
+	echo "-----------------------------"
+
 	INSTALL_HOME="${DIR}/ignore/SDK_BIN/"
 	GRAPHICS_INSTALL_DIR="${INSTALL_HOME}Graphics_SDK_setuplinux_${sdk_version}"
 
@@ -205,10 +209,6 @@ installing_sgx_modules () {
 	echo "make BUILD=(debug | release} OMAPES={5.x | 8.x | 9.x} install"
 	echo "make DESTDIR=${DESTDIR} HOME=${INSTALL_HOME} GRAPHICS_INSTALL_DIR=${GRAPHICS_INSTALL_DIR} BUILD="$1" OMAPES="$2" "$3""
 	make DESTDIR=${DESTDIR} HOME=${INSTALL_HOME} GRAPHICS_INSTALL_DIR=${GRAPHICS_INSTALL_DIR} BUILD="$1" OMAPES="$2" "$3"
-
-	#OMAPES="$2"
-	#mkdir -p ${DESTDIR}/opt/gfxmodules/gfx_rel_es${OMAPES} || true
-	#cp -v "${DIR}"/ignore/ti-sdk-pvr/Graphics_SDK/gfx_rel_es${OMAPES}/*.ko ${DESTDIR}/opt/gfxmodules/gfx_rel_es${OMAPES} || true
 
 	#remove devmem2:
 	find "${DESTDIR}/" -name "devmem2" -exec rm -rf {} \;
