@@ -124,6 +124,10 @@ CONFIG_VIDEO_TI_VIP=m
 CONFIG_VIDEO_OV2659=m
 CONFIG_VIDEO_AM437X_VPFE=m
 
+CONFIG_SOUND=y
+CONFIG_SND=y
+CONFIG_SND_SOC=y
+CONFIG_SND_OMAP_SOC=y
 CONFIG_SND_AM335X_SOC_NXPTDA_EVM=m
 CONFIG_SND_OMAP_SOC_DRA7EVM=m
 
@@ -220,8 +224,21 @@ check_config_module
 config="CONFIG_VIDEO_AM437X_VPFE"
 check_config_module
 
+CONFIG_SOUND=y
+CONFIG_SND=y
+CONFIG_SND_SOC=y
+CONFIG_SND_OMAP_SOC=y
 CONFIG_SND_AM335X_SOC_NXPTDA_EVM=m
 CONFIG_SND_OMAP_SOC_DRA7EVM=m
+
+config="CONFIG_SOUND"
+check_config_module
+config="CONFIG_SND"
+check_config_module
+config="CONFIG_SND_SOC"
+check_config_module
+config="CONFIG_SND_OMAP_SOC"
+check_config_module
 
 config="CONFIG_SND_AM335X_SOC_NXPTDA_EVM"
 check_config_module
@@ -248,6 +265,10 @@ CONFIG_REGULATOR_GPIO=y
 CONFIG_CRYPTO_DEV_OMAP_SHAM=y
 CONFIG_CRYPTO_DEV_OMAP_AES=y
 CONFIG_CRYPTO_DEV_OMAP_DES=y
+CONFIG_CRYPTO_USER_API_HASH=y
+CONFIG_CRYPTO_USER_API_SKCIPHER=y
+
+CONFIG_PREEMPT_VOLUNTARY=y
 ##################################################
 config="CONFIG_CGROUPS"
 check_config_builtin
@@ -260,11 +281,26 @@ config="CONFIG_CRYPTO_DEV_OMAP_AES"
 check_config_builtin
 config="CONFIG_CRYPTO_DEV_OMAP_DES"
 check_config_builtin
+config="CONFIG_CRYPTO_USER_API_HASH"
+check_config_builtin
+config="CONFIG_CRYPTO_USER_API_SKCIPHER"
+check_config_builtin
+
+config="CONFIG_PREEMPT_NONE"
+check_config_disable
+config="CONFIG_PREEMPT_VOLUNTARY"
+check_config_disable
+config="CONFIG_PREEMPT"
+check_config_builtin
 ##################################################
 #connectivity.cfg
 ##################################################
 # TI Connectivity Configs
 ##################################################
+#PCIe RC
+CONFIG_PCI=y
+CONFIG_PCI_DRA7XX=y
+
 #USB Host
 CONFIG_USB_EHCI_HCD=y
 CONFIG_USB_XHCI_HCD=m
@@ -382,7 +418,14 @@ CONFIG_SPI_SPIDEV=y
 #QSPI
 CONFIG_SPI_TI_QSPI=y
 CONFIG_MTD_M25P80=m
+
+#EXTCON
+CONFIG_EXTCON_GPIO=y
 ##################################################
+#PCIe RC
+CONFIG_PCI=y
+CONFIG_PCI_DRA7XX=y
+
 #USB Host
 CONFIG_USB_EHCI_HCD=y
 CONFIG_USB_XHCI_HCD=m
@@ -683,6 +726,12 @@ config="CONFIG_SPI_TI_QSPI"
 check_config_builtin
 config="CONFIG_MTD_M25P80"
 check_config_module
+
+#EXTCON
+CONFIG_EXTCON_GPIO=y
+
+config="CONFIG_EXTCON_GPIO"
+check_config_builtin
 ##################################################
 #ipc.cfg
 ##################################################
@@ -926,12 +975,6 @@ check_config_disable
 #
 # Kernel Features
 #
-config="CONFIG_PREEMPT_NONE"
-check_config_disable
-config="CONFIG_PREEMPT_VOLUNTARY"
-check_config_disable
-config="CONFIG_PREEMPT"
-check_config_builtin
 config="CONFIG_ZSMALLOC"
 check_config_builtin
 config="CONFIG_SECCOMP"
