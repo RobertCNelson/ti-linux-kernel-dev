@@ -87,7 +87,42 @@ check_if_set_then_disable () {
 
 #start with omap2plus_defconfig
 ##################################################
-#TI:
+##################################################
+# TI AM33XX specific config options
+##################################################
+
+# Disable Socs other than AM33xx
+CONFIG_ARCH_OMAP2=n
+CONFIG_ARCH_OMAP3=n
+CONFIG_ARCH_OMAP4=n
+CONFIG_SOC_OMAP5=n
+CONFIG_SOC_AM43XX=n
+CONFIG_SOC_DRA7XX=n
+
+#Disable CONFIG_SMP
+CONFIG_SMP=n
+##################################################
+##################################################
+# TI AM43XX specific config options
+##################################################
+
+# Disable Socs other than AM43xx
+CONFIG_ARCH_OMAP2=n
+CONFIG_ARCH_OMAP3=n
+CONFIG_ARCH_OMAP4=n
+CONFIG_SOC_OMAP5=n
+CONFIG_SOC_AM33XX=n
+CONFIG_SOC_DRA7XX=n
+
+#Disable CONFIG_SMP
+CONFIG_SMP=n
+##################################################
+
+#Cortex-Ax only:
+config="CONFIG_ARCH_MULTI_V6"
+check_config_disable
+
+##################################################
 #audio_display.cfg
 ##################################################
 # TI Audio/Display config options
@@ -929,12 +964,6 @@ config="CONFIG_MODULE_SRCVERSION_ALL"
 check_config_disable
 config="CONFIG_BLK_DEV_BSG"
 check_config_builtin
-
-#
-# CPU Core family selection
-#
-config="CONFIG_ARCH_MULTI_V6"
-check_config_disable
 
 #
 # OMAP Legacy Platform Data Board Type
