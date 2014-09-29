@@ -153,9 +153,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0007-beaglebone-added-expansion-header-to-dtb.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0008-bone-pinmux-helper-Add-support-for-mode-device-tree-.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0009-pinmux-helper-add-P8_37_pinmux-P8_38_pinmux.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0010-pinmux-helper-hdmi.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=9
+		number=10
 		cleanup
 	fi
 
@@ -211,9 +212,11 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0018-cape-rtc-01-00a1.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0019-cape-lcd.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0020-cape-basic-proto.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0021-pinmux-use-hdmi-mode.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0022-temp-panels-disable-hdmi-pins-need-to-rewrite-agains.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=20
+		number=22
 		cleanup
 	fi
 
