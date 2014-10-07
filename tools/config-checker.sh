@@ -1930,6 +1930,32 @@ config="CONFIG_BPF_JIT"
 check_config_builtin
 
 #
+# CAN Device Drivers
+#
+config="CONFIG_CAN_VCAN"
+check_config_module
+config="CONFIG_CAN_SLCAN"
+check_config_module
+config="CONFIG_CAN_TI_HECC"
+check_config_module
+config="CONFIG_CAN_MCP251X"
+check_config_module
+
+#
+# CAN USB interfaces
+#
+config="CONFIG_CAN_EMS_USB"
+check_config_module
+config="CONFIG_CAN_ESD_USB2"
+check_config_module
+config="CONFIG_CAN_KVASER_USB"
+check_config_module
+config="CONFIG_CAN_PEAK_USB"
+check_config_module
+config="CONFIG_CAN_8DEV_USB"
+check_config_module
+
+#
 # Bluetooth device drivers
 #
 config="CONFIG_AF_RXRPC"

@@ -154,9 +154,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0008-bone-pinmux-helper-Add-support-for-mode-device-tree-.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0009-pinmux-helper-add-P8_37_pinmux-P8_38_pinmux.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0010-pinmux-helper-hdmi.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0011-pinmux-helper-can1.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=10
+		number=11
 		cleanup
 	fi
 
@@ -214,9 +215,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0020-cape-basic-proto.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0021-pinmux-use-hdmi-mode.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0022-temp-panels-disable-hdmi-pins-need-to-rewrite-agains.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0023-cape-can1.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=22
+		number=23
 		cleanup
 	fi
 
@@ -458,6 +460,21 @@ beaglebone () {
 		${git} "${DIR}/patches/beaglebone/generated/0009-auto-generated-cape-bb-view-43.patch"
 	fi
 
+	if [ "x${regenerate}" = "xenable" ] ; then
+		base_dts="am335x-bone"
+		cape="can1"
+		dtsi_append
+
+		base_dts="am335x-boneblack"
+		cape="can1"
+		dtsi_append
+
+		git commit -a -m 'auto generated: cape: can1' -s
+		git format-patch -10 -o ../patches/beaglebone/generated/
+	else
+		${git} "${DIR}/patches/beaglebone/generated/0010-auto-generated-cape-can1.patch"
+	fi
+
 	####
 	#dtb makefile
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -468,6 +485,9 @@ beaglebone () {
 		dtb_makefile_append
 
 		device="am335x-bone-bb-view-43.dtb"
+		dtb_makefile_append
+
+		device="am335x-bone-can1.dtb"
 		dtb_makefile_append
 
 		device="am335x-bone-cape-bone-argus.dtb"
@@ -525,6 +545,9 @@ beaglebone () {
 		dtb_makefile_append
 
 		device="am335x-boneblack-bb-view-43.dtb"
+		dtb_makefile_append
+
+		device="am335x-boneblack-can1.dtb"
 		dtb_makefile_append
 
 		device="am335x-boneblack-cape-bone-argus.dtb"
