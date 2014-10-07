@@ -2388,6 +2388,35 @@ config="CONFIG_USB_G_WEBCAM"
 check_config_module
 
 #
+# STAGING
+#
+config="CONFIG_STAGING"
+check_config_builtin
+
+#
+# Android
+#
+config="CONFIG_ANDROID"
+check_config_builtin
+config="CONFIG_ANDROID_BINDER_IPC"
+check_config_builtin
+config="CONFIG_ASHMEM"
+check_config_builtin
+config="CONFIG_ANDROID_LOGGER"
+check_config_module
+config="CONFIG_ANDROID_TIMED_GPIO"
+check_config_module
+config="CONFIG_ANDROID_INTF_ALARM_DEV"
+check_config_builtin
+config="CONFIG_SYNC"
+check_config_builtin
+config="CONFIG_SW_SYNC"
+check_config_disable
+
+config="CONFIG_ION"
+check_config_builtin
+
+#
 # Remoteproc drivers
 #
 config="CONFIG_PRUSS_REMOTEPROC"
