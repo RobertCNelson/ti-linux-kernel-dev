@@ -224,14 +224,14 @@ beaglebone () {
 
 	echo "dir: beaglebone/dts"
 	${git} "${DIR}/patches/beaglebone/dts/0001-hack-bbb-enable-1ghz-operation.patch"
-	#${git} "${DIR}/patches/beaglebone/dts/0001-am335x-boneblack-add-cpu0-opp-points.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0002-dts-am335x-bone-common-fixup-leds-to-match-3.8.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0003-ARM-dts-am335x-bone-Fix-model-name-and-update-compat.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0004-ARM-dts-am335x-boneblack-dcdc1-set-to-1.35v-for-ddr3.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0005-ARM-dts-AM33XX-Fix-system-power-off-control-in-am335.patch"
 
-	#echo "patch -p1 < \"${DIR}/patches/beaglebone/dts/0005-add-base-files.patch\""
+	#echo "patch -p1 < \"${DIR}/patches/beaglebone/dts/0006-add-base-files.patch\""
 	#exit
-	${git} "${DIR}/patches/beaglebone/dts/0005-add-base-files.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0006-add-base-files.patch"
 
 	echo "dir: beaglebone/capes"
 	${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
