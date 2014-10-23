@@ -3025,3 +3025,9 @@ config="CONFIG_DEBUG_INFO"
 check_config_disable
 
 #
+# Runtime Testing
+#
+config="CONFIG_ARM_UNWIND"
+check_config_disable
+
+#
