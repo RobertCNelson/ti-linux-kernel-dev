@@ -1,0 +1,72 @@
+From cc4e4d5922714e8bb6678f30bfabeeab667254be Mon Sep 17 00:00:00 2001
+From: Cor Peters <corpeters@incas3.nl>
+Date: Tue, 28 Oct 2014 11:11:11 +0100
+Subject: [PATCH] The current system of setting channels to inactive past the
+ last serializer can close ongoing serializers from a different stream. This
+ fix sets serialisers of a specific stream to inactive at the moment that
+ stream is closed.
+
+Signed-off-by: Cor Peters <corpeters@incas3.nl>
+---
+ sound/soc/davinci/davinci-mcasp.c | 23 ++++++++++++++++++-----
+ 1 file changed, 18 insertions(+), 5 deletions(-)
+
+diff --git a/sound/soc/davinci/davinci-mcasp.c b/sound/soc/davinci/davinci-mcasp.c
+index a649028..d22e5c0 100644
+--- a/sound/soc/davinci/davinci-mcasp.c
++++ b/sound/soc/davinci/davinci-mcasp.c
+@@ -261,6 +261,8 @@ static void mcasp_stop_tx(struct davinci_mcasp *mcasp)
+ static void davinci_mcasp_stop(struct davinci_mcasp *mcasp, int stream)
+ {
+ 	u32 reg;
++	u8 dir = (stream == SNDRV_PCM_STREAM_PLAYBACK) ? TX_MODE : RX_MODE;
++	int  i = 0;
+ 
+ 	mcasp->streams--;
+ 
+@@ -277,6 +279,13 @@ static void davinci_mcasp_stop(struct davinci_mcasp *mcasp, int stream)
+ 		}
+ 		mcasp_stop_rx(mcasp);
+ 	}
++
++	/* turn stream off */
++	for (i = 0; i < mcasp->num_serializer; i++) {
++		if (mcasp->serial_dir[i] == dir) {
++			mcasp_set_reg(mcasp, DAVINCI_MCASP_XRSRCTL_REG(i), 0);
++		}
++	}
+ }
+ 
+ static int davinci_mcasp_set_dai_fmt(struct snd_soc_dai *cpu_dai,
+@@ -548,19 +557,23 @@ static int mcasp_common_hw_param(struct davinci_mcasp *mcasp, int stream,
+ 	}
+ 
+ 	for (i = 0; i < mcasp->num_serializer; i++) {
+-		mcasp_set_bits(mcasp, DAVINCI_MCASP_XRSRCTL_REG(i),
+-			       mcasp->serial_dir[i]);
++		bool active = false;
++
+ 		if (mcasp->serial_dir[i] == TX_MODE &&
+ 					tx_ser < max_active_serializers) {
+ 			mcasp_set_bits(mcasp, DAVINCI_MCASP_PDIR_REG, AXR(i));
+ 			tx_ser++;
++			active = true;
+ 		} else if (mcasp->serial_dir[i] == RX_MODE &&
+ 					rx_ser < max_active_serializers) {
+ 			mcasp_clr_bits(mcasp, DAVINCI_MCASP_PDIR_REG, AXR(i));
+ 			rx_ser++;
+-		} else {
+-			mcasp_mod_bits(mcasp, DAVINCI_MCASP_XRSRCTL_REG(i),
+-				       SRMOD_INACTIVE, SRMOD_MASK);
++			active = true;
++		}
++
++		if (active) {
++			mcasp_set_bits(mcasp, DAVINCI_MCASP_XRSRCTL_REG(i),
++				       mcasp->serial_dir[i]);
+ 		}
+ 	}
+ 
+-- 
+2.1.1
+

@@ -68,9 +68,30 @@ local_patch () {
 external_git
 #local_patch
 
+fixes () {
+	echo "dir: fixes"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+	${git} "${DIR}/patches/fixes/0001-The-current-system-of-setting-channels-to-inactive-p.patch"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+}
+
 backport () {
 	echo "dir: backport"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
 	${git} "${DIR}/patches/backport/0001-backport-gpio_backlight.c-from-v3.15.10.patch"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
 }
 
 firmware () {
@@ -627,6 +648,7 @@ sgx () {
 }
 
 ###
+fixes
 backport
 firmware
 beaglebone
