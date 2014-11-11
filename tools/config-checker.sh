@@ -165,8 +165,14 @@ CONFIG_SOUND=y
 CONFIG_SND=y
 CONFIG_SND_SOC=y
 CONFIG_SND_OMAP_SOC=y
+CONFIG_SND_EDMA_SOC=y
+CONFIG_SND_DAVINCI_SOC_MCASP=m
 CONFIG_SND_AM335X_SOC_NXPTDA_EVM=m
-CONFIG_SND_OMAP_SOC_DRA7EVM=m
+CONFIG_SND_AM33XX_SOC_EVM=m
+CONFIG_SND_SIMPLE_CARD=m
+CONFIG_SND_OMAP_SOC_DRA7EVM=y
+CONFIG_SND_SOC_TLV320AIC31XX=m
+CONFIG_SND_SOC_TLV320AIC3X=m
 
 CONFIG_OMAP2_DSS=y
 CONFIG_OMAP2_DSS_INIT=y
@@ -271,8 +277,14 @@ CONFIG_SOUND=y
 CONFIG_SND=y
 CONFIG_SND_SOC=y
 CONFIG_SND_OMAP_SOC=y
+CONFIG_SND_EDMA_SOC=y
+CONFIG_SND_DAVINCI_SOC_MCASP=m
 CONFIG_SND_AM335X_SOC_NXPTDA_EVM=m
-CONFIG_SND_OMAP_SOC_DRA7EVM=m
+CONFIG_SND_AM33XX_SOC_EVM=m
+CONFIG_SND_SIMPLE_CARD=m
+CONFIG_SND_OMAP_SOC_DRA7EVM=y
+CONFIG_SND_SOC_TLV320AIC31XX=m
+CONFIG_SND_SOC_TLV320AIC3X=m
 
 config="CONFIG_SOUND"
 check_config_module
@@ -282,9 +294,21 @@ config="CONFIG_SND_SOC"
 check_config_module
 config="CONFIG_SND_OMAP_SOC"
 check_config_module
-
+config="CONFIG_SND_EDMA_SOC"
+check_config_module
+config="CONFIG_SND_DAVINCI_SOC_MCASP"
+check_config_module
 config="CONFIG_SND_AM335X_SOC_NXPTDA_EVM"
 check_config_module
+config="CONFIG_SND_AM33XX_SOC_EVM"
+check_config_module
+config="CONFIG_SND_SIMPLE_CARD"
+check_config_module
+config="CONFIG_SND_SOC_TLV320AIC31XX"
+check_config_module
+config="CONFIG_SND_SOC_TLV320AIC3X"
+check_config_module
+
 config="CONFIG_SND_OMAP_SOC_DRA7EVM"
 check_config_module
 
@@ -312,6 +336,21 @@ CONFIG_CRYPTO_USER_API_HASH=y
 CONFIG_CRYPTO_USER_API_SKCIPHER=y
 
 CONFIG_PREEMPT_VOLUNTARY=y
+
+CONFIG_JUMP_LABEL=y
+
+# Disable Extra debug options
+CONFIG_SCHEDSTATS=n
+CONFIG_TIMER_STATS=n
+CONFIG_DEBUG_SPINLOCK=n
+CONFIG_DEBUG_MUTEXES=n
+CONFIG_DEBUG_LOCK_ALLOC=n
+CONFIG_PROVE_LOCKING=n
+CONFIG_LOCKDEP=n
+CONFIG_STACKTRACE=n
+CONFIG_SCHED_DEBUG=n
+CONFIG_FTRACE=n
+CONFIG_ARM_UNWIND=n
 ##################################################
 config="CONFIG_CGROUPS"
 check_config_builtin
@@ -897,7 +936,24 @@ CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF=n
 CONFIG_DEBUG_INFO=y
 CONFIG_RTC_DEBUG=y
 CONFIG_TIGON3=m
+
+# Enable Devfreq for co-processor driver testing
+CONFIG_PM_DEVFREQ=y
+CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND=y
+CONFIG_DEVFREQ_GOV_PERFORMANCE=y
+CONFIG_DEVFREQ_GOV_POWERSAVE=y
+CONFIG_DEVFREQ_GOV_USERSPACE=y
 ##################################################
+config="CONFIG_PM_DEVFREQ"
+check_config_builtin
+config="CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND"
+check_config_builtin
+config="CONFIG_DEVFREQ_GOV_PERFORMANCE"
+check_config_builtin
+config="CONFIG_DEVFREQ_GOV_POWERSAVE"
+check_config_builtin
+config="CONFIG_DEVFREQ_GOV_USERSPACE"
+check_config_builtin
 ##################################################
 # TI WLCORE config options
 ##################################################
@@ -2777,18 +2833,6 @@ check_config_builtin
 # Rpmsg drivers
 #
 config="CONFIG_PM_DEVFREQ"
-check_config_builtin
-
-#
-# DEVFREQ Governors
-#
-config="CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND"
-check_config_builtin
-config="CONFIG_DEVFREQ_GOV_PERFORMANCE"
-check_config_builtin
-config="CONFIG_DEVFREQ_GOV_POWERSAVE"
-check_config_builtin
-config="CONFIG_DEVFREQ_GOV_USERSPACE"
 check_config_builtin
 
 #
