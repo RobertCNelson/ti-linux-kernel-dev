@@ -128,10 +128,10 @@ mmc_write_boot () {
 }
 
 mmc_partition_discover () {
-#	if [ -f "${DIR}/deploy/disk/uEnv.txt" ] ; then
-#		location="${DIR}/deploy/disk"
-#		mmc_write_boot
-#	fi
+	if [ -f "${DIR}/deploy/disk/uEnv.txt" ] ; then
+		location="${DIR}/deploy/disk"
+		mmc_write_boot
+	fi
 
 	if [ -f "${DIR}/deploy/disk/boot/uEnv.txt" ] ; then
 		location="${DIR}/deploy/disk/boot"
