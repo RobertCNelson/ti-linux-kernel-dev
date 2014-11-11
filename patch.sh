@@ -74,7 +74,7 @@ fixes () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
-	${git} "${DIR}/patches/fixes/0001-The-current-system-of-setting-channels-to-inactive-p.patch"
+#	${git} "${DIR}/patches/fixes/0001-The-current-system-of-setting-channels-to-inactive-p.patch"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
@@ -244,15 +244,26 @@ beaglebone () {
 	fi
 
 	echo "dir: beaglebone/dts"
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
 	${git} "${DIR}/patches/beaglebone/dts/0001-hack-bbb-enable-1ghz-operation.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0002-dts-am335x-bone-common-fixup-leds-to-match-3.8.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0003-ARM-dts-am335x-bone-Fix-model-name-and-update-compat.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0004-ARM-dts-am335x-boneblack-dcdc1-set-to-1.35v-for-ddr3.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0004-bbb-force-usb0-to-perhiperal-mode-fixes-http-bugs.el.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0005-ARM-dts-AM33XX-Fix-system-power-off-control-in-am335.patch"
 
 	#echo "patch -p1 < \"${DIR}/patches/beaglebone/dts/0006-add-base-files.patch\""
 	#exit
 	${git} "${DIR}/patches/beaglebone/dts/0006-add-base-files.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=6
+		cleanup
+	fi
 
 	echo "dir: beaglebone/capes"
 	${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
