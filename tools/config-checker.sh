@@ -2039,7 +2039,11 @@ check_config_module
 #
 config="CONFIG_AF_RXRPC"
 check_config_module
+config="CONFIG_CFG80211_WEXT"
+check_config_builtin
 config="CONFIG_RFKILL_LEDS"
+check_config_builtin
+config="CONFIG_RFKILL_INPUT"
 check_config_builtin
 config="CONFIG_CEPH_LIB"
 check_config_module
