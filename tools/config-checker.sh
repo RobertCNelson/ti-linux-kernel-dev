@@ -981,6 +981,10 @@ CONFIG_IP_NF_FILTER=y
 CONFIG_NF_NAT_IPV4=y
 CONFIG_IP_NF_TARGET_MASQUERADE=y
 ##################################################
+
+config="CONFIG_RFKILL"
+check_config_module
+
 config="CONFIG_NF_CONNTRACK"
 check_config_builtin
 config="CONFIG_NF_CONNTRACK_IPV4"
@@ -2033,8 +2037,6 @@ check_config_module
 #
 config="CONFIG_AF_RXRPC"
 check_config_module
-config="CONFIG_RFKILL"
-check_config_builtin
 config="CONFIG_RFKILL_LEDS"
 check_config_builtin
 config="CONFIG_CEPH_LIB"
