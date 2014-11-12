@@ -908,10 +908,16 @@ check_config_builtin
 config="CONFIG_CPU_FREQ_STAT_DETAILS"
 check_config_builtin
 
-config="CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND"
+config="CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE"
 check_config_builtin
 
 config="CONFIG_CPU_FREQ_GOV_PERFORMANCE"
+check_config_builtin
+config="CONFIG_CPU_FREQ_GOV_POWERSAVE"
+check_config_builtin
+config="CONFIG_CPU_FREQ_GOV_USERSPACE"
+check_config_builtin
+config="CONFIG_CPU_FREQ_GOV_CONSERVATIVE"
 check_config_builtin
 
 config="CONFIG_CPU_THERMAL"
@@ -1093,16 +1099,6 @@ check_config_builtin
 #
 config="CONFIG_ARM_APPENDED_DTB"
 check_config_disable
-
-#
-# CPU Frequency scaling
-#
-config="CONFIG_CPU_FREQ_GOV_POWERSAVE"
-check_config_builtin
-config="CONFIG_CPU_FREQ_GOV_USERSPACE"
-check_config_builtin
-config="CONFIG_CPU_FREQ_GOV_CONSERVATIVE"
-check_config_builtin
 
 #
 # ARM CPU frequency scaling drivers
