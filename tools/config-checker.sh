@@ -182,20 +182,20 @@ CONFIG_BACKLIGHT_PWM=m
 config="CONFIG_BACKLIGHT_PWM"
 check_config_builtin
 
-CONFIG_DRM=m
-CONFIG_DRM_KMS_HELPER=m
+CONFIG_DRM=y
+CONFIG_DRM_KMS_HELPER=y
 CONFIG_DRM_KMS_FB_HELPER=y
 CONFIG_DRM_GEM_CMA_HELPER=y
 CONFIG_DRM_KMS_CMA_HELPER=y
-CONFIG_DRM_I2C_NXP_TDA998X=m
-CONFIG_DRM_TILCDC=m
+CONFIG_DRM_I2C_NXP_TDA998X=y
+CONFIG_DRM_TILCDC=y
 CONFIG_DRM_OMAP=y
 CONFIG_DRM_OMAP_NUM_CRTCS=2
 
 config="CONFIG_DRM"
 check_config_builtin
 config="CONFIG_DRM_KMS_HELPER"
-check_config_module
+check_config_builtin
 config="CONFIG_DRM_KMS_FB_HELPER"
 check_config_builtin
 config="CONFIG_DRM_GEM_CMA_HELPER"
@@ -203,31 +203,34 @@ check_config_builtin
 config="CONFIG_DRM_KMS_CMA_HELPER"
 check_config_builtin
 config="CONFIG_DRM_I2C_NXP_TDA998X"
-check_config_module
+check_config_builtin
 config="CONFIG_DRM_TILCDC"
-check_config_module
+check_config_builtin
 config="CONFIG_DRM_OMAP"
-check_config_module
+check_config_builtin
 config="CONFIG_DRM_OMAP_NUM_CRTCS"
 value="2"
 check_config_value
 
-CONFIG_DISPLAY_PANEL_TLC59108=m
+CONFIG_DISPLAY_PANEL_TLC59108=y
 CONFIG_OMAP5_DSS_HDMI=y
-CONFIG_DISPLAY_CONNECTOR_HDMI=m
-CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015=m
-CONFIG_DISPLAY_ENCODER_SII9022=m
+CONFIG_DISPLAY_CONNECTOR_HDMI=y
+CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015=y
+CONFIG_DISPLAY_ENCODER_TPD12S015=y
+CONFIG_DISPLAY_ENCODER_SII9022=y
 
 config="CONFIG_DISPLAY_PANEL_TLC59108"
-check_config_module
+check_config_builtin
 config="CONFIG_OMAP5_DSS_HDMI"
 check_config_builtin
 config="CONFIG_DISPLAY_CONNECTOR_HDMI"
-check_config_module
+check_config_builtin
 config="CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015"
-check_config_module
+check_config_builtin
+config="CONFIG_DISPLAY_ENCODER_TPD12S015"
+check_config_builtin
 config="CONFIG_DISPLAY_ENCODER_SII9022"
-check_config_module
+check_config_builtin
 
 CONFIG_CMA_SIZE_MBYTES=24
 
@@ -287,15 +290,15 @@ CONFIG_SND_SOC_TLV320AIC31XX=m
 CONFIG_SND_SOC_TLV320AIC3X=m
 
 config="CONFIG_SOUND"
-check_config_module
+check_config_builtin
 config="CONFIG_SND"
-check_config_module
+check_config_builtin
 config="CONFIG_SND_SOC"
-check_config_module
+check_config_builtin
 config="CONFIG_SND_OMAP_SOC"
-check_config_module
+check_config_builtin
 config="CONFIG_SND_EDMA_SOC"
-check_config_module
+check_config_builtin
 config="CONFIG_SND_DAVINCI_SOC_MCASP"
 check_config_module
 config="CONFIG_SND_AM335X_SOC_NXPTDA_EVM"
@@ -304,19 +307,18 @@ config="CONFIG_SND_AM33XX_SOC_EVM"
 check_config_module
 config="CONFIG_SND_SIMPLE_CARD"
 check_config_module
+config="CONFIG_SND_OMAP_SOC_DRA7EVM"
+check_config_builtin
 config="CONFIG_SND_SOC_TLV320AIC31XX"
 check_config_module
 config="CONFIG_SND_SOC_TLV320AIC3X"
-check_config_module
-
-config="CONFIG_SND_OMAP_SOC_DRA7EVM"
 check_config_module
 
 CONFIG_OMAP2_DSS=y
 CONFIG_OMAP2_DSS_INIT=y
 
 config="CONFIG_OMAP2_DSS"
-check_config_module
+check_config_builtin
 config="CONFIG_OMAP2_DSS_INIT"
 check_config_builtin
 ##################################################
