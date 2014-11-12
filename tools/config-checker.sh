@@ -2216,6 +2216,8 @@ config="CONFIG_PINCTRL_PALMAS"
 check_config_builtin
 config="CONFIG_DEBUG_GPIO"
 check_config_disable
+config="CONFIG_GPIO_OF_HELPER"
+check_config_builtin
 
 #
 # MODULbus GPIO expanders:
