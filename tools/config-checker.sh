@@ -87,39 +87,39 @@ check_if_set_then_disable () {
 
 #start with omap2plus_defconfig
 ##################################################
+# TI SoCs supported by this release config options
+#
+# IMPORTANT NOTE: Always refer to the appropriate
+# Release Note for accurate information on the
+# specific SoC.
 ##################################################
-# TI AM33XX specific config options
-##################################################
+# Supported ARM CPUs
+CONFIG_ARCH_MULTI_V6=n
+CONFIG_ARCH_MULTI_V7=y
+CONFIG_ARCH_MULTI_V6_V7=n
+CONFIG_CPU_V6=n
 
-# Disable Socs other than AM33xx
+# Enable CONFIG_SMP
+CONFIG_SMP=y
+
+# Supported SoCs
 CONFIG_ARCH_OMAP2=n
 CONFIG_ARCH_OMAP3=n
 CONFIG_ARCH_OMAP4=n
-CONFIG_SOC_OMAP5=n
-CONFIG_SOC_AM43XX=n
-CONFIG_SOC_DRA7XX=n
+CONFIG_SOC_OMAP5=y
+CONFIG_SOC_AM33XX=y
+CONFIG_SOC_AM43XX=y
+CONFIG_SOC_DRA7XX=y
 
-#Disable CONFIG_SMP
-CONFIG_SMP=n
-##################################################
-##################################################
-# TI AM43XX specific config options
 ##################################################
 
-# Disable Socs other than AM43xx
-CONFIG_ARCH_OMAP2=n
-CONFIG_ARCH_OMAP3=n
-CONFIG_ARCH_OMAP4=n
-CONFIG_SOC_OMAP5=n
-CONFIG_SOC_AM33XX=n
-CONFIG_SOC_DRA7XX=n
-
-#Disable CONFIG_SMP
-CONFIG_SMP=n
-##################################################
-
-#Cortex-Ax only:
 config="CONFIG_ARCH_MULTI_V6"
+check_config_disable
+config="CONFIG_ARCH_MULTI_V6_V7"
+check_config_disable
+config="CONFIG_ARCH_OMAP3"
+check_config_disable
+config="CONFIG_ARCH_OMAP4"
 check_config_disable
 
 ##################################################
@@ -1049,42 +1049,6 @@ config="CONFIG_MODULE_SRCVERSION_ALL"
 check_config_disable
 config="CONFIG_BLK_DEV_BSG"
 check_config_builtin
-
-#
-# OMAP Legacy Platform Data Board Type
-#
-config="CONFIG_MACH_OMAP3_BEAGLE"
-check_config_disable
-config="CONFIG_MACH_DEVKIT8000"
-check_config_disable
-config="CONFIG_MACH_OMAP_LDP"
-check_config_disable
-config="CONFIG_MACH_OMAP3530_LV_SOM"
-check_config_disable
-config="CONFIG_MACH_OMAP3_TORPEDO"
-check_config_disable
-config="CONFIG_MACH_OVERO"
-check_config_disable
-config="CONFIG_MACH_OMAP3517EVM"
-check_config_disable
-config="CONFIG_MACH_OMAP3_PANDORA"
-check_config_disable
-config="CONFIG_MACH_TOUCHBOOK"
-check_config_disable
-config="CONFIG_MACH_OMAP_3430SDP"
-check_config_disable
-config="CONFIG_MACH_NOKIA_RX51"
-check_config_disable
-config="CONFIG_MACH_CM_T35"
-check_config_disable
-config="CONFIG_MACH_CM_T3517"
-check_config_disable
-config="CONFIG_MACH_SBC3530"
-check_config_disable
-config="CONFIG_MACH_TI8168EVM"
-check_config_disable
-config="CONFIG_MACH_TI8148EVM"
-check_config_disable
 
 #
 # Kernel Features
