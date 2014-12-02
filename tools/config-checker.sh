@@ -2059,6 +2059,12 @@ config="CONFIG_BLK_DEV_DM"
 check_config_module
 
 #
+# Generic fallback / legacy drivers
+#
+config="CONFIG_TUN"
+check_config_module
+
+#
 # USB Network Adapters
 #
 config="CONFIG_AT76C50X_USB"
