@@ -177,9 +177,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0010-pinmux-helper-hdmi.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0011-pinmux-helper-can1.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux-helper/0012-Remove-CONFIG_EXPERIMENTAL-dependency-on-CONFIG_GPIO.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0013-pinmux-helper-add-P9_19_pinmux-P9_20_pinmux.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=12
+		number=13
 		cleanup
 	fi
 
@@ -238,9 +239,11 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0021-pinmux-use-hdmi-mode.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0022-temp-panels-disable-hdmi-pins-need-to-rewrite-agains.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0023-cape-can1.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0024-cape-factor-out-i2c2-eeprom.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0025-cape-can0.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=23
+		number=25
 		cleanup
 	fi
 
