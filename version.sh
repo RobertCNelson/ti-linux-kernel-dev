@@ -27,13 +27,13 @@ toolchain="gcc_linaro_gnueabihf_4_8"
 #Kernel/Build
 KERNEL_REL=3.14
 KERNEL_TAG=${KERNEL_REL}.26
-BUILD=ti-r39
+BUILD=ti-xenomai-r39.1
 
 #v3.X-rcX + upto SHA
 #KERNEL_SHA=""
 
 #git branch
-BRANCH="ti-linux-3.14.y"
+BRANCH="ti-linux-xenomai-3.14.y"
 
 DISTRO=cross
 DEBARCH=armhf

@@ -68,6 +68,23 @@ local_patch () {
 external_git
 #local_patch
 
+ipipe () {
+	#git checkout v3.14.17 -b ipipe-3.14
+	#git pull --no-edit git://git.xenomai.org/ipipe.git ipipe-3.14
+	#
+	#commit ff7d37f8a153ee25f0355f7dc952f8f621b4762c
+	#Author: Philippe Gerum <rpm@xenomai.org>
+	#Date:   Fri Nov 7 18:40:16 2014 +0100
+	#
+	#    powerpc/ipipe: fix register trashing on std syscall diversion
+	#
+	#git diff v3.14.17...ff7d37f8 > /opt/github/ti-linux-kernel-dev/patches/ipipe-3.14/ipipe-3.14-ff7d37f8.diff
+
+	#patch -p1 < "${DIR}/patches/ipipe-3.14/ipipe-3.14-ff7d37f8.diff"
+
+	${git} "${DIR}/patches/ipipe-3.14/0001-ipipe-3.14.patch"
+}
+
 fixes () {
 	echo "dir: fixes"
 	#regenerate="enable"
@@ -663,6 +680,7 @@ sgx () {
 }
 
 ###
+ipipe
 fixes
 backport
 firmware
