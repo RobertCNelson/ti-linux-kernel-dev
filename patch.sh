@@ -82,6 +82,7 @@ ipipe () {
 
 	#patch -p1 < "${DIR}/patches/ipipe-3.14/ipipe-3.14-ff7d37f8.diff"
 
+#	exit
 	${git} "${DIR}/patches/ipipe-3.14/0001-ipipe-3.14.patch"
 }
 

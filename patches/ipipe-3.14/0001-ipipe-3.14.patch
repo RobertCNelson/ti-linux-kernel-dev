@@ -335,7 +335,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/gpio/gpio-mpc8xxx.c                      |    5 +-
  drivers/gpio/gpio-mxc.c                          |  122 +-
  drivers/gpio/gpio-mxs.c                          |    1 +
- drivers/gpio/gpio-omap.c                         |  199 ++-
+ drivers/gpio/gpio-omap.c                         |  201 ++-
  drivers/gpio/gpio-pxa.c                          |    5 +-
  drivers/gpio/gpio-sa1100.c                       |    8 +-
  drivers/irqchip/irq-gic.c                        |  117 +-
@@ -443,7 +443,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/mprotect.c                                    |    6 +
  mm/vmalloc.c                                     |    2 +
  scripts/ipipe/genpatches.sh                      |  169 ++
- 438 files changed, 19713 insertions(+), 1414 deletions(-)
+ 438 files changed, 19715 insertions(+), 1414 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -22935,7 +22935,7 @@ index 8ffdd7d..17e05a9 100644
  #define MXS_SET		0x4
  #define MXS_CLR		0x8
 diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
-index 9962da4..d9e2dc6 100644
+index 9962da4..e71f503 100644
 --- a/drivers/gpio/gpio-omap.c
 +++ b/drivers/gpio/gpio-omap.c
 @@ -28,6 +28,7 @@
@@ -23064,15 +23064,17 @@ index 9962da4..d9e2dc6 100644
  static void gpio_unmask_irq(struct irq_data *d)
  {
  	struct gpio_bank *bank = irq_data_get_irq_chip_data(d);
-@@ -1114,6 +1138,7 @@ static void omap_gpio_chip_init(struct gpio_bank *bank, struct irq_chip *irqc)
- 			set_irq_flags(irq, IRQF_VALID);
- 		}
- 	}
-+
- 	irq_set_chained_handler(bank->irq, gpio_irq_handler);
- 	irq_set_handler_data(bank->irq, bank);
- }
-@@ -1253,6 +1278,164 @@ static int omap_gpio_probe(struct platform_device *pdev)
+@@ -1152,6 +1176,9 @@ static int omap_gpio_probe(struct platform_device *pdev)
+ 	irqc->irq_shutdown = gpio_irq_shutdown,
+ 	irqc->irq_ack = gpio_ack_irq,
+ 	irqc->irq_mask = gpio_mask_irq,
++#ifdef CONFIG_IPIPE
++	irqc->irq_mask_ack = gpio_mask_ack_irq,
++#endif
+ 	irqc->irq_unmask = gpio_unmask_irq,
+ 	irqc->irq_set_type = gpio_irq_type,
+ 	irqc->irq_set_wake = gpio_wake_enable,
+@@ -1253,6 +1280,164 @@ static int omap_gpio_probe(struct platform_device *pdev)
  
  #ifdef CONFIG_ARCH_OMAP2PLUS
  
@@ -23100,13 +23102,13 @@ index 9962da4..d9e2dc6 100644
 +#endif /* gic */
 +}
 +
-+static void omap2plus_enable_irqdesc(struct ipipe_domain *ipd, unsigned irq)
++static void omap2plus_enable_irqdesc(struct ipipe_domain *ipd, unsigned irq, struct irq_chip *irqc)
 +{
 +	struct irq_desc *desc = irq_to_desc(irq);
 +	struct irq_data *idata = irq_desc_get_irq_data(desc);
 +	struct irq_chip *chip = irq_data_get_irq_chip(idata);
 +
-+	if (chip == &gpio_irq_chip) {
++	if (chip == irqc) {
 +		/* It is a gpio. */
 +		struct gpio_bank *bank = irq_data_get_irq_chip_data(idata);
 +
@@ -23123,13 +23125,13 @@ index 9962da4..d9e2dc6 100644
 +		omap2plus_pic_set_irq_prio(irq, ipd != &ipipe_root);
 +}
 +
-+static void omap2plus_disable_irqdesc(struct ipipe_domain *ipd, unsigned irq)
++static void omap2plus_disable_irqdesc(struct ipipe_domain *ipd, unsigned irq, struct irq_chip *irqc)
 +{
 +	struct irq_desc *desc = irq_to_desc(irq);
 +	struct irq_data *idata = irq_desc_get_irq_data(desc);
 +	struct irq_chip *chip = irq_data_get_irq_chip(idata);
 +
-+	if (chip == &gpio_irq_chip) {
++	if (chip == irqc) {
 +		/* It is a gpio. */
 +		struct gpio_bank *bank = irq_data_get_irq_chip_data(idata);
 +
