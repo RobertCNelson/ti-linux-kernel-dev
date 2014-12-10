@@ -241,9 +241,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0023-cape-can1.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0024-cape-factor-out-i2c2-eeprom.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0025-cape-can0.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0026-cape-bbb-exp-c-really-1024x600.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=25
+		number=26
 		cleanup
 	fi
 
