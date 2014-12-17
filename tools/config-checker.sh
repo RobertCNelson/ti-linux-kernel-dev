@@ -272,18 +272,50 @@ config="CONFIG_MII" ; config_enable
 #
 # Distributed Switch Architecture drivers
 #
-config="CONFIG_STMMAC_ETH" ; config_disable
+config="CONFIG_NET_VENDOR_ARC" ; config_disable
+config="CONFIG_NET_CADENCE" ; config_disable
+config="CONFIG_NET_VENDOR_BROADCOM" ; config_disable
+config="CONFIG_NET_CALXEDA_XGMAC" ; config_disable
+config="CONFIG_NET_VENDOR_CIRRUS" ; config_disable
+config="CONFIG_NET_VENDOR_FARADAY" ; config_disable
+config="CONFIG_NET_VENDOR_INTEL" ; config_disable
+config="CONFIG_NET_VENDOR_MARVELL" ; config_disable
+config="CONFIG_KS8851" ; config_enable
+config="CONFIG_KS8851_MLL" ; config_enable
+config="CONFIG_ENC28J60" ; config_enable
+config="CONFIG_NET_VENDOR_NATSEMI" ; config_disable
+config="CONFIG_NET_VENDOR_SEEQ" ; config_disable
+config="CONFIG_SMC91X" ; config_enable
+config="CONFIG_SMC911X" ; config_disable
+config="CONFIG_SMSC911X" ; config_enable
+config="CONFIG_NET_VENDOR_STMICRO" ; config_disable
 config="CONFIG_TI_DAVINCI_MDIO" ; config_enable
 config="CONFIG_TI_DAVINCI_CPDMA" ; config_enable
 config="CONFIG_TI_CPSW_PHY_SEL" ; config_enable
 config="CONFIG_TI_CPSW" ; config_enable
 config="CONFIG_TI_CPTS" ; config_enable
+config="CONFIG_NET_VENDOR_VIA" ; config_disable
 
 #
 # MII PHY device drivers
 #
 config="CONFIG_AT803X_PHY" ; config_enable
+config="CONFIG_AMD_PHY" ; config_disable
+config="CONFIG_MARVELL_PHY" ; config_disable
+config="CONFIG_DAVICOM_PHY" ; config_disable
+config="CONFIG_QSEMI_PHY" ; config_disable
+config="CONFIG_LXT_PHY" ; config_disable
+config="CONFIG_CICADA_PHY" ; config_disable
+config="CONFIG_VITESSE_PHY" ; config_disable
 config="CONFIG_SMSC_PHY" ; config_enable
+config="CONFIG_BROADCOM_PHY" ; config_disable
+config="CONFIG_BCM87XX_PHY" ; config_disable
+config="CONFIG_ICPLUS_PHY" ; config_disable
+config="CONFIG_REALTEK_PHY" ; config_disable
+config="CONFIG_NATIONAL_PHY" ; config_disable
+config="CONFIG_STE10XP" ; config_disable
+config="CONFIG_LSI_ET1011C_PHY" ; config_disable
+config="CONFIG_MICREL_PHY" ; config_disable
 
 #
 # Userland interfaces
