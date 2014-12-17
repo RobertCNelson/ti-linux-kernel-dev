@@ -100,6 +100,7 @@ config="CONFIG_SOC_HAS_OMAP2_SDRC" ; config_enable
 config="CONFIG_CACHE_L2X0" ; config_enable
 config="CONFIG_PL310_ERRATA_588369" ; config_enable
 config="CONFIG_PL310_ERRATA_727915" ; config_enable
+config="CONFIG_ARM_ERRATA_764369" ; config_disable
 
 #
 # Bus support
@@ -128,6 +129,7 @@ config="CONFIG_ARM_APPENDED_DTB" ; config_disable
 # CPU Frequency scaling
 #
 config="CONFIG_CPU_FREQ" ; config_enable
+config="CONFIG_CPU_FREQ_STAT" ; config_enable
 config="CONFIG_CPU_FREQ_STAT_DETAILS" ; config_enable
 config="CONFIG_CPU_FREQ_GOV_POWERSAVE" ; config_enable
 config="CONFIG_CPU_FREQ_GOV_USERSPACE" ; config_enable
