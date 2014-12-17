@@ -541,6 +541,7 @@ config="CONFIG_USB_G_NCM" ; config_module
 config="CONFIG_USB_FUNCTIONFS" ; config_module
 config="CONFIG_USB_FUNCTIONFS_ETH" ; config_enable
 config="CONFIG_USB_FUNCTIONFS_RNDIS" ; config_enable
+config="CONFIG_USB_FUNCTIONFS_GENERIC" ; config_enable
 config="CONFIG_USB_MASS_STORAGE" ; config_module
 config="CONFIG_USB_G_SERIAL" ; config_module
 config="CONFIG_USB_MIDI_GADGET" ; config_module
