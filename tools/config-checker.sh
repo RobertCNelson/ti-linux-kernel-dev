@@ -199,6 +199,13 @@ config="CONFIG_BT_WILINK" ; config_module
 #
 config="CONFIG_DEVTMPFS_MOUNT" ; config_enable
 config="CONFIG_FIRMWARE_IN_KERNEL" ; config_enable
+
+#config="CONFIG_EXTRA_FIRMWARE_DIR" ; option="firmware" ; config_string
+
+#config="CONFIG_EXTRA_FIRMWARE"
+#option="am335x-pm-firmware.elf am335x-bone-scale-data.bin am335x-evm-scale-data.bin am43x-evm-scale-data.bin"
+#config_value
+
 config="CONFIG_DMA_CMA" ; config_enable
 config="CONFIG_CMA_SIZE_MBYTES" ; option=24 ; config_value
 
@@ -343,8 +350,10 @@ config="CONFIG_DEVKMEM" ; config_enable
 #
 config="CONFIG_SERIAL_OMAP" ; config_enable
 config="CONFIG_SERIAL_OMAP_CONSOLE" ; config_enable
+config="CONFIG_SERIAL_ARC" ; config_disable
 config="CONFIG_HW_RANDOM" ; config_enable
 config="CONFIG_HW_RANDOM_OMAP" ; config_enable
+config="CONFIG_HW_RANDOM_EXYNOS" ; config_disable
 config="CONFIG_HW_RANDOM_TPM" ; config_module
 config="CONFIG_TCG_TPM" ; config_module
 config="CONFIG_TCG_TIS_I2C_ATMEL" ; config_module
@@ -354,13 +363,29 @@ config="CONFIG_I2C_CHARDEV" ; config_enable
 # I2C system bus drivers (mostly embedded / system-on-chip)
 #
 config="CONFIG_I2C_GPIO" ; config_module
+config="CONFIG_I2C_OCORES" ; config_disable
+config="CONFIG_I2C_PCA_PLATFORM" ; config_disable
+config="CONFIG_I2C_SIMTEC" ; config_disable
 
 #
 # SPI Master Controller Drivers
 #
+config="CONFIG_SPI_BITBANG" ; config_module
+config="CONFIG_SPI_BUTTERFLY" ; config_disable
+config="CONFIG_SPI_LM70_LLP" ; config_disable
 config="CONFIG_SPI_GPIO" ; config_module
 config="CONFIG_SPI_OMAP24XX" ; config_enable
 config="CONFIG_SPI_TI_QSPI" ; config_enable
+
+#
+# SPI Protocol Masters
+#
+config="CONFIG_HSI" ; config_disable
+
+#
+# PPS clients support
+#
+config="CONFIG_PPS_CLIENT_GPIO" ; config_module
 
 #
 # Pin controllers
@@ -424,14 +449,24 @@ config="CONFIG_TWL4030_WATCHDOG" ; config_enable
 #
 # Multifunction device drivers
 #
+config="CONFIG_MFD_DA9052_SPI" ; config_disable
+config="CONFIG_MFD_DA9052_I2C" ; config_disable
+config="CONFIG_MFD_MC13XXX_SPI" ; config_disable
+config="CONFIG_MFD_MC13XXX_I2C" ; config_disable
+config="CONFIG_MFD_VIPERBOARD" ; config_disable
+config="CONFIG_MFD_SEC_CORE" ; config_disable
 config="CONFIG_MFD_TI_AM335X_TSCADC" ; config_enable
 config="CONFIG_MFD_PALMAS" ; config_enable
 config="CONFIG_MFD_TPS65217" ; config_enable
 config="CONFIG_MFD_TPS65218" ; config_enable
 config="CONFIG_MFD_TPS65910" ; config_enable
+config="CONFIG_REGULATOR_ANATOP" ; config_disable
+config="CONFIG_VEXPRESS_CONFIG" ; config_disable
 config="CONFIG_REGULATOR_GPIO" ; config_enable
 config="CONFIG_REGULATOR_PALMAS" ; config_enable
 config="CONFIG_REGULATOR_PBIAS" ; config_enable
+config="CONFIG_REGULATOR_S2MPS11" ; config_disable
+config="CONFIG_REGULATOR_S5M8767" ; config_disable
 config="CONFIG_REGULATOR_TI_ABB" ; config_enable
 config="CONFIG_REGULATOR_TPS65023" ; config_enable
 config="CONFIG_REGULATOR_TPS6507X" ; config_enable
@@ -533,8 +568,11 @@ config="CONFIG_USB_OTG" ; config_enable
 #
 config="CONFIG_USB_XHCI_HCD" ; config_enable
 config="CONFIG_USB_EHCI_HCD" ; config_enable
+config="CONFIG_USB_EHCI_ROOT_HUB_TT" ; config_disable
 config="CONFIG_USB_EHCI_HCD_OMAP" ; config_enable
+config="CONFIG_USB_EHCI_HCD_PLATFORM" ; config_disable
 config="CONFIG_USB_OHCI_HCD" ; config_disable
+config="CONFIG_USB_U132_HCD" ; config_disable
 
 #
 # also be needed; see USB_STORAGE Help for more info
@@ -594,12 +632,18 @@ config="CONFIG_MMC_UNSAFE_RESUME" ; config_enable
 # MMC/SD/SDIO Card Drivers
 #
 config="CONFIG_MMC_BLOCK_MINORS" ; option=8 ; config_value
+config="CONFIG_SDIO_UART" ; config_enable
 
 #
 # MMC/SD/SDIO Host Controller Drivers
 #
+config="CONFIG_MMC_SDHCI" ; config_disable
 config="CONFIG_MMC_OMAP" ; config_enable
 config="CONFIG_MMC_OMAP_HS" ; config_enable
+config="CONFIG_MMC_DW" ; config_disable
+config="CONFIG_MMC_VUB300" ; config_disable
+config="CONFIG_MMC_USHC" ; config_disable
+config="CONFIG_MEMSTICK" ; config_disable
 
 #
 # LED drivers
@@ -621,17 +665,31 @@ config="CONFIG_LEDS_TRIGGER_DEFAULT_ON" ; config_enable
 #
 config="CONFIG_RTC_DRV_DS1307" ; config_enable
 config="CONFIG_RTC_DRV_PALMAS" ; config_enable
+config="CONFIG_RTC_DRV_S5M" ; config_disable
 
 #
 # on-CPU RTC drivers
 #
 config="CONFIG_RTC_DRV_OMAP" ; config_enable
+config="CONFIG_RTC_DRV_SNVS" ; config_disable
 
 #
 # DMA Devices
 #
 config="CONFIG_TI_EDMA" ; config_enable
 config="CONFIG_DMA_OMAP" ; config_enable
+
+#
+# DMA Clients
+#
+config="CONFIG_UIO" ; config_module
+config="CONFIG_VIRT_DRIVERS" ; config_enable
+
+#
+# Microsoft Hyper-V guest support
+#
+config="CONFIG_R8712U" ; config_module
+config="CONFIG_R8188EU" ; config_module
 
 #
 # Android
@@ -652,6 +710,7 @@ config="CONFIG_ION" ; config_enable
 # Common Clock Framework
 #
 config="CONFIG_HWSPINLOCK" ; config_enable
+config="CONFIG_COMMON_CLK_S2MPS11" ; config_disable
 config="CONFIG_CLK_TWL6040" ; config_module
 
 #
