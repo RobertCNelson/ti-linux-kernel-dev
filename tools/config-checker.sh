@@ -2,88 +2,850 @@
 
 DIR=$PWD
 
-check_config_value () {
-	unset test_config
-	test_config=$(grep "${config}=" ${DIR}/patches/defconfig || true)
-	if [ "x${test_config}" = "x" ] ; then
-		echo "echo ${config}=${value} >> ./KERNEL/.config"
-	else
-		if [ ! "x${test_config}" = "x${config}=${value}" ] ; then
-			if [ ! "x${test_config}" = "x${config}=\"${value}\"" ] ; then
-				echo "sed -i -e 's:${test_config}:${config}=${value}:g' ./KERNEL/.config"
-			fi
-		fi
+config_enable () {
+	ret=$(./scripts/config --state ${config})
+	if [ ! "x${ret}" = "xy" ] ; then
+		echo "Setting: ${config}=y"
+		./scripts/config --enable ${config}
 	fi
 }
 
-check_config_builtin () {
-	unset test_config
-	test_config=$(grep "${config}=y" ${DIR}/patches/defconfig || true)
-	if [ "x${test_config}" = "x" ] ; then
-		echo "echo ${config}=y >> ./KERNEL/.config"
+config_disable () {
+	ret=$(./scripts/config --state ${config})
+	if [ ! "x${ret}" = "xn" ] ; then
+		echo "Setting: ${config}=n"
+		./scripts/config --disable ${config}
 	fi
 }
 
-check_config_module () {
-	unset test_config
-	test_config=$(grep "${config}=y" ${DIR}/patches/defconfig || true)
-	if [ "x${test_config}" = "x${config}=y" ] ; then
-		echo "sed -i -e 's:${config}=y:${config}=m:g' ./KERNEL/.config"
-	else
-		unset test_config
-		test_config=$(grep "${config}=" ${DIR}/patches/defconfig || true)
-		if [ "x${test_config}" = "x" ] ; then
-			echo "echo ${config}=m >> ./KERNEL/.config"
-		fi
+config_module () {
+	ret=$(./scripts/config --state ${config})
+	if [ ! "x${ret}" = "xm" ] ; then
+		echo "Setting: ${config}=m"
+		./scripts/config --module ${config}
 	fi
 }
 
-check_config () {
-	unset test_config
-	test_config=$(grep "${config}=" ${DIR}/patches/defconfig || true)
-	if [ "x${test_config}" = "x" ] ; then
-		echo "echo ${config}=y >> ./KERNEL/.config"
-		echo "echo ${config}=m >> ./KERNEL/.config"
+config_string () {
+	ret=$(./scripts/config --state ${config})
+	if [ ! "x${ret}" = "x${option}" ] ; then
+		echo "Setting: ${config}=${option}"
+		./scripts/config --set-str ${config} ${option}
 	fi
 }
 
-check_config_disable () {
-	unset test_config
-	test_config=$(grep "${config} is not set" ${DIR}/patches/defconfig || true)
-	if [ "x${test_config}" = "x" ] ; then
-		unset test_config
-		test_config=$(grep "${config}=y" ${DIR}/patches/defconfig || true)
-		if [ "x${test_config}" = "x${config}=y" ] ; then
-			echo "sed -i -e 's:${config}=y:# ${config} is not set:g' ./KERNEL/.config"
-		else
-			echo "sed -i -e 's:${config}=m:# ${config} is not set:g' ./KERNEL/.config"
-		fi
+config_value () {
+	ret=$(./scripts/config --state ${config})
+	if [ ! "x${ret}" = "x${option}" ] ; then
+		echo "Setting: ${config}=${option}"
+		./scripts/config --set-val ${config} ${option}
 	fi
 }
 
-check_if_set_then_set_module () {
-	unset test_config
-	test_config=$(grep "${if_config}=y" ${DIR}/patches/defconfig || true)
-	if [ "x${test_config}" = "x${if_config}=y" ] ; then
-		check_config_module
-	fi
-}
+cd ${DIR}/KERNEL/
 
-check_if_set_then_set () {
-	unset test_config
-	test_config=$(grep "${if_config}=y" ${DIR}/patches/defconfig || true)
-	if [ "x${test_config}" = "x${if_config}=y" ] ; then
-		check_config_builtin
-	fi
-}
-CONFIG_CMA_SIZE_MBYTES=16
-check_if_set_then_disable () {
-	unset test_config
-	test_config=$(grep "${if_config}=y" ${DIR}/patches/defconfig || true)
-	if [ "x${test_config}" = "x${if_config}=y" ] ; then
-		check_config_disable
-	fi
-}
+echo "Basic Defaults:"
+
+#start with debian config
+#
+# General setup
+#
+config="CONFIG_KERNEL_LZO" ; config_enable
+
+#
+# Timers subsystem
+#
+config="CONFIG_NO_HZ" ; config_enable
+
+#
+# RCU Subsystem
+#
+config="CONFIG_IKCONFIG" ; config_enable
+config="CONFIG_IKCONFIG_PROC" ; config_enable
+config="CONFIG_LOG_BUF_SHIFT" ; option=18 ; config_value
+
+#
+# Kernel Performance Events And Counters
+#
+config="CONFIG_OPROFILE" ; config_enable
+
+#
+# System Type
+#
+config="CONFIG_ARCH_MULTIPLATFORM" ; config_enable
+config="CONFIG_ARCH_EXYNOS" ; config_disable
+
+#
+# CPU Core family selection
+#
+config="CONFIG_GPIO_PCA953X" ; config_enable
+
+#
+# OMAP Feature Selections
+#
+config="CONFIG_OMAP_RESET_CLOCKS" ; config_enable
+config="CONFIG_OMAP_MUX_DEBUG" ; config_enable
+config="CONFIG_SOC_OMAP5" ; config_enable
+config="CONFIG_SOC_AM33XX" ; config_enable
+config="CONFIG_SOC_AM43XX" ; config_enable
+config="CONFIG_SOC_DRA7XX" ; config_enable
+config="CONFIG_ARCH_OMAP2PLUS" ; config_enable
+
+#
+# TI OMAP2/3/4 Specific Features
+#
+config="CONFIG_SOC_HAS_OMAP2_SDRC" ; config_enable
+
+#
+# Processor Features
+#
+config="CONFIG_CACHE_L2X0" ; config_enable
+config="CONFIG_PL310_ERRATA_588369" ; config_enable
+config="CONFIG_PL310_ERRATA_727915" ; config_enable
+config="CONFIG_ARM_ERRATA_764369" ; config_disable
+
+#
+# Bus support
+#
+config="CONFIG_PCI" ; config_disable
+
+#
+# Kernel Features
+#
+config="CONFIG_SMP" ; config_enable
+config="CONFIG_NR_CPUS" ; option=2 ; config_value
+config="CONFIG_PREEMPT" ; config_enable
+config="CONFIG_HZ_100" ; config_enable
+config="CONFIG_HZ_250" ; config_disable
+config="CONFIG_HZ" ; option=100 ; config_value
+config="CONFIG_CMA" ; config_enable
+config="CONFIG_SECCOMP" ; config_enable
+config="CONFIG_XEN" ; config_disable
+
+#
+# Boot options
+#
+config="CONFIG_ARM_APPENDED_DTB" ; config_disable
+
+#
+# CPU Frequency scaling
+#
+config="CONFIG_CPU_FREQ" ; config_enable
+config="CONFIG_CPU_FREQ_STAT" ; config_enable
+config="CONFIG_CPU_FREQ_STAT_DETAILS" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_POWERSAVE" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_USERSPACE" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_ONDEMAND" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_CONSERVATIVE" ; config_enable
+config="CONFIG_GENERIC_CPUFREQ_CPU0" ; config_enable
+
+#
+# ARM CPU frequency scaling drivers
+#
+config="CONFIG_ARM_OMAP2PLUS_CPUFREQ" ; config_disable
+
+#
+# CPU Idle
+#
+config="CONFIG_CPU_IDLE" ; config_enable
+
+#
+# At least one emulation must be selected
+#
+config="CONFIG_KERNEL_MODE_NEON" ; config_enable
+
+#
+# Power management options
+#
+config="CONFIG_PM_AUTOSLEEP" ; config_enable
+config="CONFIG_PM_WAKELOCKS" ; config_enable
+config="CONFIG_PM_WAKELOCKS_GC" ; config_enable
+config="CONFIG_PM_OPP" ; config_enable
+
+#
+# Networking options
+#
+config="CONFIG_IP_PNP" ; config_enable
+config="CONFIG_IP_PNP_DHCP" ; config_enable
+config="CONFIG_IP_PNP_BOOTP" ; config_enable
+config="CONFIG_IP_PNP_RARP" ; config_enable
+
+#
+# CAN Device Drivers
+#
+config="CONFIG_CAN_TI_HECC" ; config_module
+config="CONFIG_CAN_MCP251X" ; config_module
+config="CONFIG_CAN_SJA1000" ; config_disable
+config="CONFIG_CAN_C_CAN" ; config_module
+config="CONFIG_CAN_C_CAN_PLATFORM" ; config_module
+
+#
+# Bluetooth device drivers
+#
+config="CONFIG_BT_HCIUART" ; config_module
+config="CONFIG_BT_HCIUART_H4" ; config_enable
+config="CONFIG_BT_HCIUART_BCSP" ; config_enable
+config="CONFIG_BT_HCIUART_ATH3K" ; config_enable
+config="CONFIG_BT_HCIUART_LL" ; config_enable
+config="CONFIG_BT_HCIUART_3WIRE" ; config_enable
+config="CONFIG_BT_HCIBCM203X" ; config_module
+config="CONFIG_BT_HCIBPA10X" ; config_module
+config="CONFIG_BT_HCIBFUSB" ; config_module
+config="CONFIG_BT_HCIVHCI" ; config_module
+config="CONFIG_BT_WILINK" ; config_module
+
+#
+# Generic Driver Options
+#
+config="CONFIG_DEVTMPFS_MOUNT" ; config_enable
+config="CONFIG_FIRMWARE_IN_KERNEL" ; config_enable
+
+#config="CONFIG_EXTRA_FIRMWARE_DIR" ; option="firmware" ; config_string
+
+#config="CONFIG_EXTRA_FIRMWARE"
+#option="am335x-pm-firmware.elf am335x-bone-scale-data.bin am335x-evm-scale-data.bin am43x-evm-scale-data.bin"
+#config_value
+
+config="CONFIG_DMA_CMA" ; config_enable
+config="CONFIG_CMA_SIZE_MBYTES" ; option=24 ; config_value
+
+#
+# Bus devices
+#
+config="CONFIG_OMAP_OCP2SCP" ; config_enable
+config="CONFIG_OMAP_INTERCONNECT" ; config_enable
+
+#
+# Misc devices
+#
+config="CONFIG_BMP085" ; config_enable
+config="CONFIG_BMP085_I2C" ; config_module
+
+#
+# EEPROM support
+#
+config="CONFIG_EEPROM_AT24" ; config_enable
+config="CONFIG_EEPROM_93CX6" ; config_enable
+
+#
+# Texas Instruments shared transport line discipline
+#
+config="CONFIG_TI_ST" ; config_enable
+config="CONFIG_ST_HCI" ; config_enable
+
+#
+# Altera FPGA firmware download module
+#
+config="CONFIG_ALTERA_STAPL" ; config_disable
+
+#
+# Argus cape driver for beaglebone black
+#
+config="CONFIG_CAPE_BONE_ARGUS" ; config_enable
+config="CONFIG_BEAGLEBONE_PINMUX_HELPER" ; config_enable
+
+#
+# SCSI support type (disk, tape, CD-ROM)
+#
+config="CONFIG_BLK_DEV_SD" ; config_enable
+
+#
+# SCSI Transports
+#
+config="CONFIG_ATA" ; config_enable
+
+#
+# Controllers with non-SFF native interface
+#
+config="CONFIG_SATA_AHCI_PLATFORM" ; config_enable
+config="CONFIG_AHCI_IMX" ; config_disable
+
+#
+# SATA SFF controllers with BMDMA
+#
+config="CONFIG_SATA_HIGHBANK" ; config_disable
+config="CONFIG_SATA_MV" ; config_disable
+
+#
+# PIO-only SFF controllers
+#
+config="CONFIG_PATA_PLATFORM" ; config_disable
+
+#
+# Generic fallback / legacy drivers
+#
+config="CONFIG_MII" ; config_enable
+
+#
+# Distributed Switch Architecture drivers
+#
+config="CONFIG_NET_VENDOR_ARC" ; config_disable
+config="CONFIG_NET_CADENCE" ; config_disable
+config="CONFIG_NET_VENDOR_BROADCOM" ; config_disable
+config="CONFIG_NET_CALXEDA_XGMAC" ; config_disable
+config="CONFIG_NET_VENDOR_CIRRUS" ; config_disable
+config="CONFIG_NET_VENDOR_FARADAY" ; config_disable
+config="CONFIG_NET_VENDOR_INTEL" ; config_disable
+config="CONFIG_NET_VENDOR_MARVELL" ; config_disable
+config="CONFIG_KS8851" ; config_enable
+config="CONFIG_KS8851_MLL" ; config_enable
+config="CONFIG_ENC28J60" ; config_enable
+config="CONFIG_NET_VENDOR_NATSEMI" ; config_disable
+config="CONFIG_NET_VENDOR_SEEQ" ; config_disable
+config="CONFIG_SMC91X" ; config_enable
+config="CONFIG_SMC911X" ; config_disable
+config="CONFIG_SMSC911X" ; config_enable
+config="CONFIG_NET_VENDOR_STMICRO" ; config_disable
+config="CONFIG_TI_DAVINCI_MDIO" ; config_enable
+config="CONFIG_TI_DAVINCI_CPDMA" ; config_enable
+config="CONFIG_TI_CPSW_PHY_SEL" ; config_enable
+config="CONFIG_TI_CPSW" ; config_enable
+config="CONFIG_TI_CPTS" ; config_enable
+config="CONFIG_NET_VENDOR_VIA" ; config_disable
+
+#
+# MII PHY device drivers
+#
+config="CONFIG_AT803X_PHY" ; config_enable
+config="CONFIG_AMD_PHY" ; config_disable
+config="CONFIG_MARVELL_PHY" ; config_disable
+config="CONFIG_DAVICOM_PHY" ; config_disable
+config="CONFIG_QSEMI_PHY" ; config_disable
+config="CONFIG_LXT_PHY" ; config_disable
+config="CONFIG_CICADA_PHY" ; config_disable
+config="CONFIG_VITESSE_PHY" ; config_disable
+config="CONFIG_SMSC_PHY" ; config_enable
+config="CONFIG_BROADCOM_PHY" ; config_disable
+config="CONFIG_BCM87XX_PHY" ; config_disable
+config="CONFIG_ICPLUS_PHY" ; config_disable
+config="CONFIG_REALTEK_PHY" ; config_disable
+config="CONFIG_NATIONAL_PHY" ; config_disable
+config="CONFIG_STE10XP" ; config_disable
+config="CONFIG_LSI_ET1011C_PHY" ; config_disable
+config="CONFIG_MICREL_PHY" ; config_disable
+
+#
+# Userland interfaces
+#
+config="CONFIG_INPUT_JOYDEV" ; config_enable
+config="CONFIG_INPUT_EVDEV" ; config_enable
+
+#
+# Input Device Drivers
+#
+config="CONFIG_KEYBOARD_TWL4030" ; config_enable
+config="CONFIG_TOUCHSCREEN_ATMEL_MXT" ; config_enable
+config="CONFIG_TOUCHSCREEN_EDT_FT5X06" ; config_enable
+config="CONFIG_TOUCHSCREEN_TI_AM335X_TSC" ; config_enable
+config="CONFIG_INPUT_TWL4030_PWRBUTTON" ; config_enable
+config="CONFIG_INPUT_PALMAS_PWRBUTTON" ; config_enable
+
+#
+# Character devices
+#
+config="CONFIG_DEVKMEM" ; config_enable
+
+#
+# Non-8250 serial port support
+#
+config="CONFIG_SERIAL_OMAP" ; config_enable
+config="CONFIG_SERIAL_OMAP_CONSOLE" ; config_enable
+config="CONFIG_SERIAL_ARC" ; config_disable
+config="CONFIG_HW_RANDOM" ; config_enable
+config="CONFIG_HW_RANDOM_OMAP" ; config_enable
+config="CONFIG_HW_RANDOM_EXYNOS" ; config_disable
+config="CONFIG_HW_RANDOM_TPM" ; config_module
+config="CONFIG_TCG_TPM" ; config_module
+config="CONFIG_TCG_TIS_I2C_ATMEL" ; config_module
+config="CONFIG_I2C_CHARDEV" ; config_enable
+
+#
+# I2C system bus drivers (mostly embedded / system-on-chip)
+#
+config="CONFIG_I2C_GPIO" ; config_module
+config="CONFIG_I2C_OCORES" ; config_disable
+config="CONFIG_I2C_PCA_PLATFORM" ; config_disable
+config="CONFIG_I2C_SIMTEC" ; config_disable
+
+#
+# SPI Master Controller Drivers
+#
+config="CONFIG_SPI_BITBANG" ; config_module
+config="CONFIG_SPI_BUTTERFLY" ; config_disable
+config="CONFIG_SPI_LM70_LLP" ; config_disable
+config="CONFIG_SPI_GPIO" ; config_module
+config="CONFIG_SPI_OMAP24XX" ; config_enable
+config="CONFIG_SPI_TI_QSPI" ; config_enable
+
+#
+# SPI Protocol Masters
+#
+config="CONFIG_HSI" ; config_disable
+
+#
+# PPS clients support
+#
+config="CONFIG_PPS_CLIENT_GPIO" ; config_module
+
+#
+# Pin controllers
+#
+config="CONFIG_PINMUX" ; config_enable
+config="CONFIG_PINCONF" ; config_enable
+config="CONFIG_GENERIC_PINCONF" ; config_enable
+config="CONFIG_PINCTRL_SINGLE" ; config_enable
+config="CONFIG_PINCTRL_PALMAS" ; config_enable
+config="CONFIG_GPIO_SYSFS" ; config_enable
+
+#
+# I2C GPIO expanders:
+#
+config="CONFIG_GPIO_PCF857X" ; config_enable
+config="CONFIG_GPIO_TWL4030" ; config_enable
+
+#
+# MODULbus GPIO expanders:
+#
+config="CONFIG_GPIO_PALMAS" ; config_enable
+
+#
+# 1-wire Slaves
+#
+config="CONFIG_POWER_RESET" ; config_disable
+config="CONFIG_POWER_RESET_RESTART" ; config_disable
+config="CONFIG_POWER_AVS" ; config_enable
+
+#
+# Native drivers
+#
+config="CONFIG_SENSORS_LM75" ; config_module
+config="CONFIG_SENSORS_TMP102" ; config_enable
+
+#
+# Voltage Domain Framework Drivers
+#
+config="CONFIG_VOLTAGE_DOMAIN_OMAP" ; config_enable
+
+#
+# Native drivers
+#
+config="CONFIG_THERMAL_GOV_USER_SPACE" ; config_enable
+config="CONFIG_CPU_THERMAL" ; config_enable
+
+#
+# Texas Instruments thermal drivers
+#
+config="CONFIG_TI_SOC_THERMAL" ; config_enable
+config="CONFIG_TI_THERMAL" ; config_enable
+config="CONFIG_OMAP5_THERMAL" ; config_enable
+config="CONFIG_DRA752_THERMAL" ; config_enable
+
+#
+# Watchdog Device Drivers
+#
+config="CONFIG_OMAP_WATCHDOG" ; config_enable
+config="CONFIG_TWL4030_WATCHDOG" ; config_enable
+
+#
+# Multifunction device drivers
+#
+config="CONFIG_MFD_DA9052_SPI" ; config_disable
+config="CONFIG_MFD_DA9052_I2C" ; config_disable
+config="CONFIG_MFD_MC13XXX_SPI" ; config_disable
+config="CONFIG_MFD_MC13XXX_I2C" ; config_disable
+config="CONFIG_MFD_VIPERBOARD" ; config_disable
+config="CONFIG_MFD_SEC_CORE" ; config_disable
+config="CONFIG_MFD_TI_AM335X_TSCADC" ; config_enable
+config="CONFIG_MFD_PALMAS" ; config_enable
+config="CONFIG_MFD_TPS65217" ; config_enable
+config="CONFIG_MFD_TPS65218" ; config_enable
+config="CONFIG_MFD_TPS65910" ; config_enable
+config="CONFIG_REGULATOR_ANATOP" ; config_disable
+config="CONFIG_VEXPRESS_CONFIG" ; config_disable
+config="CONFIG_REGULATOR_GPIO" ; config_enable
+config="CONFIG_REGULATOR_PALMAS" ; config_enable
+config="CONFIG_REGULATOR_PBIAS" ; config_enable
+config="CONFIG_REGULATOR_S2MPS11" ; config_disable
+config="CONFIG_REGULATOR_S5M8767" ; config_disable
+config="CONFIG_REGULATOR_TI_ABB" ; config_enable
+config="CONFIG_REGULATOR_TPS65023" ; config_enable
+config="CONFIG_REGULATOR_TPS6507X" ; config_enable
+config="CONFIG_REGULATOR_TPS65217" ; config_enable
+config="CONFIG_REGULATOR_TPS65218" ; config_enable
+config="CONFIG_REGULATOR_TPS65910" ; config_enable
+
+#
+# Multimedia core support
+#
+config="CONFIG_VIDEO_V4L2_SUBDEV_API" ; config_enable
+
+#
+# Webcam, TV (analog/digital) USB devices
+#
+config="CONFIG_VIDEO_AM437X_VPFE" ; config_module
+config="CONFIG_VIDEO_TI_VIP" ; config_module
+
+#
+# Direct Rendering Manager
+#
+config="CONFIG_DRM" ; config_enable
+config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
+config="CONFIG_DRM_OMAP" ; config_enable
+config="CONFIG_DRM_OMAP_NUM_CRTCS" ; option=2 ; config_value
+config="CONFIG_DRM_TILCDC" ; config_enable
+config="CONFIG_OMAP2_DSS" ; config_enable
+config="CONFIG_OMAP5_DSS_HDMI" ; config_enable
+config="CONFIG_OMAP2_DSS_SDI" ; config_enable
+config="CONFIG_OMAP2_DSS_DSI" ; config_enable
+
+#
+# OMAP Display Device Drivers (new device model)
+#
+config="CONFIG_DISPLAY_ENCODER_TFP410" ; config_module
+config="CONFIG_DISPLAY_ENCODER_TPD12S015" ; config_enable
+config="CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015" ; config_enable
+config="CONFIG_DISPLAY_ENCODER_SII9022" ; config_enable
+config="CONFIG_DISPLAY_ENCODER_SII9022_AUDIO_CODEC" ; config_enable
+config="CONFIG_DISPLAY_CONNECTOR_DVI" ; config_module
+config="CONFIG_DISPLAY_CONNECTOR_HDMI" ; config_enable
+config="CONFIG_BACKLIGHT_GENERIC" ; config_module
+config="CONFIG_BACKLIGHT_PWM" ; config_enable
+config="CONFIG_BACKLIGHT_GPIO" ; config_enable
+
+#
+# Console display driver support
+#
+config="CONFIG_LOGO" ; config_enable
+config="CONFIG_LOGO_LINUX_MONO" ; config_enable
+config="CONFIG_LOGO_LINUX_VGA16" ; config_enable
+config="CONFIG_LOGO_LINUX_CLUT224" ; config_enable
+config="CONFIG_SOUND" ; config_enable
+config="CONFIG_SOUND_OSS_CORE_PRECLAIM" ; config_enable
+config="CONFIG_SND" ; config_enable
+config="CONFIG_SND_TIMER" ; config_enable
+config="CONFIG_SND_PCM" ; config_enable
+config="CONFIG_SND_DMAENGINE_PCM" ; config_enable
+
+config="CONFIG_SND_SOC" ; config_enable
+config="CONFIG_SND_SOC_GENERIC_DMAENGINE_PCM" ; config_enable
+config="CONFIG_SND_EDMA_SOC" ; config_enable
+config="CONFIG_SND_DAVINCI_SOC_MCASP" ; config_enable
+config="CONFIG_SND_DAVINCI_SOC_GENERIC_EVM" ; config_enable
+config="CONFIG_SND_AM33XX_SOC_EVM" ; config_module
+config="CONFIG_SND_AM335X_SOC_NXPTDA_EVM" ; config_module
+config="CONFIG_SND_OMAP_SOC" ; config_enable
+config="CONFIG_SND_OMAP_SOC_MCBSP" ; config_module
+config="CONFIG_SND_OMAP_SOC_HDMI_AUDIO" ; config_enable
+config="CONFIG_SND_OMAP_SOC_DRA7EVM" ; config_enable
+config="CONFIG_SND_OMAP_SOC_OMAP_TWL4030" ; config_module
+config="CONFIG_SND_SOC_I2C_AND_SPI" ; config_enable
+
+#
+# CODEC drivers
+#
+config="CONFIG_SND_SOC_HDMI_CODEC" ; config_enable
+
+#
+# HID support
+#
+config="CONFIG_HID_BATTERY_STRENGTH" ; config_enable
+config="CONFIG_UHID" ; config_enable
+config="CONFIG_HID_GENERIC" ; config_enable
+
+#
+# Special HID drivers
+#
+config="CONFIG_HID_APPLEIR" ; config_module
+config="CONFIG_HID_LOGITECH_DJ" ; config_enable
+
+#
+# Miscellaneous USB options
+#
+config="CONFIG_USB_OTG" ; config_enable
+
+#
+# USB Host Controller Drivers
+#
+config="CONFIG_USB_XHCI_HCD" ; config_enable
+config="CONFIG_USB_EHCI_HCD" ; config_enable
+config="CONFIG_USB_EHCI_ROOT_HUB_TT" ; config_disable
+config="CONFIG_USB_EHCI_HCD_OMAP" ; config_enable
+config="CONFIG_USB_EHCI_HCD_PLATFORM" ; config_disable
+config="CONFIG_USB_OHCI_HCD" ; config_disable
+config="CONFIG_USB_U132_HCD" ; config_disable
+
+#
+# also be needed; see USB_STORAGE Help for more info
+#
+config="CONFIG_USB_STORAGE" ; config_enable
+
+#
+# USB Imaging devices
+#
+config="CONFIG_USB_MUSB_HDRC" ; config_module
+config="CONFIG_USB_MUSB_TUSB6010" ; config_disable
+config="CONFIG_USB_MUSB_OMAP2PLUS" ; config_module
+config="CONFIG_USB_INVENTRA_DMA" ; config_disable
+config="CONFIG_USB_TI_CPPI41_DMA" ; config_enable
+config="CONFIG_MUSB_PIO_ONLY" ; config_disable
+config="CONFIG_USB_DWC3_DUAL_ROLE" ; config_enable
+
+#
+# Debugging features
+#
+config="CONFIG_USB_CHIPIDEA" ; config_disable
+
+#
+# USB Physical Layer drivers
+#
+config="CONFIG_AM335X_CONTROL_USB" ; config_enable
+config="CONFIG_AM335X_PHY_USB" ; config_enable
+config="CONFIG_TWL6030_USB" ; config_module
+config="CONFIG_USB_GADGET_VBUS_DRAW" ; option=500 ; config_value
+
+#
+# USB Peripheral Controller
+#
+config="CONFIG_USB_ZERO" ; config_module
+config="CONFIG_USB_AUDIO" ; config_module
+config="CONFIG_USB_ETH_EEM" ; config_enable
+config="CONFIG_USB_G_NCM" ; config_module
+config="CONFIG_USB_FUNCTIONFS" ; config_module
+config="CONFIG_USB_FUNCTIONFS_ETH" ; config_enable
+config="CONFIG_USB_FUNCTIONFS_RNDIS" ; config_enable
+config="CONFIG_USB_FUNCTIONFS_GENERIC" ; config_enable
+config="CONFIG_USB_MASS_STORAGE" ; config_module
+config="CONFIG_USB_G_SERIAL" ; config_module
+config="CONFIG_USB_MIDI_GADGET" ; config_module
+config="CONFIG_USB_G_PRINTER" ; config_module
+config="CONFIG_USB_CDC_COMPOSITE" ; config_module
+config="CONFIG_USB_G_ACM_MS" ; config_module
+config="CONFIG_USB_G_MULTI" ; config_module
+config="CONFIG_USB_G_MULTI_CDC" ; config_enable
+config="CONFIG_USB_G_HID" ; config_module
+config="CONFIG_USB_G_DBGP" ; config_module
+config="CONFIG_USB_G_WEBCAM" ; config_module
+
+config="CONFIG_MMC_UNSAFE_RESUME" ; config_enable
+
+#
+# MMC/SD/SDIO Card Drivers
+#
+config="CONFIG_MMC_BLOCK_MINORS" ; option=8 ; config_value
+config="CONFIG_SDIO_UART" ; config_enable
+
+#
+# MMC/SD/SDIO Host Controller Drivers
+#
+config="CONFIG_MMC_SDHCI" ; config_disable
+config="CONFIG_MMC_OMAP" ; config_enable
+config="CONFIG_MMC_OMAP_HS" ; config_enable
+config="CONFIG_MMC_DW" ; config_disable
+config="CONFIG_MMC_VUB300" ; config_disable
+config="CONFIG_MMC_USHC" ; config_disable
+config="CONFIG_MEMSTICK" ; config_disable
+
+#
+# LED drivers
+#
+config="CONFIG_LEDS_GPIO" ; config_enable
+
+#
+# LED Triggers
+#
+config="CONFIG_LEDS_TRIGGER_TIMER" ; config_enable
+config="CONFIG_LEDS_TRIGGER_ONESHOT" ; config_enable
+config="CONFIG_LEDS_TRIGGER_HEARTBEAT" ; config_enable
+config="CONFIG_LEDS_TRIGGER_BACKLIGHT" ; config_enable
+config="CONFIG_LEDS_TRIGGER_GPIO" ; config_enable
+config="CONFIG_LEDS_TRIGGER_DEFAULT_ON" ; config_enable
+
+#
+# I2C RTC drivers
+#
+config="CONFIG_RTC_DRV_DS1307" ; config_enable
+config="CONFIG_RTC_DRV_PALMAS" ; config_enable
+config="CONFIG_RTC_DRV_S5M" ; config_disable
+
+#
+# on-CPU RTC drivers
+#
+config="CONFIG_RTC_DRV_OMAP" ; config_enable
+config="CONFIG_RTC_DRV_SNVS" ; config_disable
+
+#
+# DMA Devices
+#
+config="CONFIG_TI_EDMA" ; config_enable
+config="CONFIG_DMA_OMAP" ; config_enable
+
+#
+# DMA Clients
+#
+config="CONFIG_UIO" ; config_module
+config="CONFIG_VIRT_DRIVERS" ; config_enable
+
+#
+# Microsoft Hyper-V guest support
+#
+config="CONFIG_R8712U" ; config_module
+config="CONFIG_R8188EU" ; config_module
+
+#
+# Android
+#
+config="CONFIG_ANDROID" ; config_enable
+config="CONFIG_ANDROID_BINDER_IPC" ; config_enable
+config="CONFIG_ASHMEM" ; config_enable
+config="CONFIG_ANDROID_LOGGER" ; config_module
+config="CONFIG_ANDROID_TIMED_OUTPUT" ; config_enable
+config="CONFIG_ANDROID_TIMED_GPIO" ; config_module
+config="CONFIG_ANDROID_LOW_MEMORY_KILLER" ; config_disable
+config="CONFIG_ANDROID_INTF_ALARM_DEV" ; config_enable
+config="CONFIG_SYNC" ; config_enable
+config="CONFIG_SW_SYNC" ; config_disable
+config="CONFIG_ION" ; config_enable
+
+#
+# Common Clock Framework
+#
+config="CONFIG_HWSPINLOCK" ; config_enable
+config="CONFIG_COMMON_CLK_S2MPS11" ; config_disable
+config="CONFIG_CLK_TWL6040" ; config_module
+
+#
+# Hardware Spinlock drivers
+#
+config="CONFIG_HWSPINLOCK_OMAP" ; config_enable
+config="CONFIG_IOMMU_API" ; config_enable
+config="CONFIG_OMAP_IOMMU" ; config_enable
+config="CONFIG_OMAP_IOVMM" ; config_enable
+
+#
+# Remoteproc drivers
+#
+config="CONFIG_REMOTEPROC" ; config_enable
+config="CONFIG_OMAP_REMOTEPROC" ; config_module
+config="CONFIG_OMAP_REMOTEPROC_WATCHDOG" ; config_enable
+config="CONFIG_PRUSS_REMOTEPROC" ; config_enable
+
+#
+# Rpmsg drivers
+#
+config="CONFIG_RPMSG_RPC" ; config_module
+config="CONFIG_PM_DEVFREQ" ; config_enable
+
+#
+# DEVFREQ Governors
+#
+config="CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND" ; config_enable
+config="CONFIG_DEVFREQ_GOV_PERFORMANCE" ; config_enable
+config="CONFIG_DEVFREQ_GOV_POWERSAVE" ; config_enable
+config="CONFIG_DEVFREQ_GOV_USERSPACE" ; config_enable
+
+#
+# DEVFREQ Drivers
+#
+config="CONFIG_EXTCON" ; config_enable
+
+#
+# Extcon Device Drivers
+#
+config="CONFIG_EXTCON_GPIO" ; config_enable
+config="CONFIG_EXTCON_PALMAS" ; config_enable
+config="CONFIG_MEMORY" ; config_enable
+config="CONFIG_TI_EMIF" ; config_enable
+config="CONFIG_IIO_BUFFER_CB" ; config_enable
+
+#
+# Temperature sensors
+#
+config="CONFIG_PWM_TIECAP" ; config_enable
+config="CONFIG_PWM_TIEHRPWM" ; config_enable
+config="CONFIG_PWM_TIPWMSS" ; config_enable
+config="CONFIG_RESET_CONTROLLER" ; config_disable
+
+#
+# PHY Subsystem
+#
+config="CONFIG_OMAP_CONTROL_PHY" ; config_enable
+config="CONFIG_OMAP_USB2" ; config_enable
+config="CONFIG_TI_PIPE3" ; config_enable
+config="CONFIG_TWL4030_USB" ; config_module
+
+#
+# File systems
+#
+config="CONFIG_EXT4_FS" ; config_enable
+config="CONFIG_JBD2" ; config_enable
+config="CONFIG_FS_MBCACHE" ; config_enable
+config="CONFIG_XFS_FS" ; config_enable
+config="CONFIG_BTRFS_FS" ; config_enable
+config="CONFIG_FANOTIFY_ACCESS_PERMISSIONS" ; config_enable
+config="CONFIG_AUTOFS4_FS" ; config_enable
+config="CONFIG_FUSE_FS" ; config_enable
+
+#
+# DOS/FAT/NT Filesystems
+#
+config="CONFIG_FAT_FS" ; config_enable
+config="CONFIG_MSDOS_FS" ; config_enable
+config="CONFIG_VFAT_FS" ; config_enable
+config="CONFIG_FAT_DEFAULT_IOCHARSET" ; option="iso8859-1" ; config_string
+
+#
+# Pseudo filesystems
+#
+config="CONFIG_CONFIGFS_FS" ; config_enable
+config="CONFIG_F2FS_FS" ; config_enable
+config="CONFIG_NFS_FS" ; config_enable
+config="CONFIG_NFS_V2" ; config_enable
+config="CONFIG_NFS_V3" ; config_enable
+config="CONFIG_NFS_V4" ; config_enable
+config="CONFIG_ROOT_NFS" ; config_enable
+
+config="CONFIG_NLS_DEFAULT" ; option="iso8859-1" ; config_string
+config="CONFIG_NLS_CODEPAGE_437" ; config_enable
+config="CONFIG_NLS_ISO8859_1" ; config_enable
+
+#
+# printk and dmesg options
+#
+config="CONFIG_BOOT_PRINTK_DELAY" ; config_disable
+
+#
+# Debug Lockups and Hangs
+#
+config="CONFIG_SCHEDSTATS" ; config_enable
+
+#
+# Runtime Testing
+#
+config="CONFIG_ARM_UNWIND" ; config_disable
+
+#
+# Crypto core or helper
+#
+config="CONFIG_CRYPTO_MANAGER_DISABLE_TESTS" ; config_enable
+
+#
+# Digest
+#
+config="CONFIG_CRYPTO_SHA1_ARM" ; config_enable
+
+#
+# Ciphers
+#
+config="CONFIG_CRYPTO_AES_ARM" ; config_enable
+
+#
+# Random Number Generation
+#
+config="CONFIG_CRYPTO_DEV_OMAP_SHAM" ; config_enable
+config="CONFIG_CRYPTO_DEV_OMAP_AES" ; config_enable
+config="CONFIG_CRYPTO_DEV_OMAP_DES" ; config_enable
+
+echo "TI: Defaults"
 
 #start with omap2plus_defconfig
 ##################################################
@@ -113,14 +875,14 @@ CONFIG_SOC_DRA7XX=y
 
 ##################################################
 
-config="CONFIG_ARCH_MULTI_V6"
-check_config_disable
-config="CONFIG_ARCH_MULTI_V6_V7"
-check_config_disable
-config="CONFIG_ARCH_OMAP3"
-check_config_disable
-config="CONFIG_ARCH_OMAP4"
-check_config_disable
+config="CONFIG_ARCH_MULTI_V6" ; config_disable
+#config="CONFIG_ARCH_MULTI_V6_V7" ; config_disable
+config="CONFIG_ARCH_OMAP3" ; config_disable
+config="CONFIG_ARCH_OMAP4" ; config_disable
+config="CONFIG_SOC_OMAP5" ; config_enable
+config="CONFIG_SOC_AM33XX" ; config_enable
+config="CONFIG_SOC_AM43XX" ; config_enable
+config="CONFIG_SOC_DRA7XX" ; config_enable
 
 ##################################################
 #audio_display.cfg
@@ -179,8 +941,7 @@ CONFIG_OMAP2_DSS_INIT=y
 ##################################################
 CONFIG_BACKLIGHT_PWM=m
 
-config="CONFIG_BACKLIGHT_PWM"
-check_config_builtin
+config="CONFIG_BACKLIGHT_PWM" ; config_enable
 
 CONFIG_DRM=y
 CONFIG_DRM_KMS_HELPER=y
@@ -192,25 +953,15 @@ CONFIG_DRM_TILCDC=y
 CONFIG_DRM_OMAP=y
 CONFIG_DRM_OMAP_NUM_CRTCS=2
 
-config="CONFIG_DRM"
-check_config_builtin
-config="CONFIG_DRM_KMS_HELPER"
-check_config_builtin
-config="CONFIG_DRM_KMS_FB_HELPER"
-check_config_builtin
-config="CONFIG_DRM_GEM_CMA_HELPER"
-check_config_builtin
-config="CONFIG_DRM_KMS_CMA_HELPER"
-check_config_builtin
-config="CONFIG_DRM_I2C_NXP_TDA998X"
-check_config_builtin
-config="CONFIG_DRM_TILCDC"
-check_config_builtin
-config="CONFIG_DRM_OMAP"
-check_config_builtin
-config="CONFIG_DRM_OMAP_NUM_CRTCS"
-value="2"
-check_config_value
+config="CONFIG_DRM" ; config_enable
+config="CONFIG_DRM_KMS_HELPER" ; config_enable
+config="CONFIG_DRM_KMS_FB_HELPER" ; config_enable
+config="CONFIG_DRM_GEM_CMA_HELPER" ; config_enable
+config="CONFIG_DRM_KMS_CMA_HELPER" ; config_enable
+config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
+config="CONFIG_DRM_TILCDC" ; config_enable
+config="CONFIG_DRM_OMAP" ; config_enable
+config="CONFIG_DRM_OMAP_NUM_CRTCS" ; option="2" ; config_value
 
 CONFIG_DISPLAY_PANEL_TLC59108=y
 CONFIG_OMAP5_DSS_HDMI=y
@@ -219,24 +970,16 @@ CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015=y
 CONFIG_DISPLAY_ENCODER_TPD12S015=y
 CONFIG_DISPLAY_ENCODER_SII9022=y
 
-config="CONFIG_DISPLAY_PANEL_TLC59108"
-check_config_builtin
-config="CONFIG_OMAP5_DSS_HDMI"
-check_config_builtin
-config="CONFIG_DISPLAY_CONNECTOR_HDMI"
-check_config_builtin
-config="CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015"
-check_config_builtin
-config="CONFIG_DISPLAY_ENCODER_TPD12S015"
-check_config_builtin
-config="CONFIG_DISPLAY_ENCODER_SII9022"
-check_config_builtin
+config="CONFIG_DISPLAY_PANEL_TLC59108" ; config_enable
+config="CONFIG_OMAP5_DSS_HDMI" ; config_enable
+config="CONFIG_DISPLAY_CONNECTOR_HDMI" ; config_enable
+config="CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015" ; config_enable
+config="CONFIG_DISPLAY_ENCODER_TPD12S015" ; config_enable
+config="CONFIG_DISPLAY_ENCODER_SII9022" ; config_enable
 
 CONFIG_CMA_SIZE_MBYTES=24
 
-config="CONFIG_CMA_SIZE_MBYTES"
-value="24"
-check_config_value
+config="CONFIG_CMA_SIZE_MBYTES" ; option="24" ; config_value
 
 CONFIG_MEDIA_SUBDRV_AUTOSELECT=n
 CONFIG_MEDIA_SUPPORT=m
@@ -251,30 +994,18 @@ CONFIG_VIDEO_TI_VIP=m
 CONFIG_VIDEO_OV2659=m
 CONFIG_VIDEO_AM437X_VPFE=m
 
-config="CONFIG_MEDIA_SUPPORT"
-check_config_module
-config="CONFIG_MEDIA_CONTROLLER"
-check_config_builtin
-config="CONFIG_MEDIA_CAMERA_SUPPORT"
-check_config_builtin
-config="CONFIG_V4L_PLATFORM_DRIVERS"
-check_config_builtin
-config="CONFIG_V4L2_MEM2MEM_DEV"
-check_config_module
-config="CONFIG_VIDEOBUF2_DMA_CONTIG"
-check_config_module
-config="CONFIG_V4L_MEM2MEM_DRIVERS"
-check_config_builtin
-config="CONFIG_VIDEO_V4L2_SUBDEV_API"
-check_config_builtin
-config="CONFIG_VIDEO_TI_VPE"
-check_config_module
-config="CONFIG_VIDEO_TI_VIP"
-check_config_module
-config="CONFIG_VIDEO_OV2659"
-check_config_module
-config="CONFIG_VIDEO_AM437X_VPFE"
-check_config_module
+config="CONFIG_MEDIA_SUPPORT" ; config_module
+config="CONFIG_MEDIA_CONTROLLER" ; config_enable
+config="CONFIG_MEDIA_CAMERA_SUPPORT" ; config_enable
+config="CONFIG_V4L_PLATFORM_DRIVERS" ; config_enable
+config="CONFIG_V4L2_MEM2MEM_DEV" ; config_module
+config="CONFIG_VIDEOBUF2_DMA_CONTIG" ; config_module
+config="CONFIG_V4L_MEM2MEM_DRIVERS" ; config_enable
+config="CONFIG_VIDEO_V4L2_SUBDEV_API" ; config_enable
+config="CONFIG_VIDEO_TI_VPE" ; config_module
+config="CONFIG_VIDEO_TI_VIP" ; config_module
+config="CONFIG_VIDEO_OV2659" ; config_module
+config="CONFIG_VIDEO_AM437X_VPFE" ; config_module
 
 CONFIG_SOUND=y
 CONFIG_SND=y
@@ -289,38 +1020,25 @@ CONFIG_SND_OMAP_SOC_DRA7EVM=y
 CONFIG_SND_SOC_TLV320AIC31XX=m
 CONFIG_SND_SOC_TLV320AIC3X=m
 
-config="CONFIG_SOUND"
-check_config_builtin
-config="CONFIG_SND"
-check_config_builtin
-config="CONFIG_SND_SOC"
-check_config_builtin
-config="CONFIG_SND_OMAP_SOC"
-check_config_builtin
-config="CONFIG_SND_EDMA_SOC"
-check_config_builtin
-config="CONFIG_SND_DAVINCI_SOC_MCASP"
-check_config_module
-config="CONFIG_SND_AM335X_SOC_NXPTDA_EVM"
-check_config_module
-config="CONFIG_SND_AM33XX_SOC_EVM"
-check_config_module
-config="CONFIG_SND_SIMPLE_CARD"
-check_config_module
-config="CONFIG_SND_OMAP_SOC_DRA7EVM"
-check_config_builtin
-config="CONFIG_SND_SOC_TLV320AIC31XX"
-check_config_module
-config="CONFIG_SND_SOC_TLV320AIC3X"
-check_config_module
+config="CONFIG_SOUND" ; config_enable
+config="CONFIG_SND" ; config_enable
+config="CONFIG_SND_SOC" ; config_enable
+config="CONFIG_SND_OMAP_SOC" ; config_enable
+config="CONFIG_SND_EDMA_SOC" ; config_enable
+config="CONFIG_SND_DAVINCI_SOC_MCASP" ; config_module
+config="CONFIG_SND_AM335X_SOC_NXPTDA_EVM" ; config_module
+config="CONFIG_SND_AM33XX_SOC_EVM" ; config_module
+config="CONFIG_SND_SIMPLE_CARD" ; config_module
+config="CONFIG_SND_OMAP_SOC_DRA7EVM" ; config_enable
+config="CONFIG_SND_SOC_TLV320AIC31XX" ; config_module
+config="CONFIG_SND_SOC_TLV320AIC3X" ; config_module
 
 CONFIG_OMAP2_DSS=y
 CONFIG_OMAP2_DSS_INIT=y
 
-config="CONFIG_OMAP2_DSS"
-check_config_builtin
-config="CONFIG_OMAP2_DSS_INIT"
-check_config_builtin
+config="CONFIG_OMAP2_DSS" ; config_enable
+config="CONFIG_OMAP2_DSS_INIT" ; config_enable
+
 ##################################################
 #baseport.cfg
 ##################################################
@@ -354,28 +1072,18 @@ CONFIG_SCHED_DEBUG=n
 CONFIG_FTRACE=n
 CONFIG_ARM_UNWIND=n
 ##################################################
-config="CONFIG_CGROUPS"
-check_config_builtin
-config="CONFIG_REGULATOR_GPIO"
-check_config_builtin
+config="CONFIG_CGROUPS" ; config_enable
+config="CONFIG_REGULATOR_GPIO" ; config_enable
 
-config="CONFIG_CRYPTO_DEV_OMAP_SHAM"
-check_config_builtin
-config="CONFIG_CRYPTO_DEV_OMAP_AES"
-check_config_builtin
-config="CONFIG_CRYPTO_DEV_OMAP_DES"
-check_config_builtin
-config="CONFIG_CRYPTO_USER_API_HASH"
-check_config_builtin
-config="CONFIG_CRYPTO_USER_API_SKCIPHER"
-check_config_builtin
+config="CONFIG_CRYPTO_DEV_OMAP_SHAM" ; config_enable
+config="CONFIG_CRYPTO_DEV_OMAP_AES" ; config_enable
+config="CONFIG_CRYPTO_DEV_OMAP_DES" ; config_enable
+config="CONFIG_CRYPTO_USER_API_HASH" ; config_enable
+config="CONFIG_CRYPTO_USER_API_SKCIPHER" ; config_enable
 
-config="CONFIG_PREEMPT_NONE"
-check_config_disable
-config="CONFIG_PREEMPT_VOLUNTARY"
-check_config_disable
-config="CONFIG_PREEMPT"
-check_config_builtin
+config="CONFIG_PREEMPT_NONE" ; config_disable
+config="CONFIG_PREEMPT_VOLUNTARY" ; config_disable
+config="CONFIG_PREEMPT" ; config_enable
 ##################################################
 #connectivity.cfg
 ##################################################
@@ -516,12 +1224,9 @@ CONFIG_USB_XHCI_HCD=m
 CONFIG_USB_TEST=m
 # CONFIG_USB_DEBUG is not set
 
-config="CONFIG_USB_EHCI_HCD"
-check_config_builtin
-config="CONFIG_USB_XHCI_HCD"
-check_config_builtin
-config="CONFIG_USB_TEST"
-check_config_module
+config="CONFIG_USB_EHCI_HCD" ; config_enable
+config="CONFIG_USB_XHCI_HCD" ; config_enable
+config="CONFIG_USB_TEST" ; config_module
 
 #USB MUSB support
 CONFIG_USB_MUSB_HDRC=m
@@ -532,20 +1237,13 @@ CONFIG_USB_TI_CPPI41_DMA=y
 CONFIG_TWL6030_USB=m
 CONFIG_TWL4030_USB=m
 
-config="CONFIG_USB_MUSB_HDRC"
-check_config_module
-config="CONFIG_USB_MUSB_OMAP2PLUS"
-check_config_module
-config="CONFIG_USB_MUSB_DSPS"
-check_config_module
-config="CONFIG_TI_CPPI41"
-check_config_builtin
-config="CONFIG_USB_TI_CPPI41_DMA"
-check_config_builtin
-config="CONFIG_TWL6030_USB"
-check_config_module
-config="CONFIG_TWL4030_USB"
-check_config_module
+config="CONFIG_USB_MUSB_HDRC" ; config_module
+config="CONFIG_USB_MUSB_OMAP2PLUS" ; config_module
+config="CONFIG_USB_MUSB_DSPS" ; config_module
+config="CONFIG_TI_CPPI41" ; config_enable
+config="CONFIG_USB_TI_CPPI41_DMA" ; config_enable
+config="CONFIG_TWL6030_USB" ; config_module
+config="CONFIG_TWL4030_USB" ; config_module
 
 #USB gadgets
 CONFIG_USB_AUDIO=m
@@ -568,44 +1266,25 @@ CONFIG_USB_G_HID=m
 CONFIG_USB_G_DBGP=m
 CONFIG_USB_G_WEBCAM=m
 
-config="CONFIG_USB_AUDIO"
-check_config_module
-config="CONFIG_USB_ETH"
-check_config_module
-config="CONFIG_USB_G_NCM"
-check_config_module
-config="CONFIG_USB_GADGETFS"
-check_config_module
-config="CONFIG_USB_FUNCTIONFS"
-check_config_module
-config="CONFIG_USB_FUNCTIONFS_ETH"
-check_config_builtin
-config="CONFIG_USB_FUNCTIONFS_RNDIS"
-check_config_builtin
-config="CONFIG_USB_FUNCTIONFS_GENERIC"
-check_config_builtin
-config="CONFIG_USB_MASS_STORAGE"
-check_config_module
-config="CONFIG_USB_G_SERIAL"
-check_config_module
-config="CONFIG_USB_MIDI_GADGET"
-check_config_module
-config="CONFIG_USB_G_PRINTER"
-check_config_module
-config="CONFIG_USB_CDC_COMPOSITE"
-check_config_module
-config="CONFIG_USB_G_ACM_MS"
-check_config_module
-config="CONFIG_USB_G_MULTI"
-check_config_module
-config="CONFIG_USB_G_MULTI_CDC"
-check_config_builtin
-config="CONFIG_USB_G_HID"
-check_config_module
-config="CONFIG_USB_G_DBGP"
-check_config_module
-config="CONFIG_USB_G_WEBCAM"
-check_config_module
+config="CONFIG_USB_AUDIO" ; config_module
+config="CONFIG_USB_ETH" ; config_module
+config="CONFIG_USB_G_NCM" ; config_module
+config="CONFIG_USB_GADGETFS" ; config_module
+config="CONFIG_USB_FUNCTIONFS" ; config_module
+config="CONFIG_USB_FUNCTIONFS_ETH" ; config_enable
+config="CONFIG_USB_FUNCTIONFS_RNDIS" ; config_enable
+config="CONFIG_USB_FUNCTIONFS_GENERIC" ; config_enable
+config="CONFIG_USB_MASS_STORAGE" ; config_module
+config="CONFIG_USB_G_SERIAL" ; config_module
+config="CONFIG_USB_MIDI_GADGET" ; config_module
+config="CONFIG_USB_G_PRINTER" ; config_module
+config="CONFIG_USB_CDC_COMPOSITE" ; config_module
+config="CONFIG_USB_G_ACM_MS" ; config_module
+config="CONFIG_USB_G_MULTI" ; config_module
+config="CONFIG_USB_G_MULTI_CDC" ; config_enable
+config="CONFIG_USB_G_HID" ; config_module
+config="CONFIG_USB_G_DBGP" ; config_module
+config="CONFIG_USB_G_WEBCAM" ; config_module
 
 #USB Video
 CONFIG_MEDIA_SUPPORT=m
@@ -620,28 +1299,17 @@ CONFIG_USB_VIDEO_CLASS=m
 CONFIG_USB_VIDEO_CLASS_INPUT_EVDEV=y
 CONFIG_USB_GSPCA=m
 
-config="CONFIG_MEDIA_SUPPORT"
-check_config_module
-config="CONFIG_MEDIA_CAMERA_SUPPORT"
-check_config_builtin
-config="CONFIG_VIDEO_DEV"
-check_config_module
-config="CONFIG_VIDEO_V4L2"
-check_config_module
-config="CONFIG_VIDEOBUF2_CORE"
-check_config_module
-config="CONFIG_VIDEOBUF2_MEMOPS"
-check_config_module
-config="CONFIG_VIDEOBUF2_VMALLOC"
-check_config_module
-config="CONFIG_MEDIA_USB_SUPPORT"
-check_config_builtin
-config="CONFIG_USB_VIDEO_CLASS"
-check_config_module
-config="CONFIG_USB_VIDEO_CLASS_INPUT_EVDEV"
-check_config_builtin
-config="CONFIG_USB_GSPCA"
-check_config_module
+config="CONFIG_MEDIA_SUPPORT" ; config_module
+config="CONFIG_MEDIA_CAMERA_SUPPORT" ; config_enable
+config="CONFIG_VIDEO_DEV" ; config_module
+config="CONFIG_VIDEO_V4L2" ; config_module
+config="CONFIG_VIDEOBUF2_CORE" ; config_module
+config="CONFIG_VIDEOBUF2_MEMOPS" ; config_module
+config="CONFIG_VIDEOBUF2_VMALLOC" ; config_module
+config="CONFIG_MEDIA_USB_SUPPORT" ; config_enable
+config="CONFIG_USB_VIDEO_CLASS" ; config_module
+config="CONFIG_USB_VIDEO_CLASS_INPUT_EVDEV" ; config_enable
+config="CONFIG_USB_GSPCA" ; config_module
 
 #USB device classes
 CONFIG_USB_ACM=m
@@ -649,32 +1317,24 @@ CONFIG_USB_SERIAL=m
 CONFIG_USB_SERIAL_PL2303=m
 CONFIG_USB_PRINTER=m
 
-config="CONFIG_USB_ACM"
-check_config_module
-config="CONFIG_USB_SERIAL"
-check_config_module
-config="CONFIG_USB_SERIAL_PL2303"
-check_config_module
-config="CONFIG_USB_PRINTER"
-check_config_module
+config="CONFIG_USB_ACM" ; config_module
+config="CONFIG_USB_SERIAL" ; config_module
+config="CONFIG_USB_SERIAL_PL2303" ; config_module
+config="CONFIG_USB_PRINTER" ; config_module
 
 #SATA
 CONFIG_ATA=y
 CONFIG_SATA_AHCI_PLATFORM=y
 
-config="CONFIG_ATA"
-check_config_builtin
-config="CONFIG_SATA_AHCI_PLATFORM"
-check_config_builtin
+config="CONFIG_ATA" ; config_enable
+config="CONFIG_SATA_AHCI_PLATFORM" ; config_enable
 
 #GPIO
 CONFIG_GPIO_PCF857X=y
 CONFIG_GPIO_PCA953X=y
 
-config="CONFIG_GPIO_PCF857X"
-check_config_builtin
-config="CONFIG_GPIO_PCA953X"
-check_config_builtin
+config="CONFIG_GPIO_PCF857X" ; config_enable
+config="CONFIG_GPIO_PCA953X" ; config_enable
 
 #IIO and ADC
 CONFIG_IIO=m
@@ -683,28 +1343,20 @@ CONFIG_IIO_BUFFER_CB=y
 CONFIG_IIO_KFIFO_BUF=m
 CONFIG_TI_AM335X_ADC=m
 
-config="CONFIG_IIO"
-check_config_module
-config="CONFIG_IIO_BUFFER"
-check_config_builtin
-config="CONFIG_IIO_BUFFER_CB"
-check_config_builtin
-config="CONFIG_IIO_KFIFO_BUF"
-check_config_module
-config="CONFIG_TI_AM335X_ADC"
-check_config_module
+config="CONFIG_IIO" ; config_module
+config="CONFIG_IIO_BUFFER" ; config_enable
+config="CONFIG_IIO_BUFFER_CB" ; config_enable
+config="CONFIG_IIO_KFIFO_BUF" ; config_module
+config="CONFIG_TI_AM335X_ADC" ; config_module
 
 #PWM
 CONFIG_PWM=y
 CONFIG_PWM_TIECAP=y
 CONFIG_PWM_TIEHRPWM=y
 
-config="CONFIG_PWM"
-check_config_builtin
-config="CONFIG_PWM_TIECAP"
-check_config_builtin
-config="CONFIG_PWM_TIEHRPWM"
-check_config_builtin
+config="CONFIG_PWM" ; config_enable
+config="CONFIG_PWM_TIECAP" ; config_enable
+config="CONFIG_PWM_TIEHRPWM" ; config_enable
 
 #Touchscreen
 CONFIG_INPUT_TOUCHSCREEN=y
@@ -714,39 +1366,29 @@ CONFIG_MFD_TI_AM335X_TSCADC=y
 CONFIG_TOUCHSCREEN_TI_AM335X_TSC=y
 CONFIG_TOUCHSCREEN_PIXCIR=m
 
-config="CONFIG_INPUT_TOUCHSCREEN"
-check_config_builtin
-config="CONFIG_TOUCHSCREEN_ADS7846"
-check_config_builtin
-config="CONFIG_TOUCHSCREEN_ATMEL_MXT"
-check_config_builtin
-config="CONFIG_MFD_TI_AM335X_TSCADC"
-check_config_builtin
-config="CONFIG_TOUCHSCREEN_TI_AM335X_TSC"
-check_config_builtin
-config="CONFIG_TOUCHSCREEN_PIXCIR"
-check_config_module
+config="CONFIG_INPUT_TOUCHSCREEN" ; config_enable
+config="CONFIG_TOUCHSCREEN_ADS7846" ; config_enable
+config="CONFIG_TOUCHSCREEN_ATMEL_MXT" ; config_enable
+config="CONFIG_MFD_TI_AM335X_TSCADC" ; config_enable
+config="CONFIG_TOUCHSCREEN_TI_AM335X_TSC" ; config_enable
+config="CONFIG_TOUCHSCREEN_PIXCIR" ; config_module
 
 # Buttons
 CONFIG_INPUT_PALMAS_PWRBUTTON=y
 
-config="CONFIG_INPUT_PALMAS_PWRBUTTON"
-check_config_builtin
+config="CONFIG_INPUT_PALMAS_PWRBUTTON" ; config_enable
 
 #RTC
 CONFIG_RTC_DRV_PALMAS=y
 CONFIG_RTC_DRV_DS1307=y
 
-config="CONFIG_RTC_DRV_PALMAS"
-check_config_builtin
-config="CONFIG_RTC_DRV_DS1307"
-check_config_builtin
+config="CONFIG_RTC_DRV_PALMAS" ; config_enable
+config="CONFIG_RTC_DRV_DS1307" ; config_enable
 
 #Ethernet
 CONFIG_TI_CPTS=y
 
-config="CONFIG_TI_CPTS"
-check_config_builtin
+config="CONFIG_TI_CPTS" ; config_enable
 
 #LED
 CONFIG_LEDS_CLASS=y
@@ -762,60 +1404,42 @@ CONFIG_LEDS_TRIGGER_DEFAULT_ON=y
 CONFIG_LEDS_TRIGGER_TRANSIENT=y
 CONFIG_LEDS_TRIGGER_CAMERA=y
 
-config="CONFIG_LEDS_CLASS"
-check_config_builtin
-config="CONFIG_LEDS_GPIO"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGERS"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGER_TIMER"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGER_ONESHOT"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGER_HEARTBEAT"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGER_BACKLIGHT"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGER_CPU"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGER_GPIO"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGER_DEFAULT_ON"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGER_TRANSIENT"
-check_config_builtin
-config="CONFIG_LEDS_TRIGGER_CAMERA"
-check_config_builtin
+config="CONFIG_LEDS_CLASS" ; config_enable
+config="CONFIG_LEDS_GPIO" ; config_enable
+config="CONFIG_LEDS_TRIGGERS" ; config_enable
+config="CONFIG_LEDS_TRIGGER_TIMER" ; config_enable
+config="CONFIG_LEDS_TRIGGER_ONESHOT" ; config_enable
+config="CONFIG_LEDS_TRIGGER_HEARTBEAT" ; config_enable
+config="CONFIG_LEDS_TRIGGER_BACKLIGHT" ; config_enable
+config="CONFIG_LEDS_TRIGGER_CPU" ; config_enable
+config="CONFIG_LEDS_TRIGGER_GPIO" ; config_enable
+config="CONFIG_LEDS_TRIGGER_DEFAULT_ON" ; config_enable
+config="CONFIG_LEDS_TRIGGER_TRANSIENT" ; config_enable
+config="CONFIG_LEDS_TRIGGER_CAMERA" ; config_enable
 
 #MTD
 CONFIG_MTD_NAND_OMAP_BCH=y
 CONFIG_MTD_TESTS=m
 
-config="CONFIG_MTD_NAND_OMAP_BCH"
-check_config_builtin
-config="CONFIG_MTD_TESTS"
-check_config_module
+config="CONFIG_MTD_NAND_OMAP_BCH" ; config_enable
+config="CONFIG_MTD_TESTS" ; config_module
 
 #SPI
 CONFIG_SPI_SPIDEV=y
 
-config="CONFIG_SPI_SPIDEV"
-check_config_builtin
+config="CONFIG_SPI_SPIDEV" ; config_enable
 
 #QSPI
 CONFIG_SPI_TI_QSPI=y
 CONFIG_MTD_M25P80=m
 
-config="CONFIG_SPI_TI_QSPI"
-check_config_builtin
-config="CONFIG_MTD_M25P80"
-check_config_module
+config="CONFIG_SPI_TI_QSPI" ; config_enable
+config="CONFIG_MTD_M25P80" ; config_module
 
 #EXTCON
 CONFIG_EXTCON_GPIO=y
 
-config="CONFIG_EXTCON_GPIO"
-check_config_builtin
+config="CONFIG_EXTCON_GPIO" ; config_enable
 ##################################################
 #ipc.cfg
 ##################################################
@@ -842,39 +1466,32 @@ CONFIG_RPMSG_RPC=m
 # HwSpinLock
 CONFIG_HWSPINLOCK_OMAP=y
 
-config="CONFIG_HWSPINLOCK_OMAP"
-check_config_builtin
+config="CONFIG_HWSPINLOCK_OMAP" ; config_enable
 
 # Mailbox
 CONFIG_OMAP2PLUS_MBOX=y
 
-config="CONFIG_OMAP2PLUS_MBOX"
-check_config_builtin
+config="CONFIG_OMAP2PLUS_MBOX" ; config_enable
 
 # IOMMU
 CONFIG_OMAP_IOMMU=y
 CONFIG_OMAP_IOVMM=y
 CONFIG_OMAP_IOMMU_DEBUG=y
 
-config="CONFIG_OMAP_IOMMU"
-check_config_builtin
-config="CONFIG_OMAP_IOVMM"
-check_config_builtin
+config="CONFIG_OMAP_IOMMU" ; config_enable
+config="CONFIG_OMAP_IOVMM" ; config_enable
 
 # Remoteproc
 CONFIG_OMAP_REMOTEPROC=m
 CONFIG_OMAP_REMOTEPROC_WATCHDOG=y
 
-config="CONFIG_OMAP_REMOTEPROC"
-check_config_module
-config="CONFIG_OMAP_REMOTEPROC_WATCHDOG"
-check_config_builtin
+config="CONFIG_OMAP_REMOTEPROC" ; config_module
+config="CONFIG_OMAP_REMOTEPROC_WATCHDOG" ; config_enable
 
 # RPMsg
 CONFIG_RPMSG_RPC=m
 
-config="CONFIG_RPMSG_RPC"
-check_config_module
+config="CONFIG_RPMSG_RPC" ; config_module
 ##################################################
 #power.cfg
 ##################################################
@@ -901,37 +1518,25 @@ CONFIG_VOLTAGE_DOMAIN_OMAP=y
 
 CONFIG_SENSORS_TMP102=y
 ##################################################
-config="CONFIG_CPU_FREQ"
-check_config_builtin
-config="CONFIG_CPU_FREQ_STAT"
-check_config_builtin
-config="CONFIG_CPU_FREQ_STAT_DETAILS"
-check_config_builtin
+config="CONFIG_CPU_FREQ" ; config_enable
+config="CONFIG_CPU_FREQ_STAT" ; config_enable
+config="CONFIG_CPU_FREQ_STAT_DETAILS" ; config_enable
 
-config="CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE"
-check_config_builtin
+config="CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE" ; config_enable
 
-config="CONFIG_CPU_FREQ_GOV_PERFORMANCE"
-check_config_builtin
-config="CONFIG_CPU_FREQ_GOV_POWERSAVE"
-check_config_builtin
-config="CONFIG_CPU_FREQ_GOV_USERSPACE"
-check_config_builtin
-config="CONFIG_CPU_FREQ_GOV_CONSERVATIVE"
-check_config_builtin
+config="CONFIG_CPU_FREQ_GOV_PERFORMANCE" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_POWERSAVE" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_USERSPACE" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_ONDEMAND" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_CONSERVATIVE" ; config_enable
 
-config="CONFIG_CPU_THERMAL"
-check_config_builtin
-config="CONFIG_TI_THERMAL"
-check_config_builtin
+config="CONFIG_CPU_THERMAL" ; config_enable
+config="CONFIG_TI_THERMAL" ; config_enable
 
-config="CONFIG_GENERIC_CPUFREQ_CPU0"
-check_config_builtin
-config="CONFIG_VOLTAGE_DOMAIN_OMAP"
-check_config_builtin
+config="CONFIG_GENERIC_CPUFREQ_CPU0" ; config_enable
+config="CONFIG_VOLTAGE_DOMAIN_OMAP" ; config_enable
 
-config="CONFIG_SENSORS_TMP102"
-check_config_builtin
+config="CONFIG_SENSORS_TMP102" ; config_enable
 ##################################################
 #system_test.cfg
 ##################################################
@@ -952,16 +1557,11 @@ CONFIG_DEVFREQ_GOV_PERFORMANCE=y
 CONFIG_DEVFREQ_GOV_POWERSAVE=y
 CONFIG_DEVFREQ_GOV_USERSPACE=y
 ##################################################
-config="CONFIG_PM_DEVFREQ"
-check_config_builtin
-config="CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND"
-check_config_builtin
-config="CONFIG_DEVFREQ_GOV_PERFORMANCE"
-check_config_builtin
-config="CONFIG_DEVFREQ_GOV_POWERSAVE"
-check_config_builtin
-config="CONFIG_DEVFREQ_GOV_USERSPACE"
-check_config_builtin
+config="CONFIG_PM_DEVFREQ" ; config_enable
+config="CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND" ; config_enable
+config="CONFIG_DEVFREQ_GOV_PERFORMANCE" ; config_enable
+config="CONFIG_DEVFREQ_GOV_POWERSAVE" ; config_enable
+config="CONFIG_DEVFREQ_GOV_USERSPACE" ; config_enable
 ##################################################
 # TI WLCORE config options
 ##################################################
@@ -990,2095 +1590,11 @@ CONFIG_NF_NAT_IPV4=y
 CONFIG_IP_NF_TARGET_MASQUERADE=y
 ##################################################
 
-config="CONFIG_RFKILL"
-check_config_module
-
-config="CONFIG_NF_CONNTRACK"
-check_config_builtin
-config="CONFIG_NF_CONNTRACK_IPV4"
-check_config_builtin
-config="CONFIG_IP_NF_IPTABLES"
-check_config_builtin
-config="CONFIG_IP_NF_FILTER"
-check_config_builtin
-config="CONFIG_NF_NAT_IPV4"
-check_config_builtin
-config="CONFIG_IP_NF_TARGET_MASQUERADE"
-check_config_builtin
 ##################################################
 
 #
 # General setup
 #
-config="CONFIG_LOCALVERSION_AUTO"
-check_config_disable
-config="CONFIG_KERNEL_GZIP"
-check_config_disable
-config="CONFIG_KERNEL_LZO"
-check_config_builtin
-config="CONFIG_FHANDLE"
-check_config_builtin
-
-#
-# RCU Subsystem
-#
-config="CONFIG_LOG_BUF_SHIFT"
-value="18"
-check_config_value
-config="CONFIG_CGROUP_SCHED"
-check_config_builtin
-config="CONFIG_FAIR_GROUP_SCHED"
-check_config_builtin
-
-#
-# Kernel Performance Events And Counters
-#
-config="CONFIG_SECCOMP_FILTER"
-check_config_builtin
-config="CONFIG_CC_STACKPROTECTOR"
-check_config_builtin
-config="CONFIG_CC_STACKPROTECTOR_NONE"
-check_config_disable
-config="CONFIG_CC_STACKPROTECTOR_REGULAR"
-check_config_builtin
-
-#
-# GCOV-based kernel profiling
-#
-config="CONFIG_MODULE_SRCVERSION_ALL"
-check_config_disable
-config="CONFIG_BLK_DEV_BSG"
-check_config_builtin
-
-#
-# Kernel Features
-#
-config="CONFIG_ZSMALLOC"
-check_config_builtin
-config="CONFIG_SECCOMP"
-check_config_builtin
-
-#
-# Boot options
-#
-config="CONFIG_ARM_APPENDED_DTB"
-check_config_disable
-
-#
-# ARM CPU frequency scaling drivers
-#
-config="CONFIG_ARM_OMAP2PLUS_CPUFREQ"
-check_config_disable
-
-#
-# At least one emulation must be selected
-#
-config="CONFIG_KERNEL_MODE_NEON"
-check_config_builtin
-
-#
-# Power management options
-#
-config="CONFIG_PM_AUTOSLEEP"
-check_config_builtin
-config="CONFIG_PM_WAKELOCKS"
-check_config_builtin
-
-#
-# Networking options
-#
-config="CONFIG_PACKET_DIAG"
-check_config_module
-config="CONFIG_UNIX_DIAG"
-check_config_module
-config="CONFIG_XFRM_ALGO"
-check_config_module
-config="CONFIG_XFRM_USER"
-check_config_module
-config="CONFIG_XFRM_SUB_POLICY"
-check_config_builtin
-config="CONFIG_XFRM_IPCOMP"
-check_config_module
-config="CONFIG_NET_KEY"
-check_config_module
-config="CONFIG_IP_ADVANCED_ROUTER"
-check_config_builtin
-config="CONFIG_IP_FIB_TRIE_STATS"
-check_config_builtin
-config="CONFIG_IP_MULTIPLE_TABLES"
-check_config_builtin
-config="CONFIG_IP_ROUTE_MULTIPATH"
-check_config_builtin
-config="CONFIG_IP_ROUTE_VERBOSE"
-check_config_builtin
-config="CONFIG_IP_ROUTE_CLASSID"
-check_config_builtin
-config="CONFIG_NET_IPIP"
-check_config_module
-config="CONFIG_NET_IPGRE_DEMUX"
-check_config_module
-config="CONFIG_NET_IP_TUNNEL"
-check_config_module
-config="CONFIG_NET_IPGRE"
-check_config_module
-config="CONFIG_NET_IPGRE_BROADCAST"
-check_config_builtin
-config="CONFIG_IP_MROUTE"
-check_config_builtin
-config="CONFIG_IP_MROUTE_MULTIPLE_TABLES"
-check_config_builtin
-config="CONFIG_IP_PIMSM_V1"
-check_config_builtin
-config="CONFIG_IP_PIMSM_V2"
-check_config_builtin
-config="CONFIG_SYN_COOKIES"
-check_config_builtin
-config="CONFIG_NET_IPVTI"
-check_config_module
-config="CONFIG_INET_AH"
-check_config_module
-config="CONFIG_INET_ESP"
-check_config_module
-config="CONFIG_INET_IPCOMP"
-check_config_module
-config="CONFIG_INET_XFRM_TUNNEL"
-check_config_module
-config="CONFIG_INET_TUNNEL"
-check_config_module
-config="CONFIG_INET_XFRM_MODE_TRANSPORT"
-check_config_module
-config="CONFIG_INET_XFRM_MODE_TUNNEL"
-check_config_module
-config="CONFIG_INET_XFRM_MODE_BEET"
-check_config_module
-config="CONFIG_INET_LRO"
-check_config_module
-config="CONFIG_INET_DIAG"
-check_config_module
-config="CONFIG_INET_TCP_DIAG"
-check_config_module
-config="CONFIG_INET_UDP_DIAG"
-check_config_module
-config="CONFIG_TCP_CONG_ADVANCED"
-check_config_builtin
-config="CONFIG_TCP_CONG_BIC"
-check_config_module
-config="CONFIG_TCP_CONG_WESTWOOD"
-check_config_module
-config="CONFIG_TCP_CONG_HTCP"
-check_config_module
-config="CONFIG_TCP_CONG_HSTCP"
-check_config_module
-config="CONFIG_TCP_CONG_HYBLA"
-check_config_module
-config="CONFIG_TCP_CONG_VEGAS"
-check_config_module
-config="CONFIG_TCP_CONG_SCALABLE"
-check_config_module
-config="CONFIG_TCP_CONG_LP"
-check_config_module
-config="CONFIG_TCP_CONG_VENO"
-check_config_module
-config="CONFIG_TCP_CONG_YEAH"
-check_config_module
-config="CONFIG_TCP_CONG_ILLINOIS"
-check_config_module
-config="CONFIG_DEFAULT_CUBIC"
-check_config_builtin
-config="CONFIG_TCP_MD5SIG"
-check_config_builtin
-config="CONFIG_IPV6"
-check_config_builtin
-config="CONFIG_IPV6_ROUTER_PREF"
-check_config_builtin
-config="CONFIG_IPV6_ROUTE_INFO"
-check_config_builtin
-config="CONFIG_IPV6_OPTIMISTIC_DAD"
-check_config_builtin
-config="CONFIG_INET6_AH"
-check_config_module
-config="CONFIG_INET6_ESP"
-check_config_module
-config="CONFIG_INET6_IPCOMP"
-check_config_module
-config="CONFIG_IPV6_MIP6"
-check_config_builtin
-config="CONFIG_INET6_XFRM_TUNNEL"
-check_config_module
-config="CONFIG_INET6_TUNNEL"
-check_config_module
-config="CONFIG_INET6_XFRM_MODE_TRANSPORT"
-check_config_module
-config="CONFIG_INET6_XFRM_MODE_TUNNEL"
-check_config_module
-config="CONFIG_INET6_XFRM_MODE_BEET"
-check_config_module
-config="CONFIG_INET6_XFRM_MODE_ROUTEOPTIMIZATION"
-check_config_module
-config="CONFIG_IPV6_VTI"
-check_config_module
-config="CONFIG_IPV6_SIT"
-check_config_module
-config="CONFIG_IPV6_SIT_6RD"
-check_config_builtin
-config="CONFIG_IPV6_NDISC_NODETYPE"
-check_config_builtin
-config="CONFIG_IPV6_TUNNEL"
-check_config_module
-config="CONFIG_IPV6_GRE"
-check_config_module
-config="CONFIG_IPV6_MULTIPLE_TABLES"
-check_config_builtin
-config="CONFIG_IPV6_SUBTREES"
-check_config_builtin
-config="CONFIG_IPV6_MROUTE"
-check_config_builtin
-config="CONFIG_IPV6_MROUTE_MULTIPLE_TABLES"
-check_config_builtin
-config="CONFIG_IPV6_PIMSM_V2"
-check_config_builtin
-config="CONFIG_NETWORK_SECMARK"
-check_config_builtin
-config="CONFIG_BRIDGE_NETFILTER"
-check_config_builtin
-
-#
-# Core Netfilter Configuration
-#
-config="CONFIG_NETFILTER_NETLINK"
-check_config_module
-config="CONFIG_NETFILTER_NETLINK_ACCT"
-check_config_module
-config="CONFIG_NETFILTER_NETLINK_QUEUE"
-check_config_module
-config="CONFIG_NETFILTER_NETLINK_LOG"
-check_config_module
-config="CONFIG_NF_CONNTRACK"
-check_config_builtin
-config="CONFIG_NF_CONNTRACK_MARK"
-check_config_builtin
-config="CONFIG_NF_CONNTRACK_SECMARK"
-check_config_builtin
-config="CONFIG_NF_CONNTRACK_ZONES"
-check_config_builtin
-config="CONFIG_NF_CONNTRACK_PROCFS"
-check_config_builtin
-config="CONFIG_NF_CONNTRACK_EVENTS"
-check_config_builtin
-config="CONFIG_NF_CONNTRACK_TIMEOUT"
-check_config_builtin
-config="CONFIG_NF_CONNTRACK_TIMESTAMP"
-check_config_builtin
-config="CONFIG_NF_CONNTRACK_LABELS"
-check_config_builtin
-config="CONFIG_NF_CT_PROTO_DCCP"
-check_config_module
-config="CONFIG_NF_CT_PROTO_GRE"
-check_config_module
-config="CONFIG_NF_CT_PROTO_SCTP"
-check_config_module
-config="CONFIG_NF_CT_PROTO_UDPLITE"
-check_config_module
-config="CONFIG_NF_CONNTRACK_AMANDA"
-check_config_module
-config="CONFIG_NF_CONNTRACK_FTP"
-check_config_module
-config="CONFIG_NF_CONNTRACK_H323"
-check_config_module
-config="CONFIG_NF_CONNTRACK_IRC"
-check_config_module
-config="CONFIG_NF_CONNTRACK_BROADCAST"
-check_config_module
-config="CONFIG_NF_CONNTRACK_NETBIOS_NS"
-check_config_module
-config="CONFIG_NF_CONNTRACK_SNMP"
-check_config_module
-config="CONFIG_NF_CONNTRACK_PPTP"
-check_config_module
-config="CONFIG_NF_CONNTRACK_SANE"
-check_config_module
-config="CONFIG_NF_CONNTRACK_SIP"
-check_config_module
-config="CONFIG_NF_CONNTRACK_TFTP"
-check_config_module
-config="CONFIG_NF_CT_NETLINK"
-check_config_module
-config="CONFIG_NF_CT_NETLINK_TIMEOUT"
-check_config_module
-config="CONFIG_NF_CT_NETLINK_HELPER"
-check_config_module
-config="CONFIG_NETFILTER_NETLINK_QUEUE_CT"
-check_config_builtin
-config="CONFIG_NF_NAT"
-check_config_builtin
-config="CONFIG_NF_NAT_NEEDED"
-check_config_builtin
-config="CONFIG_NF_NAT_PROTO_DCCP"
-check_config_module
-config="CONFIG_NF_NAT_PROTO_UDPLITE"
-check_config_module
-config="CONFIG_NF_NAT_PROTO_SCTP"
-check_config_module
-config="CONFIG_NF_NAT_AMANDA"
-check_config_module
-config="CONFIG_NF_NAT_FTP"
-check_config_module
-config="CONFIG_NF_NAT_IRC"
-check_config_module
-config="CONFIG_NF_NAT_SIP"
-check_config_module
-config="CONFIG_NF_NAT_TFTP"
-check_config_module
-config="CONFIG_NETFILTER_SYNPROXY"
-check_config_module
-config="CONFIG_NF_TABLES"
-check_config_module
-config="CONFIG_NF_TABLES_INET"
-check_config_module
-config="CONFIG_NFT_EXTHDR"
-check_config_module
-config="CONFIG_NFT_META"
-check_config_module
-config="CONFIG_NFT_CT"
-check_config_module
-config="CONFIG_NFT_RBTREE"
-check_config_module
-config="CONFIG_NFT_HASH"
-check_config_module
-config="CONFIG_NFT_COUNTER"
-check_config_module
-config="CONFIG_NFT_LOG"
-check_config_module
-config="CONFIG_NFT_LIMIT"
-check_config_module
-config="CONFIG_NFT_NAT"
-check_config_module
-config="CONFIG_NFT_QUEUE"
-check_config_module
-config="CONFIG_NFT_REJECT"
-check_config_module
-config="CONFIG_NFT_REJECT_INET"
-check_config_module
-config="CONFIG_NFT_COMPAT"
-check_config_module
-
-#
-# Xtables combined modules
-#
-config="CONFIG_NETFILTER_XT_MARK"
-check_config_module
-config="CONFIG_NETFILTER_XT_CONNMARK"
-check_config_module
-config="CONFIG_NETFILTER_XT_SET"
-check_config_module
-
-#
-# Xtables targets
-#
-config="CONFIG_NETFILTER_XT_TARGET_CHECKSUM"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_CLASSIFY"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_CONNMARK"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_CONNSECMARK"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_CT"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_DSCP"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_HL"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_HMARK"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_IDLETIMER"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_LED"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_LOG"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_MARK"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_NETMAP"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_NFLOG"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_NFQUEUE"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_RATEEST"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_REDIRECT"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_TEE"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_TPROXY"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_TRACE"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_SECMARK"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_TCPMSS"
-check_config_module
-config="CONFIG_NETFILTER_XT_TARGET_TCPOPTSTRIP"
-check_config_module
-
-#
-# Xtables matches
-#
-config="CONFIG_NETFILTER_XT_MATCH_ADDRTYPE"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_BPF"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_CGROUP"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_CLUSTER"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_COMMENT"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_CONNBYTES"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_CONNLABEL"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_CONNLIMIT"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_CONNMARK"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_CONNTRACK"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_CPU"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_DCCP"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_DEVGROUP"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_DSCP"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_ECN"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_ESP"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_HASHLIMIT"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_HELPER"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_HL"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_IPCOMP"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_IPRANGE"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_IPVS"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_L2TP"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_LENGTH"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_LIMIT"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_MAC"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_MARK"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_MULTIPORT"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_NFACCT"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_OSF"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_OWNER"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_POLICY"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_PHYSDEV"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_PKTTYPE"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_QUOTA"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_RATEEST"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_REALM"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_RECENT"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_SCTP"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_SOCKET"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_STATE"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_STATISTIC"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_STRING"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_TCPMSS"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_TIME"
-check_config_module
-config="CONFIG_NETFILTER_XT_MATCH_U32"
-check_config_module
-config="CONFIG_IP_SET"
-check_config_module
-config="CONFIG_IP_SET_BITMAP_IP"
-check_config_module
-config="CONFIG_IP_SET_BITMAP_IPMAC"
-check_config_module
-config="CONFIG_IP_SET_BITMAP_PORT"
-check_config_module
-config="CONFIG_IP_SET_HASH_IP"
-check_config_module
-config="CONFIG_IP_SET_HASH_IPPORT"
-check_config_module
-config="CONFIG_IP_SET_HASH_IPPORTIP"
-check_config_module
-config="CONFIG_IP_SET_HASH_IPPORTNET"
-check_config_module
-config="CONFIG_IP_SET_HASH_NETPORTNET"
-check_config_module
-config="CONFIG_IP_SET_HASH_NET"
-check_config_module
-config="CONFIG_IP_SET_HASH_NETNET"
-check_config_module
-config="CONFIG_IP_SET_HASH_NETPORT"
-check_config_module
-config="CONFIG_IP_SET_HASH_NETIFACE"
-check_config_module
-config="CONFIG_IP_SET_LIST_SET"
-check_config_module
-config="CONFIG_IP_VS"
-check_config_module
-config="CONFIG_IP_VS_IPV6"
-check_config_builtin
-
-#
-# IPVS transport protocol load balancing support
-#
-config="CONFIG_IP_VS_PROTO_TCP"
-check_config_builtin
-config="CONFIG_IP_VS_PROTO_UDP"
-check_config_builtin
-config="CONFIG_IP_VS_PROTO_AH_ESP"
-check_config_builtin
-config="CONFIG_IP_VS_PROTO_ESP"
-check_config_builtin
-config="CONFIG_IP_VS_PROTO_AH"
-check_config_builtin
-config="CONFIG_IP_VS_PROTO_SCTP"
-check_config_builtin
-
-#
-# IPVS scheduler
-#
-config="CONFIG_IP_VS_RR"
-check_config_module
-config="CONFIG_IP_VS_WRR"
-check_config_module
-config="CONFIG_IP_VS_LC"
-check_config_module
-config="CONFIG_IP_VS_WLC"
-check_config_module
-config="CONFIG_IP_VS_LBLC"
-check_config_module
-config="CONFIG_IP_VS_LBLCR"
-check_config_module
-config="CONFIG_IP_VS_DH"
-check_config_module
-config="CONFIG_IP_VS_SH"
-check_config_module
-config="CONFIG_IP_VS_SED"
-check_config_module
-config="CONFIG_IP_VS_NQ"
-check_config_module
-
-#
-# IPVS application helper
-#
-config="CONFIG_IP_VS_FTP"
-check_config_module
-config="CONFIG_IP_VS_NFCT"
-check_config_builtin
-config="CONFIG_IP_VS_PE_SIP"
-check_config_module
-
-#
-# IP: Netfilter configuration
-#
-config="CONFIG_NFT_CHAIN_ROUTE_IPV4"
-check_config_module
-config="CONFIG_NFT_CHAIN_NAT_IPV4"
-check_config_module
-config="CONFIG_NF_TABLES_ARP"
-check_config_module
-config="CONFIG_IP_NF_MATCH_AH"
-check_config_module
-config="CONFIG_IP_NF_MATCH_RPFILTER"
-check_config_module
-config="CONFIG_IP_NF_TARGET_REJECT"
-check_config_module
-config="CONFIG_IP_NF_TARGET_SYNPROXY"
-check_config_module
-config="CONFIG_IP_NF_TARGET_ULOG"
-check_config_module
-config="CONFIG_IP_NF_MANGLE"
-check_config_module
-config="CONFIG_IP_NF_TARGET_CLUSTERIP"
-check_config_module
-config="CONFIG_IP_NF_TARGET_ECN"
-check_config_module
-config="CONFIG_IP_NF_RAW"
-check_config_module
-config="CONFIG_IP_NF_SECURITY"
-check_config_module
-config="CONFIG_IP_NF_ARPTABLES"
-check_config_module
-config="CONFIG_IP_NF_ARPFILTER"
-check_config_module
-config="CONFIG_IP_NF_ARP_MANGLE"
-check_config_module
-
-#
-# IPv6: Netfilter configuration
-#
-config="CONFIG_NF_CONNTRACK_IPV6"
-check_config_module
-config="CONFIG_NFT_CHAIN_ROUTE_IPV6"
-check_config_module
-config="CONFIG_NFT_CHAIN_NAT_IPV6"
-check_config_module
-config="CONFIG_IP6_NF_MATCH_AH"
-check_config_module
-config="CONFIG_IP6_NF_MATCH_EUI64"
-check_config_module
-config="CONFIG_IP6_NF_MATCH_FRAG"
-check_config_module
-config="CONFIG_IP6_NF_MATCH_OPTS"
-check_config_module
-config="CONFIG_IP6_NF_MATCH_IPV6HEADER"
-check_config_module
-config="CONFIG_IP6_NF_MATCH_MH"
-check_config_module
-config="CONFIG_IP6_NF_MATCH_RPFILTER"
-check_config_module
-config="CONFIG_IP6_NF_MATCH_RT"
-check_config_module
-config="CONFIG_IP6_NF_FILTER"
-check_config_module
-config="CONFIG_IP6_NF_TARGET_REJECT"
-check_config_module
-config="CONFIG_IP6_NF_TARGET_SYNPROXY"
-check_config_module
-config="CONFIG_IP6_NF_MANGLE"
-check_config_module
-config="CONFIG_IP6_NF_RAW"
-check_config_module
-config="CONFIG_IP6_NF_SECURITY"
-check_config_module
-config="CONFIG_NF_NAT_IPV6"
-check_config_module
-config="CONFIG_IP6_NF_TARGET_MASQUERADE"
-check_config_module
-config="CONFIG_IP6_NF_TARGET_NPT"
-check_config_module
-config="CONFIG_NF_TABLES_BRIDGE"
-check_config_module
-config="CONFIG_BRIDGE_NF_EBTABLES"
-check_config_module
-config="CONFIG_BRIDGE_EBT_BROUTE"
-check_config_module
-config="CONFIG_BRIDGE_EBT_T_FILTER"
-check_config_module
-config="CONFIG_BRIDGE_EBT_T_NAT"
-check_config_module
-config="CONFIG_BRIDGE_EBT_802_3"
-check_config_module
-config="CONFIG_BRIDGE_EBT_AMONG"
-check_config_module
-config="CONFIG_BRIDGE_EBT_ARP"
-check_config_module
-config="CONFIG_BRIDGE_EBT_IP"
-check_config_module
-config="CONFIG_BRIDGE_EBT_IP6"
-check_config_module
-config="CONFIG_BRIDGE_EBT_LIMIT"
-check_config_module
-config="CONFIG_BRIDGE_EBT_MARK"
-check_config_module
-config="CONFIG_BRIDGE_EBT_PKTTYPE"
-check_config_module
-config="CONFIG_BRIDGE_EBT_STP"
-check_config_module
-config="CONFIG_BRIDGE_EBT_VLAN"
-check_config_module
-config="CONFIG_BRIDGE_EBT_ARPREPLY"
-check_config_module
-config="CONFIG_BRIDGE_EBT_DNAT"
-check_config_module
-config="CONFIG_BRIDGE_EBT_MARK_T"
-check_config_module
-config="CONFIG_BRIDGE_EBT_REDIRECT"
-check_config_module
-config="CONFIG_BRIDGE_EBT_SNAT"
-check_config_module
-config="CONFIG_BRIDGE_EBT_LOG"
-check_config_module
-config="CONFIG_BRIDGE_EBT_ULOG"
-check_config_module
-config="CONFIG_BRIDGE_EBT_NFLOG"
-check_config_module
-config="CONFIG_IP_DCCP"
-check_config_module
-config="CONFIG_INET_DCCP_DIAG"
-check_config_module
-
-#
-# DCCP CCIDs configuration
-#
-config="CONFIG_IP_DCCP_CCID3"
-check_config_builtin
-config="CONFIG_IP_DCCP_TFRC_LIB"
-check_config_builtin
-
-#
-# DCCP Kernel Hacking
-#
-config="CONFIG_NET_DCCPPROBE"
-check_config_module
-config="CONFIG_IP_SCTP"
-check_config_module
-config="CONFIG_NET_SCTPPROBE"
-check_config_module
-config="CONFIG_SCTP_DEFAULT_COOKIE_HMAC_MD5"
-check_config_builtin
-config="CONFIG_SCTP_COOKIE_HMAC_MD5"
-check_config_builtin
-config="CONFIG_SCTP_COOKIE_HMAC_SHA1"
-check_config_builtin
-config="CONFIG_RDS"
-check_config_module
-config="CONFIG_RDS_TCP"
-check_config_module
-config="CONFIG_TIPC"
-check_config_module
-config="CONFIG_ATM"
-check_config_module
-config="CONFIG_ATM_CLIP"
-check_config_module
-config="CONFIG_ATM_LANE"
-check_config_module
-config="CONFIG_ATM_MPOA"
-check_config_module
-config="CONFIG_ATM_BR2684"
-check_config_module
-config="CONFIG_L2TP"
-check_config_module
-config="CONFIG_L2TP_DEBUGFS"
-check_config_module
-config="CONFIG_L2TP_V3"
-check_config_builtin
-config="CONFIG_L2TP_IP"
-check_config_module
-config="CONFIG_L2TP_ETH"
-check_config_module
-config="CONFIG_STP"
-check_config_module
-config="CONFIG_GARP"
-check_config_module
-config="CONFIG_MRP"
-check_config_module
-config="CONFIG_BRIDGE"
-check_config_module
-config="CONFIG_BRIDGE_IGMP_SNOOPING"
-check_config_builtin
-config="CONFIG_BRIDGE_VLAN_FILTERING"
-check_config_builtin
-config="CONFIG_VLAN_8021Q"
-check_config_module
-config="CONFIG_VLAN_8021Q_GVRP"
-check_config_builtin
-config="CONFIG_VLAN_8021Q_MVRP"
-check_config_builtin
-config="CONFIG_LLC"
-check_config_module
-config="CONFIG_LLC2"
-check_config_module
-config="CONFIG_ATALK"
-check_config_module
-config="CONFIG_DEV_APPLETALK"
-check_config_module
-config="CONFIG_IPDDP"
-check_config_module
-config="CONFIG_IPDDP_ENCAP"
-check_config_builtin
-config="CONFIG_PHONET"
-check_config_module
-config="CONFIG_IEEE802154"
-check_config_module
-config="CONFIG_IEEE802154_6LOWPAN"
-check_config_module
-config="CONFIG_NET_SCHED"
-check_config_builtin
-
-#
-# Queueing/Scheduling
-#
-config="CONFIG_NET_SCH_CBQ"
-check_config_module
-config="CONFIG_NET_SCH_HTB"
-check_config_module
-config="CONFIG_NET_SCH_HFSC"
-check_config_module
-config="CONFIG_NET_SCH_ATM"
-check_config_module
-config="CONFIG_NET_SCH_PRIO"
-check_config_module
-config="CONFIG_NET_SCH_MULTIQ"
-check_config_module
-config="CONFIG_NET_SCH_RED"
-check_config_module
-config="CONFIG_NET_SCH_SFB"
-check_config_module
-config="CONFIG_NET_SCH_SFQ"
-check_config_module
-config="CONFIG_NET_SCH_TEQL"
-check_config_module
-config="CONFIG_NET_SCH_TBF"
-check_config_module
-config="CONFIG_NET_SCH_GRED"
-check_config_module
-config="CONFIG_NET_SCH_DSMARK"
-check_config_module
-config="CONFIG_NET_SCH_NETEM"
-check_config_module
-config="CONFIG_NET_SCH_DRR"
-check_config_module
-config="CONFIG_NET_SCH_MQPRIO"
-check_config_module
-config="CONFIG_NET_SCH_CHOKE"
-check_config_module
-config="CONFIG_NET_SCH_QFQ"
-check_config_module
-config="CONFIG_NET_SCH_CODEL"
-check_config_module
-config="CONFIG_NET_SCH_FQ_CODEL"
-check_config_module
-config="CONFIG_NET_SCH_FQ"
-check_config_module
-config="CONFIG_NET_SCH_HHF"
-check_config_module
-config="CONFIG_NET_SCH_PIE"
-check_config_module
-config="CONFIG_NET_SCH_INGRESS"
-check_config_module
-config="CONFIG_NET_SCH_PLUG"
-check_config_module
-
-#
-# Classification
-#
-config="CONFIG_NET_CLS"
-check_config_builtin
-config="CONFIG_NET_CLS_BASIC"
-check_config_module
-config="CONFIG_NET_CLS_TCINDEX"
-check_config_module
-config="CONFIG_NET_CLS_ROUTE4"
-check_config_module
-config="CONFIG_NET_CLS_FW"
-check_config_module
-config="CONFIG_NET_CLS_U32"
-check_config_module
-config="CONFIG_CLS_U32_PERF"
-check_config_builtin
-config="CONFIG_CLS_U32_MARK"
-check_config_builtin
-config="CONFIG_NET_CLS_RSVP"
-check_config_module
-config="CONFIG_NET_CLS_RSVP6"
-check_config_module
-config="CONFIG_NET_CLS_FLOW"
-check_config_module
-config="CONFIG_NET_CLS_CGROUP"
-check_config_module
-config="CONFIG_NET_CLS_BPF"
-check_config_module
-config="CONFIG_NET_EMATCH"
-check_config_builtin
-config="CONFIG_NET_EMATCH_CMP"
-check_config_module
-config="CONFIG_NET_EMATCH_NBYTE"
-check_config_module
-config="CONFIG_NET_EMATCH_U32"
-check_config_module
-config="CONFIG_NET_EMATCH_META"
-check_config_module
-config="CONFIG_NET_EMATCH_TEXT"
-check_config_module
-config="CONFIG_NET_EMATCH_CANID"
-check_config_module
-config="CONFIG_NET_EMATCH_IPSET"
-check_config_module
-config="CONFIG_NET_CLS_ACT"
-check_config_builtin
-config="CONFIG_NET_ACT_POLICE"
-check_config_module
-config="CONFIG_NET_ACT_GACT"
-check_config_module
-config="CONFIG_GACT_PROB"
-check_config_builtin
-config="CONFIG_NET_ACT_MIRRED"
-check_config_module
-config="CONFIG_NET_ACT_IPT"
-check_config_module
-config="CONFIG_NET_ACT_NAT"
-check_config_module
-config="CONFIG_NET_ACT_PEDIT"
-check_config_module
-config="CONFIG_NET_ACT_SIMP"
-check_config_module
-config="CONFIG_NET_ACT_SKBEDIT"
-check_config_module
-config="CONFIG_NET_ACT_CSUM"
-check_config_module
-config="CONFIG_NET_CLS_IND"
-check_config_builtin
-config="CONFIG_NET_SCH_FIFO"
-check_config_builtin
-config="CONFIG_DCB"
-check_config_builtin
-config="CONFIG_BATMAN_ADV"
-check_config_module
-config="CONFIG_BATMAN_ADV_BLA"
-check_config_builtin
-config="CONFIG_BATMAN_ADV_DAT"
-check_config_builtin
-config="CONFIG_BATMAN_ADV_NC"
-check_config_builtin
-config="CONFIG_OPENVSWITCH"
-check_config_module
-config="CONFIG_OPENVSWITCH_GRE"
-check_config_builtin
-config="CONFIG_NETLINK_MMAP"
-check_config_builtin
-config="CONFIG_NETLINK_DIAG"
-check_config_module
-config="CONFIG_NET_MPLS_GSO"
-check_config_builtin
-config="CONFIG_CGROUP_NET_PRIO"
-check_config_module
-config="CONFIG_BPF_JIT"
-check_config_builtin
-
-#
-# CAN Device Drivers
-#
-config="CONFIG_CAN_VCAN"
-check_config_module
-config="CONFIG_CAN_SLCAN"
-check_config_module
-config="CONFIG_CAN_TI_HECC"
-check_config_module
-config="CONFIG_CAN_MCP251X"
-check_config_module
-
-#
-# CAN USB interfaces
-#
-config="CONFIG_CAN_EMS_USB"
-check_config_module
-config="CONFIG_CAN_ESD_USB2"
-check_config_module
-config="CONFIG_CAN_KVASER_USB"
-check_config_module
-config="CONFIG_CAN_PEAK_USB"
-check_config_module
-config="CONFIG_CAN_8DEV_USB"
-check_config_module
-config="CONFIG_BT_RFCOMM"
-check_config_module
-config="CONFIG_BT_RFCOMM_TTY"
-check_config_builtin
-config="CONFIG_BT_BNEP"
-check_config_module
-config="CONFIG_BT_BNEP_MC_FILTER"
-check_config_builtin
-config="CONFIG_BT_BNEP_PROTO_FILTER"
-check_config_builtin
-config="CONFIG_BT_HIDP"
-check_config_module
-
-
-#
-# Bluetooth device drivers
-#
-config="CONFIG_BT_HCIBTUSB"
-check_config_module
-config="CONFIG_BT_HCIBTSDIO"
-check_config_module
-config="CONFIG_BT_HCIUART_ATH3K"
-check_config_builtin
-config="CONFIG_BT_HCIUART_3WIRE"
-check_config_builtin
-config="CONFIG_BT_HCIBFUSB"
-check_config_module
-config="CONFIG_BT_HCIVHCI"
-check_config_module
-config="CONFIG_BT_MRVL"
-check_config_module
-config="CONFIG_BT_MRVL_SDIO"
-check_config_module
-config="CONFIG_BT_ATH3K"
-check_config_module
-config="CONFIG_AF_RXRPC"
-check_config_module
-config="CONFIG_CFG80211_WEXT"
-check_config_builtin
-config="CONFIG_RFKILL_LEDS"
-check_config_builtin
-config="CONFIG_RFKILL_INPUT"
-check_config_builtin
-config="CONFIG_CEPH_LIB"
-check_config_module
-
-#
-# Generic Driver Options
-#
-config="CONFIG_UEVENT_HELPER_PATH"
-value=""
-check_config_value
-
-config="CONFIG_EXTRA_FIRMWARE"
-value="\"am335x-pm-firmware.elf am335x-bone-scale-data.bin am335x-evm-scale-data.bin am43x-evm-scale-data.bin\""
-check_config_value
-
-config="CONFIG_EXTRA_FIRMWARE_DIR"
-value="\"firmware\""
-check_config_value
-
-config="CONFIG_FW_LOADER_USER_HELPER"
-check_config_disable
-
-#
-# Device Tree and Open Firmware support
-#
-config="CONFIG_ZRAM"
-check_config_module
-
-#
-# EEPROM support
-#
-config="CONFIG_EEPROM_AT24"
-check_config_builtin
-
-#
-# Argus cape driver for beaglebone black
-#
-config="CONFIG_CAPE_BONE_ARGUS"
-check_config_builtin
-config="CONFIG_BEAGLEBONE_PINMUX_HELPER"
-check_config_builtin
-
-#
-# Controllers with non-SFF native interface
-#
-config="CONFIG_BLK_DEV_MD"
-check_config_module
-config="CONFIG_BCACHE"
-check_config_module
-config="CONFIG_BLK_DEV_DM_BUILTIN"
-check_config_builtin
-config="CONFIG_BLK_DEV_DM"
-check_config_module
-
-#
-# Generic fallback / legacy drivers
-#
-config="CONFIG_TUN"
-check_config_module
-
-#
-# USB Network Adapters
-#
-config="CONFIG_AT76C50X_USB"
-check_config_module
-config="CONFIG_USB_ZD1201"
-check_config_module
-config="CONFIG_RTL8187"
-check_config_module
-config="CONFIG_RTL8187_LEDS"
-check_config_builtin
-config="CONFIG_ATH_COMMON"
-check_config_module
-config="CONFIG_ATH_CARDS"
-check_config_module
-config="CONFIG_ATH9K_HW"
-check_config_module
-config="CONFIG_ATH9K_COMMON"
-check_config_module
-config="CONFIG_ATH9K_BTCOEX_SUPPORT"
-check_config_builtin
-config="CONFIG_ATH9K_HTC"
-check_config_module
-config="CONFIG_CARL9170"
-check_config_module
-config="CONFIG_CARL9170_LEDS"
-check_config_builtin
-config="CONFIG_CARL9170_WPC"
-check_config_builtin
-config="CONFIG_AR5523"
-check_config_module
-config="CONFIG_ATH10K"
-check_config_module
-config="CONFIG_WCN36XX"
-check_config_module
-
-config="CONFIG_P54_COMMON"
-check_config_module
-config="CONFIG_P54_USB"
-check_config_module
-config="CONFIG_P54_LEDS"
-check_config_builtin
-config="CONFIG_RT2X00"
-check_config_module
-config="CONFIG_RT2500USB"
-check_config_module
-config="CONFIG_RT73USB"
-check_config_module
-config="CONFIG_RT2800USB"
-check_config_module
-config="CONFIG_RT2800USB_RT33XX"
-check_config_builtin
-config="CONFIG_RT2800USB_RT35XX"
-check_config_builtin
-config="CONFIG_RT2800USB_RT3573"
-check_config_builtin
-config="CONFIG_RT2800USB_RT53XX"
-check_config_builtin
-config="CONFIG_RT2800USB_RT55XX"
-check_config_builtin
-config="CONFIG_RT2800_LIB"
-check_config_module
-config="CONFIG_RT2X00_LIB_USB"
-check_config_module
-config="CONFIG_RT2X00_LIB"
-check_config_module
-config="CONFIG_RT2X00_LIB_FIRMWARE"
-check_config_builtin
-config="CONFIG_RT2X00_LIB_CRYPTO"
-check_config_builtin
-config="CONFIG_RT2X00_LIB_LEDS"
-check_config_builtin
-config="CONFIG_RTL8192CU"
-check_config_module
-config="CONFIG_RTLWIFI"
-check_config_module
-config="CONFIG_RTLWIFI_USB"
-check_config_module
-config="CONFIG_RTLWIFI_DEBUG"
-check_config_disable
-config="CONFIG_RTL8192C_COMMON"
-check_config_module
-config="CONFIG_ZD1211RW"
-check_config_module
-
-#
-# Input Device Drivers
-#
-
-#EDT_FT5X06 didn't work as a module...
-config="CONFIG_TOUCHSCREEN_EDT_FT5X06"
-check_config_builtin
-
-#
-# Non-8250 serial port support
-#
-config="CONFIG_HW_RANDOM_TPM"
-check_config_module
-config="CONFIG_TCG_TPM"
-check_config_module
-config="CONFIG_TCG_TIS_I2C_ATMEL"
-check_config_module
-
-#
-# I2C system bus drivers (mostly embedded / system-on-chip)
-#
-config="CONFIG_I2C_GPIO"
-check_config_module
-
-#
-# SPI Master Controller Drivers
-#
-config="CONFIG_SPI_BITBANG"
-check_config_module
-config="CONFIG_SPI_GPIO"
-check_config_module
-
-#
-# Pin controllers
-#
-config="CONFIG_PINCTRL_PALMAS"
-check_config_builtin
-config="CONFIG_DEBUG_GPIO"
-check_config_disable
-config="CONFIG_GPIO_OF_HELPER"
-check_config_builtin
-
-#
-# MODULbus GPIO expanders:
-#
-config="CONFIG_GPIO_PALMAS"
-check_config_builtin
-
-#
-# Multimedia core support
-#
-config="CONFIG_MEDIA_ANALOG_TV_SUPPORT"
-check_config_builtin
-config="CONFIG_MEDIA_DIGITAL_TV_SUPPORT"
-check_config_builtin
-config="CONFIG_MEDIA_RADIO_SUPPORT"
-check_config_builtin
-config="CONFIG_MEDIA_RC_SUPPORT"
-check_config_builtin
-
-#
-# Media drivers
-#
-config="CONFIG_LIRC"
-check_config_module
-config="CONFIG_IR_LIRC_CODEC"
-check_config_module
-config="CONFIG_RC_DEVICES"
-check_config_builtin
-config="CONFIG_RC_ATI_REMOTE"
-check_config_module
-config="CONFIG_IR_IMON"
-check_config_module
-config="CONFIG_IR_MCEUSB"
-check_config_module
-config="CONFIG_IR_REDRAT3"
-check_config_module
-config="CONFIG_IR_STREAMZAP"
-check_config_module
-config="CONFIG_IR_IGUANA"
-check_config_module
-config="CONFIG_IR_TTUSBIR"
-check_config_module
-config="CONFIG_RC_LOOPBACK"
-check_config_module
-config="CONFIG_IR_GPIO_CIR"
-check_config_module
-
-#
-# Webcam devices
-#
-
-config="CONFIG_USB_M5602"
-check_config_module
-config="CONFIG_USB_STV06XX"
-check_config_module
-config="CONFIG_USB_GL860"
-check_config_module
-config="CONFIG_USB_GSPCA_BENQ"
-check_config_module
-config="CONFIG_USB_GSPCA_CONEX"
-check_config_module
-config="CONFIG_USB_GSPCA_CPIA1"
-check_config_module
-config="CONFIG_USB_GSPCA_ETOMS"
-check_config_module
-config="CONFIG_USB_GSPCA_FINEPIX"
-check_config_module
-config="CONFIG_USB_GSPCA_JEILINJ"
-check_config_module
-config="CONFIG_USB_GSPCA_JL2005BCD"
-check_config_module
-config="CONFIG_USB_GSPCA_KINECT"
-check_config_module
-config="CONFIG_USB_GSPCA_KONICA"
-check_config_module
-config="CONFIG_USB_GSPCA_MARS"
-check_config_module
-config="CONFIG_USB_GSPCA_MR97310A"
-check_config_module
-config="CONFIG_USB_GSPCA_NW80X"
-check_config_module
-config="CONFIG_USB_GSPCA_OV519"
-check_config_module
-config="CONFIG_USB_GSPCA_OV534"
-check_config_module
-config="CONFIG_USB_GSPCA_OV534_9"
-check_config_module
-config="CONFIG_USB_GSPCA_PAC207"
-check_config_module
-config="CONFIG_USB_GSPCA_PAC7302"
-check_config_module
-config="CONFIG_USB_GSPCA_PAC7311"
-check_config_module
-config="CONFIG_USB_GSPCA_SE401"
-check_config_module
-config="CONFIG_USB_GSPCA_SN9C2028"
-check_config_module
-config="CONFIG_USB_GSPCA_SN9C20X"
-check_config_module
-config="CONFIG_USB_GSPCA_SONIXB"
-check_config_module
-config="CONFIG_USB_GSPCA_SONIXJ"
-check_config_module
-config="CONFIG_USB_GSPCA_SPCA500"
-check_config_module
-config="CONFIG_USB_GSPCA_SPCA501"
-check_config_module
-config="CONFIG_USB_GSPCA_SPCA505"
-check_config_module
-config="CONFIG_USB_GSPCA_SPCA506"
-check_config_module
-config="CONFIG_USB_GSPCA_SPCA508"
-check_config_module
-config="CONFIG_USB_GSPCA_SPCA561"
-check_config_module
-config="CONFIG_USB_GSPCA_SPCA1528"
-check_config_module
-config="CONFIG_USB_GSPCA_SQ905"
-check_config_module
-config="CONFIG_USB_GSPCA_SQ905C"
-check_config_module
-config="CONFIG_USB_GSPCA_SQ930X"
-check_config_module
-config="CONFIG_USB_GSPCA_STK014"
-check_config_module
-config="CONFIG_USB_GSPCA_STK1135"
-check_config_module
-config="CONFIG_USB_GSPCA_STV0680"
-check_config_module
-config="CONFIG_USB_GSPCA_SUNPLUS"
-check_config_module
-config="CONFIG_USB_GSPCA_T613"
-check_config_module
-config="CONFIG_USB_GSPCA_TOPRO"
-check_config_module
-config="CONFIG_USB_GSPCA_TV8532"
-check_config_module
-config="CONFIG_USB_GSPCA_VC032X"
-check_config_module
-config="CONFIG_USB_GSPCA_VICAM"
-check_config_module
-config="CONFIG_USB_GSPCA_XIRLINK_CIT"
-check_config_module
-config="CONFIG_USB_GSPCA_ZC3XX"
-check_config_module
-config="CONFIG_USB_PWC"
-check_config_module
-config="CONFIG_USB_PWC_INPUT_EVDEV"
-check_config_builtin
-config="CONFIG_VIDEO_CPIA2"
-check_config_module
-config="CONFIG_USB_ZR364XX"
-check_config_module
-config="CONFIG_USB_STKWEBCAM"
-check_config_module
-config="CONFIG_USB_S2255"
-check_config_module
-config="CONFIG_VIDEO_USBTV"
-check_config_module
-
-#
-# Analog TV USB devices
-#
-config="CONFIG_VIDEO_PVRUSB2"
-check_config_module
-config="CONFIG_VIDEO_PVRUSB2_SYSFS"
-check_config_builtin
-config="CONFIG_VIDEO_PVRUSB2_DVB"
-check_config_builtin
-config="CONFIG_VIDEO_HDPVR"
-check_config_module
-config="CONFIG_VIDEO_TLG2300"
-check_config_module
-config="CONFIG_VIDEO_USBVISION"
-check_config_module
-config="CONFIG_VIDEO_STK1160_COMMON"
-check_config_module
-config="CONFIG_VIDEO_STK1160_AC97"
-check_config_builtin
-config="CONFIG_VIDEO_STK1160"
-check_config_module
-
-#
-# Analog/digital TV USB devices
-#
-config="CONFIG_VIDEO_AU0828"
-check_config_module
-config="CONFIG_VIDEO_AU0828_V4L2"
-check_config_builtin
-config="CONFIG_VIDEO_CX231XX"
-check_config_module
-config="CONFIG_VIDEO_CX231XX_RC"
-check_config_builtin
-config="CONFIG_VIDEO_CX231XX_ALSA"
-check_config_module
-config="CONFIG_VIDEO_CX231XX_DVB"
-check_config_module
-config="CONFIG_VIDEO_TM6000"
-check_config_module
-config="CONFIG_VIDEO_TM6000_ALSA"
-check_config_module
-config="CONFIG_VIDEO_TM6000_DVB"
-check_config_module
-
-#
-# Digital TV USB devices
-#
-config="CONFIG_DVB_USB"
-check_config_module
-config="CONFIG_DVB_USB_A800"
-check_config_module
-config="CONFIG_DVB_USB_DIBUSB_MB"
-check_config_module
-config="CONFIG_DVB_USB_DIBUSB_MC"
-check_config_module
-config="CONFIG_DVB_USB_DIB0700"
-check_config_module
-config="CONFIG_DVB_USB_UMT_010"
-check_config_module
-config="CONFIG_DVB_USB_CXUSB"
-check_config_module
-config="CONFIG_DVB_USB_M920X"
-check_config_module
-config="CONFIG_DVB_USB_DIGITV"
-check_config_module
-config="CONFIG_DVB_USB_VP7045"
-check_config_module
-config="CONFIG_DVB_USB_VP702X"
-check_config_module
-config="CONFIG_DVB_USB_GP8PSK"
-check_config_module
-config="CONFIG_DVB_USB_NOVA_T_USB2"
-check_config_module
-config="CONFIG_DVB_USB_TTUSB2"
-check_config_module
-config="CONFIG_DVB_USB_DTT200U"
-check_config_module
-config="CONFIG_DVB_USB_OPERA1"
-check_config_module
-config="CONFIG_DVB_USB_AF9005"
-check_config_module
-config="CONFIG_DVB_USB_AF9005_REMOTE"
-check_config_module
-config="CONFIG_DVB_USB_PCTV452E"
-check_config_module
-config="CONFIG_DVB_USB_DW2102"
-check_config_module
-config="CONFIG_DVB_USB_CINERGY_T2"
-check_config_module
-config="CONFIG_DVB_USB_DTV5100"
-check_config_module
-config="CONFIG_DVB_USB_FRIIO"
-check_config_module
-config="CONFIG_DVB_USB_AZ6027"
-check_config_module
-config="CONFIG_DVB_USB_TECHNISAT_USB2"
-check_config_module
-
-config="CONFIG_DVB_USB_V2"
-check_config_module
-config="CONFIG_DVB_USB_AF9015"
-check_config_module
-config="CONFIG_DVB_USB_AF9035"
-check_config_module
-config="CONFIG_DVB_USB_ANYSEE"
-check_config_module
-config="CONFIG_DVB_USB_AU6610"
-check_config_module
-config="CONFIG_DVB_USB_AZ6007"
-check_config_module
-config="CONFIG_DVB_USB_CE6230"
-check_config_module
-config="CONFIG_DVB_USB_EC168"
-check_config_module
-config="CONFIG_DVB_USB_GL861"
-check_config_module
-config="CONFIG_DVB_USB_IT913X"
-check_config_module
-config="CONFIG_DVB_USB_LME2510"
-check_config_module
-config="CONFIG_DVB_USB_MXL111SF"
-check_config_module
-config="CONFIG_DVB_USB_RTL28XXU"
-check_config_module
-config="CONFIG_SMS_USB_DRV"
-check_config_module
-config="CONFIG_DVB_B2C2_FLEXCOP_USB"
-check_config_module
-
-#
-# Webcam, TV (analog/digital) USB devices
-#
-config="CONFIG_VIDEO_EM28XX"
-check_config_module
-config="CONFIG_VIDEO_EM28XX_V4L2"
-check_config_module
-config="CONFIG_VIDEO_EM28XX_ALSA"
-check_config_module
-config="CONFIG_VIDEO_EM28XX_DVB"
-check_config_module
-config="CONFIG_VIDEO_EM28XX_RC"
-check_config_module
-
-#
-# Supported MMC/SDIO adapters
-#
-config="CONFIG_RADIO_TEA575X"
-check_config_module
-config="CONFIG_RADIO_SI470X"
-check_config_builtin
-config="CONFIG_USB_SI470X"
-check_config_module
-config="CONFIG_I2C_SI470X"
-check_config_module
-config="CONFIG_RADIO_SI4713"
-check_config_module
-config="CONFIG_USB_SI4713"
-check_config_module
-config="CONFIG_PLATFORM_SI4713"
-check_config_module
-config="CONFIG_I2C_SI4713"
-check_config_module
-config="CONFIG_USB_MR800"
-check_config_module
-config="CONFIG_USB_DSBR"
-check_config_module
-config="CONFIG_RADIO_SHARK"
-check_config_module
-config="CONFIG_RADIO_SHARK2"
-check_config_module
-config="CONFIG_USB_KEENE"
-check_config_module
-config="CONFIG_USB_RAREMONO"
-check_config_module
-config="CONFIG_USB_MA901"
-check_config_module
-config="CONFIG_RADIO_TEA5764"
-check_config_module
-config="CONFIG_RADIO_SAA7706H"
-check_config_module
-config="CONFIG_RADIO_TEF6862"
-check_config_module
-
-#
-# Media ancillary drivers (tuners, sensors, i2c, frontends)
-#
-config="CONFIG_MEDIA_SUBDRV_AUTOSELECT"
-check_config_disable
-
-#
-# Direct Rendering Manager
-#
-config="CONFIG_FB_OMAP2"
-check_config_disable
-config="CONFIG_BACKLIGHT_CLASS_DEVICE"
-check_config_builtin
-config="CONFIG_BACKLIGHT_GPIO"
-check_config_builtin
-
-
-#
-# Console display driver support
-#
-config="CONFIG_SND_USB_UA101"
-check_config_module
-config="CONFIG_SND_USB_CAIAQ"
-check_config_module
-config="CONFIG_SND_USB_CAIAQ_INPUT"
-check_config_builtin
-config="CONFIG_SND_USB_6FIRE"
-check_config_module
-config="CONFIG_SND_USB_HIFACE"
-check_config_module
-
-#
-# HID support
-#
-config="CONFIG_HID_BATTERY_STRENGTH"
-check_config_builtin
-config="CONFIG_HIDRAW"
-check_config_builtin
-config="CONFIG_UHID"
-check_config_builtin
-
-#
-# Special HID drivers
-#
-config="CONFIG_HID_A4TECH"
-check_config_builtin
-config="CONFIG_HID_ACRUX"
-check_config_module
-config="CONFIG_HID_ACRUX_FF"
-check_config_builtin
-config="CONFIG_HID_APPLE"
-check_config_builtin
-config="CONFIG_HID_APPLEIR"
-check_config_module
-config="CONFIG_HID_AUREAL"
-check_config_module
-config="CONFIG_HID_BELKIN"
-check_config_builtin
-config="CONFIG_HID_CHERRY"
-check_config_builtin
-config="CONFIG_HID_CHICONY"
-check_config_builtin
-config="CONFIG_HID_PRODIKEYS"
-check_config_module
-config="CONFIG_HID_CYPRESS"
-check_config_builtin
-config="CONFIG_HID_DRAGONRISE"
-check_config_module
-config="CONFIG_DRAGONRISE_FF"
-check_config_builtin
-config="CONFIG_HID_EMS_FF"
-check_config_module
-config="CONFIG_HID_ELECOM"
-check_config_module
-config="CONFIG_HID_ELO"
-check_config_module
-config="CONFIG_HID_EZKEY"
-check_config_builtin
-config="CONFIG_HID_HOLTEK"
-check_config_module
-config="CONFIG_HOLTEK_FF"
-check_config_builtin
-config="CONFIG_HID_HUION"
-check_config_module
-config="CONFIG_HID_KEYTOUCH"
-check_config_module
-config="CONFIG_HID_KYE"
-check_config_module
-config="CONFIG_HID_UCLOGIC"
-check_config_module
-config="CONFIG_HID_WALTOP"
-check_config_module
-config="CONFIG_HID_GYRATION"
-check_config_module
-config="CONFIG_HID_ICADE"
-check_config_module
-config="CONFIG_HID_TWINHAN"
-check_config_module
-config="CONFIG_HID_KENSINGTON"
-check_config_builtin
-config="CONFIG_HID_LCPOWER"
-check_config_module
-config="CONFIG_HID_LOGITECH"
-check_config_builtin
-config="CONFIG_HID_LOGITECH_DJ"
-check_config_module
-config="CONFIG_LOGITECH_FF"
-check_config_builtin
-config="CONFIG_LOGIRUMBLEPAD2_FF"
-check_config_builtin
-config="CONFIG_LOGIG940_FF"
-check_config_builtin
-config="CONFIG_LOGIWHEELS_FF"
-check_config_builtin
-config="CONFIG_HID_MAGICMOUSE"
-check_config_module
-config="CONFIG_HID_MICROSOFT"
-check_config_builtin
-config="CONFIG_HID_MONTEREY"
-check_config_builtin
-config="CONFIG_HID_MULTITOUCH"
-check_config_module
-config="CONFIG_HID_NTRIG"
-check_config_module
-config="CONFIG_HID_ORTEK"
-check_config_module
-config="CONFIG_HID_PANTHERLORD"
-check_config_module
-config="CONFIG_PANTHERLORD_FF"
-check_config_builtin
-config="CONFIG_HID_PETALYNX"
-check_config_module
-config="CONFIG_HID_PICOLCD"
-check_config_module
-config="CONFIG_HID_PICOLCD_FB"
-check_config_builtin
-config="CONFIG_HID_PICOLCD_BACKLIGHT"
-check_config_builtin
-config="CONFIG_HID_PICOLCD_LEDS"
-check_config_builtin
-config="CONFIG_HID_PRIMAX"
-check_config_module
-config="CONFIG_HID_ROCCAT"
-check_config_module
-config="CONFIG_HID_SAITEK"
-check_config_module
-config="CONFIG_HID_SAMSUNG"
-check_config_module
-config="CONFIG_HID_SONY"
-check_config_module
-config="CONFIG_SONY_FF"
-check_config_builtin
-config="CONFIG_HID_SPEEDLINK"
-check_config_module
-config="CONFIG_HID_STEELSERIES"
-check_config_module
-config="CONFIG_HID_SUNPLUS"
-check_config_module
-config="CONFIG_HID_GREENASIA"
-check_config_module
-config="CONFIG_GREENASIA_FF"
-check_config_builtin
-config="CONFIG_HID_SMARTJOYPLUS"
-check_config_module
-config="CONFIG_SMARTJOYPLUS_FF"
-check_config_builtin
-config="CONFIG_HID_TIVO"
-check_config_module
-config="CONFIG_HID_TOPSEED"
-check_config_module
-config="CONFIG_HID_THINGM"
-check_config_module
-config="CONFIG_HID_THRUSTMASTER"
-check_config_module
-config="CONFIG_THRUSTMASTER_FF"
-check_config_builtin
-config="CONFIG_HID_WACOM"
-check_config_module
-config="CONFIG_HID_WIIMOTE"
-check_config_module
-config="CONFIG_HID_XINMO"
-check_config_module
-config="CONFIG_HID_ZEROPLUS"
-check_config_module
-config="CONFIG_ZEROPLUS_FF"
-check_config_builtin
-config="CONFIG_HID_ZYDACRON"
-check_config_module
-config="CONFIG_HID_SENSOR_HUB"
-check_config_module
-
-#
-# USB HID support
-#
-config="CONFIG_HID_PID"
-check_config_builtin
-config="CONFIG_USB_HIDDEV"
-check_config_builtin
-
-#
-# I2C HID support
-#
-config="CONFIG_USB_DEBUG"
-check_config_disable
-
-#
-# Miscellaneous USB options
-#
-config="CONFIG_USB_DYNAMIC_MINORS"
-check_config_builtin
-config="CONFIG_USB_OTG"
-check_config_builtin
-
-#
-# USB Physical Layer drivers
-#
-config="CONFIG_USB_GADGET_DEBUG"
-check_config_disable
-config="CONFIG_USB_GADGET_DEBUG_FILES"
-check_config_disable
-config="CONFIG_USB_GADGET_DEBUG_FS"
-check_config_disable
-
-config="CONFIG_USB_GADGET_VBUS_DRAW"
-value="500"
-check_config_value
-
-#
-# USB Peripheral Controller
-#
-config="CONFIG_USB_F_EEM"
-check_config_module
-config="CONFIG_USB_ETH_EEM"
-check_config_builtin
-config="CONFIG_USB_G_WEBCAM"
-check_config_module
-
-#
-# STAGING
-#
-config="CONFIG_STAGING"
-check_config_builtin
-
-#
-# Android
-#
-config="CONFIG_ANDROID"
-check_config_builtin
-config="CONFIG_ANDROID_BINDER_IPC"
-check_config_builtin
-config="CONFIG_ASHMEM"
-check_config_builtin
-config="CONFIG_ANDROID_LOGGER"
-check_config_module
-config="CONFIG_ANDROID_TIMED_GPIO"
-check_config_module
-config="CONFIG_ANDROID_INTF_ALARM_DEV"
-check_config_builtin
-config="CONFIG_SYNC"
-check_config_builtin
-config="CONFIG_SW_SYNC"
-check_config_disable
-
-config="CONFIG_ION"
-check_config_builtin
-
-#
-# Remoteproc drivers
-#
-config="CONFIG_PRUSS_REMOTEPROC"
-check_config_builtin
-
-#
-# Rpmsg drivers
-#
-config="CONFIG_PM_DEVFREQ"
-check_config_builtin
-
-#
-# Extcon Device Drivers
-#
-config="CONFIG_MEMORY"
-check_config_builtin
-config="CONFIG_TI_EMIF"
-check_config_builtin
-
-#
-# File systems
-#
-config="CONFIG_EXT2_FS"
-check_config_disable
-config="CONFIG_EXT3_FS"
-check_config_disable
-config="CONFIG_EXT4_USE_FOR_EXT23"
-check_config_builtin
-config="CONFIG_EXT4_FS_POSIX_ACL"
-check_config_builtin
-config="CONFIG_EXT4_FS_SECURITY"
-check_config_builtin
-config="CONFIG_REISERFS_FS"
-check_config_module
-config="CONFIG_REISERFS_FS_XATTR"
-check_config_builtin
-config="CONFIG_REISERFS_FS_POSIX_ACL"
-check_config_builtin
-config="CONFIG_REISERFS_FS_SECURITY"
-check_config_builtin
-config="CONFIG_JFS_FS"
-check_config_module
-config="CONFIG_JFS_POSIX_ACL"
-check_config_builtin
-config="CONFIG_JFS_SECURITY"
-check_config_builtin
-config="CONFIG_XFS_FS"
-check_config_builtin
-config="CONFIG_XFS_QUOTA"
-check_config_builtin
-config="CONFIG_XFS_POSIX_ACL"
-check_config_builtin
-config="CONFIG_XFS_RT"
-check_config_builtin
-config="CONFIG_GFS2_FS"
-check_config_module
-config="CONFIG_OCFS2_FS"
-check_config_module
-config="CONFIG_OCFS2_FS_O2CB"
-check_config_module
-config="CONFIG_OCFS2_FS_STATS"
-check_config_builtin
-config="CONFIG_OCFS2_DEBUG_MASKLOG"
-check_config_builtin
-config="CONFIG_BTRFS_FS"
-check_config_builtin
-config="CONFIG_BTRFS_FS_POSIX_ACL"
-check_config_builtin
-config="CONFIG_NILFS2_FS"
-check_config_module
-config="CONFIG_FANOTIFY"
-check_config_builtin
-config="CONFIG_FANOTIFY_ACCESS_PERMISSIONS"
-check_config_builtin
-config="CONFIG_QUOTA_NETLINK_INTERFACE"
-check_config_builtin
-config="CONFIG_QUOTA_TREE"
-check_config_module
-config="CONFIG_QFMT_V1"
-check_config_module
-config="CONFIG_QFMT_V2"
-check_config_module
-config="CONFIG_AUTOFS4_FS"
-check_config_builtin
-config="CONFIG_FUSE_FS"
-check_config_builtin
-config="CONFIG_CUSE"
-check_config_module
-
-#
-# Caches
-#
-config="CONFIG_FSCACHE"
-check_config_module
-config="CONFIG_FSCACHE_STATS"
-check_config_builtin
-config="CONFIG_CACHEFILES"
-check_config_module
-
-#
-# DOS/FAT/NT Filesystems
-#
-config="CONFIG_NTFS_FS"
-check_config_module
-config="CONFIG_NTFS_DEBUG"
-check_config_disable
-config="CONFIG_NTFS_RW"
-check_config_builtin
-
-#
-# Pseudo filesystems
-#
-config="CONFIG_TMPFS_POSIX_ACL"
-check_config_builtin
-config="CONFIG_TMPFS_XATTR"
-check_config_builtin
-config="CONFIG_CONFIGFS_FS"
-check_config_builtin
-config="CONFIG_ECRYPT_FS"
-check_config_module
-
-config="CONFIG_LOGFS"
-check_config_module
-config="CONFIG_CRAMFS"
-check_config_module
-config="CONFIG_SQUASHFS"
-check_config_module
-config="CONFIG_SQUASHFS_FILE_CACHE"
-check_config_builtin
-config="CONFIG_SQUASHFS_DECOMP_SINGLE"
-check_config_builtin
-config="CONFIG_SQUASHFS_XATTR"
-check_config_builtin
-config="CONFIG_SQUASHFS_ZLIB"
-check_config_builtin
-config="CONFIG_SQUASHFS_LZO"
-check_config_builtin
-config="CONFIG_SQUASHFS_XZ"
-check_config_builtin
-config="CONFIG_VXFS_FS"
-check_config_module
-config="CONFIG_MINIX_FS"
-check_config_module
-config="CONFIG_OMFS_FS"
-check_config_module
-config="CONFIG_QNX4FS_FS"
-check_config_module
-config="CONFIG_QNX6FS_FS"
-check_config_module
-config="CONFIG_ROMFS_FS"
-check_config_module
-config="CONFIG_ROMFS_BACKED_BY_BOTH"
-check_config_builtin
-config="CONFIG_ROMFS_ON_BLOCK"
-check_config_builtin
-config="CONFIG_ROMFS_ON_MTD"
-check_config_builtin
-config="CONFIG_SYSV_FS"
-check_config_module
-config="CONFIG_UFS_FS"
-check_config_module
-
-config="CONFIG_F2FS_FS"
-check_config_builtin
-config="CONFIG_F2FS_STAT_FS"
-check_config_builtin
-config="CONFIG_F2FS_FS_XATTR"
-check_config_builtin
-config="CONFIG_F2FS_FS_POSIX_ACL"
-check_config_builtin
-config="CONFIG_F2FS_FS_SECURITY"
-check_config_builtin
-
-config="CONFIG_NFS_SWAP"
-check_config_builtin
-
-config="CONFIG_SUNRPC_SWAP"
-check_config_builtin
-config="CONFIG_SUNRPC_DEBUG"
-check_config_builtin
-
-config="CONFIG_CEPH_FS"
-check_config_module
-config="CONFIG_CEPH_FS_POSIX_ACL"
-check_config_builtin
-
-config="CONFIG_NCP_FS"
-check_config_module
-config="CONFIG_NCPFS_PACKET_SIGNING"
-check_config_builtin
-config="CONFIG_NCPFS_IOCTL_LOCKING"
-check_config_builtin
-config="CONFIG_NCPFS_STRONG"
-check_config_builtin
-config="CONFIG_NCPFS_NFS_NS"
-check_config_builtin
-config="CONFIG_NCPFS_OS2_NS"
-check_config_builtin
-config="CONFIG_NCPFS_NLS"
-check_config_builtin
-config="CONFIG_NCPFS_EXTRAS"
-check_config_builtin
-config="CONFIG_CODA_FS"
-check_config_module
-config="CONFIG_AFS_FS"
-check_config_module
-config="CONFIG_AFS_FSCACHE"
-check_config_builtin
-
-config="CONFIG_CIFS"
-check_config_module
-config="CONFIG_CIFS_WEAK_PW_HASH"
-check_config_builtin
-config="CONFIG_CIFS_UPCALL"
-check_config_builtin
-config="CONFIG_CIFS_XATTR"
-check_config_builtin
-config="CONFIG_CIFS_POSIX"
-check_config_builtin
-config="CONFIG_CIFS_ACL"
-check_config_builtin
-config="CONFIG_CIFS_DEBUG"
-check_config_builtin
-config="CONFIG_CIFS_DFS_UPCALL"
-check_config_builtin
-config="CONFIG_CIFS_SMB2"
-check_config_builtin
-config="CONFIG_CIFS_FSCACHE"
-check_config_builtin
-config="CONFIG_NLS_UTF8"
-check_config_module
-
-#
-# printk and dmesg options
-#
-config="CONFIG_DYNAMIC_DEBUG"
-check_config_builtin
-
-#
-# Compile-time checks and compiler options
-#
-config="CONFIG_DEBUG_INFO"
-check_config_disable
-
-#
-# Runtime Testing
-#
-config="CONFIG_ARM_UNWIND"
-check_config_disable
+config="CONFIG_LOCALVERSION_AUTO" ; config_disable
 
 #
