@@ -116,20 +116,22 @@ firmware () {
 	echo "dir: firmware"
 	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
 	#cd amx3-cm3/
-	#git checkout origin/next -b next
+	#git checkout origin/ti-v3.14.y -b tmp
 
-	#commit 4e219d5053ee41b8fa8f85b48b1529ae4c6feb48
+	#commit d85e6a17da1025adac9ab7f97dd7aa2a58c517ce
 	#Author: Dave Gerlach <d-gerlach@ti.com>
-	#Date:   Wed Sep 17 16:43:47 2014 -0500
+	#Date:   Mon Dec 15 12:07:18 2014 -0600
 	#
-	#    CM3: Bump firmware release version to 0x189
-	#
-	#    This version, 0x189, adds support for the following:
-	#     - IO Daisy Chain wake on am437x
-	#
+	#    CM3: Bump firmware release version to 0x190
+	#    
+	#    This version, 0x190, includes the following changes:
+	#         - Correction to interrupt clearing and disabling
+	#         - Bug fix that caused AM335x CPUIdle to hang
+	#         - Bug fix that caused AM335x SK EVM to hang on GPIO wake
+	#    
 	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
 
-	#cp -v ../../amx3-cm3/bin/am* ./firmware/
+	#cp -v bin/am* /opt/github/ti-linux-kernel-dev/KERNEL/firmware/
 
 	#git add -f ./firmware/am*
 
