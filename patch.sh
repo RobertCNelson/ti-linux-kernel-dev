@@ -262,9 +262,12 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0024-cape-factor-out-i2c2-eeprom.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0025-cape-can0.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0026-cape-bbb-exp-c-really-1024x600.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0027-audio-cape-Make-sure-i2c2-is-muxed-correctly.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0028-audio-cape-Adjust-clock-frequency.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0029-audio-cape-Add-comments.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=26
+		number=29
 		cleanup
 	fi
 
