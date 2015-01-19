@@ -26,6 +26,7 @@ DIR=$PWD
 
 repo="git@github.com:beagleboard/linux.git"
 example="bb.org"
+compare="https://github.com/RobertCNelson/ti-linux-kernel/compare"
 
 if [ -e ${DIR}/version.sh ]; then
 	unset BRANCH
@@ -37,7 +38,7 @@ if [ -e ${DIR}/version.sh ]; then
 	cp ${DIR}/patches/defconfig ${DIR}/KERNEL/arch/arm/configs/${example}_defconfig
 	git add arch/arm/configs/${example}_defconfig
 
-	git commit -a -m "${KERNEL_TAG}-${BUILD} ${example}_defconfig" -s
+	git commit -a -m "${KERNEL_TAG}-${BUILD} ${example}_defconfig" -m "3.14 TI Delta: ${compare}/${ti_git_old_release}...${ti_git_post}" -s
 	git tag -a "${KERNEL_TAG}-${BUILD}" -m "${KERNEL_TAG}-${BUILD}" -f
 
 	#push tag
