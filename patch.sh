@@ -94,7 +94,9 @@ fixes () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
-#	${git} "${DIR}/patches/fixes/0001-The-current-system-of-setting-channels-to-inactive-p.patch"
+
+	${git} "${DIR}/patches/fixes/0001-musb_cppi41-fix-mismerge-https-github.com-beagleboar.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
