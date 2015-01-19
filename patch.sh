@@ -69,20 +69,22 @@ external_git
 #local_patch
 
 ipipe () {
-	#git checkout v3.14.17 -b ipipe-3.14
+	#git checkout v3.14.28 -b ipipe-3.14
 	#git pull --no-edit git://git.xenomai.org/ipipe.git ipipe-3.14
 	#
-	#commit ff7d37f8a153ee25f0355f7dc952f8f621b4762c
-	#Author: Philippe Gerum <rpm@xenomai.org>
-	#Date:   Fri Nov 7 18:40:16 2014 +0100
+	#commit 00d8a6f2e95453f61ae97b6587dba03bc91c7e1a
+	#Author: Jan Kiszka <jan.kiszka@siemens.com>
+	#Date:   Wed Jan 14 17:00:22 2015 +0100
 	#
-	#    powerpc/ipipe: fix register trashing on std syscall diversion
-	#
-	#git diff v3.14.17...ff7d37f8 > /opt/github/ti-linux-kernel-dev/patches/ipipe-3.14/ipipe-3.14-ff7d37f8.diff
+	#    arm/ipipe: Resolve trival merge conflicts
+	#    
+	#    Signed-off-by: Jan Kiszka <jan.kiszka@siemens.com>
+
+	#git diff v3.14.28...00d8a6f2 > /opt/github/xenomai-ti-linux-kernel-dev/patches/ipipe-3.14/ipipe-3.14-00d8a6f2.diff
 
 	#patch -p1 < "${DIR}/patches/ipipe-3.14/ipipe-3.14-ff7d37f8.diff"
 
-#	exit
+	#exit 2
 	${git} "${DIR}/patches/ipipe-3.14/0001-ipipe-3.14.patch"
 }
 
