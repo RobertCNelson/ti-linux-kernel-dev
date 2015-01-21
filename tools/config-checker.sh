@@ -60,6 +60,7 @@ config="CONFIG_NO_HZ" ; config_enable
 #
 # RCU Subsystem
 #
+config="CONFIG_RCU_FAST_NO_HZ" ; config_enable
 config="CONFIG_IKCONFIG" ; config_enable
 config="CONFIG_IKCONFIG_PROC" ; config_enable
 config="CONFIG_LOG_BUF_SHIFT" ; option=18 ; config_value
@@ -333,6 +334,7 @@ config="CONFIG_INPUT_EVDEV" ; config_enable
 #
 # Input Device Drivers
 #
+config="CONFIG_KEYBOARD_GPIO" ; config_enable
 config="CONFIG_KEYBOARD_TWL4030" ; config_enable
 config="CONFIG_TOUCHSCREEN_ATMEL_MXT" ; config_enable
 config="CONFIG_TOUCHSCREEN_EDT_FT5X06" ; config_enable
@@ -358,6 +360,12 @@ config="CONFIG_HW_RANDOM_TPM" ; config_module
 config="CONFIG_TCG_TPM" ; config_module
 config="CONFIG_TCG_TIS_I2C_ATMEL" ; config_module
 config="CONFIG_I2C_CHARDEV" ; config_enable
+
+
+#
+# Multiplexer I2C Chip support
+#
+config="CONFIG_I2C_ARB_GPIO_CHALLENGE" ; config_module
 
 #
 # I2C system bus drivers (mostly embedded / system-on-chip)
@@ -398,10 +406,16 @@ config="CONFIG_PINCTRL_PALMAS" ; config_enable
 config="CONFIG_GPIO_SYSFS" ; config_enable
 
 #
+# Memory mapped GPIO drivers:
+#
+config="CONFIG_GPIO_GENERIC_PLATFORM" ; config_enable
+
+#
 # I2C GPIO expanders:
 #
 config="CONFIG_GPIO_PCF857X" ; config_enable
 config="CONFIG_GPIO_TWL4030" ; config_enable
+config="CONFIG_GPIO_TWL6040" ; config_enable
 
 #
 # MODULbus GPIO expanders:
@@ -484,6 +498,11 @@ config="CONFIG_VIDEO_V4L2_SUBDEV_API" ; config_enable
 #
 config="CONFIG_VIDEO_AM437X_VPFE" ; config_module
 config="CONFIG_VIDEO_TI_VIP" ; config_module
+
+#
+# Texas Instruments WL128x FM driver (ST based)
+#
+config="CONFIG_RADIO_WL128X" ; config_module
 
 #
 # Direct Rendering Manager
@@ -649,6 +668,7 @@ config="CONFIG_MEMSTICK" ; config_disable
 # LED drivers
 #
 config="CONFIG_LEDS_GPIO" ; config_enable
+config="CONFIG_LEDS_LT3593" ; config_module
 
 #
 # LED Triggers
@@ -682,6 +702,7 @@ config="CONFIG_DMA_OMAP" ; config_enable
 #
 # DMA Clients
 #
+config="CONFIG_ASYNC_TX_DMA" ; config_enable
 config="CONFIG_UIO" ; config_module
 config="CONFIG_VIRT_DRIVERS" ; config_enable
 
@@ -690,6 +711,11 @@ config="CONFIG_VIRT_DRIVERS" ; config_enable
 #
 config="CONFIG_R8712U" ; config_module
 config="CONFIG_R8188EU" ; config_module
+
+#
+# Accelerometers
+#
+config="CONFIG_LIS3L02DQ" ; config_module
 
 #
 # Android
@@ -827,6 +853,7 @@ config="CONFIG_ARM_UNWIND" ; config_disable
 # Crypto core or helper
 #
 config="CONFIG_CRYPTO_MANAGER_DISABLE_TESTS" ; config_enable
+config="CONFIG_CRYPTO_PCRYPT" ; config_module
 
 #
 # Digest
