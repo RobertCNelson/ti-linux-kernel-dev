@@ -28,6 +28,7 @@ KERNEL_TAG=${KERNEL_REL}.29
 BUILD=${build_prefix}-r46.1
 
 #v3.X-rcX + upto SHA
+#prev_KERNEL_SHA=""
 #KERNEL_SHA=""
 
 #git branch
