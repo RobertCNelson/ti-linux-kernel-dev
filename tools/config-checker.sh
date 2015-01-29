@@ -401,6 +401,7 @@ config="CONFIG_PPS_CLIENT_GPIO" ; config_module
 config="CONFIG_PINMUX" ; config_enable
 config="CONFIG_PINCONF" ; config_enable
 config="CONFIG_GENERIC_PINCONF" ; config_enable
+config="CONFIG_PINCTRL_TI_IODELAY" ; config_enable
 config="CONFIG_PINCTRL_SINGLE" ; config_enable
 config="CONFIG_PINCTRL_PALMAS" ; config_enable
 config="CONFIG_GPIO_SYSFS" ; config_enable
