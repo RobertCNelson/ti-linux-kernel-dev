@@ -82,9 +82,9 @@ ipipe () {
 
 	#git diff v3.14.28...00d8a6f2 > /opt/github/xenomai-ti-linux-kernel-dev/patches/ipipe-3.14/ipipe-3.14-00d8a6f2.diff
 
-	#patch -p1 < "${DIR}/patches/ipipe-3.14/ipipe-3.14-ff7d37f8.diff"
-
+	#patch -p1 < "${DIR}/patches/ipipe-3.14/0001-ipipe-3.14.patch"
 	#exit 2
+
 	${git} "${DIR}/patches/ipipe-3.14/0001-ipipe-3.14.patch"
 }
 
