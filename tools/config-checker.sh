@@ -628,7 +628,7 @@ config="CONFIG_USB_GADGET_VBUS_DRAW" ; option=500 ; config_value
 #
 config="CONFIG_USB_ZERO" ; config_module
 config="CONFIG_USB_AUDIO" ; config_module
-config="CONFIG_USB_ETH_EEM" ; config_enable
+config="CONFIG_USB_ETH_EEM" ; config_disable
 config="CONFIG_USB_G_NCM" ; config_module
 config="CONFIG_USB_FUNCTIONFS" ; config_module
 config="CONFIG_USB_FUNCTIONFS_ETH" ; config_enable
