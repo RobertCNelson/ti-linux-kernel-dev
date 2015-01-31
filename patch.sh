@@ -89,7 +89,9 @@ backport () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
-	${git} "${DIR}/patches/backport/0001-backport-gpio_backlight.c-from-v3.15.10.patch"
+
+#	${git} "${DIR}/patches/backport/0001-backport-gpio_backlight.c-from-v3.15.10.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
