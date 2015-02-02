@@ -689,8 +689,6 @@ beaglebone () {
 
 sgx () {
 	echo "dir: sgx"
-	${git} "${DIR}/patches/sgx/0001-sgx-hack-just-a-copy-of-sgx-omap.h.patch"
-#	${git} "${DIR}/patches/sgx/0002-arm-Export-cache-flush-management-symbols-when-MULTI.patch"
 }
 
 ###
@@ -699,7 +697,7 @@ fixes
 backport
 firmware
 beaglebone
-sgx
+#sgx
 
 packaging_setup () {
 	cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
