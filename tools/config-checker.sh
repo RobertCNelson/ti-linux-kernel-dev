@@ -60,6 +60,7 @@ config="CONFIG_NO_HZ" ; config_enable
 #
 # RCU Subsystem
 #
+config="CONFIG_RCU_FAST_NO_HZ" ; config_enable
 config="CONFIG_IKCONFIG" ; config_enable
 config="CONFIG_IKCONFIG_PROC" ; config_enable
 config="CONFIG_LOG_BUF_SHIFT" ; option=18 ; config_value
@@ -333,6 +334,7 @@ config="CONFIG_INPUT_EVDEV" ; config_enable
 #
 # Input Device Drivers
 #
+config="CONFIG_KEYBOARD_GPIO" ; config_enable
 config="CONFIG_KEYBOARD_TWL4030" ; config_enable
 config="CONFIG_TOUCHSCREEN_ATMEL_MXT" ; config_enable
 config="CONFIG_TOUCHSCREEN_EDT_FT5X06" ; config_enable
@@ -358,6 +360,12 @@ config="CONFIG_HW_RANDOM_TPM" ; config_module
 config="CONFIG_TCG_TPM" ; config_module
 config="CONFIG_TCG_TIS_I2C_ATMEL" ; config_module
 config="CONFIG_I2C_CHARDEV" ; config_enable
+
+
+#
+# Multiplexer I2C Chip support
+#
+config="CONFIG_I2C_ARB_GPIO_CHALLENGE" ; config_module
 
 #
 # I2C system bus drivers (mostly embedded / system-on-chip)
@@ -399,10 +407,16 @@ config="CONFIG_PINCTRL_PALMAS" ; config_enable
 config="CONFIG_GPIO_SYSFS" ; config_enable
 
 #
+# Memory mapped GPIO drivers:
+#
+config="CONFIG_GPIO_GENERIC_PLATFORM" ; config_enable
+
+#
 # I2C GPIO expanders:
 #
 config="CONFIG_GPIO_PCF857X" ; config_enable
 config="CONFIG_GPIO_TWL4030" ; config_enable
+config="CONFIG_GPIO_TWL6040" ; config_enable
 
 #
 # MODULbus GPIO expanders:
@@ -485,6 +499,11 @@ config="CONFIG_VIDEO_V4L2_SUBDEV_API" ; config_enable
 #
 config="CONFIG_VIDEO_AM437X_VPFE" ; config_module
 config="CONFIG_VIDEO_TI_VIP" ; config_module
+
+#
+# Texas Instruments WL128x FM driver (ST based)
+#
+config="CONFIG_RADIO_WL128X" ; config_module
 
 #
 # Direct Rendering Manager
@@ -650,6 +669,7 @@ config="CONFIG_MEMSTICK" ; config_disable
 # LED drivers
 #
 config="CONFIG_LEDS_GPIO" ; config_enable
+config="CONFIG_LEDS_LT3593" ; config_module
 
 #
 # LED Triggers
@@ -683,6 +703,7 @@ config="CONFIG_DMA_OMAP" ; config_enable
 #
 # DMA Clients
 #
+config="CONFIG_ASYNC_TX_DMA" ; config_enable
 config="CONFIG_UIO" ; config_module
 config="CONFIG_VIRT_DRIVERS" ; config_enable
 
@@ -691,6 +712,11 @@ config="CONFIG_VIRT_DRIVERS" ; config_enable
 #
 config="CONFIG_R8712U" ; config_module
 config="CONFIG_R8188EU" ; config_module
+
+#
+# Accelerometers
+#
+config="CONFIG_LIS3L02DQ" ; config_module
 
 #
 # Android
@@ -828,6 +854,7 @@ config="CONFIG_ARM_UNWIND" ; config_disable
 # Crypto core or helper
 #
 config="CONFIG_CRYPTO_MANAGER_DISABLE_TESTS" ; config_enable
+config="CONFIG_CRYPTO_PCRYPT" ; config_module
 
 #
 # Digest
@@ -891,19 +918,19 @@ config="CONFIG_SOC_DRA7XX" ; config_enable
 # TI Audio/Display config options
 ##################################################
 CONFIG_BACKLIGHT_PWM=y
+CONFIG_BACKLIGHT_GPIO=y
 
 CONFIG_DRM=y
-CONFIG_DRM_KMS_HELPER=y
-CONFIG_DRM_KMS_FB_HELPER=y
-CONFIG_DRM_GEM_CMA_HELPER=y
-CONFIG_DRM_KMS_CMA_HELPER=y
 CONFIG_DRM_I2C_NXP_TDA998X=y
 CONFIG_DRM_TILCDC=y
 CONFIG_DRM_OMAP=y
 CONFIG_DRM_OMAP_NUM_CRTCS=2
 
-CONFIG_DISPLAY_PANEL_TLC59108=y
+CONFIG_OMAP2_DSS=y
 CONFIG_OMAP5_DSS_HDMI=y
+
+CONFIG_DISPLAY_PANEL_DPI=y
+CONFIG_DISPLAY_PANEL_TLC59108=y
 CONFIG_DISPLAY_CONNECTOR_HDMI=y
 CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015=y
 CONFIG_DISPLAY_ENCODER_TPD12S015=y
@@ -936,43 +963,39 @@ CONFIG_SND_SIMPLE_CARD=m
 CONFIG_SND_OMAP_SOC_DRA7EVM=y
 CONFIG_SND_SOC_TLV320AIC31XX=m
 CONFIG_SND_SOC_TLV320AIC3X=m
-
-CONFIG_OMAP2_DSS=y
-CONFIG_OMAP2_DSS_INIT=y
 ##################################################
-CONFIG_BACKLIGHT_PWM=m
-
+CONFIG_BACKLIGHT_PWM=y
 config="CONFIG_BACKLIGHT_PWM" ; config_enable
 
+CONFIG_BACKLIGHT_GPIO=y
+config="CONFIG_BACKLIGHT_GPIO" ; config_enable
+
 CONFIG_DRM=y
-CONFIG_DRM_KMS_HELPER=y
-CONFIG_DRM_KMS_FB_HELPER=y
-CONFIG_DRM_GEM_CMA_HELPER=y
-CONFIG_DRM_KMS_CMA_HELPER=y
 CONFIG_DRM_I2C_NXP_TDA998X=y
 CONFIG_DRM_TILCDC=y
 CONFIG_DRM_OMAP=y
 CONFIG_DRM_OMAP_NUM_CRTCS=2
 
 config="CONFIG_DRM" ; config_enable
-config="CONFIG_DRM_KMS_HELPER" ; config_enable
-config="CONFIG_DRM_KMS_FB_HELPER" ; config_enable
-config="CONFIG_DRM_GEM_CMA_HELPER" ; config_enable
-config="CONFIG_DRM_KMS_CMA_HELPER" ; config_enable
 config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
 config="CONFIG_DRM_TILCDC" ; config_enable
 config="CONFIG_DRM_OMAP" ; config_enable
 config="CONFIG_DRM_OMAP_NUM_CRTCS" ; option="2" ; config_value
 
-CONFIG_DISPLAY_PANEL_TLC59108=y
 CONFIG_OMAP5_DSS_HDMI=y
+
+CONFIG_DISPLAY_PANEL_TLC59108=y
+CONFIG_DISPLAY_PANEL_DPI=y
+CONFIG_DISPLAY_PANEL_TLC59108=y
 CONFIG_DISPLAY_CONNECTOR_HDMI=y
 CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015=y
 CONFIG_DISPLAY_ENCODER_TPD12S015=y
 CONFIG_DISPLAY_ENCODER_SII9022=y
 
-config="CONFIG_DISPLAY_PANEL_TLC59108" ; config_enable
 config="CONFIG_OMAP5_DSS_HDMI" ; config_enable
+
+config="CONFIG_DISPLAY_PANEL_DPI" ; config_enable
+config="CONFIG_DISPLAY_PANEL_TLC59108" ; config_enable
 config="CONFIG_DISPLAY_CONNECTOR_HDMI" ; config_enable
 config="CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015" ; config_enable
 config="CONFIG_DISPLAY_ENCODER_TPD12S015" ; config_enable
@@ -1049,6 +1072,9 @@ CONFIG_CGROUPS=y
 
 CONFIG_REGULATOR_GPIO=y
 
+# pinctrl
+CONFIG_PINCTRL_TI_IODELAY=y
+
 # Crypto hardware accelerators
 CONFIG_CRYPTO_DEV_OMAP_SHAM=y
 CONFIG_CRYPTO_DEV_OMAP_AES=y
@@ -1059,6 +1085,7 @@ CONFIG_CRYPTO_USER_API_SKCIPHER=y
 CONFIG_PREEMPT_VOLUNTARY=y
 
 CONFIG_JUMP_LABEL=y
+CONFIG_DEBUG_FS=y
 
 # Disable Extra debug options
 CONFIG_SCHEDSTATS=n
@@ -1074,7 +1101,10 @@ CONFIG_FTRACE=n
 CONFIG_ARM_UNWIND=n
 ##################################################
 config="CONFIG_CGROUPS" ; config_enable
+
 config="CONFIG_REGULATOR_GPIO" ; config_enable
+
+config="CONFIG_PINCTRL_TI_IODELAY" ; config_enable
 
 config="CONFIG_CRYPTO_DEV_OMAP_SHAM" ; config_enable
 config="CONFIG_CRYPTO_DEV_OMAP_AES" ; config_enable
@@ -1153,9 +1183,23 @@ CONFIG_USB_PRINTER=m
 CONFIG_ATA=y
 CONFIG_SATA_AHCI_PLATFORM=y
 
+#SCSI device support (disk, tape, CD-ROM)
+CONFIG_BLK_DEV_SD=y
+CONFIG_CHR_DEV_ST=m
+CONFIG_CHR_DEV_OSST=m
+CONFIG_BLK_DEV_SR=y
+CONFIG_CHR_DEV_SG=y
+CONFIG_CHR_DEV_SCH=m
+CONFIG_SCSI_ENCLOSURE=m
+CONFIG_SCSI_MULTI_LUN=y
+CONFIG_SCSI_CONSTANTS=y
+CONFIG_SCSI_LOGGING=y
+CONFIG_SCSI_SCAN_ASYNC=y
+
 #GPIO
 CONFIG_GPIO_PCF857X=y
 CONFIG_GPIO_PCA953X=y
+CONFIG_GPIO_PALMAS=y
 
 #IIO and ADC
 CONFIG_IIO=m
@@ -1214,6 +1258,18 @@ CONFIG_MTD_M25P80=m
 
 #EXTCON
 CONFIG_EXTCON_GPIO=y
+
+# Networking
+CONFIG_NF_CONNTRACK=m
+CONFIG_NF_CONNTRACK_IPV4=m
+CONFIG_IP_NF_IPTABLES=m
+CONFIG_IP_NF_FILTER=m
+CONFIG_NF_NAT_IPV4=m
+CONFIG_IP_NF_TARGET_MASQUERADE=m
+CONFIG_BRIDGE=m
+
+# Fan
+CONFIG_SENSORS_GPIO_FAN=y
 ##################################################
 #PCIe RC
 CONFIG_PCI=y
@@ -1333,9 +1389,11 @@ config="CONFIG_SATA_AHCI_PLATFORM" ; config_enable
 #GPIO
 CONFIG_GPIO_PCF857X=y
 CONFIG_GPIO_PCA953X=y
+CONFIG_GPIO_PALMAS=y
 
 config="CONFIG_GPIO_PCF857X" ; config_enable
 config="CONFIG_GPIO_PCA953X" ; config_enable
+config="CONFIG_GPIO_PALMAS" ; config_enable
 
 #IIO and ADC
 CONFIG_IIO=m
@@ -1441,6 +1499,11 @@ config="CONFIG_MTD_M25P80" ; config_module
 CONFIG_EXTCON_GPIO=y
 
 config="CONFIG_EXTCON_GPIO" ; config_enable
+
+# Fan
+CONFIG_SENSORS_GPIO_FAN=y
+
+config="CONFIG_SENSORS_GPIO_FAN" ; config_enable
 ##################################################
 #ipc.cfg
 ##################################################
@@ -1543,21 +1606,25 @@ config="CONFIG_SENSORS_TMP102" ; config_enable
 ##################################################
 # TI System Test config options
 ##################################################
-CONFIG_DEBUG_KMEMLEAK=y
-CONFIG_DEBUG_KMEMLEAK_EARLY_LOG_SIZE=4000
-CONFIG_DEBUG_KMEMLEAK_TEST=n
-CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF=n
-CONFIG_DEBUG_INFO=y
+CONFIG_CRYPTO_MANAGER_DISABLE_TESTS=n
+CONFIG_CRYPTO_TEST=m
 CONFIG_RTC_DEBUG=y
 CONFIG_TIGON3=m
-
+CONFIG_THERMAL_EMULATION=y
 # Enable Devfreq for co-processor driver testing
 CONFIG_PM_DEVFREQ=y
 CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND=y
 CONFIG_DEVFREQ_GOV_PERFORMANCE=y
 CONFIG_DEVFREQ_GOV_POWERSAVE=y
 CONFIG_DEVFREQ_GOV_USERSPACE=y
+
+CONFIG_SATA_AHCI=m
+CONFIG_SKGE=m
+CONFIG_E1000=m
+CONFIG_E1000E=m
 ##################################################
+config="CONFIG_THERMAL_EMULATION" ; config_enable
+
 config="CONFIG_PM_DEVFREQ" ; config_enable
 config="CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND" ; config_enable
 config="CONFIG_DEVFREQ_GOV_PERFORMANCE" ; config_enable
@@ -1581,14 +1648,6 @@ CONFIG_CRYPTO_TEST=m
 CONFIG_CRYPTO_ECB=y
 CONFIG_CRYPTO_ARC4=y
 CONFIG_CRYPTO_CCM=y
-
-
-CONFIG_NF_CONNTRACK=y
-CONFIG_NF_CONNTRACK_IPV4=y
-CONFIG_IP_NF_IPTABLES=y
-CONFIG_IP_NF_FILTER=y
-CONFIG_NF_NAT_IPV4=y
-CONFIG_IP_NF_TARGET_MASQUERADE=y
 ##################################################
 
 ##################################################
