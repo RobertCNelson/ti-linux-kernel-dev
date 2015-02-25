@@ -270,10 +270,11 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0004-bbb-force-usb0-to-perhiperal-mode-fixes-http-bugs.el.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0005-ARM-dts-AM33XX-Fix-system-power-off-control-in-am335.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0006-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0007-ARM-dts-am335x-bone-common-enable-aes-and-sham.patch"
 
-	#echo "patch -p1 < \"${DIR}/patches/beaglebone/dts/0007-add-base-files.patch\""
-	#exit 2
-	${git} "${DIR}/patches/beaglebone/dts/0007-add-base-files.patch"
+	#echo "patch -p1 < \"${DIR}/patches/beaglebone/dts/0008-add-base-files.patch\""
+#	exit 2
+	${git} "${DIR}/patches/beaglebone/dts/0008-add-base-files.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=7
@@ -647,11 +648,10 @@ beaglebone () {
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/last/
-		exit
+		exit 2
 	else
 		${git} "${DIR}/patches/beaglebone/generated/last/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
 	fi
-
 
 	echo "dir: beaglebone/mac"
 	#[PATCH v6 0/7] net: cpsw: Support for am335x chip MACIDs
