@@ -68,6 +68,15 @@ local_patch () {
 external_git
 #local_patch
 
+rt () {
+	echo "dir: rt"
+	#patch-3.14.31-rt28.patch
+	#exit 2
+
+	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
+	${git} "${DIR}/patches/rt/0002-rt-we-append-rt-on-our-own.patch"
+}
+
 fixes () {
 	echo "dir: fixes"
 	#regenerate="enable"
@@ -672,6 +681,7 @@ sgx () {
 }
 
 ###
+rt
 fixes
 backport
 firmware

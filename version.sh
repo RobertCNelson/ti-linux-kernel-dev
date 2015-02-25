@@ -12,8 +12,8 @@ fi
 
 config="omap2plus_defconfig"
 
-build_prefix="ti"
-branch_prefix=""
+build_prefix="ti-rt"
+branch_prefix="rt-"
 
 #toolchain="gcc_linaro_eabi_4_8"
 #toolchain="gcc_linaro_eabi_4_9"
