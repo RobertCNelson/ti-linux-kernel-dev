@@ -69,6 +69,7 @@ external_git
 #local_patch
 
 ipipe () {
+	echo "dir: ipipe"
 	#git checkout v3.14.28 -b ipipe-3.14
 	#git pull --no-edit git://git.xenomai.org/ipipe.git ipipe-3.14
 	#
