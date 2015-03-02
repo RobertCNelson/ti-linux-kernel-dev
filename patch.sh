@@ -70,20 +70,15 @@ external_git
 
 ipipe () {
 	echo "dir: ipipe"
-	#git checkout v3.14.28 -b ipipe-3.14
+	#git checkout v3.14.34 -b ipipe-3.14
 	#git pull --no-edit git://git.xenomai.org/ipipe.git ipipe-3.14
 	#
-	#commit 00d8a6f2e95453f61ae97b6587dba03bc91c7e1a
-	#Author: Jan Kiszka <jan.kiszka@siemens.com>
-	#Date:   Wed Jan 14 17:00:22 2015 +0100
-	#
-	#    arm/ipipe: Resolve trival merge conflicts
-	#    
-	#    Signed-off-by: Jan Kiszka <jan.kiszka@siemens.com>
+	#commit ce9384ded5f25ba832d9cdf5d87d96893efc24ef
 
-	#git diff v3.14.28...00d8a6f2 > /opt/github/xenomai-ti-linux-kernel-dev/patches/ipipe-3.14/ipipe-3.14-00d8a6f2.diff
+	#git diff v3.14.34...ce9384ded5f25ba832d9cdf5d87d96893efc24ef > ../patches/ipipe-3.14/ipipe-3.14.diff
 
-	#patch -p1 < "${DIR}/patches/ipipe-3.14/0001-ipipe-3.14.patch"
+	#patch -p1 < "${DIR}/patches/ipipe-3.14/ipipe-3.14.diff"
+
 	#exit 2
 
 	${git} "${DIR}/patches/ipipe-3.14/0001-ipipe-3.14.patch"
