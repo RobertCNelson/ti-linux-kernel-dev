@@ -119,6 +119,7 @@ mmc_write_boot () {
 
 		echo "Installing ${KERNEL_UTS}-dtbs.tar.gz to ${partition}"
 		sudo tar ${UNTAR} "${DIR}/deploy/${KERNEL_UTS}-dtbs.tar.gz" -C "${location}/dtbs/"
+		sudo cp -v "${location}/dtbs/omap5-igep0050.dtb" "${location}/omap5-igep0050.dtb"
 		sync
 	fi
 }
@@ -131,12 +132,12 @@ mmc_partition_discover () {
 
 	if [ -f "${DIR}/deploy/disk/boot/uEnv.txt" ] ; then
 		location="${DIR}/deploy/disk/boot"
-		test_uname=$(grep uname_r "${DIR}/deploy/disk/boot/uEnv.txt" | awk -F"=" '{print $2}' || true)
-		if [ ! "x${test_uname}" = "x" ] ; then
-			mmc_write_boot_uname
-		else
+		#test_uname=$(grep uname_r "${DIR}/deploy/disk/boot/uEnv.txt" | awk -F"=" '{print $2}' || true)
+		#if [ ! "x${test_uname}" = "x" ] ; then
+		#	mmc_write_boot_uname
+		#else
 			mmc_write_boot
-		fi
+		#fi
 	fi
 
 	if [ -f "${DIR}/deploy/disk/etc/fstab" ] ; then

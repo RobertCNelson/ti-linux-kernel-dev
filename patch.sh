@@ -59,8 +59,8 @@ external_git () {
 	echo "pulling: ${git_tag}"
 	git pull ${git_opts} ${git_patchset} ${git_tag}
 
-	echo "pulling: git://git.isee.biz/pub/scm/linux-omap-2.6.git linux-3.8.y-omap5-omapzoom"
-	git pull ${git_opts} git://git.isee.biz/pub/scm/linux-omap-2.6.git linux-3.8.y-omap5-omapzoom
+	echo "pulling: git://git.isee.biz/pub/scm/linux-omap-2.6.git linux-3.8.y-omap5"
+	git pull ${git_opts} git://git.isee.biz/pub/scm/linux-omap-2.6.git linux-3.8.y-omap5
 }
 
 local_patch () {
