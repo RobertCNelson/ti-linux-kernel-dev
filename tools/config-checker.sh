@@ -350,8 +350,6 @@ config="CONFIG_DEVKMEM" ; config_enable
 #
 # Non-8250 serial port support
 #
-config="CONFIG_SERIAL_OMAP" ; config_enable
-config="CONFIG_SERIAL_OMAP_CONSOLE" ; config_enable
 config="CONFIG_SERIAL_ARC" ; config_disable
 config="CONFIG_HW_RANDOM" ; config_enable
 config="CONFIG_HW_RANDOM_OMAP" ; config_enable
@@ -1120,6 +1118,12 @@ config="CONFIG_PREEMPT" ; config_enable
 ##################################################
 # TI Connectivity Configs
 ##################################################
+#Serial
+CONFIG_SERIAL_8250_OMAP=y
+CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP=y
+CONFIG_SERIAL_8250_RUNTIME_UARTS=10
+CONFIG_SERIAL_OMAP=n
+
 #PCIe RC
 CONFIG_PCI=y
 CONFIG_PCI_DRA7XX=y
@@ -1271,6 +1275,17 @@ CONFIG_BRIDGE=m
 # Fan
 CONFIG_SENSORS_GPIO_FAN=y
 ##################################################
+#Serial
+CONFIG_SERIAL_8250_OMAP=y
+CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP=y
+CONFIG_SERIAL_8250_RUNTIME_UARTS=10
+CONFIG_SERIAL_OMAP=n
+
+config="CONFIG_SERIAL_8250_OMAP" ; config_enable
+config="CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP" ; config_enable
+config="CONFIG_SERIAL_8250_RUNTIME_UARTS" ; option="10" ; config_value
+config="CONFIG_SERIAL_OMAP" ; config_disable
+
 #PCIe RC
 CONFIG_PCI=y
 CONFIG_PCI_DRA7XX=y
