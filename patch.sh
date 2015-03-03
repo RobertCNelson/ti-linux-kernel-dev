@@ -251,9 +251,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/pinmux/0027-audio-cape-Make-sure-i2c2-is-muxed-correctly.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0028-audio-cape-Adjust-clock-frequency.patch"
 	${git} "${DIR}/patches/beaglebone/pinmux/0029-audio-cape-Add-comments.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux/0030-arm-dts-am335x-bone-common-add-collision-and-carrier.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=29
+		number=30
 		cleanup
 	fi
 
