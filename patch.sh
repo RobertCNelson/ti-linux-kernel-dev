@@ -70,12 +70,12 @@ external_git
 
 ipipe () {
 	echo "dir: ipipe"
-	#git checkout v3.14.34 -b ipipe-3.14
+	#git checkout v3.14.33 -b ipipe-3.14
 	#git pull --no-edit git://git.xenomai.org/ipipe.git ipipe-3.14
 	#
-	#commit ce9384ded5f25ba832d9cdf5d87d96893efc24ef
+	#commit 6bdb2cbfd367f32b81030872a0caaada14f54d74
 
-	#git diff v3.14.34...ce9384ded5f25ba832d9cdf5d87d96893efc24ef > ../patches/ipipe-3.14/ipipe-3.14.diff
+	#git diff v3.14.33...6bdb2cbfd367f32b81030872a0caaada14f54d74 > ../patches/ipipe-3.14/ipipe-3.14.diff
 
 	#patch -p1 < "${DIR}/patches/ipipe-3.14/ipipe-3.14.diff"
 

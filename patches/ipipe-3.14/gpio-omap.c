@@ -1176,7 +1176,7 @@ static int omap_gpio_probe(struct platform_device *pdev)
 	irqc->irq_shutdown = gpio_irq_shutdown,
 	irqc->irq_ack = gpio_ack_irq,
 	irqc->irq_mask = gpio_mask_irq,
-	irqc->mask_ack = gpio_mask_ack_irq,
+	irqc->irq_mask_ack = gpio_mask_ack_irq,
 	irqc->irq_unmask = gpio_unmask_irq,
 	irqc->irq_set_type = gpio_irq_type,
 	irqc->irq_set_wake = gpio_wake_enable,

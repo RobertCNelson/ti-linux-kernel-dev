@@ -18479,7 +18479,7 @@ index 615fa90..e0a62ab 100644
  extern void default_send_IPI_mask_sequence_phys(const struct cpumask *mask,
 diff --git a/arch/x86/include/asm/ipipe.h b/arch/x86/include/asm/ipipe.h
 new file mode 100644
-index 0000000..f6df562
+index 0000000..a244663
 --- /dev/null
 +++ b/arch/x86/include/asm/ipipe.h
 @@ -0,0 +1,96 @@
@@ -18509,7 +18509,7 @@ index 0000000..f6df562
 +
 +#ifdef CONFIG_IPIPE
 +
-+#define IPIPE_CORE_RELEASE	7
++#define IPIPE_CORE_RELEASE	8
 +
 +struct ipipe_domain;
 +
@@ -20473,7 +20473,7 @@ index 66e274a..9ce7358 100644
  	/*
  	 * When in-kernel, we also print out the stack and code at the
 diff --git a/arch/x86/kernel/entry_32.S b/arch/x86/kernel/entry_32.S
-index c5a9cb9..1a8704f 100644
+index c5a9cb9..1c20915 100644
 --- a/arch/x86/kernel/entry_32.S
 +++ b/arch/x86/kernel/entry_32.S
 @@ -45,6 +45,7 @@
@@ -20613,7 +20613,7 @@ index c5a9cb9..1a8704f 100644
  	LOCKDEP_SYS_EXIT
  	DISABLE_INTERRUPTS(CLBR_ANY)
  	TRACE_IRQS_OFF
-@@ -451,6 +533,23 @@ sysenter_exit:
+@@ -451,6 +533,24 @@ sysenter_exit:
  	PTGS_TO_GS
  	ENABLE_INTERRUPTS_SYSEXIT
  
@@ -20631,13 +20631,14 @@ index c5a9cb9..1a8704f 100644
 +	jmp sysenter_exit
 +sysenter_exit_root:
 +	call __ipipe_root_sync
++	movl PT_EAX(%esp),%eax
 +	jmp sysenter_exit_check
 +#endif
 +
  #ifdef CONFIG_AUDITSYSCALL
  sysenter_audit:
  	testl $(_TIF_WORK_SYSCALL_ENTRY & ~_TIF_SYSCALL_AUDIT),TI_flags(%ebp)
-@@ -507,6 +606,25 @@ ENTRY(system_call)
+@@ -507,6 +607,25 @@ ENTRY(system_call)
  	pushl_cfi %eax			# save orig_eax
  	SAVE_ALL
  	GET_THREAD_INFO(%ebp)
@@ -20663,7 +20664,7 @@ index c5a9cb9..1a8704f 100644
  					# system call tracing in operation / emulation
  	testl $_TIF_WORK_SYSCALL_ENTRY,TI_flags(%ebp)
  	jnz syscall_trace_entry
-@@ -548,7 +666,7 @@ irq_return:
+@@ -548,7 +667,7 @@ irq_return:
  .section .fixup,"ax"
  ENTRY(iret_exc)
  	pushl $0			# no error code
@@ -20672,7 +20673,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  .previous
  	_ASM_EXTABLE(irq_return,iret_exc)
-@@ -608,6 +726,7 @@ work_pending:
+@@ -608,6 +727,7 @@ work_pending:
  	testb $_TIF_NEED_RESCHED, %cl
  	jz work_notifysig
  work_resched:
@@ -20680,7 +20681,7 @@ index c5a9cb9..1a8704f 100644
  	call schedule
  	LOCKDEP_SYS_EXIT
  	DISABLE_INTERRUPTS(CLBR_ANY)	# make sure we don't miss an interrupt
-@@ -623,6 +742,7 @@ work_resched:
+@@ -623,6 +743,7 @@ work_resched:
  
  work_notifysig:				# deal with pending signals and
  					# notify-resume requests
@@ -20688,7 +20689,7 @@ index c5a9cb9..1a8704f 100644
  #ifdef CONFIG_VM86
  	testl $X86_EFLAGS_VM, PT_EFLAGS(%esp)
  	movl %esp, %eax
-@@ -775,6 +895,58 @@ END(irq_entries_start)
+@@ -775,6 +896,58 @@ END(irq_entries_start)
  END(interrupt)
  .previous
  
@@ -20747,7 +20748,7 @@ index c5a9cb9..1a8704f 100644
  /*
   * the CPU automatically disables interrupts when executing an IRQ vector,
   * so IRQ-flags tracing has to follow that:
-@@ -808,6 +980,7 @@ ENTRY(name)				\
+@@ -808,6 +981,7 @@ ENTRY(name)				\
  	CFI_ENDPROC;			\
  ENDPROC(name)
  
@@ -20755,7 +20756,7 @@ index c5a9cb9..1a8704f 100644
  
  #ifdef CONFIG_TRACING
  #define TRACE_BUILD_INTERRUPT(name, nr)		\
-@@ -827,7 +1000,7 @@ ENTRY(coprocessor_error)
+@@ -827,7 +1001,7 @@ ENTRY(coprocessor_error)
  	RING0_INT_FRAME
  	ASM_CLAC
  	pushl_cfi $0
@@ -20764,7 +20765,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(coprocessor_error)
-@@ -838,17 +1011,17 @@ ENTRY(simd_coprocessor_error)
+@@ -838,17 +1012,17 @@ ENTRY(simd_coprocessor_error)
  	pushl_cfi $0
  #ifdef CONFIG_X86_INVD_BUG
  	/* AMD 486 bug: invd from userspace calls exception 19 instead of #GP */
@@ -20785,7 +20786,7 @@ index c5a9cb9..1a8704f 100644
  #endif
  	jmp error_code
  	CFI_ENDPROC
-@@ -858,7 +1031,7 @@ ENTRY(device_not_available)
+@@ -858,7 +1032,7 @@ ENTRY(device_not_available)
  	RING0_INT_FRAME
  	ASM_CLAC
  	pushl_cfi $-1			# mark this as an int
@@ -20794,7 +20795,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(device_not_available)
-@@ -879,7 +1052,7 @@ ENTRY(overflow)
+@@ -879,7 +1053,7 @@ ENTRY(overflow)
  	RING0_INT_FRAME
  	ASM_CLAC
  	pushl_cfi $0
@@ -20803,7 +20804,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(overflow)
-@@ -888,7 +1061,7 @@ ENTRY(bounds)
+@@ -888,7 +1062,7 @@ ENTRY(bounds)
  	RING0_INT_FRAME
  	ASM_CLAC
  	pushl_cfi $0
@@ -20812,7 +20813,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(bounds)
-@@ -897,7 +1070,7 @@ ENTRY(invalid_op)
+@@ -897,7 +1071,7 @@ ENTRY(invalid_op)
  	RING0_INT_FRAME
  	ASM_CLAC
  	pushl_cfi $0
@@ -20821,7 +20822,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(invalid_op)
-@@ -906,7 +1079,7 @@ ENTRY(coprocessor_segment_overrun)
+@@ -906,7 +1080,7 @@ ENTRY(coprocessor_segment_overrun)
  	RING0_INT_FRAME
  	ASM_CLAC
  	pushl_cfi $0
@@ -20830,7 +20831,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(coprocessor_segment_overrun)
-@@ -914,7 +1087,7 @@ END(coprocessor_segment_overrun)
+@@ -914,7 +1088,7 @@ END(coprocessor_segment_overrun)
  ENTRY(invalid_TSS)
  	RING0_EC_FRAME
  	ASM_CLAC
@@ -20839,7 +20840,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(invalid_TSS)
-@@ -922,7 +1095,7 @@ END(invalid_TSS)
+@@ -922,7 +1096,7 @@ END(invalid_TSS)
  ENTRY(segment_not_present)
  	RING0_EC_FRAME
  	ASM_CLAC
@@ -20848,7 +20849,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(segment_not_present)
-@@ -930,7 +1103,7 @@ END(segment_not_present)
+@@ -930,7 +1104,7 @@ END(segment_not_present)
  ENTRY(stack_segment)
  	RING0_EC_FRAME
  	ASM_CLAC
@@ -20857,7 +20858,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(stack_segment)
-@@ -938,7 +1111,7 @@ END(stack_segment)
+@@ -938,7 +1112,7 @@ END(stack_segment)
  ENTRY(alignment_check)
  	RING0_EC_FRAME
  	ASM_CLAC
@@ -20866,7 +20867,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(alignment_check)
-@@ -947,7 +1120,7 @@ ENTRY(divide_error)
+@@ -947,7 +1121,7 @@ ENTRY(divide_error)
  	RING0_INT_FRAME
  	ASM_CLAC
  	pushl_cfi $0			# no error code
@@ -20875,7 +20876,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(divide_error)
-@@ -957,7 +1130,7 @@ ENTRY(machine_check)
+@@ -957,7 +1131,7 @@ ENTRY(machine_check)
  	RING0_INT_FRAME
  	ASM_CLAC
  	pushl_cfi $0
@@ -20884,7 +20885,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(machine_check)
-@@ -967,7 +1140,7 @@ ENTRY(spurious_interrupt_bug)
+@@ -967,7 +1141,7 @@ ENTRY(spurious_interrupt_bug)
  	RING0_INT_FRAME
  	ASM_CLAC
  	pushl_cfi $0
@@ -20893,7 +20894,7 @@ index c5a9cb9..1a8704f 100644
  	jmp error_code
  	CFI_ENDPROC
  END(spurious_interrupt_bug)
-@@ -1267,7 +1440,7 @@ END(trace_page_fault)
+@@ -1267,7 +1441,7 @@ END(trace_page_fault)
  ENTRY(page_fault)
  	RING0_EC_FRAME
  	ASM_CLAC
@@ -20902,7 +20903,7 @@ index c5a9cb9..1a8704f 100644
  	ALIGN
  error_code:
  	/* the function address is in %gs's slot on the stack */
-@@ -1304,9 +1477,11 @@ error_code:
+@@ -1304,9 +1478,11 @@ error_code:
  	movl $(__USER_DS), %ecx
  	movl %ecx, %ds
  	movl %ecx, %es
@@ -20915,7 +20916,7 @@ index c5a9cb9..1a8704f 100644
  	jmp ret_from_exception
  	CFI_ENDPROC
  END(page_fault)
-@@ -1346,6 +1521,7 @@ ENTRY(debug)
+@@ -1346,6 +1522,7 @@ ENTRY(debug)
  debug_stack_correct:
  	pushl_cfi $-1			# mark this as an int
  	SAVE_ALL
@@ -20923,7 +20924,7 @@ index c5a9cb9..1a8704f 100644
  	TRACE_IRQS_OFF
  	xorl %edx,%edx			# error code 0
  	movl %esp,%eax			# pt_regs pointer
-@@ -1442,6 +1618,7 @@ ENTRY(int3)
+@@ -1442,6 +1619,7 @@ ENTRY(int3)
  	ASM_CLAC
  	pushl_cfi $-1			# mark this as an int
  	SAVE_ALL
@@ -20931,7 +20932,7 @@ index c5a9cb9..1a8704f 100644
  	TRACE_IRQS_OFF
  	xorl %edx,%edx		# zero error code
  	movl %esp,%eax		# pt_regs pointer
-@@ -1452,7 +1629,7 @@ END(int3)
+@@ -1452,7 +1630,7 @@ END(int3)
  
  ENTRY(general_protection)
  	RING0_EC_FRAME
