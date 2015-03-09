@@ -554,6 +554,7 @@ CONFIG_SERIAL_OMAP=n
 
 config="CONFIG_SERIAL_8250_OMAP" ; config_enable
 config="CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP" ; config_enable
+config="CONFIG_SERIAL_8250_NR_UARTS" ; option="10" ; config_value
 config="CONFIG_SERIAL_8250_RUNTIME_UARTS" ; option="10" ; config_value
 config="CONFIG_SERIAL_OMAP" ; config_disable
 
