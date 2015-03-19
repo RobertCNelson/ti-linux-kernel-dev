@@ -1567,6 +1567,11 @@ config="CONFIG_TI_EDMA" ; config_enable
 config="CONFIG_DMA_OMAP" ; config_enable
 
 #
+# DMA Clients
+#
+config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
+
+#
 # Android
 #
 config="CONFIG_ANDROID" ; config_enable
