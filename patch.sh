@@ -70,7 +70,7 @@ external_git
 
 rt () {
 	echo "dir: rt"
-	#patch-3.14.34-rt31.patch
+	#patch-3.14.36-rt34.patch
 	#exit 2
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
