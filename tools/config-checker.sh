@@ -1238,6 +1238,14 @@ config="CONFIG_ARM_APPENDED_DTB" ; config_disable
 config="CONFIG_ARM_OMAP2PLUS_CPUFREQ" ; config_disable
 
 #
+# CPU Idle
+#
+config="CONFIG_CPU_IDLE" ; config_enable
+config="CONFIG_CPU_IDLE_MULTIPLE_DRIVERS" ; config_enable
+config="CONFIG_CPU_IDLE_GOV_LADDER" ; config_enable
+config="CONFIG_CPU_IDLE_GOV_MENU" ; config_enable
+
+#
 # At least one emulation must be selected
 #
 config="CONFIG_KERNEL_MODE_NEON" ; config_enable
