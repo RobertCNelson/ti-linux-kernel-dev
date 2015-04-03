@@ -1,6 +1,6 @@
-From 47a95a80d45907f4150580cc39ab8275b8b3709a Mon Sep 17 00:00:00 2001
+From 19f490db18b46459d169e0e9702aa25add1c32f0 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 6 Mar 2015 10:47:39 -0600
+Date: Fri, 3 Apr 2015 13:37:55 -0500
 Subject: [PATCH] ipipe-3.14
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -18816,7 +18816,7 @@ index a94b82e..e185603 100644
  static inline bool is_debug_idt_enabled(void)
  {
 diff --git a/arch/x86/include/asm/fpu-internal.h b/arch/x86/include/asm/fpu-internal.h
-index cea1c76..50c8311 100644
+index 1ac1c00..33e2eba 100644
 --- a/arch/x86/include/asm/fpu-internal.h
 +++ b/arch/x86/include/asm/fpu-internal.h
 @@ -353,23 +353,31 @@ static inline void __drop_fpu(struct task_struct *tsk)
@@ -18847,7 +18847,7 @@ index cea1c76..50c8311 100644
 +	flags = hard_preempt_disable();
  	tsk->thread.fpu_counter = 0;
  	__drop_fpu(tsk);
- 	clear_used_math();
+ 	clear_stopped_child_used_math(tsk);
 -	preempt_enable();
 +	hard_preempt_enable(flags);
  }
@@ -21453,7 +21453,7 @@ index c5a9cb9..1c20915 100644
  	CFI_ENDPROC
  END(general_protection)
 diff --git a/arch/x86/kernel/entry_64.S b/arch/x86/kernel/entry_64.S
-index 02553d6..7469c53 100644
+index 06469ee..9eed709 100644
 --- a/arch/x86/kernel/entry_64.S
 +++ b/arch/x86/kernel/entry_64.S
 @@ -50,6 +50,7 @@
@@ -21525,7 +21525,7 @@ index 02553d6..7469c53 100644
  
  	call schedule_tail			# rdi: 'prev' task parameter
  
-@@ -616,15 +638,61 @@ GLOBAL(system_call_after_swapgs)
+@@ -619,15 +641,61 @@ GLOBAL(system_call_after_swapgs)
  	movq  %rax,ORIG_RAX-ARGOFFSET(%rsp)
  	movq  %rcx,RIP-ARGOFFSET(%rsp)
  	CFI_REL_OFFSET rip,RIP-ARGOFFSET
@@ -21593,7 +21593,7 @@ index 02553d6..7469c53 100644
  	ja badsys
  	movq %r10,%rcx
  	call *sys_call_table(,%rax,8)  # XXX:	 rip relative
-@@ -648,6 +716,7 @@ sysret_check:
+@@ -651,6 +719,7 @@ sysret_check:
  	 * sysretq will re-enable interrupts:
  	 */
  	TRACE_IRQS_ON
@@ -21601,7 +21601,7 @@ index 02553d6..7469c53 100644
  	movq RIP-ARGOFFSET(%rsp),%rcx
  	CFI_REGISTER	rip,rcx
  	RESTORE_ARGS 1,-ARG_SKIP,0
-@@ -659,6 +728,8 @@ sysret_check:
+@@ -662,6 +731,8 @@ sysret_check:
  	/* Handle reschedules */
  	/* edx:	work, edi: workmask */
  sysret_careful:
@@ -21610,7 +21610,7 @@ index 02553d6..7469c53 100644
  	bt $TIF_NEED_RESCHED,%edx
  	jnc sysret_signal
  	TRACE_IRQS_ON
-@@ -668,6 +739,16 @@ sysret_careful:
+@@ -671,6 +742,16 @@ sysret_careful:
  	popq_cfi %rdi
  	jmp sysret_check
  
@@ -21627,7 +21627,7 @@ index 02553d6..7469c53 100644
  	/* Handle a signal */
  sysret_signal:
  	TRACE_IRQS_ON
-@@ -765,9 +846,15 @@ GLOBAL(int_with_check)
+@@ -768,9 +849,15 @@ GLOBAL(int_with_check)
  	movl TI_flags(%rcx),%edx
  	andl %edi,%edx
  	jnz   int_careful
@@ -21643,7 +21643,7 @@ index 02553d6..7469c53 100644
  	/* Either reschedule or signal or syscall exit tracking needed. */
  	/* First do a reschedule test. */
  	/* edx:	work, edi: workmask */
-@@ -973,7 +1060,31 @@ END(interrupt)
+@@ -976,7 +1063,31 @@ END(interrupt)
  	subq $ORIG_RAX-RBP, %rsp
  	CFI_ADJUST_CFA_OFFSET ORIG_RAX-RBP
  	SAVE_ARGS_IRQ
@@ -21675,7 +21675,7 @@ index 02553d6..7469c53 100644
  	.endm
  
  /*
-@@ -986,10 +1097,27 @@ END(interrupt)
+@@ -989,10 +1100,27 @@ END(interrupt)
  	 */
  	.p2align CONFIG_X86_L1_CACHE_SHIFT
  common_interrupt:
@@ -21703,7 +21703,7 @@ index 02553d6..7469c53 100644
  	/* 0(%rsp): old_rsp-ARGOFFSET */
  ret_from_intr:
  	DISABLE_INTERRUPTS(CLBR_NONE)
-@@ -1003,7 +1131,7 @@ ret_from_intr:
+@@ -1006,7 +1134,7 @@ ret_from_intr:
  	CFI_DEF_CFA_REGISTER	rsp
  	CFI_ADJUST_CFA_OFFSET	RBP-ARGOFFSET
  
@@ -21712,7 +21712,7 @@ index 02553d6..7469c53 100644
  	GET_THREAD_INFO(%rcx)
  	testl $3,CS-ARGOFFSET(%rsp)
  	je retint_kernel
-@@ -1023,20 +1151,20 @@ retint_check:
+@@ -1026,20 +1154,20 @@ retint_check:
  	jnz  retint_careful
  
  retint_swapgs:		/* return to user-space */
@@ -21737,7 +21737,7 @@ index 02553d6..7469c53 100644
  restore_args:
  	RESTORE_ARGS 1,8,1
  
-@@ -1128,7 +1256,15 @@ ENTRY(retint_kernel)
+@@ -1131,7 +1259,15 @@ ENTRY(retint_kernel)
  	jnz  retint_restore_args
  	bt   $9,EFLAGS-ARGOFFSET(%rsp)	/* interrupts off? */
  	jnc  retint_restore_args
@@ -21754,7 +21754,7 @@ index 02553d6..7469c53 100644
  	jmp exit_intr
  #endif
  	CFI_ENDPROC
-@@ -1142,6 +1278,31 @@ END(common_interrupt)
+@@ -1145,6 +1281,31 @@ END(common_interrupt)
  /*
   * APIC interrupts.
   */
@@ -21786,7 +21786,7 @@ index 02553d6..7469c53 100644
  .macro apicinterrupt3 num sym do_sym
  ENTRY(\sym)
  	INTR_FRAME
-@@ -1153,6 +1314,7 @@ ENTRY(\sym)
+@@ -1156,6 +1317,7 @@ ENTRY(\sym)
  	CFI_ENDPROC
  END(\sym)
  .endm
@@ -21794,7 +21794,7 @@ index 02553d6..7469c53 100644
  
  #ifdef CONFIG_TRACING
  #define trace(sym) trace_##sym
-@@ -1209,6 +1371,14 @@ apicinterrupt CALL_FUNCTION_VECTOR \
+@@ -1212,6 +1374,14 @@ apicinterrupt CALL_FUNCTION_VECTOR \
  	call_function_interrupt smp_call_function_interrupt
  apicinterrupt RESCHEDULE_VECTOR \
  	reschedule_interrupt smp_reschedule_interrupt
@@ -21809,7 +21809,7 @@ index 02553d6..7469c53 100644
  #endif
  
  apicinterrupt ERROR_APIC_VECTOR \
-@@ -1224,7 +1394,7 @@ apicinterrupt IRQ_WORK_VECTOR \
+@@ -1227,7 +1397,7 @@ apicinterrupt IRQ_WORK_VECTOR \
  /*
   * Exception entry points.
   */
@@ -21818,7 +21818,7 @@ index 02553d6..7469c53 100644
  ENTRY(\sym)
  	INTR_FRAME
  	ASM_CLAC
-@@ -1236,13 +1406,28 @@ ENTRY(\sym)
+@@ -1239,13 +1409,28 @@ ENTRY(\sym)
  	DEFAULT_FRAME 0
  	movq %rsp,%rdi		/* pt_regs pointer */
  	xorl %esi,%esi		/* no error code */
@@ -21848,7 +21848,7 @@ index 02553d6..7469c53 100644
  ENTRY(\sym)
  	INTR_FRAME
  	ASM_CLAC
-@@ -1251,10 +1436,25 @@ ENTRY(\sym)
+@@ -1254,10 +1439,25 @@ ENTRY(\sym)
  	subq $ORIG_RAX-R15, %rsp
  	CFI_ADJUST_CFA_OFFSET ORIG_RAX-R15
  	call save_paranoid
@@ -21875,7 +21875,7 @@ index 02553d6..7469c53 100644
  	jmp paranoid_exit	/* %ebx: no swapgs flag */
  	CFI_ENDPROC
  END(\sym)
-@@ -1270,8 +1470,8 @@ ENTRY(\sym)
+@@ -1273,8 +1473,8 @@ ENTRY(\sym)
  	subq $ORIG_RAX-R15, %rsp
  	CFI_ADJUST_CFA_OFFSET ORIG_RAX-R15
  	call save_paranoid
@@ -21885,7 +21885,7 @@ index 02553d6..7469c53 100644
  	xorl %esi,%esi		/* no error code */
  	subq $EXCEPTION_STKSZ, INIT_TSS_IST(\ist)
  	call \do_sym
-@@ -1281,7 +1481,7 @@ ENTRY(\sym)
+@@ -1284,7 +1484,7 @@ ENTRY(\sym)
  END(\sym)
  .endm
  
@@ -21894,7 +21894,7 @@ index 02553d6..7469c53 100644
  ENTRY(\sym)
  	XCPT_FRAME
  	ASM_CLAC
-@@ -1293,25 +1493,40 @@ ENTRY(\sym)
+@@ -1296,25 +1496,40 @@ ENTRY(\sym)
  	movq %rsp,%rdi			/* pt_regs pointer */
  	movq ORIG_RAX(%rsp),%rsi	/* get error code */
  	movq $-1,ORIG_RAX(%rsp)		/* no syscall to restart */
@@ -21941,7 +21941,7 @@ index 02553d6..7469c53 100644
  ENTRY(\sym)
  	XCPT_FRAME
  	ASM_CLAC
-@@ -1320,29 +1535,44 @@ ENTRY(\sym)
+@@ -1323,29 +1538,44 @@ ENTRY(\sym)
  	CFI_ADJUST_CFA_OFFSET ORIG_RAX-R15
  	call save_paranoid
  	DEFAULT_FRAME 0
@@ -21999,7 +21999,7 @@ index 02553d6..7469c53 100644
  
  
  	/* Reload gs selector with exception handling */
-@@ -1378,15 +1608,19 @@ ENTRY(do_softirq_own_stack)
+@@ -1381,15 +1611,19 @@ ENTRY(do_softirq_own_stack)
  	CFI_REL_OFFSET rbp,0
  	mov  %rsp,%rbp
  	CFI_DEF_CFA_REGISTER rbp
@@ -22019,7 +22019,7 @@ index 02553d6..7469c53 100644
  	ret
  	CFI_ENDPROC
  END(do_softirq_own_stack)
-@@ -1503,16 +1737,21 @@ apicinterrupt3 HYPERVISOR_CALLBACK_VECTOR \
+@@ -1506,16 +1740,21 @@ apicinterrupt3 HYPERVISOR_CALLBACK_VECTOR \
   */
  	.pushsection .kprobes.text, "ax"
  
@@ -22044,7 +22044,7 @@ index 02553d6..7469c53 100644
  #ifdef CONFIG_KVM_GUEST
  errorentry async_page_fault do_async_page_fault
  #endif
-@@ -1538,8 +1777,13 @@ ENTRY(paranoid_exit)
+@@ -1541,8 +1780,13 @@ ENTRY(paranoid_exit)
  	DEFAULT_FRAME
  	DISABLE_INTERRUPTS(CLBR_NONE)
  	TRACE_IRQS_OFF_DEBUG
@@ -22058,7 +22058,7 @@ index 02553d6..7469c53 100644
  	testl $3,CS(%rsp)
  	jnz   paranoid_userspace
  paranoid_swapgs:
-@@ -1610,7 +1854,6 @@ ENTRY(error_entry)
+@@ -1613,7 +1857,6 @@ ENTRY(error_entry)
  error_swapgs:
  	SWAPGS
  error_sti:
@@ -23380,10 +23380,10 @@ index 09ce23a..a94e116 100644
  
  static void warn_bad_vsyscall(const char *level, struct pt_regs *regs,
 diff --git a/arch/x86/kernel/xsave.c b/arch/x86/kernel/xsave.c
-index dd50e26..e2def56 100644
+index 7a09aca..5c6595b 100644
 --- a/arch/x86/kernel/xsave.c
 +++ b/arch/x86/kernel/xsave.c
-@@ -563,6 +563,10 @@ static void __init xstate_enable_boot_cpu(void)
+@@ -564,6 +564,10 @@ static void __init xstate_enable_boot_cpu(void)
  	if (cpu_has_xsaveopt && eagerfpu != DISABLE)
  		eagerfpu = ENABLE;
  
@@ -23491,7 +23491,7 @@ index 80c22a3..c1157a4 100644
  	return &vmx->vcpu;
  
 diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
-index fab97ad..a328a06 100644
+index 1777f89..ce31c90 100644
 --- a/arch/x86/kvm/x86.c
 +++ b/arch/x86/kvm/x86.c
 @@ -39,6 +39,7 @@
@@ -23564,7 +23564,7 @@ index fab97ad..a328a06 100644
  
  	if (!smsr->registered) {
  		smsr->urn.on_user_return = kvm_on_user_return;
-@@ -2823,11 +2840,39 @@ void kvm_arch_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
+@@ -2824,11 +2841,39 @@ void kvm_arch_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
  
  void kvm_arch_vcpu_put(struct kvm_vcpu *vcpu)
  {
@@ -23604,7 +23604,7 @@ index fab97ad..a328a06 100644
  static int kvm_vcpu_ioctl_get_lapic(struct kvm_vcpu *vcpu,
  				    struct kvm_lapic_state *s)
  {
-@@ -5982,6 +6027,10 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
+@@ -5983,6 +6028,10 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
  	}
  
  	preempt_disable();
@@ -23615,7 +23615,7 @@ index fab97ad..a328a06 100644
  
  	kvm_x86_ops->prepare_guest_switch(vcpu);
  	if (vcpu->fpu_active)
-@@ -5997,12 +6046,11 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
+@@ -5998,12 +6047,11 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
  	 */
  	smp_mb__after_srcu_read_unlock();
  
@@ -24749,7 +24749,7 @@ index 8ffdd7d..17e05a9 100644
  #define MXS_SET		0x4
  #define MXS_CLR		0x8
 diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
-index 9962da4..c506460 100644
+index 9962da4..0db0d87 100644
 --- a/drivers/gpio/gpio-omap.c
 +++ b/drivers/gpio/gpio-omap.c
 @@ -28,6 +28,7 @@
@@ -34310,7 +34310,7 @@ index 126586a..f10614c 100644
  	if (pm_wakeup_pending()) {
  		error = -EAGAIN;
 diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
-index 8c086e6..2cd6549 100644
+index a755ad7..c54867a 100644
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
 @@ -1650,6 +1650,43 @@ asmlinkage int printk_emit(int facility, int level,
@@ -35088,7 +35088,7 @@ index 774a080..8b2f9dd 100644
  
  #else
 diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
-index 7113672..b27fc6a 100644
+index 813b021..6911c85 100644
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
 @@ -2053,8 +2053,9 @@ int trace_vbprintk(unsigned long ip, const char *fmt, va_list args)
@@ -35470,7 +35470,7 @@ index 0862816..aacbf2df 100644
  	help
  	  Transparent Hugepages allows the kernel to use huge pages and
 diff --git a/mm/memory.c b/mm/memory.c
-index 7f30bea..100a209 100644
+index 102af09..7d9fc91 100644
 --- a/mm/memory.c
 +++ b/mm/memory.c
 @@ -788,6 +788,34 @@ out:
@@ -35709,7 +35709,7 @@ index b1eb536..ca23f83 100644
 +}
 +#endif
 diff --git a/mm/mmap.c b/mm/mmap.c
-index 085bcd8..ef56280 100644
+index d4c97ba..3c42466 100644
 --- a/mm/mmap.c
 +++ b/mm/mmap.c
 @@ -45,6 +45,10 @@
