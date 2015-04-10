@@ -76,10 +76,9 @@ fixes () {
 	fi
 
 	${git} "${DIR}/patches/fixes/0001-musb_cppi41-fix-mismerge-https-github.com-beagleboar.patch"
-	${git} "${DIR}/patches/fixes/0002-crypto-omap-sham-Add-the-offset-of-sg-page-to-vaddr.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=1
 		cleanup
 	fi
 }
