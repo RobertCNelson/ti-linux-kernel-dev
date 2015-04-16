@@ -584,9 +584,15 @@ CONFIG_USB_TI_CPPI41_DMA=y
 CONFIG_TWL6030_USB=m
 CONFIG_TWL4030_USB=m
 
-config="CONFIG_USB_MUSB_HDRC" ; config_module
-config="CONFIG_USB_MUSB_OMAP2PLUS" ; config_module
-config="CONFIG_USB_MUSB_DSPS" ; config_module
+#config="CONFIG_USB_MUSB_HDRC" ; config_module
+config="CONFIG_USB_MUSB_HDRC" ; config_enable
+
+#config="CONFIG_USB_MUSB_OMAP2PLUS" ; config_module
+config="CONFIG_USB_MUSB_OMAP2PLUS" ; config_disable
+
+#config="CONFIG_USB_MUSB_DSPS" ; config_module
+config="CONFIG_USB_MUSB_DSPS" ; config_enable
+
 config="CONFIG_TI_CPPI41" ; config_enable
 
 config="CONFIG_USB_TI_CPPI41_DMA" ; config_enable
@@ -596,8 +602,8 @@ config="CONFIG_MUSB_PIO_ONLY" ; config_disable
 #config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 #config="CONFIG_MUSB_PIO_ONLY" ; config_enable
 
-config="CONFIG_TWL6030_USB" ; config_module
-config="CONFIG_TWL4030_USB" ; config_module
+#config="CONFIG_TWL6030_USB" ; config_module
+#config="CONFIG_TWL4030_USB" ; config_module
 
 #USB gadgets
 CONFIG_USB_AUDIO=m
