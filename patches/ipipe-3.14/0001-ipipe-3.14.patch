@@ -1,6 +1,6 @@
-From 19f490db18b46459d169e0e9702aa25add1c32f0 Mon Sep 17 00:00:00 2001
+From 19f5759a6dac84461f1be48e1a6d8ae4f429e65a Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 3 Apr 2015 13:37:55 -0500
+Date: Fri, 24 Apr 2015 11:17:32 -0500
 Subject: [PATCH] ipipe-3.14
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -122,7 +122,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/mach-omap2/pm34xx.c                     |    4 +
  arch/arm/mach-omap2/pm44xx.c                     |    6 +
  arch/arm/mach-omap2/prm_common.c                 |    4 +-
- arch/arm/mach-omap2/timer.c                      |  182 +-
+ arch/arm/mach-omap2/timer.c                      |  181 +-
  arch/arm/mach-pxa/irq.c                          |    7 +-
  arch/arm/mach-pxa/lpd270.c                       |    3 +-
  arch/arm/mach-pxa/lubbock.c                      |    3 +-
@@ -356,7 +356,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/irqchip/irq-mxs.c                        |   15 +-
  drivers/irqchip/irq-s3c24xx.c                    |    5 +-
  drivers/irqchip/irq-versatile-fpga.c             |    7 +-
- drivers/irqchip/irq-vic.c                        |    6 +-
+ drivers/irqchip/irq-vic.c                        |    8 +-
  drivers/irqchip/spear-shirq.c                    |    7 +-
  drivers/mfd/twl4030-irq.c                        |    1 +
  drivers/mfd/twl6030-irq.c                        |   10 +-
@@ -457,10 +457,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/mlock.c                                       |   25 +
  mm/mmap.c                                        |    6 +-
  mm/mmu_context.c                                 |    5 +-
- mm/mprotect.c                                    |    6 +
+ mm/mprotect.c                                    |   10 +-
  mm/vmalloc.c                                     |    2 +
  scripts/ipipe/genpatches.sh                      |  170 ++
- 455 files changed, 20477 insertions(+), 1606 deletions(-)
+ 455 files changed, 20480 insertions(+), 1608 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -7879,7 +7879,7 @@ index 8cde9e0..727b212 100644
  config ARCH_MXS
  	bool "Freescale MXS (i.MX23, i.MX28) support"
 diff --git a/arch/arm/mach-omap2/Kconfig b/arch/arm/mach-omap2/Kconfig
-index bf06214..3f96f28 100644
+index 2cb8a00..992360d 100644
 --- a/arch/arm/mach-omap2/Kconfig
 +++ b/arch/arm/mach-omap2/Kconfig
 @@ -45,6 +45,7 @@ config ARCH_OMAP4
@@ -8200,7 +8200,7 @@ index d243fdf..9e8e39d 100644
  	if (chip->irq_ack)
  		chip->irq_ack(&desc->irq_data);
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
-index c2b3b1f..c03af6c 100644
+index 1ee3cb6..5bcbe73 100644
 --- a/arch/arm/mach-omap2/timer.c
 +++ b/arch/arm/mach-omap2/timer.c
 @@ -42,6 +42,9 @@
@@ -8213,7 +8213,7 @@ index c2b3b1f..c03af6c 100644
  
  #include <asm/mach/time.h>
  #include <asm/smp_twd.h>
-@@ -64,6 +67,11 @@
+@@ -64,11 +67,22 @@
  #define INCREMENTER_DENUMERATOR_RELOAD_OFFSET		0x14
  #define NUMERATOR_DENUMERATOR_MASK			0xfffff000
  
@@ -8225,9 +8225,7 @@ index c2b3b1f..c03af6c 100644
  /* Clockevent code */
  
  static struct omap_dm_timer clkev;
-@@ -72,6 +80,12 @@ static struct clock_event_device clockevent_gpt;
- /* Clockevent hwmod for am335x and am437x suspend */
- struct omap_hwmod *clockevent_gpt_hwmod;
+ static struct clock_event_device clockevent_gpt;
  
 +static void omap2_gp_timer_ack(void)
 +{
@@ -8235,8 +8233,8 @@ index c2b3b1f..c03af6c 100644
 +	__omap_dm_timer_read_status(&clkev);
 +}
 +
- #ifdef CONFIG_SOC_HAS_REALTIME_COUNTER
- static unsigned long arch_timer_freq;
+ /* Clockevent hwmod for am335x and am437x suspend */
+ struct omap_hwmod *clockevent_gpt_hwmod;
  
 @@ -85,7 +99,8 @@ static irqreturn_t omap2_gp_timer_interrupt(int irq, void *dev_id)
  {
@@ -8439,12 +8437,7 @@ index c2b3b1f..c03af6c 100644
  	clockevents_config_and_register(&clockevent_gpt, clkev.rate,
  					3, /* Timer internal resynch latency */
  					0xffffffff);
-@@ -541,14 +656,16 @@ static void omap2_gptimer_clksrc_resume(struct clocksource *unused)
- 				   OMAP_TIMER_NONPOSTED);
- }
- 
-+/* Setup free-running counter for clocksource */
- static void __init omap2_gptimer_clocksource_init(int gptimer_id,
+@@ -545,10 +660,11 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  						  const char *fck_source,
  						  const char *property)
  {
@@ -8457,7 +8450,7 @@ index c2b3b1f..c03af6c 100644
  
  	if (soc_is_am43xx()) {
  		clocksource_gpt.suspend = omap2_gptimer_clksrc_suspend;
-@@ -557,7 +674,8 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
+@@ -557,7 +673,8 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  
  	res = omap_dm_timer_init_one(&clksrc, fck_source, property,
  				     &clocksource_gpt.name,
@@ -8467,7 +8460,7 @@ index c2b3b1f..c03af6c 100644
  	BUG_ON(res);
  
  	__omap_dm_timer_load_start(&clksrc,
-@@ -565,6 +683,21 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
+@@ -565,6 +682,21 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  				   OMAP_TIMER_NONPOSTED);
  	sched_clock_register(dmtimer_read_sched_clock, 32, clksrc.rate);
  
@@ -8489,7 +8482,7 @@ index c2b3b1f..c03af6c 100644
  	if (clocksource_register_hz(&clocksource_gpt, clksrc.rate))
  		pr_err("Could not register clocksource %s\n",
  			clocksource_gpt.name);
-@@ -700,6 +833,7 @@ void __init omap##name##_gptimer_timer_init(void)			\
+@@ -700,6 +832,7 @@ void __init omap##name##_gptimer_timer_init(void)			\
  					clksrc_prop);			\
  }
  
@@ -8497,7 +8490,7 @@ index c2b3b1f..c03af6c 100644
  #define OMAP_SYS_32K_TIMER_INIT(name, clkev_nr, clkev_src, clkev_prop,	\
  				clksrc_nr, clksrc_src, clksrc_prop)	\
  void __init omap##name##_sync32k_timer_init(void)		\
-@@ -714,6 +848,34 @@ void __init omap##name##_sync32k_timer_init(void)		\
+@@ -714,6 +847,34 @@ void __init omap##name##_sync32k_timer_init(void)		\
  	else								\
  		omap2_sync32k_clocksource_init();			\
  }
@@ -10959,7 +10952,7 @@ index b34b95f..1071b46 100644
  	mcr	p15, 0, ip, c8, c7, 0		@ invalidate I & D TLBs
  	cpwait_ret lr, ip
 diff --git a/arch/arm/plat-omap/dmtimer.c b/arch/arm/plat-omap/dmtimer.c
-index 869254c..69438c1 100644
+index 1e8dad3..7ac7db5 100644
 --- a/arch/arm/plat-omap/dmtimer.c
 +++ b/arch/arm/plat-omap/dmtimer.c
 @@ -285,7 +285,6 @@ struct omap_dm_timer *omap_dm_timer_request_specific(int id)
@@ -10998,7 +10991,7 @@ index 869254c..69438c1 100644
  {
  	u32 l;
  
-@@ -827,6 +838,7 @@ static int omap_dm_timer_probe(struct platform_device *pdev)
+@@ -828,6 +839,7 @@ static int omap_dm_timer_probe(struct platform_device *pdev)
  	}
  
  	timer->fclk = ERR_PTR(-ENODEV);
@@ -15026,7 +15019,7 @@ index 662c6dd..23f6e52 100644
  	mflr	r3
  	ld	r11, 0(r1)
 diff --git a/arch/powerpc/kernel/exceptions-64s.S b/arch/powerpc/kernel/exceptions-64s.S
-index 38d5073..ccc8ec9 100644
+index 5193116..ab85bde 100644
 --- a/arch/powerpc/kernel/exceptions-64s.S
 +++ b/arch/powerpc/kernel/exceptions-64s.S
 @@ -652,9 +652,11 @@ masked_##_H##interrupt:					\
@@ -24749,7 +24742,7 @@ index 8ffdd7d..17e05a9 100644
  #define MXS_SET		0x4
  #define MXS_CLR		0x8
 diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
-index 9962da4..0db0d87 100644
+index 9962da4..a3050fc 100644
 --- a/drivers/gpio/gpio-omap.c
 +++ b/drivers/gpio/gpio-omap.c
 @@ -28,6 +28,7 @@
@@ -25469,7 +25462,7 @@ index 3ae2bb8..887b87d 100644
  	f->valid = valid;
  
 diff --git a/drivers/irqchip/irq-vic.c b/drivers/irqchip/irq-vic.c
-index 8e21ae0..03a43ab 100644
+index 8e21ae0..d9a68ff 100644
 --- a/drivers/irqchip/irq-vic.c
 +++ b/drivers/irqchip/irq-vic.c
 @@ -32,6 +32,7 @@
@@ -25480,6 +25473,15 @@ index 8e21ae0..03a43ab 100644
  
  #include <asm/exception.h>
  #include <asm/irq.h>
+@@ -217,7 +218,7 @@ static int handle_one_vic(struct vic_device *vic, struct pt_regs *regs)
+ 
+ 	while ((stat = readl_relaxed(vic->base + VIC_IRQ_STATUS))) {
+ 		irq = ffs(stat) - 1;
+-		handle_IRQ(irq_find_mapping(vic->domain, irq), regs);
++		ipipe_handle_multi_irq(irq_find_mapping(vic->domain, irq), regs);
+ 		handled = 1;
+ 	}
+ 
 @@ -310,7 +311,7 @@ static void vic_unmask_irq(struct irq_data *d)
  #if defined(CONFIG_PM)
  static struct vic_device *vic_from_irq(unsigned int irq)
@@ -34442,7 +34444,7 @@ index b30a292..27376a0 100644
  		return sched_clock();
  
 diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 9a3f3c4..e745ea9 100644
+index 5e973ef..fb3a19b 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
 @@ -1520,7 +1520,9 @@ void scheduler_ipi(void)
@@ -34602,7 +34604,7 @@ index 9a3f3c4..e745ea9 100644
  		__preempt_count_sub(PREEMPT_ACTIVE);
  
  		/*
-@@ -3491,6 +3517,7 @@ change:
+@@ -3493,6 +3519,7 @@ change:
  	oldprio = p->prio;
  	prev_class = p->sched_class;
  	__setscheduler(rq, p, attr);
@@ -34610,7 +34612,7 @@ index 9a3f3c4..e745ea9 100644
  
  	if (running)
  		p->sched_class->set_curr_task(rq);
-@@ -4585,10 +4612,13 @@ int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask)
+@@ -4587,10 +4614,13 @@ int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask)
  	do_set_cpus_allowed(p, new_mask);
  
  	/* Can the task run on the task's current CPU? If so, we're done */
@@ -34625,7 +34627,7 @@ index 9a3f3c4..e745ea9 100644
  	if (p->on_rq) {
  		struct migration_arg arg = { p, dest_cpu };
  		/* Need help from migration thread: drop lock and wait. */
-@@ -8026,3 +8056,42 @@ void dump_cpu_task(int cpu)
+@@ -8028,3 +8058,42 @@ void dump_cpu_task(int cpu)
  	pr_info("Task dump for CPU %d:\n", cpu);
  	sched_show_task(cpu_curr(cpu));
  }
@@ -35413,7 +35415,7 @@ index f8e0e53..02175aa3 100644
  			wake_up_klogd();
  	}
 diff --git a/lib/ioremap.c b/lib/ioremap.c
-index 0c9216c..f5331c0 100644
+index 0c9216c..9b8e8d5 100644
 --- a/lib/ioremap.c
 +++ b/lib/ioremap.c
 @@ -10,6 +10,7 @@
@@ -35429,9 +35431,9 @@ index 0c9216c..f5331c0 100644
  	} while (pgd++, addr = next, addr != end);
  
 -	flush_cache_vmap(start, end);
-+	/* APEI may invoke this for temporarily remapping pages in NMI
++	/* APEI may invoke this for temporarily remapping pages in IRQ or NMI
 +	 * context - nothing we can and need to propagate globally. */
-+	if (!in_nmi()) {
++	if (!(in_irq() || in_nmi())) {
 +		__ipipe_pin_range_globally(start, end);
 +		flush_cache_vmap(start, end);
 +	}
@@ -35757,10 +35759,35 @@ index 8a8cd02..81a1bf6 100644
  
  	if (active_mm != mm)
 diff --git a/mm/mprotect.c b/mm/mprotect.c
-index 769a67a..8c40894 100644
+index 769a67a..b67a1ab 100644
 --- a/mm/mprotect.c
 +++ b/mm/mprotect.c
-@@ -209,6 +209,12 @@ unsigned long change_protection(struct vm_area_struct *vma, unsigned long start,
+@@ -43,7 +43,7 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
+ 	struct mm_struct *mm = vma->vm_mm;
+ 	pte_t *pte, oldpte;
+ 	spinlock_t *ptl;
+-	unsigned long pages = 0;
++	unsigned long pages = 0, flags;
+ 
+ 	pte = pte_offset_map_lock(mm, pmd, addr, &ptl);
+ 	arch_enter_lazy_mmu_mode();
+@@ -54,6 +54,7 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
+ 			bool updated = false;
+ 
+ 			if (!prot_numa) {
++				flags = hard_local_irq_save();
+ 				ptent = ptep_modify_prot_start(mm, addr, pte);
+ 				if (pte_numa(ptent))
+ 					ptent = pte_mknonnuma(ptent);
+@@ -65,6 +66,7 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
+ 				if (dirty_accountable && pte_dirty(ptent))
+ 					ptent = pte_mkwrite(ptent);
+ 				ptep_modify_prot_commit(mm, addr, pte, ptent);
++				hard_local_irq_restore(flags);
+ 				updated = true;
+ 			} else {
+ 				struct page *page;
+@@ -209,6 +211,12 @@ unsigned long change_protection(struct vm_area_struct *vma, unsigned long start,
  		pages = hugetlb_change_protection(vma, start, end, newprot);
  	else
  		pages = change_protection_range(vma, start, end, newprot, dirty_accountable, prot_numa);

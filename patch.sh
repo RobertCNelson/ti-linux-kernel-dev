@@ -80,9 +80,9 @@ ipipe () {
 	#git checkout v3.14.33 -b ipipe-3.14
 	#git pull --no-edit git://git.xenomai.org/ipipe.git ipipe-3.14
 	#
-	#commit 6bdb2cbfd367f32b81030872a0caaada14f54d74
+	#commit ea7af9c0573dd0b33ac6ce900b4f91cc71224f43
 
-	#git diff v3.14.33...6bdb2cbfd367f32b81030872a0caaada14f54d74 > ../patches/ipipe-3.14/ipipe-3.14.diff
+	#git diff v3.14.33...ea7af9c0573dd0b33ac6ce900b4f91cc71224f43 > ../patches/ipipe-3.14/ipipe-3.14.diff
 
 	#patch -p1 < "${DIR}/patches/ipipe-3.14/ipipe-3.14.diff"
 

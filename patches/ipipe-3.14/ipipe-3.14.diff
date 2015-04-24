@@ -24966,7 +24966,7 @@ index 3ae2bb8..887b87d 100644
  	f->valid = valid;
  
 diff --git a/drivers/irqchip/irq-vic.c b/drivers/irqchip/irq-vic.c
-index 8e21ae0..03a43ab 100644
+index 8e21ae0..d9a68ff 100644
 --- a/drivers/irqchip/irq-vic.c
 +++ b/drivers/irqchip/irq-vic.c
 @@ -32,6 +32,7 @@
@@ -24977,6 +24977,15 @@ index 8e21ae0..03a43ab 100644
  
  #include <asm/exception.h>
  #include <asm/irq.h>
+@@ -217,7 +218,7 @@ static int handle_one_vic(struct vic_device *vic, struct pt_regs *regs)
+ 
+ 	while ((stat = readl_relaxed(vic->base + VIC_IRQ_STATUS))) {
+ 		irq = ffs(stat) - 1;
+-		handle_IRQ(irq_find_mapping(vic->domain, irq), regs);
++		ipipe_handle_multi_irq(irq_find_mapping(vic->domain, irq), regs);
+ 		handled = 1;
+ 	}
+ 
 @@ -310,7 +311,7 @@ static void vic_unmask_irq(struct irq_data *d)
  #if defined(CONFIG_PM)
  static struct vic_device *vic_from_irq(unsigned int irq)
@@ -34910,7 +34919,7 @@ index f8e0e53..02175aa3 100644
  			wake_up_klogd();
  	}
 diff --git a/lib/ioremap.c b/lib/ioremap.c
-index 0c9216c..f5331c0 100644
+index 0c9216c..9b8e8d5 100644
 --- a/lib/ioremap.c
 +++ b/lib/ioremap.c
 @@ -10,6 +10,7 @@
@@ -34926,9 +34935,9 @@ index 0c9216c..f5331c0 100644
  	} while (pgd++, addr = next, addr != end);
  
 -	flush_cache_vmap(start, end);
-+	/* APEI may invoke this for temporarily remapping pages in NMI
++	/* APEI may invoke this for temporarily remapping pages in IRQ or NMI
 +	 * context - nothing we can and need to propagate globally. */
-+	if (!in_nmi()) {
++	if (!(in_irq() || in_nmi())) {
 +		__ipipe_pin_range_globally(start, end);
 +		flush_cache_vmap(start, end);
 +	}
@@ -35254,10 +35263,35 @@ index 8a8cd02..81a1bf6 100644
  
  	if (active_mm != mm)
 diff --git a/mm/mprotect.c b/mm/mprotect.c
-index 769a67a..8c40894 100644
+index 769a67a..b67a1ab 100644
 --- a/mm/mprotect.c
 +++ b/mm/mprotect.c
-@@ -209,6 +209,12 @@ unsigned long change_protection(struct vm_area_struct *vma, unsigned long start,
+@@ -43,7 +43,7 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
+ 	struct mm_struct *mm = vma->vm_mm;
+ 	pte_t *pte, oldpte;
+ 	spinlock_t *ptl;
+-	unsigned long pages = 0;
++	unsigned long pages = 0, flags;
+ 
+ 	pte = pte_offset_map_lock(mm, pmd, addr, &ptl);
+ 	arch_enter_lazy_mmu_mode();
+@@ -54,6 +54,7 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
+ 			bool updated = false;
+ 
+ 			if (!prot_numa) {
++				flags = hard_local_irq_save();
+ 				ptent = ptep_modify_prot_start(mm, addr, pte);
+ 				if (pte_numa(ptent))
+ 					ptent = pte_mknonnuma(ptent);
+@@ -65,6 +66,7 @@ static unsigned long change_pte_range(struct vm_area_struct *vma, pmd_t *pmd,
+ 				if (dirty_accountable && pte_dirty(ptent))
+ 					ptent = pte_mkwrite(ptent);
+ 				ptep_modify_prot_commit(mm, addr, pte, ptent);
++				hard_local_irq_restore(flags);
+ 				updated = true;
+ 			} else {
+ 				struct page *page;
+@@ -209,6 +211,12 @@ unsigned long change_protection(struct vm_area_struct *vma, unsigned long start,
  		pages = hugetlb_change_protection(vma, start, end, newprot);
  	else
  		pages = change_protection_range(vma, start, end, newprot, dirty_accountable, prot_numa);
