@@ -1,6 +1,6 @@
-From 19f5759a6dac84461f1be48e1a6d8ae4f429e65a Mon Sep 17 00:00:00 2001
+From 3b15172fea3d831eff6cd0997b821d989d1f8766 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 24 Apr 2015 11:17:32 -0500
+Date: Wed, 29 Apr 2015 10:29:15 -0500
 Subject: [PATCH] ipipe-3.14
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -396,7 +396,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/preempt.h                          |   25 +-
  include/linux/rwlock.h                           |    8 +-
  include/linux/rwlock_api_smp.h                   |    4 +-
- include/linux/sched.h                            |   28 +-
+ include/linux/sched.h                            |   26 +-
  include/linux/spinlock.h                         |   90 +-
  include/linux/spinlock_api_smp.h                 |    6 +-
  include/linux/spinlock_up.h                      |   17 +-
@@ -460,7 +460,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/mprotect.c                                    |   10 +-
  mm/vmalloc.c                                     |    2 +
  scripts/ipipe/genpatches.sh                      |  170 ++
- 455 files changed, 20480 insertions(+), 1608 deletions(-)
+ 455 files changed, 20479 insertions(+), 1607 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -3157,7 +3157,7 @@ index 209e650..e2f930a 100644
  
  #endif /* CONFIG_SMP */
 diff --git a/arch/arm/include/asm/pgtable.h b/arch/arm/include/asm/pgtable.h
-index 7d59b52..40296a0 100644
+index 89dba13..b48ef12 100644
 --- a/arch/arm/include/asm/pgtable.h
 +++ b/arch/arm/include/asm/pgtable.h
 @@ -48,6 +48,8 @@
@@ -3243,9 +3243,9 @@ index 7d59b52..40296a0 100644
 +	set_pte_ext(ptep, __pte(0), 0);				\
 +} while (0)
  
- #define pte_none(pte)		(!pte_val(pte))
- #define pte_present(pte)	(pte_val(pte) & L_PTE_PRESENT)
-@@ -233,10 +282,14 @@ extern void __sync_icache_dcache(pte_t pteval);
+ #define pte_isset(pte, val)	((u32)(val) == (val) ? pte_val(pte) & (val) \
+ 						: !!(pte_val(pte) & (val)))
+@@ -237,10 +286,14 @@ extern void __sync_icache_dcache(pte_t pteval);
  #endif
  
  static inline void set_pte_at(struct mm_struct *mm, unsigned long addr,
@@ -16878,7 +16878,7 @@ index 7a8a748..8f13a2f 100644
  {
  	long *start, *end;
 diff --git a/arch/powerpc/mm/fault.c b/arch/powerpc/mm/fault.c
-index 51ab9e7..2234331 100644
+index 010fabf..553a4b4 100644
 --- a/arch/powerpc/mm/fault.c
 +++ b/arch/powerpc/mm/fault.c
 @@ -197,9 +197,9 @@ static int mm_fault_error(struct pt_regs *regs, unsigned long addr, int fault)
@@ -23664,7 +23664,7 @@ index ddf9ecb..e1ac76d 100644
  
  	/*
 diff --git a/arch/x86/mm/fault.c b/arch/x86/mm/fault.c
-index a10c8c7..f12bbb9 100644
+index ebc551c..6833a6e 100644
 --- a/arch/x86/mm/fault.c
 +++ b/arch/x86/mm/fault.c
 @@ -358,9 +358,9 @@ void vmalloc_sync_all(void)
@@ -23700,7 +23700,7 @@ index a10c8c7..f12bbb9 100644
  #ifdef CONFIG_CPU_SUP_AMD
  static const char errata93_warning[] =
  KERN_ERR 
-@@ -1038,6 +1043,11 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
+@@ -1033,6 +1038,11 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
  	tsk = current;
  	mm = tsk->mm;
  
@@ -23712,7 +23712,7 @@ index a10c8c7..f12bbb9 100644
  	/*
  	 * Detect and handle instructions that would cause a page fault for
  	 * both a tracked kernel page and a userspace page.
-@@ -1268,6 +1278,46 @@ do_page_fault(struct pt_regs *regs, unsigned long error_code)
+@@ -1264,6 +1274,46 @@ do_page_fault(struct pt_regs *regs, unsigned long error_code)
  	exception_exit(prev_state);
  }
  
@@ -23759,7 +23759,7 @@ index a10c8c7..f12bbb9 100644
  #ifdef CONFIG_TRACING
  static void trace_page_fault_entries(unsigned long address, struct pt_regs *regs,
  				     unsigned long error_code)
-@@ -1295,4 +1345,5 @@ trace_do_page_fault(struct pt_regs *regs, unsigned long error_code)
+@@ -1291,4 +1341,5 @@ trace_do_page_fault(struct pt_regs *regs, unsigned long error_code)
  	__do_page_fault(regs, error_code, address);
  	exception_exit(prev_state);
  }
@@ -24742,7 +24742,7 @@ index 8ffdd7d..17e05a9 100644
  #define MXS_SET		0x4
  #define MXS_CLR		0x8
 diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
-index 9962da4..a3050fc 100644
+index 9962da4..0db0d87 100644
 --- a/drivers/gpio/gpio-omap.c
 +++ b/drivers/gpio/gpio-omap.c
 @@ -28,6 +28,7 @@
@@ -28481,7 +28481,7 @@ index 5b9b84b..6c8bb4d 100644
  static inline void __raw_read_lock(rwlock_t *lock)
  {
 diff --git a/include/linux/sched.h b/include/linux/sched.h
-index 218b058..d579687 100644
+index 91fe6a3..d579687 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
 @@ -24,6 +24,7 @@ struct sched_param {
@@ -28547,15 +28547,6 @@ index 218b058..d579687 100644
  
  	/*
  	 * cache last used pipe for splice
-@@ -1695,7 +1719,7 @@ static inline pid_t task_tgid_vnr(struct task_struct *tsk)
- }
- 
- 
--static int pid_alive(const struct task_struct *p);
-+static inline int pid_alive(const struct task_struct *p);
- static inline pid_t task_ppid_nr_ns(const struct task_struct *tsk, struct pid_namespace *ns)
- {
- 	pid_t pid = 0;
 diff --git a/include/linux/spinlock.h b/include/linux/spinlock.h
 index 3f2867f..336c90a 100644
 --- a/include/linux/spinlock.h
@@ -35090,7 +35081,7 @@ index 774a080..8b2f9dd 100644
  
  #else
 diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
-index 813b021..6911c85 100644
+index a2d62b3..38b8ba8 100644
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
 @@ -2053,8 +2053,9 @@ int trace_vbprintk(unsigned long ip, const char *fmt, va_list args)
@@ -35472,7 +35463,7 @@ index 0862816..aacbf2df 100644
  	help
  	  Transparent Hugepages allows the kernel to use huge pages and
 diff --git a/mm/memory.c b/mm/memory.c
-index 102af09..7d9fc91 100644
+index 749e1c6..090df7e 100644
 --- a/mm/memory.c
 +++ b/mm/memory.c
 @@ -788,6 +788,34 @@ out:
@@ -35600,7 +35591,7 @@ index 102af09..7d9fc91 100644
  		if (entry.val)
  			break;
  		progress += 8;
-@@ -2563,34 +2637,6 @@ static inline int pte_unmap_same(struct mm_struct *mm, pmd_t *pmd,
+@@ -2564,34 +2638,6 @@ static inline int pte_unmap_same(struct mm_struct *mm, pmd_t *pmd,
  	return same;
  }
  
@@ -35635,7 +35626,7 @@ index 102af09..7d9fc91 100644
  /*
   * This routine handles present pages, when users try to write
   * to a shared page. It is done by copying the page to a new address
-@@ -4269,6 +4315,41 @@ void copy_user_huge_page(struct page *dst, struct page *src,
+@@ -4270,6 +4316,41 @@ void copy_user_huge_page(struct page *dst, struct page *src,
  }
  #endif /* CONFIG_TRANSPARENT_HUGEPAGE || CONFIG_HUGETLBFS */
  
