@@ -284,17 +284,15 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0001-hack-bbb-enable-1ghz-operation.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0002-dts-am335x-bone-common-fixup-leds-to-match-3.8.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0003-ARM-dts-am335x-bone-Fix-model-name-and-update-compat.patch"
-#	${git} "${DIR}/patches/beaglebone/dts/0004-bbb-force-usb0-to-perhiperal-mode-fixes-http-bugs.el.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0005-ARM-dts-AM33XX-Fix-system-power-off-control-in-am335.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0006-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0007-ARM-dts-am335x-bone-common-enable-aes-and-sham.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0004-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0005-ARM-dts-am335x-bone-common-enable-aes-and-sham.patch"
 
-	#echo "patch -p1 < \"${DIR}/patches/beaglebone/dts/0008-add-base-files.patch\""
+	#echo "patch -p1 < \"${DIR}/patches/beaglebone/dts/0006-add-base-files.patch\""
 #	exit 2
-	${git} "${DIR}/patches/beaglebone/dts/0008-add-base-files.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0006-add-base-files.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=7
+		number=6
 		cleanup
 	fi
 
