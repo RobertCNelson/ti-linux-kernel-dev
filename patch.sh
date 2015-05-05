@@ -568,7 +568,7 @@ beaglebone () {
 
 	####
 	#dtb makefile
-	regenerate="enable"
+	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		device="am335x-bone-audio-reva.dtb"
 		dtb_makefile_append
