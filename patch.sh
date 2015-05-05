@@ -287,9 +287,6 @@ beaglebone () {
 		cleanup
 	fi
 
-	echo "dir: beaglebone/capes"
-	${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
-
 	#regenerate="enable"
 	echo "dir: beaglebone/generated"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -529,8 +526,33 @@ beaglebone () {
 		${git} "${DIR}/patches/beaglebone/generated/0010-auto-generated-cape-can1.patch"
 	fi
 
+	echo "dir: beaglebone/capes"
+#	regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+		${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
+		${git} "${DIR}/patches/beaglebone/capes/0002-ARM-dts-am335x-boneblack-enable-wl1835mod-cape-suppo.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+
+	#Slowly merging to the way we did this in v4.0.x...
+
+	#This has to be last...
+	#echo "dir: beaglebone/dtbs"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		#patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
+		exit 2
+	fi
+	#${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
+
 	####
 	#dtb makefile
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		device="am335x-bone-audio-reva.dtb"
 		dtb_makefile_append
@@ -651,6 +673,8 @@ beaglebone () {
 
 		device="am335x-boneblack-ttyO5.dtb"
 		dtb_makefile_append
+
+		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/last/
