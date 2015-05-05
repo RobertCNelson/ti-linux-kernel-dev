@@ -1,6 +1,6 @@
-From 3b15172fea3d831eff6cd0997b821d989d1f8766 Mon Sep 17 00:00:00 2001
+From 82aec618681243fb76bf464f3be41c1251deb0fb Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 29 Apr 2015 10:29:15 -0500
+Date: Tue, 5 May 2015 16:05:42 -0500
 Subject: [PATCH] ipipe-3.14
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -122,7 +122,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/mach-omap2/pm34xx.c                     |    4 +
  arch/arm/mach-omap2/pm44xx.c                     |    6 +
  arch/arm/mach-omap2/prm_common.c                 |    4 +-
- arch/arm/mach-omap2/timer.c                      |  181 +-
+ arch/arm/mach-omap2/timer.c                      |  182 +-
  arch/arm/mach-pxa/irq.c                          |    7 +-
  arch/arm/mach-pxa/lpd270.c                       |    3 +-
  arch/arm/mach-pxa/lubbock.c                      |    3 +-
@@ -313,7 +313,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/x86/kernel/i387.c                           |    3 +
  arch/x86/kernel/i8253.c                          |    4 +
  arch/x86/kernel/i8259.c                          |   30 +-
- arch/x86/kernel/ipipe.c                          |  624 +++++++
+ arch/x86/kernel/ipipe.c                          |  584 +++++++
  arch/x86/kernel/irq.c                            |    9 +-
  arch/x86/kernel/irqinit.c                        |   12 +
  arch/x86/kernel/kgdb.c                           |   24 +-
@@ -349,7 +349,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/gpio/gpio-mpc8xxx.c                      |    5 +-
  drivers/gpio/gpio-mxc.c                          |  122 +-
  drivers/gpio/gpio-mxs.c                          |    1 +
- drivers/gpio/gpio-omap.c                         |  199 ++-
+ drivers/gpio/gpio-omap.c                         |  200 ++-
  drivers/gpio/gpio-pxa.c                          |    5 +-
  drivers/gpio/gpio-sa1100.c                       |    8 +-
  drivers/irqchip/irq-gic.c                        |  117 +-
@@ -460,7 +460,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/mprotect.c                                    |   10 +-
  mm/vmalloc.c                                     |    2 +
  scripts/ipipe/genpatches.sh                      |  170 ++
- 455 files changed, 20479 insertions(+), 1607 deletions(-)
+ 455 files changed, 20441 insertions(+), 1607 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -2088,7 +2088,7 @@ index bb28af7..780ca50 100644
  static inline void sp804_clockevents_init(void __iomem *base, unsigned int irq, const char *name)
 diff --git a/arch/arm/include/asm/ipipe.h b/arch/arm/include/asm/ipipe.h
 new file mode 100644
-index 0000000..128fc6a
+index 0000000..d1c125d
 --- /dev/null
 +++ b/arch/arm/include/asm/ipipe.h
 @@ -0,0 +1,272 @@
@@ -2136,7 +2136,7 @@ index 0000000..128fc6a
 +#include <linux/jump_label.h>
 +#include <linux/ipipe_trace.h>
 +
-+#define IPIPE_CORE_RELEASE	8
++#define IPIPE_CORE_RELEASE	9
 +
 +struct ipipe_domain;
 +
@@ -8200,7 +8200,7 @@ index d243fdf..9e8e39d 100644
  	if (chip->irq_ack)
  		chip->irq_ack(&desc->irq_data);
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
-index 1ee3cb6..5bcbe73 100644
+index 1ee3cb6..b0e9d49 100644
 --- a/arch/arm/mach-omap2/timer.c
 +++ b/arch/arm/mach-omap2/timer.c
 @@ -42,6 +42,9 @@
@@ -8437,7 +8437,12 @@ index 1ee3cb6..5bcbe73 100644
  	clockevents_config_and_register(&clockevent_gpt, clkev.rate,
  					3, /* Timer internal resynch latency */
  					0xffffffff);
-@@ -545,10 +660,11 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
+@@ -541,14 +656,16 @@ static void omap2_gptimer_clksrc_resume(struct clocksource *unused)
+ 				   OMAP_TIMER_NONPOSTED);
+ }
+ 
++/* Setup free-running counter for clocksource */
+ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  						  const char *fck_source,
  						  const char *property)
  {
@@ -8450,7 +8455,7 @@ index 1ee3cb6..5bcbe73 100644
  
  	if (soc_is_am43xx()) {
  		clocksource_gpt.suspend = omap2_gptimer_clksrc_suspend;
-@@ -557,7 +673,8 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
+@@ -557,7 +674,8 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  
  	res = omap_dm_timer_init_one(&clksrc, fck_source, property,
  				     &clocksource_gpt.name,
@@ -8460,7 +8465,7 @@ index 1ee3cb6..5bcbe73 100644
  	BUG_ON(res);
  
  	__omap_dm_timer_load_start(&clksrc,
-@@ -565,6 +682,21 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
+@@ -565,6 +683,21 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  				   OMAP_TIMER_NONPOSTED);
  	sched_clock_register(dmtimer_read_sched_clock, 32, clksrc.rate);
  
@@ -8482,7 +8487,7 @@ index 1ee3cb6..5bcbe73 100644
  	if (clocksource_register_hz(&clocksource_gpt, clksrc.rate))
  		pr_err("Could not register clocksource %s\n",
  			clocksource_gpt.name);
-@@ -700,6 +832,7 @@ void __init omap##name##_gptimer_timer_init(void)			\
+@@ -700,6 +833,7 @@ void __init omap##name##_gptimer_timer_init(void)			\
  					clksrc_prop);			\
  }
  
@@ -8490,7 +8495,7 @@ index 1ee3cb6..5bcbe73 100644
  #define OMAP_SYS_32K_TIMER_INIT(name, clkev_nr, clkev_src, clkev_prop,	\
  				clksrc_nr, clksrc_src, clksrc_prop)	\
  void __init omap##name##_sync32k_timer_init(void)		\
-@@ -714,6 +847,34 @@ void __init omap##name##_sync32k_timer_init(void)		\
+@@ -714,6 +848,34 @@ void __init omap##name##_sync32k_timer_init(void)		\
  	else								\
  		omap2_sync32k_clocksource_init();			\
  }
@@ -11320,7 +11325,7 @@ index 9ceccef..3c94fa7 100644
  
  comment "Processor and Board Settings"
 diff --git a/arch/blackfin/include/asm/ipipe.h b/arch/blackfin/include/asm/ipipe.h
-index 17b5e92..cc10543 100644
+index 17b5e92..8b74b1b 100644
 --- a/arch/blackfin/include/asm/ipipe.h
 +++ b/arch/blackfin/include/asm/ipipe.h
 @@ -28,7 +28,7 @@
@@ -11340,7 +11345,7 @@ index 17b5e92..cc10543 100644
 -#define IPIPE_MAJOR_NUMBER    1
 -#define IPIPE_MINOR_NUMBER    16
 -#define IPIPE_PATCH_NUMBER    1
-+#define IPIPE_CORE_RELEASE	6
++#define IPIPE_CORE_RELEASE	7
  
  #ifdef CONFIG_SMP
  #error "I-pipe/blackfin: SMP not implemented"
@@ -13389,7 +13394,7 @@ index 10be1dd..cfad863 100644
   * or should we not care like we do now ? --BenH.
 diff --git a/arch/powerpc/include/asm/ipipe.h b/arch/powerpc/include/asm/ipipe.h
 new file mode 100644
-index 0000000..29cf300
+index 0000000..40aca5b
 --- /dev/null
 +++ b/arch/powerpc/include/asm/ipipe.h
 @@ -0,0 +1,157 @@
@@ -13434,7 +13439,7 @@ index 0000000..29cf300
 +#include <linux/cache.h>
 +#include <linux/threads.h>
 +
-+#define IPIPE_CORE_RELEASE	7
++#define IPIPE_CORE_RELEASE	8
 +
 +struct ipipe_domain;
 +
@@ -18983,7 +18988,7 @@ index 615fa90..e0a62ab 100644
  extern void default_send_IPI_mask_sequence_phys(const struct cpumask *mask,
 diff --git a/arch/x86/include/asm/ipipe.h b/arch/x86/include/asm/ipipe.h
 new file mode 100644
-index 0000000..a244663
+index 0000000..6766b3d
 --- /dev/null
 +++ b/arch/x86/include/asm/ipipe.h
 @@ -0,0 +1,96 @@
@@ -19013,7 +19018,7 @@ index 0000000..a244663
 +
 +#ifdef CONFIG_IPIPE
 +
-+#define IPIPE_CORE_RELEASE	8
++#define IPIPE_CORE_RELEASE	9
 +
 +struct ipipe_domain;
 +
@@ -22230,10 +22235,10 @@ index 2e977b5..e91576e 100644
  handle_real_irq:
 diff --git a/arch/x86/kernel/ipipe.c b/arch/x86/kernel/ipipe.c
 new file mode 100644
-index 0000000..767f838
+index 0000000..1bcee82
 --- /dev/null
 +++ b/arch/x86/kernel/ipipe.c
-@@ -0,0 +1,624 @@
+@@ -0,0 +1,584 @@
 +/*   -*- linux-c -*-
 + *   linux/arch/x86/kernel/ipipe.c
 + *
@@ -22587,8 +22592,7 @@ index 0000000..767f838
 +int __ipipe_handle_exception(struct pt_regs *regs, long error_code, int vector)
 +{
 +	bool hard_irqs_off = hard_irqs_disabled();
-+	bool root_entry = false;
-+	unsigned long flags = 0;
++	unsigned long reg_flags, flags = 0;
 +	unsigned long cr2 = 0;
 +
 +#ifdef CONFIG_KGDB
@@ -22603,48 +22607,30 @@ index 0000000..767f838
 +	}
 +#endif /* CONFIG_KGDB */
 +
-+	if (ipipe_root_p) {
-+		root_entry = true;
-+
-+		local_save_flags(flags);
-+		/*
-+		 * Replicate hw interrupt state into the virtual mask
-+		 * before calling the I-pipe event handler over the
-+		 * root domain.
-+		 */
-+		if (hard_irqs_off)
-+			local_irq_disable();
-+	}
-+
 +	/*
 +	 * XXX: We don't trace page faults (yet?). */
 +	if (vector == ex_do_page_fault)
 +		cr2 = native_read_cr2();
 +
-+	if (unlikely(__ipipe_notify_trap(vector, regs))) {
-+		if (root_entry)
-+			ipipe_restore_root_nosync(flags);
++	if (unlikely(__ipipe_notify_trap(vector, regs)))
 +		return 1;
-+	}
++
++	reg_flags = regs->flags;
 +
 +	if (likely(ipipe_root_p)) {
-+		if (!root_entry) {
-+			local_save_flags(flags);
++		local_save_flags(flags);
 +
-+			/*
-+			 * Sync Linux interrupt state with hardware state on
-+			 * entry.
-+			 */
-+			if (hard_irqs_off)
-+				local_irq_disable();
-+		}
++		/*
++		 * Sync Linux interrupt state with hardware state on
++		 * entry.
++		 */
++		if (hard_irqs_off)
++			local_irq_disable();
 +		/*
 +		 * If root is not the topmost domain or in case we faulted in
 +		 * the iret path of x86-32, regs.flags does not match the root
-+		 * domain state. The fault handler or the low-level return
-+		 * code may evaluate it. So fix this up, either by the root
-+		 * state sampled on entry or, if we migrated to root, with the
-+		 * current state.
++		 * domain state. The fault handler may evaluate it. So fix this
++		 * up with the current state.
 +		 */
 +		__fixup_if(raw_irqs_disabled_flags(flags), regs);
 +	} else {
@@ -22687,11 +22673,11 @@ index 0000000..767f838
 +	__ipipe_std_extable[vector](regs, error_code);
 +
 +	/*
-+	 * Relevant for 64-bit: Restore root domain state as the low-level
-+	 * return code will not align it to regs.flags.
++	 * Restore root domain state as the low-level return code will not
++	 * align it to regs->flags.
 +	 */
-+	if (root_entry)
-+		ipipe_restore_root_nosync(flags);
++	ipipe_restore_root(raw_irqs_disabled_flags(flags));
++	__fixup_if(raw_irqs_disabled_flags(reg_flags), regs);
 +
 +	return 0;
 +}
@@ -22699,20 +22685,8 @@ index 0000000..767f838
 +int __ipipe_divert_exception(struct pt_regs *regs, int vector)
 +{
 +	bool hard_irqs_off = hard_irqs_disabled();
-+	bool root_entry = false;
 +	unsigned long flags = 0;
 +
-+	if (ipipe_root_p) {
-+		root_entry = true;
-+		local_save_flags(flags);
-+		if (hard_irqs_off) {
-+			/*
-+			 * Same root state handling as in
-+			 * __ipipe_handle_exception.
-+			 */
-+			local_irq_disable();
-+		}
-+	}
 +#ifdef CONFIG_KGDB
 +	/*
 +	 * Catch int1 and int3 for kgdb here. They may trigger over
@@ -22728,37 +22702,28 @@ index 0000000..767f838
 +			get_debugreg(condition, 6);
 +		}
 +		if (!user_mode(regs) &&
-+		    !kgdb_handle_exception(vector, SIGTRAP, condition, regs)) {
-+			if (root_entry) {
-+				ipipe_restore_root_nosync(flags);
-+				__fixup_if(root_entry ?
-+					   raw_irqs_disabled_flags(flags) :
-+					   raw_irqs_disabled(), regs);
-+			}
++		    !kgdb_handle_exception(vector, SIGTRAP, condition, regs))
 +			return 1;
-+		}
 +	}
 +skip_kgdb:
 +#endif /* CONFIG_KGDB */
 +
-+	if (unlikely(__ipipe_notify_trap(vector, regs))) {
-+		if (root_entry)
-+			ipipe_restore_root_nosync(flags);
++	if (unlikely(__ipipe_notify_trap(vector, regs)))
 +		return 1;
-+	}
 +
 +	/* see __ipipe_handle_exception */
 +	if (likely(ipipe_root_p)) {
-+		if (!root_entry) {
-+			local_save_flags(flags);
-+			if (hard_irqs_off)
-+				local_irq_disable();
-+		}
++		local_save_flags(flags);
++		if (hard_irqs_off)
++			local_irq_disable();
++		WARN_ON_ONCE(raw_irqs_disabled_flags(flags) &&
++			     ipipe_head_domain != ipipe_root_domain);
 +		__fixup_if(raw_irqs_disabled_flags(flags), regs);
 +	}
 +	/*
-+	 * No need to restore root state in the 64-bit case, the Linux
-+	 * handler and the return code will take care of it.
++	 * We should restore the root state after calling the Linux handler
++	 * but, in all cases which are not fatal to the system anyway, the
++	 * handler will re-enable interrupts anyway and therefore save us.
 +	 */
 +
 +	return 0;
@@ -24742,7 +24707,7 @@ index 8ffdd7d..17e05a9 100644
  #define MXS_SET		0x4
  #define MXS_CLR		0x8
 diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
-index 9962da4..0db0d87 100644
+index 9962da4..e0c7002 100644
 --- a/drivers/gpio/gpio-omap.c
 +++ b/drivers/gpio/gpio-omap.c
 @@ -28,6 +28,7 @@
@@ -24871,7 +24836,15 @@ index 9962da4..0db0d87 100644
  static void gpio_unmask_irq(struct irq_data *d)
  {
  	struct gpio_bank *bank = irq_data_get_irq_chip_data(d);
-@@ -1152,6 +1176,7 @@ static int omap_gpio_probe(struct platform_device *pdev)
+@@ -1114,6 +1138,7 @@ static void omap_gpio_chip_init(struct gpio_bank *bank, struct irq_chip *irqc)
+ 			set_irq_flags(irq, IRQF_VALID);
+ 		}
+ 	}
++
+ 	irq_set_chained_handler(bank->irq, gpio_irq_handler);
+ 	irq_set_handler_data(bank->irq, bank);
+ }
+@@ -1152,6 +1177,7 @@ static int omap_gpio_probe(struct platform_device *pdev)
  	irqc->irq_shutdown = gpio_irq_shutdown,
  	irqc->irq_ack = gpio_ack_irq,
  	irqc->irq_mask = gpio_mask_irq,
@@ -24879,7 +24852,7 @@ index 9962da4..0db0d87 100644
  	irqc->irq_unmask = gpio_unmask_irq,
  	irqc->irq_set_type = gpio_irq_type,
  	irqc->irq_set_wake = gpio_wake_enable,
-@@ -1253,6 +1278,164 @@ static int omap_gpio_probe(struct platform_device *pdev)
+@@ -1253,6 +1279,164 @@ static int omap_gpio_probe(struct platform_device *pdev)
  
  #ifdef CONFIG_ARCH_OMAP2PLUS
  
@@ -35406,7 +35379,7 @@ index f8e0e53..02175aa3 100644
  			wake_up_klogd();
  	}
 diff --git a/lib/ioremap.c b/lib/ioremap.c
-index 0c9216c..9b8e8d5 100644
+index 0c9216c..1575d3e 100644
 --- a/lib/ioremap.c
 +++ b/lib/ioremap.c
 @@ -10,6 +10,7 @@
@@ -35422,9 +35395,9 @@ index 0c9216c..9b8e8d5 100644
  	} while (pgd++, addr = next, addr != end);
  
 -	flush_cache_vmap(start, end);
-+	/* APEI may invoke this for temporarily remapping pages in IRQ or NMI
++	/* APEI may invoke this for temporarily remapping pages in interrupt
 +	 * context - nothing we can and need to propagate globally. */
-+	if (!(in_irq() || in_nmi())) {
++	if (!in_interrupt()) {
 +		__ipipe_pin_range_globally(start, end);
 +		flush_cache_vmap(start, end);
 +	}
