@@ -80,6 +80,10 @@ rt () {
 	#patch-3.14.39-rt37.patch
 	#exit 2
 
+	#merge notes:
+	#drivers/usb/gadget/function/f_fs.c
+	#drivers/usb/gadget/legacy/inode.c
+
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 	${git} "${DIR}/patches/rt/0002-rt-we-append-rt-on-our-own.patch"
 }
