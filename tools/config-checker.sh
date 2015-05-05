@@ -575,6 +575,11 @@ config="CONFIG_USB_EHCI_HCD" ; config_enable
 config="CONFIG_USB_XHCI_HCD" ; config_enable
 config="CONFIG_USB_TEST" ; config_module
 
+#USB OTG
+CONFIG_USB_OTG=y
+
+config="CONFIG_USB_OTG" ; config_enable
+
 #USB MUSB support
 CONFIG_USB_MUSB_HDRC=m
 CONFIG_USB_MUSB_OMAP2PLUS=m
@@ -827,10 +832,10 @@ config="CONFIG_SPI_TI_QSPI" ; config_enable
 config="CONFIG_MTD_M25P80" ; config_module
 
 #EXTCON
-CONFIG_EXTCON_GPIO=y
+CONFIG_EXTCON_USB_GPIO=y
 
 config="CONFIG_EXTCON" ; config_enable
-config="CONFIG_EXTCON_GPIO" ; config_enable
+config="CONFIG_EXTCON_USB_GPIO" ; config_enable
 
 # Networking
 CONFIG_NF_CONNTRACK=m
@@ -1497,11 +1502,6 @@ config="CONFIG_HID_GENERIC" ; config_enable
 #
 config="CONFIG_HID_APPLEIR" ; config_module
 config="CONFIG_HID_LOGITECH_DJ" ; config_enable
-
-#
-# Miscellaneous USB options
-#
-config="CONFIG_USB_OTG" ; config_enable
 
 #
 # USB Host Controller Drivers
