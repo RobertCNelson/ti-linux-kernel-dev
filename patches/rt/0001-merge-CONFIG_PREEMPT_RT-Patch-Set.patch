@@ -1,6 +1,6 @@
-From 0421769a86e4444a4b8330354b7d1aa3955b0067 Mon Sep 17 00:00:00 2001
+From b899ce7e32886914c5a9ec57e2f4c60f0d2fc789 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 5 May 2015 15:26:47 -0500
+Date: Thu, 7 May 2015 09:23:30 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -313,7 +313,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/sched/wait-simple.c                         |  115 ++
  kernel/sched/work-simple.c                         |  172 +++
  kernel/signal.c                                    |  135 ++-
- kernel/softirq.c                                   |  733 +++++++++---
+ kernel/softirq.c                                   |  737 +++++++++---
  kernel/stop_machine.c                              |   98 +-
  kernel/time/jiffies.c                              |    7 +-
  kernel/time/ntp.c                                  |   40 +
@@ -370,7 +370,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/sched/sch_generic.c                            |    2 +-
  net/sunrpc/svc_xprt.c                              |    4 +-
  scripts/mkcompile_h                                |    4 +-
- 365 files changed, 11890 insertions(+), 2082 deletions(-)
+ 365 files changed, 11890 insertions(+), 2086 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 drivers/misc/hwlat_detector.c
@@ -7304,10 +7304,10 @@ index 93de3ba..47bc9e6 100644
  		btrfs_clear_lock_blocking_rw(held, held_rw);
  #endif
 diff --git a/fs/btrfs/extent-tree.c b/fs/btrfs/extent-tree.c
-index d2f1c01..73035cf 100644
+index 794d7c6..cb80d02 100644
 --- a/fs/btrfs/extent-tree.c
 +++ b/fs/btrfs/extent-tree.c
-@@ -6940,14 +6940,6 @@ again:
+@@ -6939,14 +6939,6 @@ again:
  		goto again;
  	}
  
@@ -7443,7 +7443,7 @@ index f50d79e..f698fd2 100644
  
  static void ep_remove_wait_queue(struct eppoll_entry *pwq)
 diff --git a/fs/exec.c b/fs/exec.c
-index ea4449d..b0a2ee1 100644
+index 05f1942..e5ffa06 100644
 --- a/fs/exec.c
 +++ b/fs/exec.c
 @@ -843,12 +843,14 @@ static int exec_mmap(struct mm_struct *mm)
@@ -10523,7 +10523,7 @@ index 2ac423b..1414eb2 100644
  /* Test if 'sig' is valid signal. Use this instead of testing _NSIG directly */
  static inline int valid_signal(unsigned long sig)
 diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index ad8f859..d2e091d 100644
+index ab31337..1141306 100644
 --- a/include/linux/skbuff.h
 +++ b/include/linux/skbuff.h
 @@ -152,6 +152,7 @@ struct sk_buff_head {
@@ -10534,7 +10534,7 @@ index ad8f859..d2e091d 100644
  };
  
  struct sk_buff;
-@@ -1150,6 +1151,12 @@ static inline void skb_queue_head_init(struct sk_buff_head *list)
+@@ -1151,6 +1152,12 @@ static inline void skb_queue_head_init(struct sk_buff_head *list)
  	__skb_queue_head_init(list);
  }
  
@@ -17474,7 +17474,7 @@ index a755ad7..a9be229 100644
  	console_locked = 0;
  	mutex_release(&console_lock_dep_map, 1, _RET_IP_);
 diff --git a/kernel/ptrace.c b/kernel/ptrace.c
-index 1f4bcb3..fddaf65 100644
+index be9760f..c8cd8ff 100644
 --- a/kernel/ptrace.c
 +++ b/kernel/ptrace.c
 @@ -135,7 +135,12 @@ static bool ptrace_freeze_traced(struct task_struct *task)
@@ -20105,7 +20105,7 @@ index 52f881d..ea098c6 100644
  	} else {
  		/*
 diff --git a/kernel/softirq.c b/kernel/softirq.c
-index 490fcbb..ea86b08 100644
+index 93be750..ea86b08 100644
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
 @@ -21,10 +21,12 @@
@@ -20947,19 +20947,19 @@ index 490fcbb..ea86b08 100644
  		} while (test_bit(TASKLET_STATE_SCHED, &t->state));
  	}
  	tasklet_unlock_wait(t);
-@@ -643,26 +1102,26 @@ void __init softirq_init(void)
+@@ -643,30 +1102,26 @@ void __init softirq_init(void)
  	open_softirq(HI_SOFTIRQ, tasklet_hi_action);
  }
  
 -static int ksoftirqd_should_run(unsigned int cpu)
--{
++#if defined(CONFIG_SMP) || defined(CONFIG_PREEMPT_RT_FULL)
++void tasklet_unlock_wait(struct tasklet_struct *t)
+ {
 -	return local_softirq_pending();
 -}
 -
 -static void run_ksoftirqd(unsigned int cpu)
-+#if defined(CONFIG_SMP) || defined(CONFIG_PREEMPT_RT_FULL)
-+void tasklet_unlock_wait(struct tasklet_struct *t)
- {
+-{
 -	local_irq_disable();
 -	if (local_softirq_pending()) {
 +	while (test_bit(TASKLET_STATE_RUN, &(t)->state)) {
@@ -20969,9 +20969,13 @@ index 490fcbb..ea86b08 100644
 +		 * Hack for now to avoid this busy-loop:
  		 */
 -		__do_softirq();
--		rcu_note_context_switch(cpu);
 -		local_irq_enable();
 -		cond_resched();
+-
+-		preempt_disable();
+-		rcu_note_context_switch(cpu);
+-		preempt_enable();
+-
 -		return;
 +#ifdef CONFIG_PREEMPT_RT_FULL
 +		msleep(1);
@@ -20990,7 +20994,7 @@ index 490fcbb..ea86b08 100644
  }
  
  #ifdef CONFIG_HOTPLUG_CPU
-@@ -744,6 +1203,8 @@ static struct notifier_block cpu_nfb = {
+@@ -748,6 +1203,8 @@ static struct notifier_block cpu_nfb = {
  
  static struct smp_hotplug_thread softirq_threads = {
  	.store			= &ksoftirqd,
@@ -23153,7 +23157,7 @@ index 0000000..66a69eb
 +
 +device_initcall(latency_hist_init);
 diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c
-index 774a080..f87ef73 100644
+index da41de9..61bce43 100644
 --- a/kernel/trace/ring_buffer.c
 +++ b/kernel/trace/ring_buffer.c
 @@ -1695,28 +1695,22 @@ int ring_buffer_resize(struct ring_buffer *buffer, unsigned long size,
@@ -26062,7 +26066,7 @@ index 73abbd7..538d171 100644
  		sd->output_queue_tailp = &sd->output_queue;
  #ifdef CONFIG_RPS
 diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index e2b1bba..30a7639 100644
+index 69ec61a..23c59e0 100644
 --- a/net/core/skbuff.c
 +++ b/net/core/skbuff.c
 @@ -63,6 +63,7 @@
@@ -26073,7 +26077,7 @@ index e2b1bba..30a7639 100644
  
  #include <net/protocol.h>
  #include <net/dst.h>
-@@ -336,6 +337,7 @@ struct netdev_alloc_cache {
+@@ -353,6 +354,7 @@ struct netdev_alloc_cache {
  	unsigned int		pagecnt_bias;
  };
  static DEFINE_PER_CPU(struct netdev_alloc_cache, netdev_alloc_cache);
@@ -26081,7 +26085,7 @@ index e2b1bba..30a7639 100644
  
  static void *__netdev_alloc_frag(unsigned int fragsz, gfp_t gfp_mask)
  {
-@@ -344,7 +346,7 @@ static void *__netdev_alloc_frag(unsigned int fragsz, gfp_t gfp_mask)
+@@ -361,7 +363,7 @@ static void *__netdev_alloc_frag(unsigned int fragsz, gfp_t gfp_mask)
  	int order;
  	unsigned long flags;
  
@@ -26090,7 +26094,7 @@ index e2b1bba..30a7639 100644
  	nc = &__get_cpu_var(netdev_alloc_cache);
  	if (unlikely(!nc->frag.page)) {
  refill:
-@@ -378,7 +380,7 @@ recycle:
+@@ -396,7 +398,7 @@ recycle:
  	nc->frag.offset += fragsz;
  	nc->pagecnt_bias--;
  end:
