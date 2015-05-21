@@ -1,6 +1,6 @@
-From b899ce7e32886914c5a9ec57e2f4c60f0d2fc789 Mon Sep 17 00:00:00 2001
+From 92aff1a99cfa413b7ceca534a43c85b9be0b16fb Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 7 May 2015 09:23:30 -0500
+Date: Thu, 21 May 2015 08:43:48 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -19,8 +19,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/kernel/entry-armv.S                       |   13 +-
  arch/arm/kernel/process.c                          |   24 +
  arch/arm/kernel/signal.c                           |    3 +-
- arch/arm/kernel/smp.c                              |    2 +
  arch/arm/kernel/unwind.c                           |   14 +-
+ arch/arm/kvm/arm.c                                 |    4 +-
+ arch/arm/kvm/psci.c                                |    4 +-
  arch/arm/mach-at91/at91rm9200_time.c               |    1 +
  arch/arm/mach-at91/at91sam926x_time.c              |    5 +-
  arch/arm/mach-exynos/platsmp.c                     |   12 +-
@@ -47,6 +48,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/mn10300/mm/fault.c                            |    2 +-
  arch/parisc/mm/fault.c                             |    2 +-
  arch/powerpc/Kconfig                               |    6 +-
+ arch/powerpc/include/asm/kvm_host.h                |    4 +-
  arch/powerpc/include/asm/thread_info.h             |   11 +-
  arch/powerpc/kernel/asm-offsets.c                  |    1 +
  arch/powerpc/kernel/entry_32.S                     |   17 +-
@@ -55,14 +57,15 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/powerpc/kernel/misc_32.S                      |    2 +
  arch/powerpc/kernel/misc_64.S                      |    2 +
  arch/powerpc/kernel/time.c                         |    2 +-
+ arch/powerpc/kvm/book3s_hv.c                       |   20 +-
  arch/powerpc/mm/fault.c                            |    2 +-
+ arch/s390/include/asm/kvm_host.h                   |    2 +-
  arch/s390/mm/fault.c                               |    3 +-
  arch/score/mm/fault.c                              |    2 +-
  arch/sh/kernel/irq.c                               |    2 +
  arch/sh/mm/fault.c                                 |    2 +-
  arch/sparc/Kconfig                                 |   10 +-
  arch/sparc/kernel/irq_64.c                         |    2 +
- arch/sparc/kernel/pcr.c                            |    2 +
  arch/sparc/kernel/setup_32.c                       |    1 +
  arch/sparc/kernel/setup_64.c                       |    8 +-
  arch/sparc/mm/fault_32.c                           |    2 +-
@@ -86,10 +89,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/x86/kernel/entry_32.S                         |   20 +-
  arch/x86/kernel/entry_64.S                         |   31 +-
  arch/x86/kernel/irq_32.c                           |    2 +
- arch/x86/kernel/irq_work.c                         |    2 +
  arch/x86/kernel/process_32.c                       |   32 +
  arch/x86/kernel/signal.c                           |    8 +
  arch/x86/kernel/traps.c                            |   28 +-
+ arch/x86/kvm/lapic.c                               |   48 +-
  arch/x86/kvm/x86.c                                 |    7 +
  arch/x86/mm/fault.c                                |    2 +-
  arch/x86/mm/highmem_32.c                           |    9 +-
@@ -199,6 +202,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/jump_label.h                         |    3 +-
  include/linux/kdb.h                                |    3 +-
  include/linux/kernel.h                             |    1 +
+ include/linux/kvm_host.h                           |    4 +-
  include/linux/lglock.h                             |   27 +-
  include/linux/list_bl.h                            |   28 +-
  include/linux/locallock.h                          |  270 +++++
@@ -271,7 +275,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/irq/manage.c                                |  100 +-
  kernel/irq/settings.h                              |   12 +
  kernel/irq/spurious.c                              |    8 +
- kernel/irq_work.c                                  |   27 +-
+ kernel/irq_work.c                                  |   24 +-
  kernel/itimer.c                                    |    1 +
  kernel/ksysfs.c                                    |   12 +
  kernel/locking/Makefile                            |    9 +-
@@ -303,7 +307,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/res_counter.c                               |    8 +-
  kernel/sched/Makefile                              |    2 +-
  kernel/sched/completion.c                          |   34 +-
- kernel/sched/core.c                                |  529 ++++++--
+ kernel/sched/core.c                                |  558 +++++++--
  kernel/sched/cputime.c                             |   62 +-
  kernel/sched/debug.c                               |    7 +
  kernel/sched/fair.c                                |   16 +-
@@ -313,13 +317,13 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/sched/wait-simple.c                         |  115 ++
  kernel/sched/work-simple.c                         |  172 +++
  kernel/signal.c                                    |  135 ++-
- kernel/softirq.c                                   |  737 +++++++++---
+ kernel/softirq.c                                   |  740 +++++++++---
  kernel/stop_machine.c                              |   98 +-
  kernel/time/jiffies.c                              |    7 +-
  kernel/time/ntp.c                                  |   40 +
  kernel/time/tick-common.c                          |   10 +-
  kernel/time/tick-internal.h                        |    3 +-
- kernel/time/tick-sched.c                           |   30 +-
+ kernel/time/tick-sched.c                           |   40 +-
  kernel/time/timekeeping.c                          |    6 +-
  kernel/timer.c                                     |  134 ++-
  kernel/trace/Kconfig                               |  104 ++
@@ -370,7 +374,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/sched/sch_generic.c                            |    2 +-
  net/sunrpc/svc_xprt.c                              |    4 +-
  scripts/mkcompile_h                                |    4 +-
- 365 files changed, 11890 insertions(+), 2086 deletions(-)
+ virt/kvm/async_pf.c                                |    4 +-
+ virt/kvm/kvm_main.c                                |   16 +-
+ 371 files changed, 11988 insertions(+), 2127 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 drivers/misc/hwlat_detector.c
@@ -806,7 +812,7 @@ index 3e635ee..52d86b7 100644
  #define _TIF_SYSCALL_AUDIT	(1 << TIF_SYSCALL_AUDIT)
  #define _TIF_SYSCALL_TRACEPOINT	(1 << TIF_SYSCALL_TRACEPOINT)
 diff --git a/arch/arm/kernel/asm-offsets.c b/arch/arm/kernel/asm-offsets.c
-index ded0417..12e46dd 100644
+index 85598b5..e9f119e 100644
 --- a/arch/arm/kernel/asm-offsets.c
 +++ b/arch/arm/kernel/asm-offsets.c
 @@ -54,6 +54,7 @@ int main(void)
@@ -900,25 +906,6 @@ index 04d6388..fcfc939 100644
  			schedule();
  		} else {
  			if (unlikely(!user_mode(regs)))
-diff --git a/arch/arm/kernel/smp.c b/arch/arm/kernel/smp.c
-index 8cd3724..686f1d1 100644
---- a/arch/arm/kernel/smp.c
-+++ b/arch/arm/kernel/smp.c
-@@ -463,12 +463,14 @@ void arch_send_call_function_single_ipi(int cpu)
- }
- 
- #ifdef CONFIG_IRQ_WORK
-+#ifndef CONFIG_PREEMPT_RT_FULL
- void arch_irq_work_raise(void)
- {
- 	if (is_smp())
- 		smp_cross_call(cpumask_of(smp_processor_id()), IPI_IRQ_WORK);
- }
- #endif
-+#endif
- 
- static const char *ipi_types[NR_IPI] = {
- #define S(x,s)	[x] = s
 diff --git a/arch/arm/kernel/unwind.c b/arch/arm/kernel/unwind.c
 index 00df012..bbafc67 100644
 --- a/arch/arm/kernel/unwind.c
@@ -973,6 +960,44 @@ index 00df012..bbafc67 100644
 +	raw_spin_unlock_irqrestore(&unwind_lock, flags);
  
  	kfree(tab);
+ }
+diff --git a/arch/arm/kvm/arm.c b/arch/arm/kvm/arm.c
+index bd18bb8..9100f8a 100644
+--- a/arch/arm/kvm/arm.c
++++ b/arch/arm/kvm/arm.c
+@@ -495,9 +495,9 @@ static int kvm_vcpu_first_run_init(struct kvm_vcpu *vcpu)
+ 
+ static void vcpu_pause(struct kvm_vcpu *vcpu)
+ {
+-	wait_queue_head_t *wq = kvm_arch_vcpu_wq(vcpu);
++	struct swait_head *wq = kvm_arch_vcpu_wq(vcpu);
+ 
+-	wait_event_interruptible(*wq, !vcpu->arch.pause);
++	swait_event_interruptible(*wq, !vcpu->arch.pause);
+ }
+ 
+ static int kvm_vcpu_initialized(struct kvm_vcpu *vcpu)
+diff --git a/arch/arm/kvm/psci.c b/arch/arm/kvm/psci.c
+index 448f60e..19c6c9c 100644
+--- a/arch/arm/kvm/psci.c
++++ b/arch/arm/kvm/psci.c
+@@ -36,7 +36,7 @@ static unsigned long kvm_psci_vcpu_on(struct kvm_vcpu *source_vcpu)
+ {
+ 	struct kvm *kvm = source_vcpu->kvm;
+ 	struct kvm_vcpu *vcpu = NULL, *tmp;
+-	wait_queue_head_t *wq;
++	struct swait_head *wq;
+ 	unsigned long cpu_id;
+ 	unsigned long mpidr;
+ 	phys_addr_t target_pc;
+@@ -80,7 +80,7 @@ static unsigned long kvm_psci_vcpu_on(struct kvm_vcpu *source_vcpu)
+ 	smp_mb();		/* Make sure the above is visible */
+ 
+ 	wq = kvm_arch_vcpu_wq(vcpu);
+-	wake_up_interruptible(wq);
++	swait_wake_interruptible(wq);
+ 
+ 	return KVM_PSCI_RET_SUCCESS;
  }
 diff --git a/arch/arm/mach-at91/at91rm9200_time.c b/arch/arm/mach-at91/at91rm9200_time.c
 index bc7b363..fd34d55 100644
@@ -1696,6 +1721,28 @@ index f5641d6..ac76a07 100644
  
  source kernel/Kconfig.hz
  source kernel/Kconfig.preempt
+diff --git a/arch/powerpc/include/asm/kvm_host.h b/arch/powerpc/include/asm/kvm_host.h
+index 1eaea2d..dfaf2c2 100644
+--- a/arch/powerpc/include/asm/kvm_host.h
++++ b/arch/powerpc/include/asm/kvm_host.h
+@@ -295,7 +295,7 @@ struct kvmppc_vcore {
+ 	u8 in_guest;
+ 	struct list_head runnable_threads;
+ 	spinlock_t lock;
+-	wait_queue_head_t wq;
++	struct swait_head wq;
+ 	u64 stolen_tb;
+ 	u64 preempt_tb;
+ 	struct kvm_vcpu *runner;
+@@ -612,7 +612,7 @@ struct kvm_vcpu_arch {
+ 	u8 prodded;
+ 	u32 last_inst;
+ 
+-	wait_queue_head_t *wqp;
++	struct swait_head *wqp;
+ 	struct kvmppc_vcore *vcore;
+ 	int ret;
+ 	int trap;
 diff --git a/arch/powerpc/include/asm/thread_info.h b/arch/powerpc/include/asm/thread_info.h
 index b034ecd..16ff509 100644
 --- a/arch/powerpc/include/asm/thread_info.h
@@ -1913,7 +1960,7 @@ index 3d02495..0cf1c05 100644
  _GLOBAL(call_do_irq)
  	mflr	r0
 diff --git a/arch/powerpc/kernel/time.c b/arch/powerpc/kernel/time.c
-index f8b994a..6d37d76 100644
+index f8b994a..5bec5fd 100644
 --- a/arch/powerpc/kernel/time.c
 +++ b/arch/powerpc/kernel/time.c
 @@ -423,7 +423,7 @@ unsigned long profile_pc(struct pt_regs *regs)
@@ -1921,10 +1968,75 @@ index f8b994a..6d37d76 100644
  #endif
  
 -#ifdef CONFIG_IRQ_WORK
-+#if defined(CONFIG_IRQ_WORK) && !defined(CONFIG_PREEMPT_RT_FULL)
++#if defined(CONFIG_IRQ_WORK)
  
  /*
   * 64-bit uses a byte in the PACA, 32-bit uses a per-cpu variable...
+diff --git a/arch/powerpc/kvm/book3s_hv.c b/arch/powerpc/kvm/book3s_hv.c
+index 7a25d92..0019281 100644
+--- a/arch/powerpc/kvm/book3s_hv.c
++++ b/arch/powerpc/kvm/book3s_hv.c
+@@ -74,11 +74,11 @@ static void kvmppc_fast_vcpu_kick_hv(struct kvm_vcpu *vcpu)
+ {
+ 	int me;
+ 	int cpu = vcpu->cpu;
+-	wait_queue_head_t *wqp;
++	struct swait_head *wqp;
+ 
+ 	wqp = kvm_arch_vcpu_wq(vcpu);
+-	if (waitqueue_active(wqp)) {
+-		wake_up_interruptible(wqp);
++	if (swaitqueue_active(wqp)) {
++		swait_wake_interruptible(wqp);
+ 		++vcpu->stat.halt_wakeup;
+ 	}
+ 
+@@ -583,8 +583,8 @@ int kvmppc_pseries_do_hcall(struct kvm_vcpu *vcpu)
+ 		tvcpu->arch.prodded = 1;
+ 		smp_mb();
+ 		if (vcpu->arch.ceded) {
+-			if (waitqueue_active(&vcpu->wq)) {
+-				wake_up_interruptible(&vcpu->wq);
++			if (swaitqueue_active(&vcpu->wq)) {
++				swait_wake_interruptible(&vcpu->wq);
+ 				vcpu->stat.halt_wakeup++;
+ 			}
+ 		}
+@@ -1199,7 +1199,7 @@ static struct kvm_vcpu *kvmppc_core_vcpu_create_hv(struct kvm *kvm,
+ 		if (vcore) {
+ 			INIT_LIST_HEAD(&vcore->runnable_threads);
+ 			spin_lock_init(&vcore->lock);
+-			init_waitqueue_head(&vcore->wq);
++			init_swait_head(&vcore->wq);
+ 			vcore->preempt_tb = TB_NIL;
+ 			vcore->lpcr = kvm->arch.lpcr;
+ 			vcore->first_vcpuid = core * threads_per_core;
+@@ -1566,13 +1566,13 @@ static void kvmppc_wait_for_exec(struct kvm_vcpu *vcpu, int wait_state)
+  */
+ static void kvmppc_vcore_blocked(struct kvmppc_vcore *vc)
+ {
+-	DEFINE_WAIT(wait);
++	DEFINE_SWAITER(wait);
+ 
+-	prepare_to_wait(&vc->wq, &wait, TASK_INTERRUPTIBLE);
++	swait_prepare(&vc->wq, &wait, TASK_INTERRUPTIBLE);
+ 	vc->vcore_state = VCORE_SLEEPING;
+ 	spin_unlock(&vc->lock);
+ 	schedule();
+-	finish_wait(&vc->wq, &wait);
++	swait_finish(&vc->wq, &wait);
+ 	spin_lock(&vc->lock);
+ 	vc->vcore_state = VCORE_INACTIVE;
+ }
+@@ -1613,7 +1613,7 @@ static int kvmppc_run_vcpu(struct kvm_run *kvm_run, struct kvm_vcpu *vcpu)
+ 			kvmppc_create_dtl_entry(vcpu, vc);
+ 			kvmppc_start_thread(vcpu);
+ 		} else if (vc->vcore_state == VCORE_SLEEPING) {
+-			wake_up(&vc->wq);
++			swait_wake(&vc->wq);
+ 		}
+ 
+ 	}
 diff --git a/arch/powerpc/mm/fault.c b/arch/powerpc/mm/fault.c
 index 010fabf..018224a 100644
 --- a/arch/powerpc/mm/fault.c
@@ -1938,6 +2050,19 @@ index 010fabf..018224a 100644
  		if (!user_mode(regs)) {
  			rc = SIGSEGV;
  			goto bail;
+diff --git a/arch/s390/include/asm/kvm_host.h b/arch/s390/include/asm/kvm_host.h
+index eef3dd3..65402d3 100644
+--- a/arch/s390/include/asm/kvm_host.h
++++ b/arch/s390/include/asm/kvm_host.h
+@@ -233,7 +233,7 @@ struct kvm_s390_local_interrupt {
+ 	atomic_t active;
+ 	struct kvm_s390_float_interrupt *float_int;
+ 	int timer_due; /* event indicator for waitqueue below */
+-	wait_queue_head_t *wq;
++	struct swait_head *wq;
+ 	atomic_t *cpuflags;
+ 	unsigned int action_bits;
+ };
 diff --git a/arch/s390/mm/fault.c b/arch/s390/mm/fault.c
 index 8e95432..665af67 100644
 --- a/arch/s390/mm/fault.c
@@ -2048,23 +2173,6 @@ index 4033c23..763cd88 100644
  
  #ifdef CONFIG_HOTPLUG_CPU
  void fixup_irqs(void)
-diff --git a/arch/sparc/kernel/pcr.c b/arch/sparc/kernel/pcr.c
-index 7e967c8..927d9c5 100644
---- a/arch/sparc/kernel/pcr.c
-+++ b/arch/sparc/kernel/pcr.c
-@@ -43,10 +43,12 @@ void __irq_entry deferred_pcr_work_irq(int irq, struct pt_regs *regs)
- 	set_irq_regs(old_regs);
- }
- 
-+#ifndef CONFIG_PREEMPT_RT_FULL
- void arch_irq_work_raise(void)
- {
- 	set_softint(1 << PIL_DEFERRED_PCR_WORK);
- }
-+#endif
- 
- const struct pcr_ops *pcr_ops;
- EXPORT_SYMBOL_GPL(pcr_ops);
 diff --git a/arch/sparc/kernel/setup_32.c b/arch/sparc/kernel/setup_32.c
 index 1434526..0884ccd 100644
 --- a/arch/sparc/kernel/setup_32.c
@@ -3132,23 +3240,6 @@ index d7fcbed..cec8682 100644
  
  bool handle_irq(unsigned irq, struct pt_regs *regs)
  {
-diff --git a/arch/x86/kernel/irq_work.c b/arch/x86/kernel/irq_work.c
-index 1de84e3..3d21f7b 100644
---- a/arch/x86/kernel/irq_work.c
-+++ b/arch/x86/kernel/irq_work.c
-@@ -38,6 +38,7 @@ __visible void smp_trace_irq_work_interrupt(struct pt_regs *regs)
- 	exiting_irq();
- }
- 
-+#ifndef CONFIG_PREEMPT_RT_FULL
- void arch_irq_work_raise(void)
- {
- #ifdef CONFIG_X86_LOCAL_APIC
-@@ -48,3 +49,4 @@ void arch_irq_work_raise(void)
- 	apic_wait_icr_idle();
- #endif
- }
-+#endif
 diff --git a/arch/x86/kernel/process_32.c b/arch/x86/kernel/process_32.c
 index 0de43e9..57dc769 100644
 --- a/arch/x86/kernel/process_32.c
@@ -3303,6 +3394,112 @@ index b1d9002..21d2d56 100644
  	debug_stack_usage_dec();
  
  exit:
+diff --git a/arch/x86/kvm/lapic.c b/arch/x86/kvm/lapic.c
+index 453e5fb..8b25d01 100644
+--- a/arch/x86/kvm/lapic.c
++++ b/arch/x86/kvm/lapic.c
+@@ -1031,8 +1031,38 @@ static void update_divide_count(struct kvm_lapic *apic)
+ 				   apic->divide_count);
+ }
+ 
++
++static enum hrtimer_restart apic_timer_fn(struct hrtimer *data);
++
++static void apic_timer_expired(struct hrtimer *data)
++{
++	int ret, i = 0;
++	enum hrtimer_restart r;
++	struct kvm_timer *ktimer = container_of(data, struct kvm_timer, timer);
++
++	r = apic_timer_fn(data);
++
++	if (r == HRTIMER_RESTART) {
++		do {
++			ret = hrtimer_start_expires(data, HRTIMER_MODE_ABS);
++			if (ret == -ETIME)
++				hrtimer_add_expires_ns(&ktimer->timer,
++							ktimer->period);
++			i++;
++		} while (ret == -ETIME && i < 10);
++
++		if (ret == -ETIME) {
++			printk_once(KERN_ERR "%s: failed to reprogram timer\n",
++			       __func__);
++			WARN_ON_ONCE(1);
++		}
++	}
++}
++
++
+ static void start_apic_timer(struct kvm_lapic *apic)
+ {
++	int ret;
+ 	ktime_t now;
+ 	atomic_set(&apic->lapic_timer.pending, 0);
+ 
+@@ -1062,9 +1092,11 @@ static void start_apic_timer(struct kvm_lapic *apic)
+ 			}
+ 		}
+ 
+-		hrtimer_start(&apic->lapic_timer.timer,
++		ret = hrtimer_start(&apic->lapic_timer.timer,
+ 			      ktime_add_ns(now, apic->lapic_timer.period),
+ 			      HRTIMER_MODE_ABS);
++		if (ret == -ETIME)
++			apic_timer_expired(&apic->lapic_timer.timer);
+ 
+ 		apic_debug("%s: bus cycle is %" PRId64 "ns, now 0x%016"
+ 			   PRIx64 ", "
+@@ -1094,8 +1126,10 @@ static void start_apic_timer(struct kvm_lapic *apic)
+ 			ns = (tscdeadline - guest_tsc) * 1000000ULL;
+ 			do_div(ns, this_tsc_khz);
+ 		}
+-		hrtimer_start(&apic->lapic_timer.timer,
++		ret = hrtimer_start(&apic->lapic_timer.timer,
+ 			ktime_add_ns(now, ns), HRTIMER_MODE_ABS);
++		if (ret == -ETIME)
++			apic_timer_expired(&apic->lapic_timer.timer);
+ 
+ 		local_irq_restore(flags);
+ 	}
+@@ -1533,7 +1567,7 @@ static enum hrtimer_restart apic_timer_fn(struct hrtimer *data)
+ 	struct kvm_timer *ktimer = container_of(data, struct kvm_timer, timer);
+ 	struct kvm_lapic *apic = container_of(ktimer, struct kvm_lapic, lapic_timer);
+ 	struct kvm_vcpu *vcpu = apic->vcpu;
+-	wait_queue_head_t *q = &vcpu->wq;
++	struct swait_head *q = &vcpu->wq;
+ 
+ 	/*
+ 	 * There is a race window between reading and incrementing, but we do
+@@ -1547,8 +1581,8 @@ static enum hrtimer_restart apic_timer_fn(struct hrtimer *data)
+ 		kvm_make_request(KVM_REQ_PENDING_TIMER, vcpu);
+ 	}
+ 
+-	if (waitqueue_active(q))
+-		wake_up_interruptible(q);
++	if (swaitqueue_active(q))
++		swait_wake_interruptible(q);
+ 
+ 	if (lapic_is_periodic(apic)) {
+ 		hrtimer_add_expires_ns(&ktimer->timer, ktimer->period);
+@@ -1581,6 +1615,7 @@ int kvm_create_lapic(struct kvm_vcpu *vcpu)
+ 	hrtimer_init(&apic->lapic_timer.timer, CLOCK_MONOTONIC,
+ 		     HRTIMER_MODE_ABS);
+ 	apic->lapic_timer.timer.function = apic_timer_fn;
++	apic->lapic_timer.timer.irqsafe = 1;
+ 
+ 	/*
+ 	 * APIC is created enabled. This will prevent kvm_lapic_set_base from
+@@ -1699,7 +1734,8 @@ void __kvm_migrate_apic_timer(struct kvm_vcpu *vcpu)
+ 
+ 	timer = &vcpu->arch.apic->lapic_timer.timer;
+ 	if (hrtimer_cancel(timer))
+-		hrtimer_start_expires(timer, HRTIMER_MODE_ABS);
++		if (hrtimer_start_expires(timer, HRTIMER_MODE_ABS) == -ETIME)
++			apic_timer_expired(timer);
+ }
+ 
+ /*
 diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
 index 1777f89..d386e0f 100644
 --- a/arch/x86/kvm/x86.c
@@ -7394,7 +7591,7 @@ index eef21c6..8a33054 100644
  		__this_cpu_inc(bh_accounting.nr);
  		recalc_bh_state();
 diff --git a/fs/dcache.c b/fs/dcache.c
-index ded6917..6da6133 100644
+index 105ece7..40b9863 100644
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
 @@ -19,6 +19,7 @@
@@ -7414,7 +7611,7 @@ index ded6917..6da6133 100644
  		}
  		return dentry; /* try again with same dentry */
  	}
-@@ -2377,7 +2378,7 @@ again:
+@@ -2378,7 +2379,7 @@ again:
  	if (dentry->d_lockref.count == 1) {
  		if (!spin_trylock(&inode->i_lock)) {
  			spin_unlock(&dentry->d_lock);
@@ -7488,7 +7685,7 @@ index 7f34f47..8c40400 100644
  
  		/*
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 039f380..7764b1a 100644
+index 2faa7ea..81b7504 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
 @@ -14,6 +14,7 @@
@@ -8360,6 +8557,28 @@ index 196d1ea..7042256 100644
  } system_state;
  
  #define TAINT_PROPRIETARY_MODULE	0
+diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
+index b8e9a43..aebf20c 100644
+--- a/include/linux/kvm_host.h
++++ b/include/linux/kvm_host.h
+@@ -231,7 +231,7 @@ struct kvm_vcpu {
+ 
+ 	int fpu_active;
+ 	int guest_fpu_loaded, guest_xcr0_loaded;
+-	wait_queue_head_t wq;
++	struct swait_head wq;
+ 	struct pid *pid;
+ 	int sigset_active;
+ 	sigset_t sigset;
+@@ -677,7 +677,7 @@ static inline bool kvm_arch_has_noncoherent_dma(struct kvm *kvm)
+ }
+ #endif
+ 
+-static inline wait_queue_head_t *kvm_arch_vcpu_wq(struct kvm_vcpu *vcpu)
++static inline struct swait_head *kvm_arch_vcpu_wq(struct kvm_vcpu *vcpu)
+ {
+ #ifdef __KVM_HAVE_ARCH_WQP
+ 	return vcpu->arch.wqp;
 diff --git a/include/linux/lglock.h b/include/linux/lglock.h
 index 96549ab..534b16e 100644
 --- a/include/linux/lglock.h
@@ -11900,7 +12119,7 @@ index 3f9c974..11dbe26 100644
  
  config PREEMPT_COUNT
 diff --git a/kernel/cpu.c b/kernel/cpu.c
-index 9a1ba77..285e18b 100644
+index 9a1ba77..a389075 100644
 --- a/kernel/cpu.c
 +++ b/kernel/cpu.c
 @@ -63,6 +63,290 @@ static struct {
@@ -12086,7 +12305,7 @@ index 9a1ba77..285e18b 100644
 +	 * we don't want any more work on this CPU.
 +	 */
 +	current->flags &= ~PF_NO_SETAFFINITY;
-+	do_set_cpus_allowed(current, cpu_present_mask);
++	set_cpus_allowed_ptr(current, cpu_present_mask);
 +	migrate_me();
 +	return 0;
 +}
@@ -14006,10 +14225,15 @@ index e2514b0..903a69c 100644
  	printk(KERN_WARNING "Misrouted IRQ fixup and polling support "
  				"enabled\n");
 diff --git a/kernel/irq_work.c b/kernel/irq_work.c
-index 55fcce6..35d21f9 100644
+index 55fcce6..5f7d93d 100644
 --- a/kernel/irq_work.c
 +++ b/kernel/irq_work.c
-@@ -20,6 +20,9 @@
+@@ -16,10 +16,14 @@
+ #include <linux/tick.h>
+ #include <linux/cpu.h>
+ #include <linux/notifier.h>
++#include <linux/interrupt.h>
+ #include <asm/processor.h>
  
  
  static DEFINE_PER_CPU(struct llist_head, irq_work_list);
@@ -14019,19 +14243,7 @@ index 55fcce6..35d21f9 100644
  static DEFINE_PER_CPU(int, irq_work_raised);
  
  /*
-@@ -48,7 +51,11 @@ static bool irq_work_claim(struct irq_work *work)
- 	return true;
- }
- 
-+#ifdef CONFIG_PREEMPT_RT_FULL
-+void arch_irq_work_raise(void)
-+#else
- void __weak arch_irq_work_raise(void)
-+#endif
- {
- 	/*
- 	 * Lame architectures will get the timer tick callback
-@@ -70,8 +77,12 @@ void irq_work_queue(struct irq_work *work)
+@@ -70,8 +74,12 @@ void irq_work_queue(struct irq_work *work)
  	/* Queue the entry and raise the IPI if needed. */
  	preempt_disable();
  
@@ -14046,7 +14258,7 @@ index 55fcce6..35d21f9 100644
  	/*
  	 * If the work is not "lazy" or the tick is stopped, raise the irq
  	 * work interrupt (if supported by the arch), otherwise, just wait
-@@ -115,12 +126,18 @@ static void __irq_work_run(void)
+@@ -115,12 +123,18 @@ static void __irq_work_run(void)
  	__this_cpu_write(irq_work_raised, 0);
  	barrier();
  
@@ -14067,7 +14279,7 @@ index 55fcce6..35d21f9 100644
  	llnode = llist_del_all(this_list);
  	while (llnode != NULL) {
  		work = llist_entry(llnode, struct irq_work, llnode);
-@@ -152,7 +169,9 @@ static void __irq_work_run(void)
+@@ -152,7 +166,9 @@ static void __irq_work_run(void)
   */
  void irq_work_run(void)
  {
@@ -18385,7 +18597,7 @@ index a63f4dc..e529e5f 100644
  }
  EXPORT_SYMBOL(completion_done);
 diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 5e973ef..883669d 100644
+index 5e973ef..71c0bb1 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
 @@ -272,7 +272,11 @@ late_initcall(sched_init_debug);
@@ -18446,7 +18658,48 @@ index 5e973ef..883669d 100644
  void resched_cpu(int cpu)
  {
  	struct rq *rq = cpu_rq(cpu);
-@@ -1122,6 +1158,18 @@ struct migration_arg {
+@@ -660,17 +696,34 @@ static inline bool got_nohz_idle_kick(void)
+ #endif /* CONFIG_NO_HZ_COMMON */
+ 
+ #ifdef CONFIG_NO_HZ_FULL
++
++static int ksoftirqd_running(void)
++{
++	struct task_struct *softirqd;
++
++	if (!IS_ENABLED(CONFIG_PREEMPT_RT_FULL))
++		return 0;
++	softirqd = this_cpu_ksoftirqd();
++	if (softirqd && softirqd->on_rq)
++		return 1;
++	return 0;
++}
++
+ bool sched_can_stop_tick(void)
+ {
+-       struct rq *rq;
++	struct rq *rq;
+ 
+-       rq = this_rq();
++	rq = this_rq();
+ 
+-       /* Make sure rq->nr_running update is visible after the IPI */
+-       smp_rmb();
++	/* Make sure rq->nr_running update is visible after the IPI */
++	smp_rmb();
+ 
+-       /* More than one running task need preemption */
+-       if (rq->nr_running > 1)
++	/*
++	 * More than one running task need preemption
++	 *
++	 * NOTE, RT: if ksoftirqd is awake, subtract it.
++	 */
++	if (rq->nr_running - ksoftirqd_running() > 1)
+                return false;
+ 
+        return true;
+@@ -1122,6 +1175,18 @@ struct migration_arg {
  
  static int migration_cpu_stop(void *data);
  
@@ -18465,7 +18718,7 @@ index 5e973ef..883669d 100644
  /*
   * wait_task_inactive - wait for a thread to unschedule.
   *
-@@ -1166,7 +1214,7 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
+@@ -1166,7 +1231,7 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
  		 * is actually now running somewhere else!
  		 */
  		while (task_running(rq, p)) {
@@ -18474,7 +18727,7 @@ index 5e973ef..883669d 100644
  				return 0;
  			cpu_relax();
  		}
-@@ -1181,7 +1229,8 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
+@@ -1181,7 +1246,8 @@ unsigned long wait_task_inactive(struct task_struct *p, long match_state)
  		running = task_running(rq, p);
  		on_rq = p->on_rq;
  		ncsw = 0;
@@ -18484,7 +18737,7 @@ index 5e973ef..883669d 100644
  			ncsw = p->nvcsw | LONG_MIN; /* sets MSB */
  		task_rq_unlock(rq, p, &flags);
  
-@@ -1406,10 +1455,6 @@ static void ttwu_activate(struct rq *rq, struct task_struct *p, int en_flags)
+@@ -1406,10 +1472,6 @@ static void ttwu_activate(struct rq *rq, struct task_struct *p, int en_flags)
  {
  	activate_task(rq, p, en_flags);
  	p->on_rq = 1;
@@ -18495,7 +18748,7 @@ index 5e973ef..883669d 100644
  }
  
  /*
-@@ -1592,8 +1637,27 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
+@@ -1592,8 +1654,27 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
  	 */
  	smp_mb__before_spinlock();
  	raw_spin_lock_irqsave(&p->pi_lock, flags);
@@ -18524,7 +18777,7 @@ index 5e973ef..883669d 100644
  
  	success = 1; /* we're going to change ->state */
  	cpu = task_cpu(p);
-@@ -1636,42 +1700,6 @@ out:
+@@ -1636,42 +1717,6 @@ out:
  }
  
  /**
@@ -18567,7 +18820,7 @@ index 5e973ef..883669d 100644
   * wake_up_process - Wake up a specific process
   * @p: The process to be woken up.
   *
-@@ -1685,11 +1713,23 @@ out:
+@@ -1685,11 +1730,23 @@ out:
   */
  int wake_up_process(struct task_struct *p)
  {
@@ -18592,7 +18845,7 @@ index 5e973ef..883669d 100644
  int wake_up_state(struct task_struct *p, unsigned int state)
  {
  	return try_to_wake_up(p, state, 0);
-@@ -1867,6 +1907,9 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
+@@ -1867,6 +1924,9 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
  	p->on_cpu = 0;
  #endif
  	init_task_preempt_count(p);
@@ -18602,7 +18855,7 @@ index 5e973ef..883669d 100644
  #ifdef CONFIG_SMP
  	plist_node_init(&p->pushable_tasks, MAX_PRIO);
  	RB_CLEAR_NODE(&p->pushable_dl_tasks);
-@@ -2150,11 +2193,13 @@ static void finish_task_switch(struct rq *rq, struct task_struct *prev)
+@@ -2150,11 +2210,13 @@ static void finish_task_switch(struct rq *rq, struct task_struct *prev)
  	finish_arch_post_lock_switch();
  
  	fire_sched_in_preempt_notifiers(current);
@@ -18619,7 +18872,7 @@ index 5e973ef..883669d 100644
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  
-@@ -2514,8 +2559,13 @@ void __kprobes preempt_count_add(int val)
+@@ -2514,8 +2576,13 @@ void __kprobes preempt_count_add(int val)
  	DEBUG_LOCKS_WARN_ON((preempt_count() & PREEMPT_MASK) >=
  				PREEMPT_MASK - 10);
  #endif
@@ -18635,7 +18888,7 @@ index 5e973ef..883669d 100644
  }
  EXPORT_SYMBOL(preempt_count_add);
  
-@@ -2558,6 +2608,13 @@ static noinline void __schedule_bug(struct task_struct *prev)
+@@ -2558,6 +2625,13 @@ static noinline void __schedule_bug(struct task_struct *prev)
  	print_modules();
  	if (irqs_disabled())
  		print_irqtrace_events(prev);
@@ -18649,7 +18902,7 @@ index 5e973ef..883669d 100644
  	dump_stack();
  	add_taint(TAINT_WARN, LOCKDEP_STILL_OK);
  }
-@@ -2581,6 +2638,133 @@ static inline void schedule_debug(struct task_struct *prev)
+@@ -2581,6 +2655,133 @@ static inline void schedule_debug(struct task_struct *prev)
  	schedstat_inc(this_rq(), sched_count);
  }
  
@@ -18783,7 +19036,7 @@ index 5e973ef..883669d 100644
  static void put_prev_task(struct rq *rq, struct task_struct *prev)
  {
  	if (prev->on_rq || rq->skip_clock_update < 0)
-@@ -2680,6 +2864,8 @@ need_resched:
+@@ -2680,6 +2881,8 @@ need_resched:
  	smp_mb__before_spinlock();
  	raw_spin_lock_irq(&rq->lock);
  
@@ -18792,7 +19045,7 @@ index 5e973ef..883669d 100644
  	switch_count = &prev->nivcsw;
  	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) {
  		if (unlikely(signal_pending_state(prev->state, prev))) {
-@@ -2687,19 +2873,6 @@ need_resched:
+@@ -2687,19 +2890,6 @@ need_resched:
  		} else {
  			deactivate_task(rq, prev, DEQUEUE_SLEEP);
  			prev->on_rq = 0;
@@ -18812,7 +19065,7 @@ index 5e973ef..883669d 100644
  		}
  		switch_count = &prev->nvcsw;
  	}
-@@ -2712,6 +2885,7 @@ need_resched:
+@@ -2712,6 +2902,7 @@ need_resched:
  	put_prev_task(rq, prev);
  	next = pick_next_task(rq);
  	clear_tsk_need_resched(prev);
@@ -18820,7 +19073,7 @@ index 5e973ef..883669d 100644
  	clear_preempt_need_resched();
  	rq->skip_clock_update = 0;
  
-@@ -2741,8 +2915,19 @@ need_resched:
+@@ -2741,8 +2932,19 @@ need_resched:
  
  static inline void sched_submit_work(struct task_struct *tsk)
  {
@@ -18841,7 +19094,7 @@ index 5e973ef..883669d 100644
  	/*
  	 * If we are going to sleep and we have plugged IO queued,
  	 * make sure to submit it to avoid deadlocks.
-@@ -2751,12 +2936,19 @@ static inline void sched_submit_work(struct task_struct *tsk)
+@@ -2751,12 +2953,19 @@ static inline void sched_submit_work(struct task_struct *tsk)
  		blk_schedule_flush_plug(tsk);
  }
  
@@ -18861,7 +19114,7 @@ index 5e973ef..883669d 100644
  }
  EXPORT_SYMBOL(schedule);
  
-@@ -2802,9 +2994,26 @@ asmlinkage void __sched notrace preempt_schedule(void)
+@@ -2802,9 +3011,26 @@ asmlinkage void __sched notrace preempt_schedule(void)
  	if (likely(!preemptible()))
  		return;
  
@@ -18888,7 +19141,7 @@ index 5e973ef..883669d 100644
  		__preempt_count_sub(PREEMPT_ACTIVE);
  
  		/*
-@@ -2912,7 +3121,8 @@ EXPORT_SYMBOL(sleep_on_timeout);
+@@ -2912,7 +3138,8 @@ EXPORT_SYMBOL(sleep_on_timeout);
   * This function changes the 'effective' priority of a task. It does
   * not touch ->normal_prio like __setscheduler().
   *
@@ -18898,7 +19151,7 @@ index 5e973ef..883669d 100644
   */
  void rt_mutex_setprio(struct task_struct *p, int prio)
  {
-@@ -3195,9 +3405,8 @@ __setparam_dl(struct task_struct *p, const struct sched_attr *attr)
+@@ -3195,9 +3422,8 @@ __setparam_dl(struct task_struct *p, const struct sched_attr *attr)
  	dl_se->dl_new = 1;
  }
  
@@ -18910,7 +19163,7 @@ index 5e973ef..883669d 100644
  {
  	int policy = attr->sched_policy;
  
-@@ -3217,9 +3426,21 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
+@@ -3217,9 +3443,21 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
  	 * getparam()/getattr() don't report silly values for !rt tasks.
  	 */
  	p->rt_priority = attr->sched_priority;
@@ -18934,7 +19187,7 @@ index 5e973ef..883669d 100644
  
  	if (dl_prio(p->prio))
  		p->sched_class = &dl_sched_class;
-@@ -3227,8 +3448,6 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
+@@ -3227,8 +3465,6 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
  		p->sched_class = &rt_sched_class;
  	else
  		p->sched_class = &fair_sched_class;
@@ -18943,7 +19196,7 @@ index 5e973ef..883669d 100644
  }
  
  static void
-@@ -3304,6 +3523,8 @@ static int __sched_setscheduler(struct task_struct *p,
+@@ -3304,6 +3540,8 @@ static int __sched_setscheduler(struct task_struct *p,
  				const struct sched_attr *attr,
  				bool user)
  {
@@ -18952,7 +19205,7 @@ index 5e973ef..883669d 100644
  	int retval, oldprio, oldpolicy = -1, on_rq, running;
  	int policy = attr->sched_policy;
  	unsigned long flags;
-@@ -3428,6 +3649,7 @@ recheck:
+@@ -3428,6 +3666,7 @@ recheck:
  		if (dl_policy(policy))
  			goto change;
  
@@ -18960,7 +19213,7 @@ index 5e973ef..883669d 100644
  		task_rq_unlock(rq, p, &flags);
  		return 0;
  	}
-@@ -3481,6 +3703,24 @@ change:
+@@ -3481,6 +3720,24 @@ change:
  		return -EBUSY;
  	}
  
@@ -18985,7 +19238,7 @@ index 5e973ef..883669d 100644
  	on_rq = p->on_rq;
  	running = task_current(rq, p);
  	if (on_rq)
-@@ -3488,16 +3728,18 @@ change:
+@@ -3488,16 +3745,18 @@ change:
  	if (running)
  		p->sched_class->put_prev_task(rq, p);
  
@@ -19009,7 +19262,7 @@ index 5e973ef..883669d 100644
  
  	check_class_changed(rq, p, prev_class, oldprio);
  	task_rq_unlock(rq, p, &flags);
-@@ -4106,9 +4348,16 @@ SYSCALL_DEFINE0(sched_yield)
+@@ -4106,9 +4365,16 @@ SYSCALL_DEFINE0(sched_yield)
  
  static void __cond_resched(void)
  {
@@ -19029,7 +19282,7 @@ index 5e973ef..883669d 100644
  }
  
  int __sched _cond_resched(void)
-@@ -4149,6 +4398,7 @@ int __cond_resched_lock(spinlock_t *lock)
+@@ -4149,6 +4415,7 @@ int __cond_resched_lock(spinlock_t *lock)
  }
  EXPORT_SYMBOL(__cond_resched_lock);
  
@@ -19037,7 +19290,7 @@ index 5e973ef..883669d 100644
  int __sched __cond_resched_softirq(void)
  {
  	BUG_ON(!in_softirq());
-@@ -4162,6 +4412,7 @@ int __sched __cond_resched_softirq(void)
+@@ -4162,6 +4429,7 @@ int __sched __cond_resched_softirq(void)
  	return 0;
  }
  EXPORT_SYMBOL(__cond_resched_softirq);
@@ -19045,7 +19298,7 @@ index 5e973ef..883669d 100644
  
  /**
   * yield - yield the current processor to other threads.
-@@ -4515,6 +4766,7 @@ void init_idle(struct task_struct *idle, int cpu)
+@@ -4515,6 +4783,7 @@ void init_idle(struct task_struct *idle, int cpu)
  	rcu_read_unlock();
  
  	rq->curr = rq->idle = idle;
@@ -19053,7 +19306,7 @@ index 5e973ef..883669d 100644
  #if defined(CONFIG_SMP)
  	idle->on_cpu = 1;
  #endif
-@@ -4522,7 +4774,9 @@ void init_idle(struct task_struct *idle, int cpu)
+@@ -4522,7 +4791,9 @@ void init_idle(struct task_struct *idle, int cpu)
  
  	/* Set the preempt count _outside_ the spinlocks! */
  	init_idle_preempt_count(idle, cpu);
@@ -19064,7 +19317,7 @@ index 5e973ef..883669d 100644
  	/*
  	 * The idle tasks have their own, simple scheduling class:
  	 */
-@@ -4537,11 +4791,90 @@ void init_idle(struct task_struct *idle, int cpu)
+@@ -4537,11 +4808,90 @@ void init_idle(struct task_struct *idle, int cpu)
  #ifdef CONFIG_SMP
  void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
  {
@@ -19159,7 +19412,7 @@ index 5e973ef..883669d 100644
  }
  
  /*
-@@ -4587,7 +4920,7 @@ int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask)
+@@ -4587,7 +4937,7 @@ int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask)
  	do_set_cpus_allowed(p, new_mask);
  
  	/* Can the task run on the task's current CPU? If so, we're done */
@@ -19168,7 +19421,7 @@ index 5e973ef..883669d 100644
  		goto out;
  
  	dest_cpu = cpumask_any_and(cpu_active_mask, new_mask);
-@@ -4724,6 +5057,8 @@ static int migration_cpu_stop(void *data)
+@@ -4724,6 +5074,8 @@ static int migration_cpu_stop(void *data)
  
  #ifdef CONFIG_HOTPLUG_CPU
  
@@ -19177,7 +19430,7 @@ index 5e973ef..883669d 100644
  /*
   * Ensures that the idle task is using init_mm right before its cpu goes
   * offline.
-@@ -4736,7 +5071,12 @@ void idle_task_exit(void)
+@@ -4736,7 +5088,12 @@ void idle_task_exit(void)
  
  	if (mm != &init_mm)
  		switch_mm(mm, &init_mm, current);
@@ -19191,7 +19444,7 @@ index 5e973ef..883669d 100644
  }
  
  /*
-@@ -5060,6 +5400,10 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
+@@ -5060,6 +5417,10 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
  
  	case CPU_DEAD:
  		calc_load_migrate(rq);
@@ -19202,7 +19455,7 @@ index 5e973ef..883669d 100644
  		break;
  #endif
  	}
-@@ -6968,7 +7312,8 @@ void __init sched_init(void)
+@@ -6968,7 +7329,8 @@ void __init sched_init(void)
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  static inline int preempt_count_equals(int preempt_offset)
  {
@@ -19212,7 +19465,7 @@ index 5e973ef..883669d 100644
  
  	return (nested == preempt_offset);
  }
-@@ -6978,7 +7323,8 @@ void __might_sleep(const char *file, int line, int preempt_offset)
+@@ -6978,7 +7340,8 @@ void __might_sleep(const char *file, int line, int preempt_offset)
  	static unsigned long prev_jiffy;	/* ratelimiting */
  
  	rcu_sleep_check(); /* WARN_ON_ONCE() by default, no rate limit reqd. */
@@ -19222,7 +19475,7 @@ index 5e973ef..883669d 100644
  	    system_state != SYSTEM_RUNNING || oops_in_progress)
  		return;
  	if (time_before(jiffies, prev_jiffy + HZ) && prev_jiffy)
-@@ -6996,6 +7342,13 @@ void __might_sleep(const char *file, int line, int preempt_offset)
+@@ -6996,6 +7359,13 @@ void __might_sleep(const char *file, int line, int preempt_offset)
  	debug_show_held_locks(current);
  	if (irqs_disabled())
  		print_irqtrace_events(current);
@@ -20105,7 +20358,7 @@ index 52f881d..ea098c6 100644
  	} else {
  		/*
 diff --git a/kernel/softirq.c b/kernel/softirq.c
-index 93be750..ea86b08 100644
+index 93be750..554b746 100644
 --- a/kernel/softirq.c
 +++ b/kernel/softirq.c
 @@ -21,10 +21,12 @@
@@ -20220,7 +20473,7 @@ index 93be750..ea86b08 100644
  /*
   * we cannot loop indefinitely here to avoid userspace starvation,
   * but we also don't want to introduce a worst case 1/HZ latency
-@@ -76,6 +170,68 @@ static void wakeup_softirqd(void)
+@@ -76,6 +170,71 @@ static void wakeup_softirqd(void)
  		wake_up_process(tsk);
  }
  
@@ -20278,9 +20531,12 @@ index 93be750..ea86b08 100644
 +	local_irq_disable();
 +	if (ksoftirqd_softirq_pending()) {
 +		__do_softirq();
-+		rcu_note_context_switch(cpu);
 +		local_irq_enable();
 +		cond_resched();
++
++		preempt_disable();
++		rcu_note_context_switch(cpu);
++		preempt_enable();
 +		return;
 +	}
 +	local_irq_enable();
@@ -20289,7 +20545,7 @@ index 93be750..ea86b08 100644
  /*
   * preempt_count and SOFTIRQ_OFFSET usage:
   * - preempt_count is changed by SOFTIRQ_OFFSET on entering or leaving
-@@ -227,10 +383,8 @@ asmlinkage void __do_softirq(void)
+@@ -227,10 +386,8 @@ asmlinkage void __do_softirq(void)
  	unsigned long end = jiffies + MAX_SOFTIRQ_TIME;
  	unsigned long old_flags = current->flags;
  	int max_restart = MAX_SOFTIRQ_RESTART;
@@ -20300,7 +20556,7 @@ index 93be750..ea86b08 100644
  	int cpu;
  
  	/*
-@@ -251,36 +405,7 @@ restart:
+@@ -251,36 +408,7 @@ restart:
  	/* Reset the pending bitmask before enabling irqs */
  	set_softirq_pending(0);
  
@@ -20338,7 +20594,7 @@ index 93be750..ea86b08 100644
  
  	pending = local_softirq_pending();
  	if (pending) {
-@@ -317,6 +442,286 @@ asmlinkage void do_softirq(void)
+@@ -317,6 +445,286 @@ asmlinkage void do_softirq(void)
  }
  
  /*
@@ -20625,7 +20881,7 @@ index 93be750..ea86b08 100644
   * Enter an interrupt context.
   */
  void irq_enter(void)
-@@ -327,9 +732,9 @@ void irq_enter(void)
+@@ -327,9 +735,9 @@ void irq_enter(void)
  		 * Prevent raise_softirq from needlessly waking up ksoftirqd
  		 * here, as softirq will be serviced on return from interrupt.
  		 */
@@ -20637,7 +20893,7 @@ index 93be750..ea86b08 100644
  	}
  
  	__irq_enter();
-@@ -337,6 +742,7 @@ void irq_enter(void)
+@@ -337,6 +745,7 @@ void irq_enter(void)
  
  static inline void invoke_softirq(void)
  {
@@ -20645,7 +20901,7 @@ index 93be750..ea86b08 100644
  	if (!force_irqthreads) {
  #ifdef CONFIG_HAVE_IRQ_EXIT_ON_IRQ_STACK
  		/*
-@@ -356,6 +762,15 @@ static inline void invoke_softirq(void)
+@@ -356,6 +765,15 @@ static inline void invoke_softirq(void)
  	} else {
  		wakeup_softirqd();
  	}
@@ -20661,7 +20917,7 @@ index 93be750..ea86b08 100644
  }
  
  static inline void tick_irq_exit(void)
-@@ -392,26 +807,6 @@ void irq_exit(void)
+@@ -392,26 +810,6 @@ void irq_exit(void)
  	trace_hardirq_exit(); /* must be last! */
  }
  
@@ -20688,7 +20944,7 @@ index 93be750..ea86b08 100644
  void raise_softirq(unsigned int nr)
  {
  	unsigned long flags;
-@@ -421,12 +816,6 @@ void raise_softirq(unsigned int nr)
+@@ -421,12 +819,6 @@ void raise_softirq(unsigned int nr)
  	local_irq_restore(flags);
  }
  
@@ -20701,7 +20957,7 @@ index 93be750..ea86b08 100644
  void open_softirq(int nr, void (*action)(struct softirq_action *))
  {
  	softirq_vec[nr].action = action;
-@@ -443,15 +832,45 @@ struct tasklet_head {
+@@ -443,15 +835,45 @@ struct tasklet_head {
  static DEFINE_PER_CPU(struct tasklet_head, tasklet_vec);
  static DEFINE_PER_CPU(struct tasklet_head, tasklet_hi_vec);
  
@@ -20751,7 +21007,7 @@ index 93be750..ea86b08 100644
  	local_irq_restore(flags);
  }
  EXPORT_SYMBOL(__tasklet_schedule);
-@@ -461,60 +880,123 @@ void __tasklet_hi_schedule(struct tasklet_struct *t)
+@@ -461,60 +883,123 @@ void __tasklet_hi_schedule(struct tasklet_struct *t)
  	unsigned long flags;
  
  	local_irq_save(flags);
@@ -20906,7 +21162,7 @@ index 93be750..ea86b08 100644
  static void tasklet_hi_action(struct softirq_action *a)
  {
  	struct tasklet_struct *list;
-@@ -525,30 +1007,7 @@ static void tasklet_hi_action(struct softirq_action *a)
+@@ -525,30 +1010,7 @@ static void tasklet_hi_action(struct softirq_action *a)
  	__this_cpu_write(tasklet_hi_vec.tail, &__get_cpu_var(tasklet_hi_vec).head);
  	local_irq_enable();
  
@@ -20938,7 +21194,7 @@ index 93be750..ea86b08 100644
  }
  
  void tasklet_init(struct tasklet_struct *t,
-@@ -569,7 +1028,7 @@ void tasklet_kill(struct tasklet_struct *t)
+@@ -569,7 +1031,7 @@ void tasklet_kill(struct tasklet_struct *t)
  
  	while (test_and_set_bit(TASKLET_STATE_SCHED, &t->state)) {
  		do {
@@ -20947,7 +21203,7 @@ index 93be750..ea86b08 100644
  		} while (test_bit(TASKLET_STATE_SCHED, &t->state));
  	}
  	tasklet_unlock_wait(t);
-@@ -643,30 +1102,26 @@ void __init softirq_init(void)
+@@ -643,30 +1105,26 @@ void __init softirq_init(void)
  	open_softirq(HI_SOFTIRQ, tasklet_hi_action);
  }
  
@@ -20994,7 +21250,7 @@ index 93be750..ea86b08 100644
  }
  
  #ifdef CONFIG_HOTPLUG_CPU
-@@ -748,6 +1203,8 @@ static struct notifier_block cpu_nfb = {
+@@ -748,6 +1206,8 @@ static struct notifier_block cpu_nfb = {
  
  static struct smp_hotplug_thread softirq_threads = {
  	.store			= &ksoftirqd,
@@ -21404,7 +21660,7 @@ index 8329669..e41ec18 100644
  #define CS_NAME_LEN	32
  
 diff --git a/kernel/time/tick-sched.c b/kernel/time/tick-sched.c
-index 8c08a6f..ab32130 100644
+index 8c08a6f..57d5bb1 100644
 --- a/kernel/time/tick-sched.c
 +++ b/kernel/time/tick-sched.c
 @@ -62,7 +62,8 @@ static void tick_do_update_jiffies64(ktime_t now)
@@ -21449,7 +21705,29 @@ index 8c08a6f..ab32130 100644
  	return period;
  }
  
-@@ -221,6 +226,7 @@ static void nohz_full_kick_work_func(struct irq_work *work)
+@@ -175,6 +180,11 @@ static bool can_stop_full_tick(void)
+ 		return false;
+ 	}
+ 
++	if (!arch_irq_work_has_interrupt()) {
++		trace_tick_stop(0, "missing irq work interrupt\n");
++		return false;
++	}
++
+ 	/* sched_clock_tick() needs us? */
+ #ifdef CONFIG_HAVE_UNSTABLE_SCHED_CLOCK
+ 	/*
+@@ -216,11 +226,17 @@ void __tick_nohz_full_check(void)
+ 
+ static void nohz_full_kick_work_func(struct irq_work *work)
+ {
++	unsigned long flags;
++
++	/* ksoftirqd processes sirqs with interrupts enabled */
++	local_irq_save(flags);
+ 	__tick_nohz_full_check();
++	local_irq_restore(flags);
+ }
  
  static DEFINE_PER_CPU(struct irq_work, nohz_full_kick_work) = {
  	.func = nohz_full_kick_work_func,
@@ -21457,7 +21735,7 @@ index 8c08a6f..ab32130 100644
  };
  
  /*
-@@ -540,10 +546,10 @@ static ktime_t tick_nohz_stop_sched_tick(struct tick_sched *ts,
+@@ -540,10 +556,10 @@ static ktime_t tick_nohz_stop_sched_tick(struct tick_sched *ts,
  
  	/* Read jiffies and the time when jiffies were updated last */
  	do {
@@ -21470,7 +21748,7 @@ index 8c08a6f..ab32130 100644
  
  	if (rcu_needs_cpu(cpu, &rcu_delta_jiffies) ||
  	    arch_needs_cpu(cpu) || irq_work_needs_cpu()) {
-@@ -721,14 +727,7 @@ static bool can_stop_idle_tick(int cpu, struct tick_sched *ts)
+@@ -721,14 +737,7 @@ static bool can_stop_idle_tick(int cpu, struct tick_sched *ts)
  		return false;
  
  	if (unlikely(local_softirq_pending() && cpu_online(cpu))) {
@@ -21486,7 +21764,7 @@ index 8c08a6f..ab32130 100644
  		return false;
  	}
  
-@@ -1108,6 +1107,7 @@ void tick_setup_sched_timer(void)
+@@ -1108,6 +1117,7 @@ void tick_setup_sched_timer(void)
  	 * Emulate tick processing via per-CPU hrtimers:
  	 */
  	hrtimer_init(&ts->sched_timer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
@@ -21512,7 +21790,7 @@ index 5b40279..d0e8114 100644
  	update_wall_time();
  }
 diff --git a/kernel/timer.c b/kernel/timer.c
-index 38f0d40..34fd2db 100644
+index 38f0d40..36b9f10 100644
 --- a/kernel/timer.c
 +++ b/kernel/timer.c
 @@ -78,9 +78,13 @@ struct tvec_root {
@@ -21773,7 +22051,7 @@ index 38f0d40..34fd2db 100644
  	run_local_timers();
  	rcu_check_callbacks(cpu, user_tick);
 -#ifdef CONFIG_IRQ_WORK
-+#if defined(CONFIG_IRQ_WORK)
++#if defined(CONFIG_IRQ_WORK) && !defined(CONFIG_PREEMPT_RT_FULL)
  	if (in_irq())
  		irq_work_run();
  #endif
@@ -24586,11 +24864,11 @@ index 04abe53..1154792 100644
  
 diff --git a/localversion-rt b/localversion-rt
 new file mode 100644
-index 0000000..a3b2408
+index 0000000..8bdfb9a
 --- /dev/null
 +++ b/localversion-rt
 @@ -0,0 +1 @@
-+-rt37
++-rt42
 diff --git a/mm/Kconfig b/mm/Kconfig
 index 0862816..ef4cea9 100644
 --- a/mm/Kconfig
@@ -26331,6 +26609,80 @@ index f221ddf..5f44009 100755
  UTS_VERSION="$UTS_VERSION $CONFIG_FLAGS $TIMESTAMP"
  
  # Truncate to maximum length
+diff --git a/virt/kvm/async_pf.c b/virt/kvm/async_pf.c
+index f2c80d5..10634ba 100644
+--- a/virt/kvm/async_pf.c
++++ b/virt/kvm/async_pf.c
+@@ -82,8 +82,8 @@ static void async_pf_execute(struct work_struct *work)
+ 
+ 	trace_kvm_async_pf_completed(addr, gva);
+ 
+-	if (waitqueue_active(&vcpu->wq))
+-		wake_up_interruptible(&vcpu->wq);
++	if (swaitqueue_active(&vcpu->wq))
++		swait_wake_interruptible(&vcpu->wq);
+ 
+ 	mmput(mm);
+ 	kvm_put_kvm(vcpu->kvm);
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index eed250e..28a7477 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -219,7 +219,7 @@ int kvm_vcpu_init(struct kvm_vcpu *vcpu, struct kvm *kvm, unsigned id)
+ 	vcpu->kvm = kvm;
+ 	vcpu->vcpu_id = id;
+ 	vcpu->pid = NULL;
+-	init_waitqueue_head(&vcpu->wq);
++	init_swait_head(&vcpu->wq);
+ 	kvm_async_pf_vcpu_init(vcpu);
+ 
+ 	page = alloc_page(GFP_KERNEL | __GFP_ZERO);
+@@ -1675,10 +1675,10 @@ EXPORT_SYMBOL_GPL(mark_page_dirty);
+  */
+ void kvm_vcpu_block(struct kvm_vcpu *vcpu)
+ {
+-	DEFINE_WAIT(wait);
++	DEFINE_SWAITER(wait);
+ 
+ 	for (;;) {
+-		prepare_to_wait(&vcpu->wq, &wait, TASK_INTERRUPTIBLE);
++		swait_prepare(&vcpu->wq, &wait, TASK_INTERRUPTIBLE);
+ 
+ 		if (kvm_arch_vcpu_runnable(vcpu)) {
+ 			kvm_make_request(KVM_REQ_UNHALT, vcpu);
+@@ -1692,7 +1692,7 @@ void kvm_vcpu_block(struct kvm_vcpu *vcpu)
+ 		schedule();
+ 	}
+ 
+-	finish_wait(&vcpu->wq, &wait);
++	swait_finish(&vcpu->wq, &wait);
+ }
+ EXPORT_SYMBOL_GPL(kvm_vcpu_block);
+ 
+@@ -1704,11 +1704,11 @@ void kvm_vcpu_kick(struct kvm_vcpu *vcpu)
+ {
+ 	int me;
+ 	int cpu = vcpu->cpu;
+-	wait_queue_head_t *wqp;
++	struct swait_head *wqp;
+ 
+ 	wqp = kvm_arch_vcpu_wq(vcpu);
+-	if (waitqueue_active(wqp)) {
+-		wake_up_interruptible(wqp);
++	if (swaitqueue_active(wqp)) {
++		swait_wake_interruptible(wqp);
+ 		++vcpu->stat.halt_wakeup;
+ 	}
+ 
+@@ -1814,7 +1814,7 @@ void kvm_vcpu_on_spin(struct kvm_vcpu *me)
+ 				continue;
+ 			if (vcpu == me)
+ 				continue;
+-			if (waitqueue_active(&vcpu->wq))
++			if (swaitqueue_active(&vcpu->wq))
+ 				continue;
+ 			if (!kvm_vcpu_eligible_for_directed_yield(vcpu))
+ 				continue;
 -- 
 2.1.4
 
