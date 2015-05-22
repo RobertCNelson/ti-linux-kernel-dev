@@ -545,136 +545,58 @@ beaglebone () {
 	#echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		#patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
+		patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
 		exit 2
 	fi
-	#${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
+	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
 
 	####
 	#dtb makefile
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		device="am335x-bone-audio-reva.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-audio-revb.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-bb-view-43.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-can1.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-cape-bone-argus.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-crypto-00a0.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-4dcape-43.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-4dcape-43t.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-4dcape-70.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-4dcape-70t.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-bbb-exp-c.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-lcd3-01-00a2.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-lcd4-01-00a1.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-lcd7-01-00a2.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-lcd7-01-00a3.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-rtc-01-00a1.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-ttyO1.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-ttyO2.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-ttyO4.dtb"
-		dtb_makefile_append
-
-		device="am335x-bone-ttyO5.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-audio-reva.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-audio-revb.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-bb-view-43.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-can1.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-cape-bone-argus.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-crypto-00a0.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-4dcape-43.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-4dcape-43t.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-4dcape-70.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-4dcape-70t.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-bbb-exp-c.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-lcd3-01-00a2.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-lcd4-01-00a1.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-lcd7-01-00a2.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-lcd7-01-00a3.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-rtc-01-00a1.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-ttyO1.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-ttyO2.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-ttyO4.dtb"
-		dtb_makefile_append
-
-		device="am335x-boneblack-ttyO5.dtb"
-		dtb_makefile_append
-
+		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
+		device="am335x-bone-audio-reva.dtb" ; dtb_makefile_append
+		device="am335x-bone-audio-revb.dtb" ; dtb_makefile_append
+		device="am335x-bone-bb-view-43.dtb" ; dtb_makefile_append
+		device="am335x-bone-can1.dtb" ; dtb_makefile_append
+		device="am335x-bone-cape-bone-argus.dtb" ; dtb_makefile_append
+		device="am335x-bone-crypto-00a0.dtb" ; dtb_makefile_append
+		device="am335x-bone-4dcape-43.dtb" ; dtb_makefile_append
+		device="am335x-bone-4dcape-43t.dtb" ; dtb_makefile_append
+		device="am335x-bone-4dcape-70.dtb" ; dtb_makefile_append
+		device="am335x-bone-4dcape-70t.dtb" ; dtb_makefile_append
+		device="am335x-bone-bbb-exp-c.dtb" ; dtb_makefile_append
+		device="am335x-bone-lcd3-01-00a2.dtb" ; dtb_makefile_append
+		device="am335x-bone-lcd4-01-00a1.dtb" ; dtb_makefile_append
+		device="am335x-bone-lcd7-01-00a2.dtb" ; dtb_makefile_append
+		device="am335x-bone-lcd7-01-00a3.dtb" ; dtb_makefile_append
+		device="am335x-bone-rtc-01-00a1.dtb" ; dtb_makefile_append
+		device="am335x-bone-ttyO1.dtb" ; dtb_makefile_append
+		device="am335x-bone-ttyO2.dtb" ; dtb_makefile_append
+		device="am335x-bone-ttyO4.dtb" ; dtb_makefile_append
+		device="am335x-bone-ttyO5.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-audio-reva.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-audio-revb.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bb-view-43.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-can1.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-cape-bone-argus.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-crypto-00a0.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-4dcape-43.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-4dcape-43t.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-4dcape-70.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-4dcape-70t.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-lcd3-01-00a2.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-lcd4-01-00a1.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-lcd7-01-00a2.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-lcd7-01-00a3.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-rtc-01-00a1.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-ttyO1.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-ttyO2.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-ttyO4.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-ttyO5.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/last/
@@ -690,8 +612,8 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/mac/0003-net-cpsw-header-Add-missing-include.patch"
 	${git} "${DIR}/patches/beaglebone/mac/0004-net-cpsw-Replace-pr_err-by-dev_err.patch"
 	${git} "${DIR}/patches/beaglebone/mac/0005-net-cpsw-Add-am33xx-MACID-readout.patch"
-	${git} "${DIR}/patches/beaglebone/mac/0006-am33xx-define-syscon-control-module-device-node.patch"
-	${git} "${DIR}/patches/beaglebone/mac/0007-arm-dts-am33xx-Add-syscon-phandle-to-cpsw-node.patch"
+#	${git} "${DIR}/patches/beaglebone/mac/0006-am33xx-define-syscon-control-module-device-node.patch"
+#	${git} "${DIR}/patches/beaglebone/mac/0007-arm-dts-am33xx-Add-syscon-phandle-to-cpsw-node.patch"
 
 	echo "dir: beaglebone/phy"
 	${git} "${DIR}/patches/beaglebone/phy/0001-cpsw-search-for-phy.patch"
