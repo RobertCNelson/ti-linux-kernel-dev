@@ -580,6 +580,7 @@ beaglebone () {
 		device="am335x-bone-4dcape-70.dtb" ; dtb_makefile_append
 		device="am335x-bone-4dcape-70t.dtb" ; dtb_makefile_append
 		device="am335x-bone-bbb-exp-c.dtb" ; dtb_makefile_append
+		device="am335x-bone-bbb-exp-r.dtb" ; dtb_makefile_append
 		device="am335x-bone-lcd3-01-00a2.dtb" ; dtb_makefile_append
 		device="am335x-bone-lcd4-01-00a1.dtb" ; dtb_makefile_append
 		device="am335x-bone-lcd7-01-00a2.dtb" ; dtb_makefile_append
@@ -600,6 +601,7 @@ beaglebone () {
 		device="am335x-boneblack-4dcape-70.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-4dcape-70t.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-lcd3-01-00a2.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-lcd4-01-00a1.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-lcd7-01-00a2.dtb" ; dtb_makefile_append
