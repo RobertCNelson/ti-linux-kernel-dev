@@ -75,7 +75,55 @@ local_patch () {
 external_git
 #local_patch
 
+dtb_makefile_append () {
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
+beaglebone () {
+	#This has to be last...
+	echo "dir: beaglebone/dtbs"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
+		exit 2
+	fi
+	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
+
+	####
+	#dtb makefile
+	echo "dir: beaglebone/generated"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+
+		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen.dtb" ; dtb_makefile_append
+
+		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
+		git format-patch -1 -o ../patches/beaglebone/generated/
+		exit 2
+	else
+		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
+	fi
+
+	echo "dir: beaglebone/phy"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/phy/0001-cpsw-Add-support-for-byte-queue-limits.patch"
+	${git} "${DIR}/patches/beaglebone/phy/0002-cpsw-napi-polling-of-64-is-good-for-gigE-less-good-f.patch"
+	${git} "${DIR}/patches/beaglebone/phy/0003-cpsw-search-for-phy.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=3
+		cleanup
+	fi
+}
+
 ###
+beaglebone
 
 packaging_setup () {
 	cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
