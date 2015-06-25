@@ -29,6 +29,8 @@ BRANCH="ti-linux-${branch_prefix}3.14.y"
 DISTRO=cross
 DEBARCH=armhf
 
+xenomai_checkout="2a7dcee23f32c01bd20dd9ecf1a2553f18abe78c"
+
 ti_git_old_release="e19ba3d996f22ad8cc7187b30c18347aba0d594d"
 ti_git_pre="e19ba3d996f22ad8cc7187b30c18347aba0d594d"
 ti_git_post="f14ea3dc1c90863ce5ce908e0110d55a1555e9a8"

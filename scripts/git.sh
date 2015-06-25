@@ -167,7 +167,6 @@ git_kernel () {
 }
 
 git_xenomai () {
-	IPIPE_GIT="${DIR}/ignore/ipipe"
 	XENO_GIT="${DIR}/ignore/xenomai"
 
 	echo "-----------------------------"
@@ -194,7 +193,12 @@ git_xenomai () {
 	git commit --allow-empty -a -m 'empty cleanup commit'
 
 	git reset --hard HEAD
-	git checkout ${xenomai_checkout} -f
+
+	if [ "x${xenomai_checkout}" = "x" ] ; then
+		git checkout master -f
+	else
+		git checkout ${xenomai_checkout} -f
+	fi
 }
 
 . ${DIR}/version.sh
@@ -228,11 +232,7 @@ fi
 
 torvalds_linux="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 linux_stable="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
-xenomai_ipipe="https://git.xenomai.org/ipipe.git"
-xenomai="https://git.xenomai.org/xenomai-3.git"
-
-#xenomai_checkout="v2.6.3"
-xenomai_checkout="2a7dcee23f32c01bd20dd9ecf1a2553f18abe78c"
+xenomai="https://github.com/rcn-ee/xenomai-3"
 
 git_kernel
 git_xenomai
