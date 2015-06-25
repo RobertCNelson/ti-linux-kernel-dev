@@ -166,6 +166,37 @@ git_kernel () {
 	cd ${DIR}/
 }
 
+git_xenomai () {
+	IPIPE_GIT="${DIR}/ignore/ipipe"
+	XENO_GIT="${DIR}/ignore/xenomai"
+
+	echo "-----------------------------"
+	echo "scripts/git: Xenomai 3 repository"
+
+	# Check/clone/update local xenomai repository
+	if [ ! -f "${XENO_GIT}/.git/config" ] ; then
+		rm -rf ${XENO_GIT} || true
+		echo "scripts/git: Cloning ${xenomai} into ${XENO_GIT}"
+		git clone ${xenomai} ${XENO_GIT}
+	fi
+
+	#Automaticly, just recover the git repo from a git crash
+	if [ -f "${XENO_GIT}/ignore/xenomai/.git/index.lock" ] ; then
+		rm -rf ${XENO_GIT}/ignore/xenomai/ || true
+		echo "scripts/git: xenomai repository ${XENO_GIT} wedged"
+		echo "Recloning..."
+		git clone ${xenomai} ${XENO_GIT}
+	fi
+
+	cd "${XENO_GIT}"
+	git am --abort || echo "git tree is clean..."
+	git add --all
+	git commit --allow-empty -a -m 'empty cleanup commit'
+
+	git reset --hard HEAD
+	git checkout ${xenomai_checkout} -f
+}
+
 . ${DIR}/version.sh
 . ${DIR}/system.sh
 
@@ -197,5 +228,11 @@ fi
 
 torvalds_linux="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 linux_stable="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
+xenomai_ipipe="https://git.xenomai.org/ipipe.git"
+xenomai="https://git.xenomai.org/xenomai-3.git"
+
+#xenomai_checkout="v2.6.3"
+xenomai_checkout="2a7dcee23f32c01bd20dd9ecf1a2553f18abe78c"
 
 git_kernel
+git_xenomai
