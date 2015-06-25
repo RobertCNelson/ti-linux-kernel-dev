@@ -1138,6 +1138,7 @@ static void omap_gpio_chip_init(struct gpio_bank *bank, struct irq_chip *irqc)
 			set_irq_flags(irq, IRQF_VALID);
 		}
 	}
+
 	irq_set_chained_handler(bank->irq, gpio_irq_handler);
 	irq_set_handler_data(bank->irq, bank);
 }

@@ -1,6 +1,6 @@
-From 87d43d5a092508562094774c527ea4ed2b1a5ff5 Mon Sep 17 00:00:00 2001
+From 5fcf0698b333607e090c64cc8f0836dc52a5ae34 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 7 May 2015 09:14:24 -0500
+Date: Wed, 24 Jun 2015 20:16:55 -0500
 Subject: [PATCH] ipipe-3.14
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -158,7 +158,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/mm/idmap.c                              |    2 +-
  arch/arm/mm/ioremap.c                            |    1 +
  arch/arm/mm/mmap.c                               |   53 +-
- arch/arm/mm/pgd.c                                |  167 +-
+ arch/arm/mm/pgd.c                                |  178 +-
  arch/arm/mm/proc-arm920.S                        |    9 +
  arch/arm/mm/proc-arm926.S                        |    9 +
  arch/arm/mm/proc-feroceon.S                      |   13 +
@@ -441,7 +441,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/timer.c                                   |   19 +
  kernel/trace/Kconfig                             |    1 +
  kernel/trace/ftrace.c                            |   27 +-
- kernel/trace/ring_buffer.c                       |   23 +-
+ kernel/trace/ring_buffer.c                       |   20 +-
  kernel/trace/trace.c                             |    6 +-
  kernel/trace/trace_clock.c                       |    4 +-
  kernel/trace/trace_functions.c                   |    4 +-
@@ -460,7 +460,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/mprotect.c                                    |   10 +-
  mm/vmalloc.c                                     |    2 +
  scripts/ipipe/genpatches.sh                      |  170 ++
- 455 files changed, 20440 insertions(+), 1605 deletions(-)
+ 455 files changed, 20449 insertions(+), 1604 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -1120,7 +1120,7 @@ index 0000000..4b25210
 +	power = <50>;
 +};
 diff --git a/arch/arm/boot/dts/omap4.dtsi b/arch/arm/boot/dts/omap4.dtsi
-index f6b7e4f..92d5c35 100644
+index 38fd6b8..965b43c 100644
 --- a/arch/arm/boot/dts/omap4.dtsi
 +++ b/arch/arm/boot/dts/omap4.dtsi
 @@ -69,10 +69,17 @@
@@ -2088,7 +2088,7 @@ index bb28af7..780ca50 100644
  static inline void sp804_clockevents_init(void __iomem *base, unsigned int irq, const char *name)
 diff --git a/arch/arm/include/asm/ipipe.h b/arch/arm/include/asm/ipipe.h
 new file mode 100644
-index 0000000..d1c125d
+index 0000000..ee5d023
 --- /dev/null
 +++ b/arch/arm/include/asm/ipipe.h
 @@ -0,0 +1,272 @@
@@ -2136,7 +2136,7 @@ index 0000000..d1c125d
 +#include <linux/jump_label.h>
 +#include <linux/ipipe_trace.h>
 +
-+#define IPIPE_CORE_RELEASE	9
++#define IPIPE_CORE_RELEASE	10
 +
 +struct ipipe_domain;
 +
@@ -3578,7 +3578,7 @@ index a30fc9b..8da0863 100644
  obj-$(CONFIG_ARM_VIRT_EXT)	+= hyp-stub.o
  ifeq ($(CONFIG_ARM_PSCI),y)
 diff --git a/arch/arm/kernel/asm-offsets.c b/arch/arm/kernel/asm-offsets.c
-index ded0417..6ce9baa 100644
+index 85598b5..e91850c 100644
 --- a/arch/arm/kernel/asm-offsets.c
 +++ b/arch/arm/kernel/asm-offsets.c
 @@ -53,6 +53,9 @@ int main(void)
@@ -3823,7 +3823,7 @@ index 1879e8d..f6ef839 100644
  	.if	(. - \sym) & 3
  	.rept	4 - (. - \sym) & 3
 diff --git a/arch/arm/kernel/entry-common.S b/arch/arm/kernel/entry-common.S
-index a2dcafd..1f31fd1 100644
+index 98dd389..a4c49e4 100644
 --- a/arch/arm/kernel/entry-common.S
 +++ b/arch/arm/kernel/entry-common.S
 @@ -2,6 +2,7 @@
@@ -3834,7 +3834,7 @@ index a2dcafd..1f31fd1 100644
   *
   * This program is free software; you can redistribute it and/or modify
   * it under the terms of the GNU General Public License version 2 as
-@@ -42,6 +43,42 @@ ret_fast_syscall:
+@@ -44,6 +45,42 @@ ret_fast_syscall:
  	ct_user_enter
  
  	restore_user_regs fast = 1, offset = S_OFF
@@ -3877,7 +3877,7 @@ index a2dcafd..1f31fd1 100644
   UNWIND(.fnend		)
  
  /*
-@@ -71,12 +108,7 @@ ENTRY(ret_to_user_from_irq)
+@@ -73,12 +110,7 @@ ENTRY(ret_to_user_from_irq)
  	bne	work_pending
  no_work_pending:
  	asm_trace_hardirqs_on
@@ -3891,7 +3891,7 @@ index a2dcafd..1f31fd1 100644
  ENDPROC(ret_to_user_from_irq)
  ENDPROC(ret_to_user)
  
-@@ -84,6 +116,7 @@ ENDPROC(ret_to_user)
+@@ -86,6 +118,7 @@ ENDPROC(ret_to_user)
   * This is how we return from a fork.
   */
  ENTRY(ret_from_fork)
@@ -3899,7 +3899,7 @@ index a2dcafd..1f31fd1 100644
  	bl	schedule_tail
  	cmp	r5, #0
  	movne	r0, r4
-@@ -365,6 +398,16 @@ ENTRY(vector_swi)
+@@ -367,6 +400,16 @@ ENTRY(vector_swi)
  	str	r0, [sp, #S_OLD_R0]		@ Save OLD_R0
  #endif
  	zero_fp
@@ -3916,7 +3916,7 @@ index a2dcafd..1f31fd1 100644
  
  #ifdef CONFIG_ALIGNMENT_TRAP
  	ldr	ip, __cr_alignment
-@@ -429,6 +472,57 @@ ENTRY(vector_swi)
+@@ -431,6 +474,57 @@ ENTRY(vector_swi)
  #endif
  
  local_restart:
@@ -3974,7 +3974,7 @@ index a2dcafd..1f31fd1 100644
  	ldr	r10, [tsk, #TI_FLAGS]		@ check for syscall tracing
  	stmdb	sp!, {r4, r5}			@ push fifth and sixth args
  
-@@ -624,3 +718,28 @@ ENTRY(sys_oabi_call_table)
+@@ -626,3 +720,28 @@ ENTRY(sys_oabi_call_table)
  
  #endif
  
@@ -8200,7 +8200,7 @@ index d243fdf..9e8e39d 100644
  	if (chip->irq_ack)
  		chip->irq_ack(&desc->irq_data);
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
-index 1ee3cb6..b0e9d49 100644
+index 1ee3cb6..717bef0 100644
 --- a/arch/arm/mach-omap2/timer.c
 +++ b/arch/arm/mach-omap2/timer.c
 @@ -42,6 +42,9 @@
@@ -8213,7 +8213,7 @@ index 1ee3cb6..b0e9d49 100644
  
  #include <asm/mach/time.h>
  #include <asm/smp_twd.h>
-@@ -64,11 +67,22 @@
+@@ -64,6 +67,11 @@
  #define INCREMENTER_DENUMERATOR_RELOAD_OFFSET		0x14
  #define NUMERATOR_DENUMERATOR_MASK			0xfffff000
  
@@ -8225,7 +8225,9 @@ index 1ee3cb6..b0e9d49 100644
  /* Clockevent code */
  
  static struct omap_dm_timer clkev;
- static struct clock_event_device clockevent_gpt;
+@@ -72,6 +80,12 @@ static struct clock_event_device clockevent_gpt;
+ /* Clockevent hwmod for am335x and am437x suspend */
+ struct omap_hwmod *clockevent_gpt_hwmod;
  
 +static void omap2_gp_timer_ack(void)
 +{
@@ -8233,8 +8235,8 @@ index 1ee3cb6..b0e9d49 100644
 +	__omap_dm_timer_read_status(&clkev);
 +}
 +
- /* Clockevent hwmod for am335x and am437x suspend */
- struct omap_hwmod *clockevent_gpt_hwmod;
+ #ifdef CONFIG_SOC_HAS_REALTIME_COUNTER
+ static unsigned long arch_timer_freq;
  
 @@ -85,7 +99,8 @@ static irqreturn_t omap2_gp_timer_interrupt(int irq, void *dev_id)
  {
@@ -10627,10 +10629,10 @@ index 5e85ed3..ababa17 100644
  		info.flags = 0;
  		info.low_limit = mm->mmap_base;
 diff --git a/arch/arm/mm/pgd.c b/arch/arm/mm/pgd.c
-index 2493795..a4aafb5 100644
+index 2493795..bb6254c 100644
 --- a/arch/arm/mm/pgd.c
 +++ b/arch/arm/mm/pgd.c
-@@ -27,6 +27,159 @@
+@@ -27,6 +27,167 @@
  #define __pgd_free(pgd)	free_pages((unsigned long)pgd, 2)
  #endif
  
@@ -10680,7 +10682,12 @@ index 2493795..a4aafb5 100644
 +	return h;
 +}
 +
-+static inline void pgd_holder_insert(struct pgd_holder *h)
++static inline void pgd_holder_drop(struct pgd_holder *h)
++{
++	kfree(h);
++}
++
++static inline int pgd_holder_insert(struct pgd_holder *h)
 +{
 +	struct rb_node **rbp = &pgd_table.rb_node, *parent = NULL;
 +	struct pgd_holder *p;
@@ -10691,13 +10698,16 @@ index 2493795..a4aafb5 100644
 +		if ((unsigned long)h->pgd < (unsigned long)p->pgd)
 +			rbp = &(*rbp)->rb_left;
 +		else {
-+			BUG_ON(h->pgd == p->pgd);
++			if (h->pgd == p->pgd)
++				return 0;
 +			rbp = &(*rbp)->rb_right;
 +		}
 +	}
 +
 +  	rb_link_node(&h->rb, parent, rbp);
 +  	rb_insert_color(&h->rb, &pgd_table);
++
++	return 1;
 +}
 +
 +static inline void pgd_holder_free(pgd_t *pgd)
@@ -10717,14 +10727,12 @@ index 2493795..a4aafb5 100644
 +		else {
 +			rb_erase(node, &pgd_table);
 +			pgd_table_unlock(flags);
-+			kfree(p);
++			pgd_holder_drop(p);
 +			return;
 +		}
 +	}
 +
 +	pgd_table_unlock(flags);
-+
-+	BUG();
 +}
 +
 +static void pin_k_mapping(pgd_t *pgd, unsigned long addr)
@@ -10781,7 +10789,9 @@ index 2493795..a4aafb5 100644
 +	return NULL;
 +}
 +
-+static inline void pgd_holder_insert(struct pgd_holder *h) { }
++static inline void pgd_holder_drop(struct pgd_holder *h) { }
++
++static inline int pgd_holder_insert(struct pgd_holder *h) { return 1; }
 +
 +static inline void pgd_holder_free(pgd_t *pgd) { }
 +
@@ -10790,16 +10800,17 @@ index 2493795..a4aafb5 100644
  /*
   * need to get a 16k page for level 1
   */
-@@ -36,6 +189,8 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
+@@ -36,6 +197,9 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
  	pud_t *new_pud, *init_pud;
  	pmd_t *new_pmd, *init_pmd;
  	pte_t *new_pte, *init_pte;
 +	struct pgd_holder *h;
 +	unsigned long flags;
++	int ret;
  
  	new_pgd = __pgd_alloc();
  	if (!new_pgd)
-@@ -47,9 +202,13 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
+@@ -47,9 +211,15 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
  	 * Copy over the kernel and IO PGD entries
  	 */
  	init_pgd = pgd_offset_k(0);
@@ -10808,12 +10819,14 @@ index 2493795..a4aafb5 100644
  	memcpy(new_pgd + USER_PTRS_PER_PGD, init_pgd + USER_PTRS_PER_PGD,
  		       (PTRS_PER_PGD - USER_PTRS_PER_PGD) * sizeof(pgd_t));
  
-+	pgd_holder_insert(h);
++	ret = pgd_holder_insert(h);
 +	pgd_table_unlock(flags);
++	if (!ret)
++		pgd_holder_drop(h);
  	clean_dcache_area(new_pgd, PTRS_PER_PGD * sizeof(pgd_t));
  
  #ifdef CONFIG_ARM_LPAE
-@@ -67,6 +226,10 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
+@@ -67,6 +237,10 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
  #endif
  
  	if (!vectors_high()) {
@@ -10824,7 +10837,7 @@ index 2493795..a4aafb5 100644
  		/*
  		 * On ARM, first page must always be allocated since it
  		 * contains the machine vectors. The vectors are always high
-@@ -119,7 +282,7 @@ void pgd_free(struct mm_struct *mm, pgd_t *pgd_base)
+@@ -119,7 +293,7 @@ void pgd_free(struct mm_struct *mm, pgd_t *pgd_base)
  	if (pgd_none_or_clear_bad(pgd))
  		goto no_pgd;
  
@@ -10833,7 +10846,7 @@ index 2493795..a4aafb5 100644
  	if (pud_none_or_clear_bad(pud))
  		goto no_pud;
  
-@@ -137,6 +300,8 @@ no_pud:
+@@ -137,6 +311,8 @@ no_pud:
  	pgd_clear(pgd);
  	pud_free(mm, pud);
  no_pgd:
@@ -10957,10 +10970,10 @@ index b34b95f..1071b46 100644
  	mcr	p15, 0, ip, c8, c7, 0		@ invalidate I & D TLBs
  	cpwait_ret lr, ip
 diff --git a/arch/arm/plat-omap/dmtimer.c b/arch/arm/plat-omap/dmtimer.c
-index 1e8dad3..7ac7db5 100644
+index 2376929..3c68929 100644
 --- a/arch/arm/plat-omap/dmtimer.c
 +++ b/arch/arm/plat-omap/dmtimer.c
-@@ -285,7 +285,6 @@ struct omap_dm_timer *omap_dm_timer_request_specific(int id)
+@@ -286,7 +286,6 @@ struct omap_dm_timer *omap_dm_timer_request_specific(int id)
  
  	return _omap_dm_timer_request(REQUEST_BY_ID, &id);
  }
@@ -10968,7 +10981,7 @@ index 1e8dad3..7ac7db5 100644
  
  /**
   * omap_dm_timer_request_by_cap - Request a timer by capability
-@@ -365,6 +364,18 @@ int omap_dm_timer_get_irq(struct omap_dm_timer *timer)
+@@ -366,6 +365,18 @@ int omap_dm_timer_get_irq(struct omap_dm_timer *timer)
  }
  EXPORT_SYMBOL_GPL(omap_dm_timer_get_irq);
  
@@ -10987,7 +11000,7 @@ index 1e8dad3..7ac7db5 100644
  #if defined(CONFIG_ARCH_OMAP1)
  #include <mach/hardware.h>
  /**
-@@ -563,7 +574,7 @@ EXPORT_SYMBOL_GPL(omap_dm_timer_set_load);
+@@ -568,7 +579,7 @@ EXPORT_SYMBOL_GPL(omap_dm_timer_set_load);
  
  /* Optimized set_load which removes costly spin wait in timer_start */
  int omap_dm_timer_set_load_start(struct omap_dm_timer *timer, int autoreload,
@@ -10996,7 +11009,7 @@ index 1e8dad3..7ac7db5 100644
  {
  	u32 l;
  
-@@ -828,6 +839,7 @@ static int omap_dm_timer_probe(struct platform_device *pdev)
+@@ -833,6 +844,7 @@ static int omap_dm_timer_probe(struct platform_device *pdev)
  	}
  
  	timer->fclk = ERR_PTR(-ENODEV);
@@ -34999,7 +35012,7 @@ index e3be87e..e6a7b54 100644
  	/* ftrace_dyn_arch_init places the return code in addr */
  	if (addr)
 diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c
-index da41de9..8b2f9dd 100644
+index da41de9..82df76d8 100644
 --- a/kernel/trace/ring_buffer.c
 +++ b/kernel/trace/ring_buffer.c
 @@ -2651,7 +2651,8 @@ static DEFINE_PER_CPU(unsigned int, current_context);
@@ -35012,7 +35025,7 @@ index da41de9..8b2f9dd 100644
  	int bit;
  
  	if (in_interrupt()) {
-@@ -2664,21 +2665,35 @@ static __always_inline int trace_recursive_lock(void)
+@@ -2664,21 +2665,34 @@ static __always_inline int trace_recursive_lock(void)
  	} else
  		bit = 3;
  
@@ -35041,10 +35054,8 @@ index da41de9..8b2f9dd 100644
 +
 +	flags = hard_local_irq_save();
  
--	val &= val & (val - 1);
 +	val = __this_cpu_read(current_context);
-+	val--;
-+	val &= __this_cpu_read(current_context);
+ 	val &= val & (val - 1);
  	__this_cpu_write(current_context, val);
 +
 +	hard_local_irq_restore(flags);
