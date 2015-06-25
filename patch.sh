@@ -77,7 +77,7 @@ external_git
 
 rt () {
 	echo "dir: rt"
-	#patch-3.14.43-rt42.patch
+	#patch-3.14.44-rt44.patch
 	#exit 2
 
 	#merge notes:
