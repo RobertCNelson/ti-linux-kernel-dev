@@ -230,6 +230,55 @@ config="CONFIG_SND_SOC_TLV320AIC3X" ; config_module
 config="CONFIG_SND_SOC_HDMI_CODEC" ; config_module
 config="CONFIG_SND_OMAP_SOC_HDMI_AUDIO" ; config_module
 
+##################################################
+# TI Baseport Config Options
+##################################################
+
+# Serial
+CONFIG_SERIAL_8250_OMAP=y
+CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP=y
+CONFIG_SERIAL_8250_RUNTIME_UARTS=10
+CONFIG_SERIAL_8250_DMA=n
+CONFIG_SERIAL_OMAP=n
+
+config="CONFIG_SERIAL_8250_OMAP" ; config_enable
+config="CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP" ; config_enable
+config="CONFIG_SERIAL_8250_NR_UARTS" ; option="6" ; config_value
+config="CONFIG_SERIAL_8250_RUNTIME_UARTS" ; option="6" ; config_value
+config="CONFIG_SERIAL_8250_DMA" ; config_disable
+config="CONFIG_SERIAL_OMAP" ; config_disable
+
+CONFIG_JUMP_LABEL=y
+config="CONFIG_JUMP_LABEL" ; config_enable
+
+# Disable Extra debug options
+CONFIG_SCHEDSTATS=n
+CONFIG_TIMER_STATS=n
+CONFIG_DEBUG_SPINLOCK=n
+CONFIG_DEBUG_MUTEXES=n
+CONFIG_DEBUG_LOCK_ALLOC=n
+CONFIG_PROVE_LOCKING=n
+CONFIG_LOCKDEP=n
+CONFIG_STACKTRACE=n
+CONFIG_SCHED_DEBUG=n
+CONFIG_FTRACE=n
+CONFIG_ARM_UNWIND=n
+
+CONFIG_PREEMPT=y
+CONFIG_DEBUG_FS=y
+
+config="CONFIG_PREEMPT" ; config_enable
+config="CONFIG_DEBUG_FS" ; config_enable
+
+#Crypto Modules
+CONFIG_CRYPTO_DEV_OMAP_SHAM=y
+CONFIG_CRYPTO_DEV_OMAP_AES=y
+CONFIG_CRYPTO_DEV_OMAP_DES=y
+
+config="CONFIG_CRYPTO_DEV_OMAP_SHAM" ; config_enable
+config="CONFIG_CRYPTO_DEV_OMAP_AES" ; config_enable
+config="CONFIG_CRYPTO_DEV_OMAP_DES" ; config_enable
+
 echo "our defaults"
 
 #
@@ -307,7 +356,7 @@ config="CONFIG_PCI_SYSCALL" ; config_disable
 # Kernel Features
 #
 config="CONFIG_NR_CPUS" ; option="2" ; config_value
-config="CONFIG_PREEMPT" ; config_enable
+#config="CONFIG_PREEMPT" ; config_enable
 config="CONFIG_HZ_100" ; config_enable
 config="CONFIG_HZ_250" ; config_disable
 config="CONFIG_HZ" ; option="100" ; config_value
@@ -487,17 +536,17 @@ config="CONFIG_DEVKMEM" ; config_enable
 #
 # Serial drivers
 #
-config="CONFIG_SERIAL_8250_DMA" ; config_disable
-config="CONFIG_SERIAL_8250_NR_UARTS" ; option="6" ; config_value
-config="CONFIG_SERIAL_8250_RUNTIME_UARTS" ; option="6" ; config_value
-config="CONFIG_SERIAL_8250_OMAP" ; config_enable
-config="CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP" ; config_enable
+#config="CONFIG_SERIAL_8250_DMA" ; config_disable
+#config="CONFIG_SERIAL_8250_NR_UARTS" ; option="6" ; config_value
+#config="CONFIG_SERIAL_8250_RUNTIME_UARTS" ; option="6" ; config_value
+#config="CONFIG_SERIAL_8250_OMAP" ; config_enable
+#config="CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP" ; config_enable
 
 #
 # Non-8250 serial port support
 #
 config="CONFIG_CONSOLE_POLL" ; config_enable
-config="CONFIG_SERIAL_OMAP" ; config_disable
+#config="CONFIG_SERIAL_OMAP" ; config_disable
 
 config="CONFIG_SERIAL_ARC" ; config_disable
 config="CONFIG_TCG_TPM" ; config_module
