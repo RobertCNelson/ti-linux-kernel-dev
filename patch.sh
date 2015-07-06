@@ -75,11 +75,228 @@ local_patch () {
 external_git
 #local_patch
 
+reverts () {
+	echo "dir: reverts"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	#my major screw up...
+	#${git} "${DIR}/patches/reverts/0001-Revert-ARM-dts-am335x-boneblack-disable-RTC-only-sle.patch"
+
+	${git} "${DIR}/patches/reverts/0002-Revert-spi-spidev-Warn-loudly-if-instantiated-from-D.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+}
+
+fixes () {
+	echo "dir: fixes"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/fixes/0001-trusty-gcc-4.8-4.8.2-19ubuntu1-has-fix.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+}
+
+pru () {
+	echo "dir: pru"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/pru/0001-Making-the-uio-pruss-driver-work.patch"
+	${git} "${DIR}/patches/pru/0002-Cleaned-up-error-reporting.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+}
+
+mainline () {
+	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/bbb_overlays/mainline/
+}
+
+bbb_overlays () {
+	echo "dir: bbb_overlays/dtc"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+
+		cd ../
+		if [ -d dtc ] ; then
+			rm -rf dtc
+		fi
+		git clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
+		cd dtc
+		git pull --no-edit https://github.com/pantoniou/dtc dt-overlays5
+
+		cd ../KERNEL/
+		sed -i -e 's:git commit:#git commit:g' ./scripts/dtc/update-dtc-source.sh
+		./scripts/dtc/update-dtc-source.sh
+		sed -i -e 's:#git commit:git commit:g' ./scripts/dtc/update-dtc-source.sh
+		git commit -a -m "scripts/dtc: Update to upstream version overlays" -s
+		git format-patch -1 -o ../patches/bbb_overlays/dtc/
+		exit 2
+	else
+		${git} "${DIR}/patches/bbb_overlays/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
+	fi
+
+	echo "dir: bbb_overlays/mainline"
+
+	${git} "${DIR}/patches/bbb_overlays/mainline/0001-regmap-Introduce-regmap_get_max_register.patch"
+	${git} "${DIR}/patches/bbb_overlays/mainline/0002-regmap-Introduce-regmap_get_reg_stride.patch"
+	${git} "${DIR}/patches/bbb_overlays/mainline/0003-ARM-dts-Beaglebone-i2c-definitions.patch"
+
+	echo "dir: bbb_overlays"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/bbb_overlays/0001-nvmem-Add-a-simple-NVMEM-framework-for-nvmem-provide.patch"
+	${git} "${DIR}/patches/bbb_overlays/0002-nvmem-Add-a-simple-NVMEM-framework-for-consumers.patch"
+	${git} "${DIR}/patches/bbb_overlays/0003-nvmem-Add-nvmem_device-based-consumer-apis.patch"
+	${git} "${DIR}/patches/bbb_overlays/0004-nvmem-Add-bindings-for-simple-nvmem-framework.patch"
+	${git} "${DIR}/patches/bbb_overlays/0005-nvmem-Add-simple-nvmem-mmio-consumer-helper-function.patch"
+	${git} "${DIR}/patches/bbb_overlays/0006-nvmem-qfprom-Add-Qualcomm-QFPROM-support.patch"
+	${git} "${DIR}/patches/bbb_overlays/0007-nvmem-qfprom-Add-bindings-for-qfprom.patch"
+	${git} "${DIR}/patches/bbb_overlays/0008-nvmem-sunxi-Move-the-SID-driver-to-the-nvmem-framewo.patch"
+	${git} "${DIR}/patches/bbb_overlays/0009-configfs-Implement-binary-attributes-v4.patch"
+	${git} "${DIR}/patches/bbb_overlays/0010-OF-DT-Overlay-configfs-interface-v5.patch"
+	${git} "${DIR}/patches/bbb_overlays/0011-gitignore-Ignore-DTB-files.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+	${git} "${DIR}/patches/bbb_overlays/0012-add-PM-firmware.patch"
+	${git} "${DIR}/patches/bbb_overlays/0013-ARM-CUSTOM-Build-a-uImage-with-dtb-already-appended.patch"
+	fi
+
+	${git} "${DIR}/patches/bbb_overlays/0014-arm-omap-Proper-cleanups-for-omap_device.patch"
+	${git} "${DIR}/patches/bbb_overlays/0015-serial-omap-Fix-port-line-number-without-aliases.patch"
+	${git} "${DIR}/patches/bbb_overlays/0016-tty-omap-serial-Fix-up-platform-data-alloc.patch"
+	${git} "${DIR}/patches/bbb_overlays/0017-ARM-DT-Enable-symbols-when-CONFIG_OF_OVERLAY-is-used.patch"
+	${git} "${DIR}/patches/bbb_overlays/0018-of-Custom-printk-format-specifier-for-device-node.patch"
+	${git} "${DIR}/patches/bbb_overlays/0019-i2c-Mark-instantiated-device-nodes-with-OF_POPULATE.patch"
+	${git} "${DIR}/patches/bbb_overlays/0020-of-overlay-kobjectify-overlay-objects.patch"
+	${git} "${DIR}/patches/bbb_overlays/0021-of-overlay-global-sysfs-enable-attribute.patch"
+	${git} "${DIR}/patches/bbb_overlays/0022-of-overlay-add-per-overlay-sysfs-attributes.patch"
+	${git} "${DIR}/patches/bbb_overlays/0023-Documentation-ABI-sys-firmware-devicetree-overlays.patch"
+	${git} "${DIR}/patches/bbb_overlays/0024-i2c-nvmem-at24-Provide-an-EEPROM-framework-interface.patch"
+	${git} "${DIR}/patches/bbb_overlays/0025-misc-Beaglebone-capemanager.patch"
+	${git} "${DIR}/patches/bbb_overlays/0026-doc-misc-Beaglebone-capemanager-documentation.patch"
+	${git} "${DIR}/patches/bbb_overlays/0027-doc-dt-beaglebone-cape-manager-bindings.patch"
+	${git} "${DIR}/patches/bbb_overlays/0028-doc-ABI-bone_capemgr-sysfs-API.patch"
+	${git} "${DIR}/patches/bbb_overlays/0029-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
+	${git} "${DIR}/patches/bbb_overlays/0030-arm-dts-Enable-beaglebone-cape-manager.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+	${git} "${DIR}/patches/bbb_overlays/0031-boneblack-defconfig.patch"
+	fi
+
+	${git} "${DIR}/patches/bbb_overlays/0032-gcl-Fix-resource-linking.patch"
+	${git} "${DIR}/patches/bbb_overlays/0033-of-overlay-Implement-indirect-target-support.patch"
+	${git} "${DIR}/patches/bbb_overlays/0034-of-unittest-Add-indirect-overlay-target-test.patch"
+	${git} "${DIR}/patches/bbb_overlays/0035-doc-dt-Document-the-indirect-overlay-method.patch"
+	${git} "${DIR}/patches/bbb_overlays/0036-of-overlay-Introduce-target-root-capability.patch"
+	${git} "${DIR}/patches/bbb_overlays/0037-of-unittest-Unit-tests-for-target-root-overlays.patch"
+	${git} "${DIR}/patches/bbb_overlays/0038-doc-dt-Document-the-target-root-overlay-method.patch"
+	${git} "${DIR}/patches/bbb_overlays/0039-of-dynamic-Add-__of_node_dupv.patch"
+	${git} "${DIR}/patches/bbb_overlays/0040-of-changesets-Introduce-changeset-helper-methods.patch"
+	${git} "${DIR}/patches/bbb_overlays/0041-RFC-Device-overlay-manager-PCI-USB-DT.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=41
+		cleanup
+	fi
+}
+
 dtb_makefile_append () {
 	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
 
 beaglebone () {
+	echo "dir: beaglebone/dts"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/dts/0001-am335x-boneblack-add-cpu0-opp-points.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0002-dts-am335x-bone-common-fixup-leds-to-match-3.8.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0003-arm-dts-am335x-bone-common-add-collision-and-carrier.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0004-add-am335x-bonegreen.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0005-add-overlay-dtb.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=5
+		cleanup
+	fi
+
+	echo "dir: beaglebone/capes"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0002-Added-support-for-Replicape.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0003-ARM-dts-am335x-boneblack-enable-wl1835mod-cape-suppo.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=3
+		cleanup
+	fi
+
+	echo "dir: beaglebone/pinmux-helper"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0001-BeagleBone-pinmux-helper.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0002-pinmux-helper-Add-runtime-configuration-capability.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0003-pinmux-helper-Switch-to-using-kmalloc.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0004-gpio-Introduce-GPIO-OF-helper.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0005-Add-dir-changeable-property-to-gpio-of-helper.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0006-am33xx.dtsi-add-ocp-label.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0007-beaglebone-added-expansion-header-to-dtb.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0008-bone-pinmux-helper-Add-support-for-mode-device-tree-.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0009-pinmux-helper-add-P8_37_pinmux-P8_38_pinmux.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0010-pinmux-helper-hdmi.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0011-pinmux-helper-can1.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0012-Remove-CONFIG_EXPERIMENTAL-dependency-on-CONFIG_GPIO.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0013-pinmux-helper-add-P9_19_pinmux-P9_20_pinmux.patch"
+	${git} "${DIR}/patches/beaglebone/pinmux-helper/0014-gpio-of-helper-idr_alloc.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=14
+		cleanup
+	fi
+
+	echo "dir: beaglebone/eqep"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/eqep/0001-Provides-a-sysfs-interface-to-the-eQEP-hardware-on-t.patch"
+	${git} "${DIR}/patches/beaglebone/eqep/0002-tieqep.c-devres-remove-devm_request_and_ioremap.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -96,7 +313,12 @@ beaglebone () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 
 		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-replicape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-universal.dtb" ; dtb_makefile_append
+
 		device="am335x-bonegreen.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
@@ -120,9 +342,87 @@ beaglebone () {
 		number=3
 		cleanup
 	fi
+
+	echo "dir: beaglebone/remoteproc"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/remoteproc/0001-remoteproc-ste-add-blank-lines-after-declarations.patch"
+	${git} "${DIR}/patches/beaglebone/remoteproc/0002-remoteproc-davinci-fix-quoted-split-string-checkpatc.patch"
+	${git} "${DIR}/patches/beaglebone/remoteproc/0003-remoteproc-fix-various-checkpatch-warnings.patch"
+	${git} "${DIR}/patches/beaglebone/remoteproc/0004-remoteproc-introduce-rproc_get_by_phandle-API.patch"
+	${git} "${DIR}/patches/beaglebone/remoteproc/0005-remoteproc-add-a-rproc-ops-for-performing-address-tr.patch"
+	${git} "${DIR}/patches/beaglebone/remoteproc/0006-Documentation-dt-add-bindings-for-TI-Wakeup-M3-proce.patch"
+	${git} "${DIR}/patches/beaglebone/remoteproc/0007-remoteproc-wkup_m3-add-a-remoteproc-driver-for-TI-Wa.patch"
+	${git} "${DIR}/patches/beaglebone/remoteproc/0008-remoteproc-fix-CONFIG_OF-build-breakage.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=8
+		cleanup
+	fi
+
+	echo "dir: beaglebone/firmware"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
+	#cd amx3-cm3/
+	#git checkout origin/next-upstream -b tmp
+
+	#commit 277eef8611e260a5d73a9e3773fff8f767fe2b01
+	#Author: Dave Gerlach <d-gerlach@ti.com>
+	#Date:   Wed Mar 4 21:34:54 2015 -0600
+	#
+	#    CM3: Bump firmware release to 0x191
+	#    
+	#    This version, 0x191, includes the following changes:
+	#         - Add trace output on boot for kernel remoteproc driver
+	#         - Fix resouce table as RSC_INTMEM is no longer used in kernel
+	#    
+	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
+
+	#cp -v bin/am* /opt/github/bb-kernel/KERNEL/firmware/
+
+	#git add -f ./firmware/am*
+
+	${git} "${DIR}/patches/beaglebone/firmware/0001-add-am33x-firmware.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
+	echo "dir: beaglebone/hwspinlock"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/hwspinlock/0001-Documentation-dt-add-common-bindings-for-hwspinlock.patch"
+	${git} "${DIR}/patches/beaglebone/hwspinlock/0002-hwspinlock-core-add-device-tree-support.patch"
+	${git} "${DIR}/patches/beaglebone/hwspinlock/0003-Documentation-dt-add-the-omap-hwspinlock-bindings-do.patch"
+	${git} "${DIR}/patches/beaglebone/hwspinlock/0004-hwspinlock-omap-add-support-for-dt-nodes.patch"
+	${git} "${DIR}/patches/beaglebone/hwspinlock/0005-DT-hwspinlock-Add-binding-documentation-for-Qualcomm.patch"
+	${git} "${DIR}/patches/beaglebone/hwspinlock/0006-hwspinlock-qcom-Add-support-for-Qualcomm-HW-Mutex-bl.patch"
+	${git} "${DIR}/patches/beaglebone/hwspinlock/0007-hwspinlock-add-a-CSR-atlas7-driver.patch"
+	${git} "${DIR}/patches/beaglebone/hwspinlock/0008-DT-hwspinlock-add-the-CSR-atlas7-hwspinlock-bindings.patch"
+	${git} "${DIR}/patches/beaglebone/hwspinlock/0009-hwspinlock-qcom-Correct-msb-in-regmap_field.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=9
+		cleanup
+	fi
 }
 
 ###
+reverts
+fixes
+pru
+bbb_overlays
 beaglebone
 
 packaging () {
