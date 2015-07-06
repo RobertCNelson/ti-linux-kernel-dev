@@ -120,6 +120,116 @@ config="CONFIG_SOC_AM33XX" ; config_enable
 config="CONFIG_SOC_AM43XX" ; config_enable
 config="CONFIG_SOC_DRA7XX" ; config_enable
 
+##################################################
+# TI Audio/Display config options
+##################################################
+
+CONFIG_BACKLIGHT_PWM=y
+CONFIG_BACKLIGHT_GPIO=y
+
+config="CONFIG_BACKLIGHT_PWM" ; config_enable
+config="CONFIG_BACKLIGHT_GPIO" ; config_enable
+
+CONFIG_DRM=y
+CONFIG_DRM_I2C_NXP_TDA998X=y
+CONFIG_DRM_TILCDC=y
+CONFIG_DRM_OMAP=y
+CONFIG_DRM_OMAP_NUM_CRTCS=2
+
+config="CONFIG_DRM" ; config_enable
+config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
+config="CONFIG_DRM_TILCDC" ; config_enable
+config="CONFIG_DRM_OMAP" ; config_enable
+config="CONFIG_DRM_OMAP_NUM_CRTCS" ; option="2" ; config_value
+
+CONFIG_OMAP2_DSS=y
+CONFIG_OMAP5_DSS_HDMI=y
+
+config="CONFIG_OMAP2_DSS" ; config_enable
+config="CONFIG_OMAP5_DSS_HDMI" ; config_enable
+
+CONFIG_DISPLAY_PANEL_DPI=y
+CONFIG_DISPLAY_PANEL_TLC59108=y
+CONFIG_DISPLAY_CONNECTOR_HDMI=y
+CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015=y
+CONFIG_DISPLAY_ENCODER_TPD12S015=y
+CONFIG_DISPLAY_ENCODER_SII9022=y
+
+config="CONFIG_DISPLAY_PANEL_DPI" ; config_enable
+config="CONFIG_DISPLAY_PANEL_TLC59108" ; config_enable
+config="CONFIG_DISPLAY_CONNECTOR_HDMI" ; config_enable
+config="CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015" ; config_enable
+config="CONFIG_DISPLAY_ENCODER_TPD12S015" ; config_enable
+config="CONFIG_DISPLAY_ENCODER_SII9022" ; config_enable
+
+CONFIG_CMA_SIZE_MBYTES=24
+
+config="CONFIG_CMA_SIZE_MBYTES" ; option="24" ; config_value
+
+CONFIG_MEDIA_SUBDRV_AUTOSELECT=n
+CONFIG_MEDIA_SUPPORT=m
+CONFIG_MEDIA_CONTROLLER=y
+CONFIG_V4L_PLATFORM_DRIVERS=y
+CONFIG_V4L2_MEM2MEM_DEV=m
+CONFIG_VIDEOBUF2_DMA_CONTIG=m
+CONFIG_V4L_MEM2MEM_DRIVERS=y
+CONFIG_VIDEO_V4L2_SUBDEV_API=y
+CONFIG_VIDEO_TI_VPE=m
+CONFIG_VIDEO_TI_VIP=m
+CONFIG_VIDEO_OV2659=m
+CONFIG_VIDEO_MT9T11X=m
+CONFIG_VIDEO_AM437X_VPFE=m
+CONFIG_VIDEO_OV1063X=m
+CONFIG_VIDEO_TI_CAL=m
+
+config="CONFIG_MEDIA_SUBDRV_AUTOSELECT" ; config_disable
+config="CONFIG_MEDIA_SUPPORT" ; config_module
+config="CONFIG_MEDIA_CONTROLLER" ; config_enable
+
+config="CONFIG_V4L_PLATFORM_DRIVERS" ; config_enable
+config="CONFIG_V4L2_MEM2MEM_DEV" ; config_module
+config="CONFIG_VIDEOBUF2_DMA_CONTIG" ; config_module
+config="CONFIG_V4L_MEM2MEM_DRIVERS" ; config_enable
+config="CONFIG_VIDEO_V4L2_SUBDEV_API" ; config_enable
+
+config="CONFIG_VIDEO_TI_VPE" ; config_module
+config="CONFIG_VIDEO_TI_VIP" ; config_module
+config="CONFIG_VIDEO_OV2659" ; config_module
+config="CONFIG_VIDEO_MT9T11X" ; config_module
+config="CONFIG_VIDEO_AM437X_VPFE" ; config_module
+config="CONFIG_VIDEO_OV1063X" ; config_module
+config="CONFIG_VIDEO_TI_CAL" ; config_module
+
+CONFIG_SOUND=y
+CONFIG_SND=y
+CONFIG_SND_SOC=y
+CONFIG_SND_OMAP_SOC=y
+CONFIG_SND_EDMA_SOC=y
+CONFIG_SND_DAVINCI_SOC_MCASP=y
+CONFIG_SND_AM335X_SOC_NXPTDA_EVM=m
+CONFIG_SND_AM33XX_SOC_EVM=m
+CONFIG_SND_SIMPLE_CARD=m
+CONFIG_SND_OMAP_SOC_DRA7EVM=y
+CONFIG_SND_SOC_TLV320AIC31XX=m
+CONFIG_SND_SOC_TLV320AIC3X=m
+CONFIG_SND_SOC_HDMI_CODEC=m
+CONFIG_SND_OMAP_SOC_HDMI_AUDIO=m
+
+config="CONFIG_SOUND" ; config_enable
+config="CONFIG_SND" ; config_enable
+config="CONFIG_SND_SOC" ; config_enable
+config="CONFIG_SND_OMAP_SOC" ; config_enable
+config="CONFIG_SND_EDMA_SOC" ; config_enable
+config="CONFIG_SND_DAVINCI_SOC_MCASP" ; config_enable
+config="CONFIG_SND_AM335X_SOC_NXPTDA_EVM" ; config_module
+config="CONFIG_SND_AM33XX_SOC_EVM" ; config_module
+config="CONFIG_SND_SIMPLE_CARD" ; config_module
+config="CONFIG_SND_OMAP_SOC_DRA7EVM" ; config_enable
+config="CONFIG_SND_SOC_TLV320AIC31XX" ; config_module
+config="CONFIG_SND_SOC_TLV320AIC3X" ; config_module
+config="CONFIG_SND_SOC_HDMI_CODEC" ; config_module
+config="CONFIG_SND_OMAP_SOC_HDMI_AUDIO" ; config_module
+
 echo "our defaults"
 
 #
@@ -280,7 +390,7 @@ config="CONFIG_BT_HCIBFUSB" ; config_module
 config="CONFIG_UEVENT_HELPER" ; config_enable
 config="CONFIG_DEVTMPFS_MOUNT" ; config_enable
 config="CONFIG_DMA_CMA" ; config_enable
-config="CONFIG_CMA_SIZE_MBYTES" ; option="24" ; config_value
+#config="CONFIG_CMA_SIZE_MBYTES" ; option="24" ; config_value
 
 #
 # Bus devices
@@ -453,7 +563,6 @@ config="CONFIG_REGULATOR_TPS65910" ; config_enable
 # Multimedia core support
 #
 config="CONFIG_VIDEO_V4L2_SUBDEV_API" ; config_enable
-config="CONFIG_V4L2_MEM2MEM_DEV" ; config_enable
 config="CONFIG_VIDEOBUF2_CORE" ; config_enable
 config="CONFIG_VIDEOBUF2_MEMOPS" ; config_enable
 config="CONFIG_VIDEOBUF2_DMA_CONTIG" ; config_enable
@@ -476,14 +585,14 @@ config="CONFIG_IMX_IPUV3_CORE" ; config_disable
 #
 # Direct Rendering Manager
 #
-config="CONFIG_DRM" ; config_enable
+#config="CONFIG_DRM" ; config_enable
 
 #...Drivers... (these will enable other defaults..)
 config="CONFIG_DRM_DW_HDMI" ; config_disable
 config="CONFIG_DRM_VGEM" ; config_disable
 config="CONFIG_DRM_UDL" ; config_enable
-config="CONFIG_DRM_OMAP" ; config_enable
-config="CONFIG_DRM_TILCDC" ; config_enable
+#config="CONFIG_DRM_OMAP" ; config_enable
+#config="CONFIG_DRM_TILCDC" ; config_enable
 config="CONFIG_DRM_IMX" ; config_disable
 
 #
@@ -501,8 +610,8 @@ config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
 # Frame buffer hardware drivers
 #
 config="CONFIG_FB_MX3" ; config_disable
-config="CONFIG_OMAP2_DSS" ; config_enable
-config="CONFIG_OMAP5_DSS_HDMI" ; config_enable
+#config="CONFIG_OMAP2_DSS" ; config_enable
+#config="CONFIG_OMAP5_DSS_HDMI" ; config_enable
 config="CONFIG_OMAP2_DSS_SDI" ; config_disable
 
 #
@@ -510,14 +619,14 @@ config="CONFIG_OMAP2_DSS_SDI" ; config_disable
 #
 config="CONFIG_DISPLAY_ENCODER_OPA362" ; config_enable
 config="CONFIG_DISPLAY_ENCODER_TFP410" ; config_enable
-config="CONFIG_DISPLAY_ENCODER_TPD12S015" ; config_enable
+#config="CONFIG_DISPLAY_ENCODER_TPD12S015" ; config_enable
 config="CONFIG_DISPLAY_CONNECTOR_DVI" ; config_enable
-config="CONFIG_DISPLAY_CONNECTOR_HDMI" ; config_enable
-config="CONFIG_DISPLAY_PANEL_DPI" ; config_enable
+#config="CONFIG_DISPLAY_CONNECTOR_HDMI" ; config_enable
+#config="CONFIG_DISPLAY_PANEL_DPI" ; config_enable
 
 config="CONFIG_FB_SSD1307" ; config_enable
-config="CONFIG_BACKLIGHT_PWM" ; config_enable
-config="CONFIG_BACKLIGHT_GPIO" ; config_enable
+#config="CONFIG_BACKLIGHT_PWM" ; config_enable
+#config="CONFIG_BACKLIGHT_GPIO" ; config_enable
 
 #
 # Console display driver support
