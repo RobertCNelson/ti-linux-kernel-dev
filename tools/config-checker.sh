@@ -29,8 +29,8 @@ config_module () {
 config_string () {
 	ret=$(./scripts/config --state ${config})
 	if [ ! "x${ret}" = "x${option}" ] ; then
-		echo "Setting: ${config}=${option}"
-		./scripts/config --set-str ${config} ${option}
+		echo "Setting: ${config}=\"${option}\""
+		./scripts/config --set-str ${config} "${option}"
 	fi
 }
 
@@ -164,6 +164,7 @@ config="CONFIG_DISPLAY_ENCODER_SII9022" ; config_enable
 
 CONFIG_CMA_SIZE_MBYTES=24
 
+config="CONFIG_DMA_CMA" ; config_enable
 config="CONFIG_CMA_SIZE_MBYTES" ; option="24" ; config_value
 
 CONFIG_MEDIA_SUBDRV_AUTOSELECT=n
@@ -279,13 +280,14 @@ config="CONFIG_CRYPTO_DEV_OMAP_SHAM" ; config_enable
 config="CONFIG_CRYPTO_DEV_OMAP_AES" ; config_enable
 config="CONFIG_CRYPTO_DEV_OMAP_DES" ; config_enable
 
+#exit
 echo "our defaults"
 
 #
 # General setup
 #
-config="CONFIG_USELIB" ; config_enable
 config="CONFIG_KERNEL_LZO" ; config_enable
+config="CONFIG_USELIB" ; config_enable
 
 #
 # RCU Subsystem
@@ -362,7 +364,6 @@ config="CONFIG_HZ_250" ; config_disable
 config="CONFIG_HZ" ; option="100" ; config_value
 config="CONFIG_CMA" ; config_enable
 config="CONFIG_CMA_DEBUG" ; config_disable
-config="CONFIG_ZBUD" ; config_enable
 config="CONFIG_SECCOMP" ; config_enable
 config="CONFIG_XEN" ; config_disable
 
@@ -438,7 +439,12 @@ config="CONFIG_BT_HCIBFUSB" ; config_module
 #
 config="CONFIG_UEVENT_HELPER" ; config_enable
 config="CONFIG_DEVTMPFS_MOUNT" ; config_enable
-config="CONFIG_DMA_CMA" ; config_enable
+
+config="CONFIG_FIRMWARE_IN_KERNEL" ; config_enable
+config="CONFIG_EXTRA_FIRMWARE" ; option="am335x-pm-firmware.elf am335x-bone-scale-data.bin am335x-evm-scale-data.bin am43x-evm-scale-data.bin" ; config_string
+config="CONFIG_EXTRA_FIRMWARE_DIR" ; option="firmware" ; config_string
+
+#config="CONFIG_DMA_CMA" ; config_enable
 #config="CONFIG_CMA_SIZE_MBYTES" ; option="24" ; config_value
 
 #
@@ -450,11 +456,20 @@ config="CONFIG_OMAP_OCP2SCP" ; config_enable
 # Device Tree and Open Firmware support
 #
 config="CONFIG_OF_OVERLAY" ; config_enable
+config="CONFIG_OF_CONFIGFS" ; config_enable
+
+#
+# Misc devices
+#
+config="CONFIG_BONE_CAPEMGR" ; config_enable
+config="CONFIG_TIEQEP" ; config_module
 
 #
 # EEPROM support
 #
 config="CONFIG_EEPROM_AT24" ; config_enable
+
+config="CONFIG_BEAGLEBONE_PINMUX_HELPER" ; config_enable
 
 #
 # SCSI device support
@@ -516,6 +531,7 @@ config="CONFIG_TI_CPTS" ; config_enable
 # MII PHY device drivers
 #
 config="CONFIG_SMSC_PHY" ; config_enable
+config="CONFIG_MICREL_PHY" ; config_enable
 
 #
 # Userland interfaces
@@ -561,6 +577,11 @@ config="CONFIG_I2C_CHARDEV" ; config_enable
 # PPS clients support
 #
 config="CONFIG_PPS_CLIENT_GPIO" ; config_module
+
+#
+# Pin controllers
+#
+config="CONFIG_GPIO_OF_HELPER" ; config_enable
 
 #
 # 1-wire Bus Masters
@@ -667,7 +688,11 @@ config="CONFIG_OMAP2_DSS_SDI" ; config_disable
 # OMAP Display Device Drivers (new device model)
 #
 config="CONFIG_DISPLAY_ENCODER_OPA362" ; config_enable
-config="CONFIG_DISPLAY_ENCODER_TFP410" ; config_enable
+
+#bug in tilcd/tfp410 slave..
+#config="CONFIG_DISPLAY_ENCODER_TFP410" ; config_enable
+config="CONFIG_DISPLAY_ENCODER_TFP410" ; config_disable
+
 #config="CONFIG_DISPLAY_ENCODER_TPD12S015" ; config_enable
 config="CONFIG_DISPLAY_CONNECTOR_DVI" ; config_enable
 #config="CONFIG_DISPLAY_CONNECTOR_HDMI" ; config_enable
@@ -906,7 +931,6 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 config="CONFIG_UIO_DMEM_GENIRQ" ; config_module
 config="CONFIG_UIO_PRUSS" ; config_module
 
-
 #
 # Android
 #
@@ -932,6 +956,7 @@ config="CONFIG_HWSPINLOCK_OMAP" ; config_enable
 #
 config="CONFIG_REMOTEPROC" ; config_enable
 config="CONFIG_OMAP_REMOTEPROC" ; config_enable
+config="CONFIG_WKUP_M3_RPROC" ; config_enable
 
 #
 # Rpmsg drivers
@@ -988,6 +1013,7 @@ config="CONFIG_TI_PIPE3" ; config_enable
 config="CONFIG_ANDROID" ; config_enable
 config="CONFIG_ANDROID_BINDER_IPC" ; config_enable
 config="CONFIG_ANDROID_BINDER_IPC_32BIT" ; config_enable
+config="CONFIG_NVMEM" ; config_enable
 
 #
 # File systems
