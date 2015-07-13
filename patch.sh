@@ -157,6 +157,7 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/mainline/0001-regmap-Introduce-regmap_get_max_register.patch"
 	${git} "${DIR}/patches/bbb_overlays/mainline/0002-regmap-Introduce-regmap_get_reg_stride.patch"
 	${git} "${DIR}/patches/bbb_overlays/mainline/0003-ARM-dts-Beaglebone-i2c-definitions.patch"
+	${git} "${DIR}/patches/bbb_overlays/mainline/0004-i2c-Mark-instantiated-device-nodes-with-OF_POPULATE.patch"
 
 	echo "dir: bbb_overlays"
 	#regenerate="enable"
@@ -186,36 +187,35 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/0016-tty-omap-serial-Fix-up-platform-data-alloc.patch"
 	${git} "${DIR}/patches/bbb_overlays/0017-ARM-DT-Enable-symbols-when-CONFIG_OF_OVERLAY-is-used.patch"
 	${git} "${DIR}/patches/bbb_overlays/0018-of-Custom-printk-format-specifier-for-device-node.patch"
-	${git} "${DIR}/patches/bbb_overlays/0019-i2c-Mark-instantiated-device-nodes-with-OF_POPULATE.patch"
-	${git} "${DIR}/patches/bbb_overlays/0020-of-overlay-kobjectify-overlay-objects.patch"
-	${git} "${DIR}/patches/bbb_overlays/0021-of-overlay-global-sysfs-enable-attribute.patch"
-	${git} "${DIR}/patches/bbb_overlays/0022-of-overlay-add-per-overlay-sysfs-attributes.patch"
-	${git} "${DIR}/patches/bbb_overlays/0023-Documentation-ABI-sys-firmware-devicetree-overlays.patch"
-	${git} "${DIR}/patches/bbb_overlays/0024-i2c-nvmem-at24-Provide-an-EEPROM-framework-interface.patch"
-	${git} "${DIR}/patches/bbb_overlays/0025-misc-Beaglebone-capemanager.patch"
-	${git} "${DIR}/patches/bbb_overlays/0026-doc-misc-Beaglebone-capemanager-documentation.patch"
-	${git} "${DIR}/patches/bbb_overlays/0027-doc-dt-beaglebone-cape-manager-bindings.patch"
-	${git} "${DIR}/patches/bbb_overlays/0028-doc-ABI-bone_capemgr-sysfs-API.patch"
-	${git} "${DIR}/patches/bbb_overlays/0029-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
-	${git} "${DIR}/patches/bbb_overlays/0030-arm-dts-Enable-beaglebone-cape-manager.patch"
+	${git} "${DIR}/patches/bbb_overlays/0019-of-overlay-kobjectify-overlay-objects.patch"
+	${git} "${DIR}/patches/bbb_overlays/0020-of-overlay-global-sysfs-enable-attribute.patch"
+	${git} "${DIR}/patches/bbb_overlays/0021-of-overlay-add-per-overlay-sysfs-attributes.patch"
+	${git} "${DIR}/patches/bbb_overlays/0022-Documentation-ABI-sys-firmware-devicetree-overlays.patch"
+	${git} "${DIR}/patches/bbb_overlays/0023-i2c-nvmem-at24-Provide-an-EEPROM-framework-interface.patch"
+	${git} "${DIR}/patches/bbb_overlays/0024-misc-Beaglebone-capemanager.patch"
+	${git} "${DIR}/patches/bbb_overlays/0025-doc-misc-Beaglebone-capemanager-documentation.patch"
+	${git} "${DIR}/patches/bbb_overlays/0026-doc-dt-beaglebone-cape-manager-bindings.patch"
+	${git} "${DIR}/patches/bbb_overlays/0027-doc-ABI-bone_capemgr-sysfs-API.patch"
+	${git} "${DIR}/patches/bbb_overlays/0028-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
+	${git} "${DIR}/patches/bbb_overlays/0029-arm-dts-Enable-beaglebone-cape-manager.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-	${git} "${DIR}/patches/bbb_overlays/0031-boneblack-defconfig.patch"
+	${git} "${DIR}/patches/bbb_overlays/0030-boneblack-defconfig.patch"
 	fi
 
-	${git} "${DIR}/patches/bbb_overlays/0032-gcl-Fix-resource-linking.patch"
-	${git} "${DIR}/patches/bbb_overlays/0033-of-overlay-Implement-indirect-target-support.patch"
-	${git} "${DIR}/patches/bbb_overlays/0034-of-unittest-Add-indirect-overlay-target-test.patch"
-	${git} "${DIR}/patches/bbb_overlays/0035-doc-dt-Document-the-indirect-overlay-method.patch"
-	${git} "${DIR}/patches/bbb_overlays/0036-of-overlay-Introduce-target-root-capability.patch"
-	${git} "${DIR}/patches/bbb_overlays/0037-of-unittest-Unit-tests-for-target-root-overlays.patch"
-	${git} "${DIR}/patches/bbb_overlays/0038-doc-dt-Document-the-target-root-overlay-method.patch"
-	${git} "${DIR}/patches/bbb_overlays/0039-of-dynamic-Add-__of_node_dupv.patch"
-	${git} "${DIR}/patches/bbb_overlays/0040-of-changesets-Introduce-changeset-helper-methods.patch"
-	${git} "${DIR}/patches/bbb_overlays/0041-RFC-Device-overlay-manager-PCI-USB-DT.patch"
+	${git} "${DIR}/patches/bbb_overlays/0031-gcl-Fix-resource-linking.patch"
+	${git} "${DIR}/patches/bbb_overlays/0032-of-overlay-Implement-indirect-target-support.patch"
+	${git} "${DIR}/patches/bbb_overlays/0033-of-unittest-Add-indirect-overlay-target-test.patch"
+	${git} "${DIR}/patches/bbb_overlays/0034-doc-dt-Document-the-indirect-overlay-method.patch"
+	${git} "${DIR}/patches/bbb_overlays/0035-of-overlay-Introduce-target-root-capability.patch"
+	${git} "${DIR}/patches/bbb_overlays/0036-of-unittest-Unit-tests-for-target-root-overlays.patch"
+	${git} "${DIR}/patches/bbb_overlays/0037-doc-dt-Document-the-target-root-overlay-method.patch"
+	${git} "${DIR}/patches/bbb_overlays/0038-of-dynamic-Add-__of_node_dupv.patch"
+	${git} "${DIR}/patches/bbb_overlays/0039-of-changesets-Introduce-changeset-helper-methods.patch"
+	${git} "${DIR}/patches/bbb_overlays/0040-RFC-Device-overlay-manager-PCI-USB-DT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=41
+		number=40
 		cleanup
 	fi
 }
@@ -417,12 +417,31 @@ beaglebone () {
 	fi
 }
 
-###
+sgx () {
+	echo "dir: sgx"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/sgx/0001-HACK-drm-fb_helper-enable-panning-support.patch"
+	${git} "${DIR}/patches/sgx/0002-HACK-drm-tilcdc-add-vsync-callback-for-use-in-omaplf.patch"
+	${git} "${DIR}/patches/sgx/0003-ARM-OMAP2-Use-pdata-quirks-for-sgx-deassert_hardrese.patch"
+	${git} "${DIR}/patches/sgx/0004-ARM-dts-am33xx-add-DT-node-for-gpu.patch"
+	${git} "${DIR}/patches/sgx/0005-arm-Export-cache-flush-management-symbols-when-MULTI.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=5
+		cleanup
+	fi
+}
+
 reverts
 fixes
 pru
 bbb_overlays
 beaglebone
+sgx
 
 packaging () {
 	echo "dir: packaging"
