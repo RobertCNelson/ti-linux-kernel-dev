@@ -342,26 +342,6 @@ beaglebone () {
 		cleanup
 	fi
 
-	echo "dir: beaglebone/remoteproc"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/remoteproc/0001-remoteproc-ste-add-blank-lines-after-declarations.patch"
-	${git} "${DIR}/patches/beaglebone/remoteproc/0002-remoteproc-davinci-fix-quoted-split-string-checkpatc.patch"
-	${git} "${DIR}/patches/beaglebone/remoteproc/0003-remoteproc-fix-various-checkpatch-warnings.patch"
-	${git} "${DIR}/patches/beaglebone/remoteproc/0004-remoteproc-introduce-rproc_get_by_phandle-API.patch"
-	${git} "${DIR}/patches/beaglebone/remoteproc/0005-remoteproc-add-a-rproc-ops-for-performing-address-tr.patch"
-	${git} "${DIR}/patches/beaglebone/remoteproc/0006-Documentation-dt-add-bindings-for-TI-Wakeup-M3-proce.patch"
-	${git} "${DIR}/patches/beaglebone/remoteproc/0007-remoteproc-wkup_m3-add-a-remoteproc-driver-for-TI-Wa.patch"
-	${git} "${DIR}/patches/beaglebone/remoteproc/0008-remoteproc-fix-CONFIG_OF-build-breakage.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=8
-		cleanup
-	fi
-
 	echo "dir: beaglebone/firmware"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -392,27 +372,6 @@ beaglebone () {
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/hwspinlock"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/hwspinlock/0001-Documentation-dt-add-common-bindings-for-hwspinlock.patch"
-	${git} "${DIR}/patches/beaglebone/hwspinlock/0002-hwspinlock-core-add-device-tree-support.patch"
-	${git} "${DIR}/patches/beaglebone/hwspinlock/0003-Documentation-dt-add-the-omap-hwspinlock-bindings-do.patch"
-	${git} "${DIR}/patches/beaglebone/hwspinlock/0004-hwspinlock-omap-add-support-for-dt-nodes.patch"
-	${git} "${DIR}/patches/beaglebone/hwspinlock/0005-DT-hwspinlock-Add-binding-documentation-for-Qualcomm.patch"
-	${git} "${DIR}/patches/beaglebone/hwspinlock/0006-hwspinlock-qcom-Add-support-for-Qualcomm-HW-Mutex-bl.patch"
-	${git} "${DIR}/patches/beaglebone/hwspinlock/0007-hwspinlock-add-a-CSR-atlas7-driver.patch"
-	${git} "${DIR}/patches/beaglebone/hwspinlock/0008-DT-hwspinlock-add-the-CSR-atlas7-hwspinlock-bindings.patch"
-	${git} "${DIR}/patches/beaglebone/hwspinlock/0009-hwspinlock-qcom-Correct-msb-in-regmap_field.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=9
 		cleanup
 	fi
 }
