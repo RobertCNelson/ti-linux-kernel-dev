@@ -428,7 +428,7 @@ config="CONFIG_NR_CPUS" ; option="2" ; config_value
 config="CONFIG_HZ_100" ; config_enable
 config="CONFIG_HZ_250" ; config_disable
 config="CONFIG_HZ" ; option="100" ; config_value
-config="CONFIG_THUMB2_KERNEL" ; config_enable
+#config="CONFIG_THUMB2_KERNEL" ; config_enable
 #config="CONFIG_CMA" ; config_enable
 #config="CONFIG_CMA_DEBUG" ; config_disable
 config="CONFIG_SECCOMP" ; config_enable
