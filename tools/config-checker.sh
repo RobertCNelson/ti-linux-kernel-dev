@@ -164,42 +164,46 @@ config="CONFIG_DISPLAY_ENCODER_SII9022" ; config_enable
 
 CONFIG_CMA_SIZE_MBYTES=24
 
+config="CONFIG_CMA" ; config_enable
+config="CONFIG_CMA_DEBUG" ; config_disable
 config="CONFIG_DMA_CMA" ; config_enable
 config="CONFIG_CMA_SIZE_MBYTES" ; option="24" ; config_value
 
-CONFIG_MEDIA_SUBDRV_AUTOSELECT=n
 CONFIG_MEDIA_SUPPORT=m
+CONFIG_MEDIA_CAMERA_SUPPORT=y
 CONFIG_MEDIA_CONTROLLER=y
-CONFIG_V4L_PLATFORM_DRIVERS=y
-CONFIG_V4L2_MEM2MEM_DEV=m
-CONFIG_VIDEOBUF2_DMA_CONTIG=m
-CONFIG_V4L_MEM2MEM_DRIVERS=y
 CONFIG_VIDEO_V4L2_SUBDEV_API=y
-CONFIG_VIDEO_TI_VPE=m
-CONFIG_VIDEO_TI_VIP=m
-CONFIG_VIDEO_OV2659=m
-CONFIG_VIDEO_MT9T11X=m
-CONFIG_VIDEO_AM437X_VPFE=m
-CONFIG_VIDEO_OV1063X=m
-CONFIG_VIDEO_TI_CAL=m
 
-config="CONFIG_MEDIA_SUBDRV_AUTOSELECT" ; config_disable
 config="CONFIG_MEDIA_SUPPORT" ; config_module
+config="CONFIG_MEDIA_CAMERA_SUPPORT" ; config_enable
 config="CONFIG_MEDIA_CONTROLLER" ; config_enable
-
-config="CONFIG_V4L_PLATFORM_DRIVERS" ; config_enable
-config="CONFIG_V4L2_MEM2MEM_DEV" ; config_module
-config="CONFIG_VIDEOBUF2_DMA_CONTIG" ; config_module
-config="CONFIG_V4L_MEM2MEM_DRIVERS" ; config_enable
 config="CONFIG_VIDEO_V4L2_SUBDEV_API" ; config_enable
 
-config="CONFIG_VIDEO_TI_VPE" ; config_module
-config="CONFIG_VIDEO_TI_VIP" ; config_module
-config="CONFIG_VIDEO_OV2659" ; config_module
-config="CONFIG_VIDEO_MT9T11X" ; config_module
+CONFIG_V4L_PLATFORM_DRIVERS=y
+CONFIG_VIDEO_AM437X_VPFE=m
+CONFIG_VIDEO_TI_CAL=m
+CONFIG_VIDEO_TI_VIP=m
+
+config="CONFIG_V4L_PLATFORM_DRIVERS" ; config_enable
 config="CONFIG_VIDEO_AM437X_VPFE" ; config_module
-config="CONFIG_VIDEO_OV1063X" ; config_module
 config="CONFIG_VIDEO_TI_CAL" ; config_module
+config="CONFIG_VIDEO_TI_VIP" ; config_module
+
+CONFIG_V4L_MEM2MEM_DRIVERS=y
+CONFIG_VIDEO_TI_VPE=m
+
+config="CONFIG_V4L2_MEM2MEM_DEV" ; config_enable
+config="CONFIG_VIDEO_TI_VPE" ; config_module
+
+CONFIG_MEDIA_SUBDRV_AUTOSELECT=n
+CONFIG_VIDEO_OV2659=m
+CONFIG_VIDEO_OV1063X=m
+CONFIG_VIDEO_MT9T11X=m
+
+config="CONFIG_MEDIA_SUBDRV_AUTOSELECT" ; config_disable
+config="CONFIG_VIDEO_OV2659" ; config_module
+config="CONFIG_VIDEO_OV1063X" ; config_module
+config="CONFIG_VIDEO_MT9T11X" ; config_module
 
 CONFIG_SOUND=y
 CONFIG_SND=y
@@ -271,7 +275,7 @@ CONFIG_DEBUG_FS=y
 config="CONFIG_PREEMPT" ; config_enable
 config="CONFIG_DEBUG_FS" ; config_enable
 
-#Crypto Modules
+# Crypto Modules
 CONFIG_CRYPTO_DEV_OMAP_SHAM=y
 CONFIG_CRYPTO_DEV_OMAP_AES=y
 CONFIG_CRYPTO_DEV_OMAP_DES=y
@@ -279,6 +283,68 @@ CONFIG_CRYPTO_DEV_OMAP_DES=y
 config="CONFIG_CRYPTO_DEV_OMAP_SHAM" ; config_enable
 config="CONFIG_CRYPTO_DEV_OMAP_AES" ; config_enable
 config="CONFIG_CRYPTO_DEV_OMAP_DES" ; config_enable
+
+# Firmware Loading from rootfs
+CONFIG_FW_LOADER_USER_HELPER=y
+CONFIG_FW_LOADER_USER_HELPER_FALLBACK=y
+
+# AMx3 Power Config Options
+CONFIG_MAILBOX=y
+CONFIG_OMAP2PLUS_MBOX=y
+CONFIG_WKUP_M3_RPROC=y
+CONFIG_SOC_TI=y
+CONFIG_WKUP_M3_IPC=y
+CONFIG_TI_EMIF_SRAM=y
+CONFIG_AMX3_PM=y
+
+config="CONFIG_MAILBOX" ; config_enable
+config="CONFIG_OMAP2PLUS_MBOX" ; config_enable
+config="CONFIG_WKUP_M3_RPROC" ; config_enable
+config="CONFIG_SOC_TI" ; config_enable
+config="CONFIG_WKUP_M3_IPC" ; config_enable
+config="CONFIG_TI_EMIF_SRAM" ; config_enable
+config="CONFIG_AMX3_PM" ; config_enable
+
+##################################################
+# TI Connectivity Configs
+##################################################
+
+#SATA
+CONFIG_AHCI=m
+CONFIG_SATA_AHCI_PLATFORM=m
+
+# Networking
+CONFIG_NF_CONNTRACK=m
+CONFIG_NF_CONNTRACK_IPV4=m
+CONFIG_IP_NF_IPTABLES=m
+CONFIG_IP_NF_FILTER=m
+CONFIG_NF_NAT_IPV4=m
+CONFIG_IP_NF_TARGET_MASQUERADE=m
+CONFIG_BRIDGE=m
+
+#MMC
+CONFIG_MMC=y
+CONFIG_MMC_OMAP_HS=y
+
+config="CONFIG_MMC_OMAP" ; config_enable
+config="CONFIG_MMC_OMAP_HS" ; config_enable
+
+#CAN
+CONFIG_CAN=m
+CONFIG_CAN_C_CAN=m
+CONFIG_CAN_C_CAN_PLATFORM=m
+
+config="CONFIG_CAN" ; config_module
+config="CONFIG_CAN_C_CAN" ; config_module
+config="CONFIG_CAN_C_CAN_PLATFORM" ; config_module
+
+##################################################
+# TI RPMsg/IPC Config Options
+##################################################
+# HwSpinLock
+CONFIG_HWSPINLOCK_OMAP=y
+
+config="CONFIG_HWSPINLOCK_OMAP" ; config_enable
 
 #exit
 echo "our defaults"
@@ -362,8 +428,9 @@ config="CONFIG_NR_CPUS" ; option="2" ; config_value
 config="CONFIG_HZ_100" ; config_enable
 config="CONFIG_HZ_250" ; config_disable
 config="CONFIG_HZ" ; option="100" ; config_value
-config="CONFIG_CMA" ; config_enable
-config="CONFIG_CMA_DEBUG" ; config_disable
+config="CONFIG_THUMB2_KERNEL" ; config_enable
+#config="CONFIG_CMA" ; config_enable
+#config="CONFIG_CMA_DEBUG" ; config_disable
 config="CONFIG_SECCOMP" ; config_enable
 config="CONFIG_XEN" ; config_disable
 
@@ -412,8 +479,8 @@ config="CONFIG_NETLABEL" ; config_enable
 #
 # CAN Device Drivers
 #
-config="CONFIG_CAN_C_CAN" ; config_module
-config="CONFIG_CAN_C_CAN_PLATFORM" ; config_module
+#config="CONFIG_CAN_C_CAN" ; config_module
+#config="CONFIG_CAN_C_CAN_PLATFORM" ; config_module
 
 #
 # CAN SPI interfaces
@@ -826,8 +893,8 @@ config="CONFIG_MMC_BLOCK_MINORS" ; option="8" ; config_value
 #
 # MMC/SD/SDIO Host Controller Drivers
 #
-config="CONFIG_MMC_OMAP" ; config_enable
-config="CONFIG_MMC_OMAP_HS" ; config_enable
+#config="CONFIG_MMC_OMAP" ; config_enable
+#config="CONFIG_MMC_OMAP_HS" ; config_enable
 config="CONFIG_MEMSTICK" ; config_disable
 
 #
@@ -949,7 +1016,7 @@ config="CONFIG_HWSPINLOCK" ; config_enable
 #
 # Hardware Spinlock drivers
 #
-config="CONFIG_HWSPINLOCK_OMAP" ; config_enable
+#config="CONFIG_HWSPINLOCK_OMAP" ; config_enable
 
 #
 # Remoteproc drivers
