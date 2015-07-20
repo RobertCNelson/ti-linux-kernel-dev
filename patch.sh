@@ -167,7 +167,17 @@ bbb_overlays () {
 		git format-patch -1 -o ../patches/bbb_overlays/dtc/
 		exit 2
 	else
+		#regenerate="enable"
+		if [ "x${regenerate}" = "xenable" ] ; then
+			start_cleanup
+		fi
+
 		${git} "${DIR}/patches/bbb_overlays/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			number=1
+			cleanup
+		fi
 	fi
 
 	echo "dir: bbb_overlays/mainline"
