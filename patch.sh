@@ -408,6 +408,21 @@ beaglebone () {
 	fi
 }
 
+quieter () {
+	echo "dir: quieter"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/quieter/0001-quiet-8250_omap.c-use-pr_info-over-pr_err.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+}
+
 sgx () {
 	echo "dir: sgx"
 	#regenerate="enable"
@@ -427,12 +442,14 @@ sgx () {
 	fi
 }
 
+###
 reverts
 backports
 fixes
 pru
 bbb_overlays
 beaglebone
+quieter
 sgx
 
 packaging () {
