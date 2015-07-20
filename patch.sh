@@ -110,6 +110,24 @@ reverts () {
 	fi
 }
 
+backports () {
+	echo "dir: backports"
+	echo "dir: backports/mediatek"
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	#careful around: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/drivers/net/wireless/mediatek?id=30686bf7f5b3c30831761e188a6e3cb33580fa48
+	${git} "${DIR}/patches/backports/mediatek/0001-backport-mediatek-mt7601u-from-v4.2-rc3.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+}
+
 fixes () {
 	echo "dir: fixes"
 	#regenerate="enable"
@@ -419,6 +437,7 @@ sgx () {
 ###
 rt
 reverts
+backports
 fixes
 pru
 bbb_overlays
