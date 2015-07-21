@@ -137,8 +137,14 @@ CONFIG_DRM_OMAP=y
 CONFIG_DRM_OMAP_NUM_CRTCS=2
 
 config="CONFIG_DRM" ; config_enable
-config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
-config="CONFIG_DRM_TILCDC" ; config_enable
+
+#config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
+#config="CONFIG_DRM_TILCDC" ; config_enable
+
+#needs to be a module for loading *.dtbo's...
+config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_module
+config="CONFIG_DRM_TILCDC" ; config_module
+
 config="CONFIG_DRM_OMAP" ; config_enable
 config="CONFIG_DRM_OMAP_NUM_CRTCS" ; option="2" ; config_value
 
