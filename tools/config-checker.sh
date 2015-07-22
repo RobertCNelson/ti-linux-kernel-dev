@@ -52,13 +52,12 @@ echo "Pull In TI Defaults:"
 ##################################################
 #TI Defaults
 ##################################################
-# ti_config_fragments/debug_options.cfg
-# ti_config_fragments/defconfig_fragment
-# ti_config_fragments/defconfig_merge.sh
-# ti_config_fragments/multi_core_defconfig_fragment
-# ti_config_fragments/multi_core_system_test_defconfig_fragment
-# ti_config_fragments/system_test.cfg
-# ti_config_fragments/system_test_defconfig_fragment
+#ti_config_fragments/audio_display.cfg
+#ti_config_fragments/baseport.cfg
+#ti_config_fragments/connectivity.cfg
+#ti_config_fragments/debug_options.cfg
+#ti_config_fragments/ipc.cfg
+#ti_config_fragments/system_test.cfg
 ##################################################
 # TI SoCs supported by this release config options
 #
@@ -315,6 +314,10 @@ config="CONFIG_AMX3_PM" ; config_enable
 # TI Connectivity Configs
 ##################################################
 
+#PCIe
+CONFIG_PCI=y
+CONFIG_PCI_DRA7XX=y
+
 #SATA
 CONFIG_AHCI=m
 CONFIG_SATA_AHCI_PLATFORM=m
@@ -425,6 +428,13 @@ config="CONFIG_PCI_SYSCALL" ; config_disable
 
 #first check..
 #exit
+
+#PCIe
+CONFIG_PCI=y
+CONFIG_PCI_DRA7XX=y
+config="CONFIG_PCI" ; config_enable
+config="CONFIG_PCI_DRA7XX" ; config_enable
+config="CONFIG_IWLWIFI" ; config_module
 
 #
 # Kernel Features
