@@ -75,13 +75,20 @@ local_patch () {
 external_git
 #local_patch
 
+rt_cleanup () {
+	echo "Fixing: drivers/gpio/gpio-omap.c"
+	sed -i -e 's/\<spin_lock_irqsave\>/raw_spin_lock_irqsave/g' drivers/gpio/gpio-omap.c
+	sed -i -e 's/\<spin_unlock_irqrestore\>/raw_spin_unlock_irqrestore/g' drivers/gpio/gpio-omap.c
+	rm -rf drivers/gpio/gpio-omap.c.rej
+}
+
 rt () {
 	echo "dir: rt"
 	rt_patch="4.1.2-rt1"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/4.1/patch-${rt_patch}.patch.xz
-		xzcat patch-${rt_patch}.patch.xz | patch -p1
+		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -rf patch-${rt_patch}.patch.xz
 
 		sed -i -e 's:rt44:rt1:g' ../patches/rt/0002-rt-we-append-rt-on-our-own.patch

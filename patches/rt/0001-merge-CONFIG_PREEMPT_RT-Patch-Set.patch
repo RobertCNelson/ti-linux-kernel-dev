@@ -1,6 +1,6 @@
-From 20deb5787fd3f72242f2ebf5a5b376bd8808c411 Mon Sep 17 00:00:00 2001
+From 13e4d0d0c6009b160430955459a8b4d806047192 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 15 Jul 2015 17:55:04 -0500
+Date: Wed, 22 Jul 2015 10:50:38 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -155,7 +155,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/clocksource/timer-atmel-pit.c              |    4 +
  drivers/clocksource/timer-atmel-st.c               |    1 +
  drivers/cpufreq/Kconfig.x86                        |    2 +-
- drivers/gpio/gpio-omap.c                           |   78 +-
+ drivers/gpio/gpio-omap.c                           |   82 +-
  drivers/gpu/drm/i915/i915_gem_execbuffer.c         |    5 +-
  drivers/gpu/drm/i915/i915_gem_shrinker.c           |    2 +-
  drivers/gpu/drm/i915/intel_display.c               |    2 +-
@@ -409,7 +409,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  sound/soc/intel/atom/sst/sst.c                     |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 404 files changed, 11670 insertions(+), 1973 deletions(-)
+ 404 files changed, 11672 insertions(+), 1975 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 drivers/misc/hwlat_detector.c
@@ -1804,7 +1804,7 @@ index da675cc..c73e2ae 100644
    DEFINE(TI_TASK,		offsetof(struct thread_info, task));
    DEFINE(TI_CPU,		offsetof(struct thread_info, cpu));
 diff --git a/arch/arm64/kernel/entry.S b/arch/arm64/kernel/entry.S
-index 959fe87..8a8b6bc 100644
+index bddd04d..6515be3 100644
 --- a/arch/arm64/kernel/entry.S
 +++ b/arch/arm64/kernel/entry.S
 @@ -367,11 +367,16 @@ el1_irq:
@@ -1835,7 +1835,7 @@ index 959fe87..8a8b6bc 100644
  	ret	x24
  #endif
  
-@@ -621,6 +627,7 @@ fast_work_pending:
+@@ -622,6 +628,7 @@ fast_work_pending:
  	str	x0, [sp, #S_X0]			// returned x0
  work_pending:
  	tbnz	x1, #TIF_NEED_RESCHED, work_resched
@@ -6150,7 +6150,7 @@ index c59bdcb..8f23161 100644
  	  This adds the CPUFreq driver for K8/early Opteron/Athlon64 processors.
  	  Support for K10 and newer processors is now in acpi-cpufreq.
 diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
-index b232397..a0ace27 100644
+index 61a731f..f56de8d 100644
 --- a/drivers/gpio/gpio-omap.c
 +++ b/drivers/gpio/gpio-omap.c
 @@ -57,7 +57,7 @@ struct gpio_bank {
@@ -6162,25 +6162,31 @@ index b232397..a0ace27 100644
  	struct gpio_chip chip;
  	struct clk *dbck;
  	u32 mod_usage;
-@@ -498,14 +498,14 @@ static int omap_gpio_irq_type(struct irq_data *d, unsigned type)
- 		(type & (IRQ_TYPE_LEVEL_LOW|IRQ_TYPE_LEVEL_HIGH)))
- 		return -EINVAL;
+@@ -498,19 +498,19 @@ static int omap_gpio_irq_type(struct irq_data *d, unsigned type)
+ 	if (!BANK_USED(bank))
+ 		pm_runtime_get_sync(bank->dev);
  
 -	spin_lock_irqsave(&bank->lock, flags);
 +	raw_spin_lock_irqsave(&bank->lock, flags);
  	retval = omap_set_gpio_triggering(bank, offset, type);
+ 	if (retval) {
+-		spin_unlock_irqrestore(&bank->lock, flags);
++		raw_spin_unlock_irqrestore(&bank->lock, flags);
+ 		goto error;
+ 	}
  	omap_gpio_init_irq(bank, offset);
  	if (!omap_gpio_is_input(bank, offset)) {
 -		spin_unlock_irqrestore(&bank->lock, flags);
 +		raw_spin_unlock_irqrestore(&bank->lock, flags);
- 		return -EINVAL;
+ 		retval = -EINVAL;
+ 		goto error;
  	}
 -	spin_unlock_irqrestore(&bank->lock, flags);
 +	raw_spin_unlock_irqrestore(&bank->lock, flags);
  
  	if (type & (IRQ_TYPE_LEVEL_LOW | IRQ_TYPE_LEVEL_HIGH))
  		__irq_set_handler_locked(d->irq, handle_level_irq);
-@@ -626,14 +626,14 @@ static int omap_set_gpio_wakeup(struct gpio_bank *bank, unsigned offset,
+@@ -636,14 +636,14 @@ static int omap_set_gpio_wakeup(struct gpio_bank *bank, unsigned offset,
  		return -EINVAL;
  	}
  
@@ -6197,65 +6203,79 @@ index b232397..a0ace27 100644
  
  	return 0;
  }
-@@ -668,7 +668,7 @@ static int omap_gpio_request(struct gpio_chip *chip, unsigned offset)
+@@ -669,10 +669,10 @@ static int omap_gpio_request(struct gpio_chip *chip, unsigned offset)
  	if (!BANK_USED(bank))
  		pm_runtime_get_sync(bank->dev);
  
 -	spin_lock_irqsave(&bank->lock, flags);
 +	raw_spin_lock_irqsave(&bank->lock, flags);
- 	/* Set trigger to none. You need to enable the desired trigger with
- 	 * request_irq() or set_irq_type(). Only do this if the IRQ line has
- 	 * not already been requested.
-@@ -678,7 +678,7 @@ static int omap_gpio_request(struct gpio_chip *chip, unsigned offset)
- 		omap_enable_gpio_module(bank, offset);
- 	}
+ 	omap_enable_gpio_module(bank, offset);
  	bank->mod_usage |= BIT(offset);
 -	spin_unlock_irqrestore(&bank->lock, flags);
 +	raw_spin_unlock_irqrestore(&bank->lock, flags);
  
  	return 0;
  }
-@@ -688,11 +688,11 @@ static void omap_gpio_free(struct gpio_chip *chip, unsigned offset)
+@@ -682,14 +682,14 @@ static void omap_gpio_free(struct gpio_chip *chip, unsigned offset)
  	struct gpio_bank *bank = container_of(chip, struct gpio_bank, chip);
  	unsigned long flags;
  
 -	spin_lock_irqsave(&bank->lock, flags);
 +	raw_spin_lock_irqsave(&bank->lock, flags);
  	bank->mod_usage &= ~(BIT(offset));
+ 	if (!LINE_USED(bank->irq_usage, offset)) {
+ 		omap_set_gpio_direction(bank, offset, 1);
+ 		omap_clear_gpio_debounce(bank, offset);
+ 	}
  	omap_disable_gpio_module(bank, offset);
- 	omap_reset_gpio(bank, offset);
 -	spin_unlock_irqrestore(&bank->lock, flags);
 +	raw_spin_unlock_irqrestore(&bank->lock, flags);
  
  	/*
  	 * If this is the last gpio to be freed in the bank,
-@@ -794,9 +794,9 @@ static unsigned int omap_gpio_irq_startup(struct irq_data *d)
+@@ -791,7 +791,7 @@ static unsigned int omap_gpio_irq_startup(struct irq_data *d)
  	if (!BANK_USED(bank))
  		pm_runtime_get_sync(bank->dev);
  
 -	spin_lock_irqsave(&bank->lock, flags);
 +	raw_spin_lock_irqsave(&bank->lock, flags);
- 	omap_gpio_init_irq(bank, offset);
+ 
+ 	if (!LINE_USED(bank->mod_usage, offset))
+ 		omap_set_gpio_direction(bank, offset, 1);
+@@ -800,12 +800,12 @@ static unsigned int omap_gpio_irq_startup(struct irq_data *d)
+ 	omap_enable_gpio_module(bank, offset);
+ 	bank->irq_usage |= BIT(offset);
+ 
 -	spin_unlock_irqrestore(&bank->lock, flags);
 +	raw_spin_unlock_irqrestore(&bank->lock, flags);
  	omap_gpio_unmask_irq(d);
  
  	return 0;
-@@ -808,11 +808,11 @@ static void omap_gpio_irq_shutdown(struct irq_data *d)
+ err:
+-	spin_unlock_irqrestore(&bank->lock, flags);
++	raw_spin_unlock_irqrestore(&bank->lock, flags);
+ 	if (!BANK_USED(bank))
+ 		pm_runtime_put(bank->dev);
+ 	return -EINVAL;
+@@ -817,7 +817,7 @@ static void omap_gpio_irq_shutdown(struct irq_data *d)
  	unsigned long flags;
  	unsigned offset = d->hwirq;
  
 -	spin_lock_irqsave(&bank->lock, flags);
 +	raw_spin_lock_irqsave(&bank->lock, flags);
  	bank->irq_usage &= ~(BIT(offset));
+ 	omap_set_gpio_irqenable(bank, offset, 0);
+ 	omap_clear_gpio_irqstatus(bank, offset);
+@@ -825,7 +825,7 @@ static void omap_gpio_irq_shutdown(struct irq_data *d)
+ 	if (!LINE_USED(bank->mod_usage, offset))
+ 		omap_clear_gpio_debounce(bank, offset);
  	omap_disable_gpio_module(bank, offset);
- 	omap_reset_gpio(bank, offset);
 -	spin_unlock_irqrestore(&bank->lock, flags);
 +	raw_spin_unlock_irqrestore(&bank->lock, flags);
  
  	/*
  	 * If this is the last IRQ to be freed in the bank,
-@@ -836,10 +836,10 @@ static void omap_gpio_mask_irq(struct irq_data *d)
+@@ -849,10 +849,10 @@ static void omap_gpio_mask_irq(struct irq_data *d)
  	unsigned offset = d->hwirq;
  	unsigned long flags;
  
@@ -6268,7 +6288,7 @@ index b232397..a0ace27 100644
  }
  
  static void omap_gpio_unmask_irq(struct irq_data *d)
-@@ -849,7 +849,7 @@ static void omap_gpio_unmask_irq(struct irq_data *d)
+@@ -862,7 +862,7 @@ static void omap_gpio_unmask_irq(struct irq_data *d)
  	u32 trigger = irqd_get_trigger_type(d);
  	unsigned long flags;
  
@@ -6277,7 +6297,7 @@ index b232397..a0ace27 100644
  	if (trigger)
  		omap_set_gpio_triggering(bank, offset, trigger);
  
-@@ -861,7 +861,7 @@ static void omap_gpio_unmask_irq(struct irq_data *d)
+@@ -874,7 +874,7 @@ static void omap_gpio_unmask_irq(struct irq_data *d)
  	}
  
  	omap_set_gpio_irqenable(bank, offset, 1);
@@ -6286,7 +6306,7 @@ index b232397..a0ace27 100644
  }
  
  /*---------------------------------------------------------------------*/
-@@ -874,9 +874,9 @@ static int omap_mpuio_suspend_noirq(struct device *dev)
+@@ -887,9 +887,9 @@ static int omap_mpuio_suspend_noirq(struct device *dev)
  					OMAP_MPUIO_GPIO_MASKIT / bank->stride;
  	unsigned long		flags;
  
@@ -6298,7 +6318,7 @@ index b232397..a0ace27 100644
  
  	return 0;
  }
-@@ -889,9 +889,9 @@ static int omap_mpuio_resume_noirq(struct device *dev)
+@@ -902,9 +902,9 @@ static int omap_mpuio_resume_noirq(struct device *dev)
  					OMAP_MPUIO_GPIO_MASKIT / bank->stride;
  	unsigned long		flags;
  
@@ -6310,7 +6330,7 @@ index b232397..a0ace27 100644
  
  	return 0;
  }
-@@ -937,9 +937,9 @@ static int omap_gpio_get_direction(struct gpio_chip *chip, unsigned offset)
+@@ -950,9 +950,9 @@ static int omap_gpio_get_direction(struct gpio_chip *chip, unsigned offset)
  
  	bank = container_of(chip, struct gpio_bank, chip);
  	reg = bank->base + bank->regs->direction;
@@ -6322,7 +6342,7 @@ index b232397..a0ace27 100644
  	return dir;
  }
  
-@@ -949,9 +949,9 @@ static int omap_gpio_input(struct gpio_chip *chip, unsigned offset)
+@@ -962,9 +962,9 @@ static int omap_gpio_input(struct gpio_chip *chip, unsigned offset)
  	unsigned long flags;
  
  	bank = container_of(chip, struct gpio_bank, chip);
@@ -6334,7 +6354,7 @@ index b232397..a0ace27 100644
  	return 0;
  }
  
-@@ -973,10 +973,10 @@ static int omap_gpio_output(struct gpio_chip *chip, unsigned offset, int value)
+@@ -986,10 +986,10 @@ static int omap_gpio_output(struct gpio_chip *chip, unsigned offset, int value)
  	unsigned long flags;
  
  	bank = container_of(chip, struct gpio_bank, chip);
@@ -6347,7 +6367,7 @@ index b232397..a0ace27 100644
  	return 0;
  }
  
-@@ -988,9 +988,9 @@ static int omap_gpio_debounce(struct gpio_chip *chip, unsigned offset,
+@@ -1001,9 +1001,9 @@ static int omap_gpio_debounce(struct gpio_chip *chip, unsigned offset,
  
  	bank = container_of(chip, struct gpio_bank, chip);
  
@@ -6359,7 +6379,7 @@ index b232397..a0ace27 100644
  
  	return 0;
  }
-@@ -1001,9 +1001,9 @@ static void omap_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
+@@ -1014,9 +1014,9 @@ static void omap_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
  	unsigned long flags;
  
  	bank = container_of(chip, struct gpio_bank, chip);
@@ -6371,7 +6391,7 @@ index b232397..a0ace27 100644
  }
  
  /*---------------------------------------------------------------------*/
-@@ -1199,7 +1199,7 @@ static int omap_gpio_probe(struct platform_device *pdev)
+@@ -1213,7 +1213,7 @@ static int omap_gpio_probe(struct platform_device *pdev)
  	else
  		bank->set_dataout = omap_set_gpio_dataout_mask;
  
@@ -6380,7 +6400,7 @@ index b232397..a0ace27 100644
  
  	/* Static mapping, never released */
  	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-@@ -1246,7 +1246,7 @@ static int omap_gpio_runtime_suspend(struct device *dev)
+@@ -1271,7 +1271,7 @@ static int omap_gpio_runtime_suspend(struct device *dev)
  	unsigned long flags;
  	u32 wake_low, wake_hi;
  
@@ -6389,7 +6409,7 @@ index b232397..a0ace27 100644
  
  	/*
  	 * Only edges can generate a wakeup event to the PRCM.
-@@ -1299,7 +1299,7 @@ update_gpio_context_count:
+@@ -1324,7 +1324,7 @@ update_gpio_context_count:
  				bank->get_context_loss_count(bank->dev);
  
  	omap_gpio_dbck_disable(bank);
@@ -6398,7 +6418,7 @@ index b232397..a0ace27 100644
  
  	return 0;
  }
-@@ -1314,7 +1314,7 @@ static int omap_gpio_runtime_resume(struct device *dev)
+@@ -1339,7 +1339,7 @@ static int omap_gpio_runtime_resume(struct device *dev)
  	unsigned long flags;
  	int c;
  
@@ -6407,7 +6427,7 @@ index b232397..a0ace27 100644
  
  	/*
  	 * On the first resume during the probe, the context has not
-@@ -1350,14 +1350,14 @@ static int omap_gpio_runtime_resume(struct device *dev)
+@@ -1375,14 +1375,14 @@ static int omap_gpio_runtime_resume(struct device *dev)
  			if (c != bank->context_loss_count) {
  				omap_gpio_restore_context(bank);
  			} else {
@@ -6424,7 +6444,7 @@ index b232397..a0ace27 100644
  		return 0;
  	}
  
-@@ -1412,7 +1412,7 @@ static int omap_gpio_runtime_resume(struct device *dev)
+@@ -1437,7 +1437,7 @@ static int omap_gpio_runtime_resume(struct device *dev)
  	}
  
  	bank->workaround_enabled = false;
@@ -8805,10 +8825,10 @@ index 763eb20..841c42a 100644
  	clk_disable(uap->clk);
  }
 diff --git a/drivers/tty/serial/omap-serial.c b/drivers/tty/serial/omap-serial.c
-index 7f49172..f9d192f 100644
+index 7a2172b..fe9c8f3 100644
 --- a/drivers/tty/serial/omap-serial.c
 +++ b/drivers/tty/serial/omap-serial.c
-@@ -1282,13 +1282,10 @@ serial_omap_console_write(struct console *co, const char *s,
+@@ -1255,13 +1255,10 @@ serial_omap_console_write(struct console *co, const char *s,
  
  	pm_runtime_get_sync(up->dev);
  
@@ -8825,7 +8845,7 @@ index 7f49172..f9d192f 100644
  
  	/*
  	 * First save the IER then disable the interrupts
-@@ -1317,8 +1314,7 @@ serial_omap_console_write(struct console *co, const char *s,
+@@ -1290,8 +1287,7 @@ serial_omap_console_write(struct console *co, const char *s,
  	pm_runtime_mark_last_busy(up->dev);
  	pm_runtime_put_autosuspend(up->dev);
  	if (locked)
@@ -9156,7 +9176,7 @@ index 988b32e..6f691c2 100644
  
  		/*
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 1d4a97c..fcfd628 100644
+index 02c6875..c246b29 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
 @@ -14,6 +14,7 @@
@@ -13465,7 +13485,7 @@ index 7bc47ee..88cf473 100644
 -	"$(UTS_MACHINE)" "$(CONFIG_SMP)" "$(CONFIG_PREEMPT)" "$(CC) $(KBUILD_CFLAGS)"
 +	"$(UTS_MACHINE)" "$(CONFIG_SMP)" "$(CONFIG_PREEMPT)" "$(CONFIG_PREEMPT_RT_FULL)" "$(CC) $(KBUILD_CFLAGS)"
 diff --git a/init/main.c b/init/main.c
-index 2115055..5423418 100644
+index 2a89545..0486a8e 100644
 --- a/init/main.c
 +++ b/init/main.c
 @@ -525,6 +525,7 @@ asmlinkage __visible void __init start_kernel(void)
@@ -13790,10 +13810,10 @@ index 3f9c974..11dbe26 100644
  
  config PREEMPT_COUNT
 diff --git a/kernel/cgroup.c b/kernel/cgroup.c
-index 469dd54..8cb2d9f 100644
+index e8a5491..2a7a0fe 100644
 --- a/kernel/cgroup.c
 +++ b/kernel/cgroup.c
-@@ -4423,10 +4423,10 @@ static void css_free_rcu_fn(struct rcu_head *rcu_head)
+@@ -4421,10 +4421,10 @@ static void css_free_rcu_fn(struct rcu_head *rcu_head)
  	queue_work(cgroup_destroy_wq, &css->destroy_work);
  }
  
@@ -13806,7 +13826,7 @@ index 469dd54..8cb2d9f 100644
  	struct cgroup_subsys *ss = css->ss;
  	struct cgroup *cgrp = css->cgroup;
  
-@@ -4465,8 +4465,8 @@ static void css_release(struct percpu_ref *ref)
+@@ -4463,8 +4463,8 @@ static void css_release(struct percpu_ref *ref)
  	struct cgroup_subsys_state *css =
  		container_of(ref, struct cgroup_subsys_state, refcnt);
  
@@ -13817,7 +13837,7 @@ index 469dd54..8cb2d9f 100644
  }
  
  static void init_and_link_css(struct cgroup_subsys_state *css,
-@@ -5070,6 +5070,7 @@ static int __init cgroup_wq_init(void)
+@@ -5068,6 +5068,7 @@ static int __init cgroup_wq_init(void)
  	 */
  	cgroup_destroy_wq = alloc_workqueue("cgroup_destroy", 0, 1);
  	BUG_ON(!cgroup_destroy_wq);
