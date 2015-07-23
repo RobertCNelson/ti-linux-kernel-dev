@@ -310,6 +310,13 @@ config="CONFIG_WKUP_M3_IPC" ; config_enable
 config="CONFIG_TI_EMIF_SRAM" ; config_enable
 config="CONFIG_AMX3_PM" ; config_enable
 
+# Voltagedomain/cpufreq config
+CONFIG_VOLTAGE_DOMAIN_OMAP=y
+CONFIG_CPUFREQ_VOLTDM=y
+
+config="CONFIG_VOLTAGE_DOMAIN_OMAP" ; config_enable
+config="CONFIG_CPUFREQ_VOLTDM" ; config_enable
+
 ##################################################
 # TI Connectivity Configs
 ##################################################
