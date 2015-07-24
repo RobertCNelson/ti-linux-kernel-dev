@@ -109,6 +109,24 @@ external_git () {
 		SHA="94529783628418c311ffb30f0fc0435ad8df7491" ; pick
 		SHA="d3e2dd94ed47bdfbd1cce104b8e2d0f5584a35e8" ; pick
 		SHA="44ebfa6930c9914d139543909e5c33cd5a7ddacc" ; pick
+		SHA="9324834c18421e889a2286d6f3b88bdf31c07b17" ; pick
+		SHA="5cf0b55b7e92b291195c52b8ec0b0d3f9a51f61d" ; pick
+		SHA="cf7213e2d35f57d43fff6e360daf50eb837206f3" ; pick
+		SHA="752beab102668147fcfde9ee19d853e9fc603e81" ; pick
+		SHA="cbe7bf16320964a47b3a202e28e9c5f965eef830" ; pick
+		SHA="9b0e9d74d7aa29b637bf06bd9454b67eb6893284" ; pick
+		SHA="b24e79bb4db8b336985400478813d60c5ba5aec7" ; pick
+
+		unset num
+
+		pick_dir="ti/iodelay"
+		echo "dir: ${pick_dir}"
+		num="1"
+
+		SHA="03ccdced5235b91254382038708713795ce7d021" ; pick
+		SHA="ecc68390cd49a087634bb33c6192d73196e2e1a3" ; pick
+		SHA="832e1d482bb7234cb504b31601abeaace08a8309" ; pick
+
 		unset num
 
 		exit 2
