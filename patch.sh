@@ -65,6 +65,18 @@ external_git () {
 	git_tag="ti-linux-4.1.y"
 	echo "pulling: ${git_tag}"
 	git pull ${git_opts} ${git_patchset} ${git_tag}
+	. ${DIR}/.CC
+	sed -i -e 's:linux-kernel:`pwd`/:g' ./ti_config_fragments/defconfig_merge.sh
+	./ti_config_fragments/defconfig_merge.sh -o /dev/null -f ti_config_fragments/defconfig_fragment -c ${CC}
+	git checkout -- ./ti_config_fragments/defconfig_merge.sh
+
+	make ARCH=arm CROSS_COMPILE="${CC}" appended_omap2plus_defconfig
+	mv -v .config ../patches/ti_omap2plus_defconfig
+
+	rm -f arch/arm/configs/appended_omap2plus_defconfig
+	rm -f ti_config_fragments/working_config/base_config
+	rm -f ti_config_fragments/working_config/final_config
+	rm -f ti_config_fragments/working_config/merged_omap2plus_defconfig
 }
 
 local_patch () {
