@@ -61,6 +61,14 @@ cleanup () {
 	exit 2
 }
 
+pick () {
+	if [ ! -d ../patches/${pick_dir} ] ; then
+		mkdir -p ../patches/${pick_dir}
+	fi
+	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/${pick_dir}
+	num=$(($num+1))
+}
+
 external_git () {
 	git_tag="ti-linux-4.1.y"
 	echo "pulling: ${git_tag}"
@@ -77,6 +85,34 @@ external_git () {
 	rm -f ti_config_fragments/working_config/base_config
 	rm -f ti_config_fragments/working_config/final_config
 	rm -f ti_config_fragments/working_config/merged_omap2plus_defconfig
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pick_dir="ti/cpu_freq"
+		echo "dir: ${pick_dir}"
+		num="1"
+
+		SHA="8f5f2b72d19c1e62f85acfd84a286f08ca76e3ac" ; pick
+		SHA="b3e1038f558783b054ba24d018c887e679158fa7" ; pick
+		SHA="cbc7d0137388b8d1a8052816a1502d96c681522e" ; pick
+		SHA="13b96edc90e6fbe9becce8a6edbbed12c729d49a" ; pick
+		SHA="2a68c9fed90d632c1c15d1209ba9da73a2c9c849" ; pick
+		SHA="ad7ec1619ff14dfaf526d2b6502911736e23ad75" ; pick
+		SHA="fbc6d87ccdfcc3a347b719c5b6a4925f3dca6fd4" ; pick
+		SHA="8ab51f90b0e961ba2266a9af5a21af9195a749b6" ; pick
+		SHA="40a4d7af3dae2838654befa165f882053d32d470" ; pick
+		SHA="95a8ed125030375c173756f0fec150ff42d8d18e" ; pick
+		SHA="7cc36064bd172b6008e4f77c48128b9c7a714eed" ; pick
+		SHA="eb92a8ee969ac1b2128d8091ae9e1c4829e7dbca" ; pick
+		SHA="d307d86ee5e2acbd4fed76be9b02056426252ca4" ; pick
+		SHA="ddbb76e023395051205d97b038ddc8ffcfb0dedf" ; pick
+		SHA="94529783628418c311ffb30f0fc0435ad8df7491" ; pick
+		SHA="d3e2dd94ed47bdfbd1cce104b8e2d0f5584a35e8" ; pick
+		SHA="44ebfa6930c9914d139543909e5c33cd5a7ddacc" ; pick
+		unset num
+
+		exit 2
+	fi
 }
 
 local_patch () {
