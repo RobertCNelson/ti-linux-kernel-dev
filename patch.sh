@@ -465,6 +465,7 @@ beaglebone () {
 		start_cleanup
 	fi
 
+	#http://git.ti.com/gitweb/?p=ti-cm3-pm-firmware/amx3-cm3.git;a=summary
 	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
 	#cd amx3-cm3/
 	#git checkout origin/next-upstream -b tmp
