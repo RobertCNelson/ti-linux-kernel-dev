@@ -1,6 +1,6 @@
-From 13e4d0d0c6009b160430955459a8b4d806047192 Mon Sep 17 00:00:00 2001
+From d611c780a0979f78b52f4c0efe265889e662c3f5 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 22 Jul 2015 10:50:38 -0500
+Date: Mon, 27 Jul 2015 09:50:34 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -155,6 +155,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/clocksource/timer-atmel-pit.c              |    4 +
  drivers/clocksource/timer-atmel-st.c               |    1 +
  drivers/cpufreq/Kconfig.x86                        |    2 +-
+ drivers/cpufreq/cpufreq.c                          |   35 +-
  drivers/gpio/gpio-omap.c                           |   82 +-
  drivers/gpu/drm/i915/i915_gem_execbuffer.c         |    5 +-
  drivers/gpu/drm/i915/i915_gem_shrinker.c           |    2 +-
@@ -251,6 +252,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/netfilter/x_tables.h                 |    7 +
  include/linux/notifier.h                           |   34 +-
  include/linux/percpu.h                             |   29 +
+ include/linux/pid.h                                |    1 +
  include/linux/preempt.h                            |   59 +-
  include/linux/preempt_mask.h                       |   15 +-
  include/linux/printk.h                             |    2 +
@@ -315,6 +317,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/locking/Makefile                            |    9 +-
  kernel/locking/lglock.c                            |   79 +-
  kernel/locking/lockdep.c                           |    2 +
+ kernel/locking/locktorture.c                       |    1 -
  kernel/locking/rt.c                                |  461 ++++++++
  kernel/locking/rtmutex.c                           |  750 +++++++++++-
  kernel/locking/rtmutex_common.h                    |   18 +
@@ -409,7 +412,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  sound/soc/intel/atom/sst/sst.c                     |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 404 files changed, 11672 insertions(+), 1975 deletions(-)
+ 407 files changed, 11676 insertions(+), 2008 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 drivers/misc/hwlat_detector.c
@@ -6149,6 +6152,146 @@ index c59bdcb..8f23161 100644
  	help
  	  This adds the CPUFreq driver for K8/early Opteron/Athlon64 processors.
  	  Support for K10 and newer processors is now in acpi-cpufreq.
+diff --git a/drivers/cpufreq/cpufreq.c b/drivers/cpufreq/cpufreq.c
+index 8ae655c..ce1d93e 100644
+--- a/drivers/cpufreq/cpufreq.c
++++ b/drivers/cpufreq/cpufreq.c
+@@ -64,12 +64,6 @@ static inline bool has_target(void)
+ 	return cpufreq_driver->target_index || cpufreq_driver->target;
+ }
+ 
+-/*
+- * rwsem to guarantee that cpufreq driver module doesn't unload during critical
+- * sections
+- */
+-static DECLARE_RWSEM(cpufreq_rwsem);
+-
+ /* internal prototypes */
+ static int __cpufreq_governor(struct cpufreq_policy *policy,
+ 		unsigned int event);
+@@ -215,9 +209,6 @@ struct cpufreq_policy *cpufreq_cpu_get(unsigned int cpu)
+ 	if (cpu >= nr_cpu_ids)
+ 		return NULL;
+ 
+-	if (!down_read_trylock(&cpufreq_rwsem))
+-		return NULL;
+-
+ 	/* get the cpufreq driver */
+ 	read_lock_irqsave(&cpufreq_driver_lock, flags);
+ 
+@@ -230,9 +221,6 @@ struct cpufreq_policy *cpufreq_cpu_get(unsigned int cpu)
+ 
+ 	read_unlock_irqrestore(&cpufreq_driver_lock, flags);
+ 
+-	if (!policy)
+-		up_read(&cpufreq_rwsem);
+-
+ 	return policy;
+ }
+ EXPORT_SYMBOL_GPL(cpufreq_cpu_get);
+@@ -240,7 +228,6 @@ EXPORT_SYMBOL_GPL(cpufreq_cpu_get);
+ void cpufreq_cpu_put(struct cpufreq_policy *policy)
+ {
+ 	kobject_put(&policy->kobj);
+-	up_read(&cpufreq_rwsem);
+ }
+ EXPORT_SYMBOL_GPL(cpufreq_cpu_put);
+ 
+@@ -765,9 +752,6 @@ static ssize_t show(struct kobject *kobj, struct attribute *attr, char *buf)
+ 	struct freq_attr *fattr = to_attr(attr);
+ 	ssize_t ret;
+ 
+-	if (!down_read_trylock(&cpufreq_rwsem))
+-		return -EINVAL;
+-
+ 	down_read(&policy->rwsem);
+ 
+ 	if (fattr->show)
+@@ -776,7 +760,6 @@ static ssize_t show(struct kobject *kobj, struct attribute *attr, char *buf)
+ 		ret = -EIO;
+ 
+ 	up_read(&policy->rwsem);
+-	up_read(&cpufreq_rwsem);
+ 
+ 	return ret;
+ }
+@@ -793,9 +776,6 @@ static ssize_t store(struct kobject *kobj, struct attribute *attr,
+ 	if (!cpu_online(policy->cpu))
+ 		goto unlock;
+ 
+-	if (!down_read_trylock(&cpufreq_rwsem))
+-		goto unlock;
+-
+ 	down_write(&policy->rwsem);
+ 
+ 	if (fattr->store)
+@@ -804,8 +784,6 @@ static ssize_t store(struct kobject *kobj, struct attribute *attr,
+ 		ret = -EIO;
+ 
+ 	up_write(&policy->rwsem);
+-
+-	up_read(&cpufreq_rwsem);
+ unlock:
+ 	put_online_cpus();
+ 
+@@ -1117,16 +1095,12 @@ static int __cpufreq_add_dev(struct device *dev, struct subsys_interface *sif)
+ 	if (unlikely(policy))
+ 		return 0;
+ 
+-	if (!down_read_trylock(&cpufreq_rwsem))
+-		return 0;
+-
+ 	/* Check if this cpu was hot-unplugged earlier and has siblings */
+ 	read_lock_irqsave(&cpufreq_driver_lock, flags);
+ 	for_each_policy(policy) {
+ 		if (cpumask_test_cpu(cpu, policy->related_cpus)) {
+ 			read_unlock_irqrestore(&cpufreq_driver_lock, flags);
+ 			ret = cpufreq_add_policy_cpu(policy, cpu, dev);
+-			up_read(&cpufreq_rwsem);
+ 			return ret;
+ 		}
+ 	}
+@@ -1269,8 +1243,6 @@ static int __cpufreq_add_dev(struct device *dev, struct subsys_interface *sif)
+ 
+ 	kobject_uevent(&policy->kobj, KOBJ_ADD);
+ 
+-	up_read(&cpufreq_rwsem);
+-
+ 	/* Callback for handling stuff after policy is ready */
+ 	if (cpufreq_driver->ready)
+ 		cpufreq_driver->ready(policy);
+@@ -1304,8 +1276,6 @@ err_set_policy_cpu:
+ 	cpufreq_policy_free(policy);
+ 
+ nomem_out:
+-	up_read(&cpufreq_rwsem);
+-
+ 	return ret;
+ }
+ 
+@@ -2499,19 +2469,20 @@ int cpufreq_unregister_driver(struct cpufreq_driver *driver)
+ 
+ 	pr_debug("unregistering driver %s\n", driver->name);
+ 
++	/* Protect against concurrent cpu hotplug */
++	get_online_cpus();
+ 	subsys_interface_unregister(&cpufreq_interface);
+ 	if (cpufreq_boost_supported())
+ 		cpufreq_sysfs_remove_file(&boost.attr);
+ 
+ 	unregister_hotcpu_notifier(&cpufreq_cpu_notifier);
+ 
+-	down_write(&cpufreq_rwsem);
+ 	write_lock_irqsave(&cpufreq_driver_lock, flags);
+ 
+ 	cpufreq_driver = NULL;
+ 
+ 	write_unlock_irqrestore(&cpufreq_driver_lock, flags);
+-	up_write(&cpufreq_rwsem);
++	put_online_cpus();
+ 
+ 	return 0;
+ }
 diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
 index 61a731f..f56de8d 100644
 --- a/drivers/gpio/gpio-omap.c
@@ -10943,6 +11086,18 @@ index caebf2a..53a60a5 100644
  /* minimum unit size, also is the maximum supported allocation size */
  #define PCPU_MIN_UNIT_SIZE		PFN_ALIGN(32 << 10)
  
+diff --git a/include/linux/pid.h b/include/linux/pid.h
+index 23705a5..2cc64b7 100644
+--- a/include/linux/pid.h
++++ b/include/linux/pid.h
+@@ -2,6 +2,7 @@
+ #define _LINUX_PID_H
+ 
+ #include <linux/rcupdate.h>
++#include <linux/atomic.h>
+ 
+ enum pid_type
+ {
 diff --git a/include/linux/preempt.h b/include/linux/preempt.h
 index de83b4e..66587bf 100644
 --- a/include/linux/preempt.h
@@ -15333,6 +15488,18 @@ index aaeae88..577f026 100644
  
  	if (!debug_locks)
  		print_irqtrace_events(current);
+diff --git a/kernel/locking/locktorture.c b/kernel/locking/locktorture.c
+index ec8cce2..aa60d91 100644
+--- a/kernel/locking/locktorture.c
++++ b/kernel/locking/locktorture.c
+@@ -24,7 +24,6 @@
+ #include <linux/module.h>
+ #include <linux/kthread.h>
+ #include <linux/spinlock.h>
+-#include <linux/rwlock.h>
+ #include <linux/mutex.h>
+ #include <linux/rwsem.h>
+ #include <linux/smp.h>
 diff --git a/kernel/locking/rt.c b/kernel/locking/rt.c
 new file mode 100644
 index 0000000..c236efa
@@ -25177,11 +25344,11 @@ index fe9a325..3a5f2b3 100644
   *
 diff --git a/localversion-rt b/localversion-rt
 new file mode 100644
-index 0000000..6f206be
+index 0000000..1445cd6
 --- /dev/null
 +++ b/localversion-rt
 @@ -0,0 +1 @@
-+-rt1
++-rt3
 diff --git a/mm/Kconfig b/mm/Kconfig
 index 390214d..0cc4537 100644
 --- a/mm/Kconfig
@@ -27306,5 +27473,5 @@ index 9097741..de93076 100644
  			if (!kvm_vcpu_eligible_for_directed_yield(vcpu))
  				continue;
 -- 
-2.1.4
+2.4.6
 

@@ -150,14 +150,14 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-	rt_patch="4.1.2-rt1"
+	rt_patch="4.1.3-rt3"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/4.1/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -rf patch-${rt_patch}.patch.xz
 
-		sed -i -e 's:rt44:rt1:g' ../patches/rt/0002-rt-we-append-rt-on-our-own.patch
+		sed -i -e 's:rt1:rt3:g' ../patches/rt/0002-rt-we-append-rt-on-our-own.patch
 		exit 2
 	fi
 
