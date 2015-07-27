@@ -445,6 +445,9 @@ beaglebone () {
 
 		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
 
+		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
+
 		device="am335x-boneblack-emmc-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-hdmi-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
