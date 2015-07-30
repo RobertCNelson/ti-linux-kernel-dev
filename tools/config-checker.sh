@@ -321,6 +321,11 @@ config="CONFIG_CPUFREQ_VOLTDM" ; config_enable
 # TI Connectivity Configs
 ##################################################
 
+# I2C GPIO expanders
+CONFIG_GPIO_PCF857X=y
+
+config="CONFIG_GPIO_PCF857X" ; config_enable
+
 #PCIe
 CONFIG_PCI=y
 CONFIG_PCI_DRA7XX=y
