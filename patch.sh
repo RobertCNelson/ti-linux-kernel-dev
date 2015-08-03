@@ -75,10 +75,26 @@ local_patch () {
 external_git
 #local_patch
 
+rt_cleanup () {
+	echo "Fixing: drivers/gpio/gpio-omap.c"
+	sed -i -e 's/\<spin_lock_irqsave\>/raw_spin_lock_irqsave/g' drivers/gpio/gpio-omap.c
+	sed -i -e 's/\<spin_unlock_irqrestore\>/raw_spin_unlock_irqrestore/g' drivers/gpio/gpio-omap.c
+	rm -rf drivers/gpio/gpio-omap.c.rej
+
+	echo "Fixing: drivers/tty/serial/8250/8250_core.c"
+	cp -v ../patches/rt/8250_core.c drivers/tty/serial/8250/8250_core.c
+	rm -rf drivers/tty/serial/8250/8250_core.c.rej
+}
+
 rt () {
 	echo "dir: rt"
-	#patch-3.14.44-rt44.patch
-	#exit 2
+	rt_patch="3.14.48-rt48"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/3.14/patch-${rt_patch}.patch.xz
+		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
+		exit 2
+	fi
 
 	#merge notes:
 	#drivers/usb/gadget/function/f_fs.c
