@@ -118,6 +118,7 @@ config="CONFIG_SOC_OMAP5" ; config_enable
 config="CONFIG_SOC_AM33XX" ; config_enable
 config="CONFIG_SOC_AM43XX" ; config_enable
 config="CONFIG_SOC_DRA7XX" ; config_enable
+config="CONFIG_OMAP5_ERRATA_801819" ; config_enable
 
 ##################################################
 # TI Audio/Display config options
@@ -616,6 +617,10 @@ config="CONFIG_NET_VENDOR_SAMSUNG" ; config_disable
 config="CONFIG_NET_VENDOR_STMICRO" ; config_disable
 config="CONFIG_NET_VENDOR_VIA" ; config_disable
 
+config="CONFIG_SMC91X" ; config_enable
+config="CONFIG_SMC911X" ; config_enable
+config="CONFIG_SMSC911X" ; config_enable
+
 config="CONFIG_TI_DAVINCI_MDIO" ; config_enable
 config="CONFIG_TI_DAVINCI_CPDMA" ; config_enable
 config="CONFIG_TI_CPSW_ALE" ; config_enable
@@ -625,8 +630,35 @@ config="CONFIG_TI_CPTS" ; config_enable
 #
 # MII PHY device drivers
 #
+config="CONFIG_AT803X_PHY" ; config_enable
+config="CONFIG_AMD_PHY" ; config_enable
+config="CONFIG_MARVELL_PHY" ; config_enable
+config="CONFIG_DAVICOM_PHY" ; config_enable
+config="CONFIG_QSEMI_PHY" ; config_enable
+config="CONFIG_LXT_PHY" ; config_enable
+config="CONFIG_CICADA_PHY" ; config_enable
+config="CONFIG_VITESSE_PHY" ; config_enable
+
 config="CONFIG_SMSC_PHY" ; config_enable
+
+config="CONFIG_BROADCOM_PHY" ; config_enable
+config="CONFIG_BCM7XXX_PHY" ; config_enable
+config="CONFIG_BCM87XX_PHY" ; config_enable
+config="CONFIG_ICPLUS_PHY" ; config_enable
+config="CONFIG_REALTEK_PHY" ; config_enable
+config="CONFIG_NATIONAL_PHY" ; config_enable
+config="CONFIG_STE10XP" ; config_enable
+config="CONFIG_LSI_ET1011C_PHY" ; config_enable
+
 config="CONFIG_MICREL_PHY" ; config_enable
+
+config="CONFIG_USB_PEGASUS" ; config_enable
+config="CONFIG_USB_RTL8150" ; config_enable
+config="CONFIG_USB_RTL8152" ; config_enable
+config="CONFIG_USB_USBNET" ; config_enable
+
+config="CONFIG_WL_MEDIATEK" ; config_enable
+config="CONFIG_MT7601U" ; config_module
 
 #
 # Userland interfaces
@@ -676,6 +708,7 @@ config="CONFIG_PPS_CLIENT_GPIO" ; config_module
 #
 # Pin controllers
 #
+config="CONFIG_PINCTRL_TI_IODELAY" ; config_enable
 config="CONFIG_GPIO_OF_HELPER" ; config_enable
 
 #
@@ -879,6 +912,7 @@ config="CONFIG_USB_DWC3_DUAL_ROLE" ; config_enable
 # Platform Glue Driver Support
 #
 config="CONFIG_USB_DWC3_OMAP" ; config_enable
+config="CONFIG_USB_DWC3_PCI" ; config_enable
 
 #
 # Debugging features
@@ -903,15 +937,60 @@ config="CONFIG_USB_GADGET_VBUS_DRAW" ; option="500" ; config_value
 #
 # USB Peripheral Controller
 #
-config="CONFIG_USB_LIBCOMPOSITE" ; config_enable
-config="CONFIG_USB_U_ETHER" ; config_enable
-config="CONFIG_USB_F_ECM" ; config_enable
-config="CONFIG_USB_F_SUBSET" ; config_enable
-config="CONFIG_USB_F_RNDIS" ; config_enable
-config="CONFIG_USB_ETH" ; config_enable
+config="CONFIG_USB_LIBCOMPOSITE" ; config_module
+config="CONFIG_USB_F_ACM" ; config_module
+config="CONFIG_USB_F_SS_LB" ; config_module
+config="CONFIG_USB_U_SERIAL" ; config_module
+config="CONFIG_USB_U_ETHER" ; config_module
+config="CONFIG_USB_F_SERIAL" ; config_module
+config="CONFIG_USB_F_OBEX" ; config_module
+config="CONFIG_USB_F_NCM" ; config_module
+config="CONFIG_USB_F_ECM" ; config_module
+config="CONFIG_USB_F_PHONET" ; config_module
+config="CONFIG_USB_F_SUBSET" ; config_module
+config="CONFIG_USB_F_RNDIS" ; config_module
+config="CONFIG_USB_F_MASS_STORAGE" ; config_module
+config="CONFIG_USB_F_FS" ; config_module
+config="CONFIG_USB_CONFIGFS" ; config_module
+config="CONFIG_USB_CONFIGFS_SERIAL" ; config_enable
+config="CONFIG_USB_CONFIGFS_ACM" ; config_enable
+config="CONFIG_USB_CONFIGFS_OBEX" ; config_enable
+config="CONFIG_USB_CONFIGFS_NCM" ; config_enable
+config="CONFIG_USB_CONFIGFS_ECM" ; config_enable
+config="CONFIG_USB_CONFIGFS_ECM_SUBSET" ; config_enable
+config="CONFIG_USB_CONFIGFS_RNDIS" ; config_enable
+config="CONFIG_USB_CONFIGFS_PHONET" ; config_disable
+config="CONFIG_USB_CONFIGFS_MASS_STORAGE" ; config_disable
+config="CONFIG_USB_CONFIGFS_F_LB_SS" ; config_disable
+config="CONFIG_USB_CONFIGFS_F_FS" ; config_disable
+config="CONFIG_USB_ZERO" ; config_module
+config="CONFIG_USB_AUDIO" ; config_module
+config="CONFIG_GADGET_UAC1" ; config_disable
+config="CONFIG_USB_ETH" ; config_module
+config="CONFIG_USB_ETH_RNDIS" ; config_enable
 config="CONFIG_USB_ETH_EEM" ; config_disable
-config="CONFIG_USB_GADGETFS" ; config_disable
-config="CONFIG_USB_G_NOKIA" ; config_disable
+config="CONFIG_USB_G_NCM" ; config_module
+config="CONFIG_USB_GADGETFS" ; config_module
+config="CONFIG_USB_FUNCTIONFS" ; config_module
+config="CONFIG_USB_FUNCTIONFS_ETH" ; config_enable
+config="CONFIG_USB_FUNCTIONFS_RNDIS" ; config_enable
+config="CONFIG_USB_FUNCTIONFS_GENERIC" ; config_enable
+config="CONFIG_USB_MASS_STORAGE" ; config_module
+config="CONFIG_USB_GADGET_TARGET" ; config_disable
+config="CONFIG_USB_G_SERIAL" ; config_module
+config="CONFIG_USB_MIDI_GADGET" ; config_module
+config="CONFIG_USB_G_PRINTER" ; config_module
+config="CONFIG_USB_CDC_COMPOSITE" ; config_module
+config="CONFIG_USB_G_NOKIA" ; config_module
+config="CONFIG_USB_G_ACM_MS" ; config_module
+config="CONFIG_USB_G_MULTI" ; config_module
+config="CONFIG_USB_G_MULTI_RNDIS" ; config_enable
+config="CONFIG_USB_G_MULTI_CDC" ; config_enable
+config="CONFIG_USB_G_HID" ; config_module
+config="CONFIG_USB_G_DBGP" ; config_module
+config="CONFIG_USB_G_DBGP_PRINTK" ; config_disable
+config="CONFIG_USB_G_DBGP_SERIAL" ; config_enable
+config="CONFIG_USB_G_WEBCAM" ; config_disable
 
 #
 # MMC/SD/SDIO Card Drivers
