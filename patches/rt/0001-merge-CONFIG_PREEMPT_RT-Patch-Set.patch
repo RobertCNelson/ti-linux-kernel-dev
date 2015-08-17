@@ -1,6 +1,6 @@
-From 7d8b7657ec8155766d334df62e84d452841ac611 Mon Sep 17 00:00:00 2001
+From 6a74ab7b2e4928871d4d5204eb90ffe561d6fe3a Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 6 Aug 2015 13:15:09 -0500
+Date: Mon, 17 Aug 2015 11:11:37 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -118,6 +118,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/x86/kernel/apic/x2apic_uv_x.c                 |    2 +-
  arch/x86/kernel/asm-offsets.c                      |    2 +
  arch/x86/kernel/cpu/mcheck/mce.c                   |  120 +-
+ arch/x86/kernel/dumpstack_32.c                     |    4 +-
+ arch/x86/kernel/dumpstack_64.c                     |    8 +-
  arch/x86/kernel/entry_32.S                         |   20 +-
  arch/x86/kernel/entry_64.S                         |   26 +-
  arch/x86/kernel/irq_32.c                           |    2 +
@@ -373,6 +375,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/workqueue_internal.h                        |    5 +-
  lib/Kconfig                                        |    1 +
  lib/debugobjects.c                                 |    5 +-
+ lib/dump_stack.c                                   |    4 +-
  lib/idr.c                                          |   36 +-
  lib/locking-selftest.c                             |   50 +
  lib/percpu_ida.c                                   |   20 +-
@@ -412,7 +415,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  sound/soc/intel/atom/sst/sst.c                     |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 407 files changed, 11676 insertions(+), 2008 deletions(-)
+ 410 files changed, 11684 insertions(+), 2016 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 drivers/misc/hwlat_detector.c
@@ -1297,7 +1300,7 @@ index 280f3f1..bc2ed95 100644
  
  static void __naked hip04_mcpm_power_up_setup(unsigned int affinity_level)
 diff --git a/arch/arm/mach-omap2/omap-smp.c b/arch/arm/mach-omap2/omap-smp.c
-index 5305ec7..19732b5 100644
+index faaf366..2816d0b 100644
 --- a/arch/arm/mach-omap2/omap-smp.c
 +++ b/arch/arm/mach-omap2/omap-smp.c
 @@ -43,7 +43,7 @@
@@ -1309,7 +1312,7 @@ index 5305ec7..19732b5 100644
  
  void __iomem *omap4_get_scu_base(void)
  {
-@@ -74,8 +74,8 @@ static void omap4_secondary_init(unsigned int cpu)
+@@ -110,8 +110,8 @@ static void omap4_secondary_init(unsigned int cpu)
  	/*
  	 * Synchronise with the boot thread.
  	 */
@@ -1320,7 +1323,7 @@ index 5305ec7..19732b5 100644
  }
  
  static int omap4_boot_secondary(unsigned int cpu, struct task_struct *idle)
-@@ -89,7 +89,7 @@ static int omap4_boot_secondary(unsigned int cpu, struct task_struct *idle)
+@@ -125,7 +125,7 @@ static int omap4_boot_secondary(unsigned int cpu, struct task_struct *idle)
  	 * Set synchronisation state between this boot processor
  	 * and the secondary one
  	 */
@@ -1329,7 +1332,7 @@ index 5305ec7..19732b5 100644
  
  	/*
  	 * Update the AuxCoreBoot0 with boot state for secondary core.
-@@ -166,7 +166,7 @@ static int omap4_boot_secondary(unsigned int cpu, struct task_struct *idle)
+@@ -202,7 +202,7 @@ static int omap4_boot_secondary(unsigned int cpu, struct task_struct *idle)
  	 * Now the secondary core is starting up let it run its
  	 * calibrations, then wait for it to finish
  	 */
@@ -2327,10 +2330,10 @@ index 5a92576..2fcc5a5 100644
  }
  EXPORT_SYMBOL(__kunmap_atomic);
 diff --git a/arch/mips/Kconfig b/arch/mips/Kconfig
-index f501665..db1f416 100644
+index a3b1ffe..9b95c9b 100644
 --- a/arch/mips/Kconfig
 +++ b/arch/mips/Kconfig
-@@ -2365,7 +2365,7 @@ config CPU_R4400_WORKAROUNDS
+@@ -2366,7 +2366,7 @@ config CPU_R4400_WORKAROUNDS
  #
  config HIGHMEM
  	bool "High Memory Support"
@@ -2679,7 +2682,7 @@ index de65f66..ec2df4b 100644
  
  #define kmap_atomic_prot(page, prot)	kmap_atomic(page)
 diff --git a/arch/parisc/kernel/traps.c b/arch/parisc/kernel/traps.c
-index 47ee620..6548fd1 100644
+index 7f67c4c..b99b39f 100644
 --- a/arch/parisc/kernel/traps.c
 +++ b/arch/parisc/kernel/traps.c
 @@ -26,9 +26,9 @@
@@ -2693,7 +2696,7 @@ index 47ee620..6548fd1 100644
  #include <asm/io.h>
  #include <asm/irq.h>
  #include <asm/traps.h>
-@@ -800,7 +800,7 @@ void notrace handle_interruption(int code, struct pt_regs *regs)
+@@ -796,7 +796,7 @@ void notrace handle_interruption(int code, struct pt_regs *regs)
  	     * unless pagefault_disable() was called before.
  	     */
  
@@ -4553,6 +4556,68 @@ index 20190bd..9d46f9a 100644
  	if (!zalloc_cpumask_var(&mce_device_initialized, GFP_KERNEL)) {
  		err = -ENOMEM;
  		goto err_out;
+diff --git a/arch/x86/kernel/dumpstack_32.c b/arch/x86/kernel/dumpstack_32.c
+index 464ffd6..00db1aa 100644
+--- a/arch/x86/kernel/dumpstack_32.c
++++ b/arch/x86/kernel/dumpstack_32.c
+@@ -42,7 +42,7 @@ void dump_trace(struct task_struct *task, struct pt_regs *regs,
+ 		unsigned long *stack, unsigned long bp,
+ 		const struct stacktrace_ops *ops, void *data)
+ {
+-	const unsigned cpu = get_cpu();
++	const unsigned cpu = get_cpu_light();
+ 	int graph = 0;
+ 	u32 *prev_esp;
+ 
+@@ -86,7 +86,7 @@ void dump_trace(struct task_struct *task, struct pt_regs *regs,
+ 			break;
+ 		touch_nmi_watchdog();
+ 	}
+-	put_cpu();
++	put_cpu_light();
+ }
+ EXPORT_SYMBOL(dump_trace);
+ 
+diff --git a/arch/x86/kernel/dumpstack_64.c b/arch/x86/kernel/dumpstack_64.c
+index 5f1c626..c331e3f 100644
+--- a/arch/x86/kernel/dumpstack_64.c
++++ b/arch/x86/kernel/dumpstack_64.c
+@@ -152,7 +152,7 @@ void dump_trace(struct task_struct *task, struct pt_regs *regs,
+ 		unsigned long *stack, unsigned long bp,
+ 		const struct stacktrace_ops *ops, void *data)
+ {
+-	const unsigned cpu = get_cpu();
++	const unsigned cpu = get_cpu_light();
+ 	struct thread_info *tinfo;
+ 	unsigned long *irq_stack = (unsigned long *)per_cpu(irq_stack_ptr, cpu);
+ 	unsigned long dummy;
+@@ -241,7 +241,7 @@ void dump_trace(struct task_struct *task, struct pt_regs *regs,
+ 	 * This handles the process stack:
+ 	 */
+ 	bp = ops->walk_stack(tinfo, stack, bp, ops, data, NULL, &graph);
+-	put_cpu();
++	put_cpu_light();
+ }
+ EXPORT_SYMBOL(dump_trace);
+ 
+@@ -255,7 +255,7 @@ show_stack_log_lvl(struct task_struct *task, struct pt_regs *regs,
+ 	int cpu;
+ 	int i;
+ 
+-	preempt_disable();
++	migrate_disable();
+ 	cpu = smp_processor_id();
+ 
+ 	irq_stack_end	= (unsigned long *)(per_cpu(irq_stack_ptr, cpu));
+@@ -291,7 +291,7 @@ show_stack_log_lvl(struct task_struct *task, struct pt_regs *regs,
+ 			pr_cont(" %016lx", *stack++);
+ 		touch_nmi_watchdog();
+ 	}
+-	preempt_enable();
++	migrate_enable();
+ 
+ 	pr_cont("\n");
+ 	show_trace_log_lvl(task, regs, sp, bp, log_lvl);
 diff --git a/arch/x86/kernel/entry_32.S b/arch/x86/kernel/entry_32.S
 index 1c30976..8612b31 100644
 --- a/arch/x86/kernel/entry_32.S
@@ -4601,7 +4666,7 @@ index 1c30976..8612b31 100644
  
  work_notifysig:				# deal with pending signals and
 diff --git a/arch/x86/kernel/entry_64.S b/arch/x86/kernel/entry_64.S
-index 02c2eff..9bf9070 100644
+index 4bd6c19..8a3445b 100644
 --- a/arch/x86/kernel/entry_64.S
 +++ b/arch/x86/kernel/entry_64.S
 @@ -370,8 +370,8 @@ GLOBAL(int_with_check)
@@ -4639,7 +4704,7 @@ index 02c2eff..9bf9070 100644
  	call	preempt_schedule_irq
  	jmp	0b
  1:
-@@ -846,8 +862,8 @@ native_irq_return_ldt:
+@@ -844,8 +860,8 @@ native_irq_return_ldt:
  	/* edi: workmask, edx: work */
  retint_careful:
  	CFI_RESTORE_STATE
@@ -4650,7 +4715,7 @@ index 02c2eff..9bf9070 100644
  	TRACE_IRQS_ON
  	ENABLE_INTERRUPTS(CLBR_NONE)
  	pushq_cfi %rdi
-@@ -1120,6 +1136,7 @@ bad_gs:
+@@ -1118,6 +1134,7 @@ bad_gs:
  	jmp  2b
  	.previous
  
@@ -4658,7 +4723,7 @@ index 02c2eff..9bf9070 100644
  /* Call softirq on interrupt stack. Interrupts are off. */
  ENTRY(do_softirq_own_stack)
  	CFI_STARTPROC
-@@ -1139,6 +1156,7 @@ ENTRY(do_softirq_own_stack)
+@@ -1137,6 +1154,7 @@ ENTRY(do_softirq_own_stack)
  	ret
  	CFI_ENDPROC
  END(do_softirq_own_stack)
@@ -5512,7 +5577,7 @@ index bb3ed48..628c6c1 100644
  
  void blk_mq_init_cpu_notifier(struct blk_mq_cpu_notifier *notifier,
 diff --git a/block/blk-mq.c b/block/blk-mq.c
-index 594eea0..1f469b3 100644
+index 2dc1fd6..c473bd1 100644
 --- a/block/blk-mq.c
 +++ b/block/blk-mq.c
 @@ -88,7 +88,7 @@ static int blk_mq_queue_enter(struct request_queue *q, gfp_t gfp)
@@ -6653,7 +6718,7 @@ index 57c8878..4021633 100644
  	if (crtc == NULL)
  		return;
 diff --git a/drivers/i2c/busses/i2c-omap.c b/drivers/i2c/busses/i2c-omap.c
-index 537e371..faca2e9 100644
+index 64f2b04..7c2e151 100644
 --- a/drivers/i2c/busses/i2c-omap.c
 +++ b/drivers/i2c/busses/i2c-omap.c
 @@ -995,15 +995,12 @@ omap_i2c_isr(int irq, void *dev_id)
@@ -6918,10 +6983,10 @@ index 4d20088..98b64ed 100644
  	Allows a block device to be used as cache for other devices; uses
  	a btree for indexing and the layout is optimized for SSDs.
 diff --git a/drivers/md/dm.c b/drivers/md/dm.c
-index 2caf492..9275239 100644
+index 697f34f..98347e2 100644
 --- a/drivers/md/dm.c
 +++ b/drivers/md/dm.c
-@@ -2143,7 +2143,7 @@ static void dm_request_fn(struct request_queue *q)
+@@ -2132,7 +2132,7 @@ static void dm_request_fn(struct request_queue *q)
  		/* Establish tio->ti before queuing work (map_tio_request) */
  		tio->ti = ti;
  		queue_kthread_work(&md->kworker, &tio->work);
@@ -8337,7 +8402,7 @@ index fb26674..d42fc08 100644
  	 * If we have less than the fifo 'half-full' threshold to transfer,
  	 * trigger a PIO interrupt as soon as any data is available.
 diff --git a/drivers/mmc/host/sdhci.c b/drivers/mmc/host/sdhci.c
-index d3dbb28..8bfd9d8 100644
+index bec8a30..acd8c62 100644
 --- a/drivers/mmc/host/sdhci.c
 +++ b/drivers/mmc/host/sdhci.c
 @@ -2691,6 +2691,31 @@ static irqreturn_t sdhci_thread_irq(int irq, void *dev_id)
@@ -8383,7 +8448,7 @@ index d3dbb28..8bfd9d8 100644
  		if (ret)
  			return ret;
  	} else {
-@@ -3418,8 +3441,7 @@ int sdhci_add_host(struct sdhci_host *host)
+@@ -3421,8 +3444,7 @@ int sdhci_add_host(struct sdhci_host *host)
  
  	sdhci_init(host, 0);
  
@@ -9224,7 +9289,7 @@ index c7a5602..2907544 100644
  		__this_cpu_inc(bh_accounting.nr);
  		recalc_bh_state();
 diff --git a/fs/dcache.c b/fs/dcache.c
-index 50bb3c2..e1d20e1 100644
+index 5d03eb0..c1dad92 100644
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
 @@ -19,6 +19,7 @@
@@ -9244,7 +9309,7 @@ index 50bb3c2..e1d20e1 100644
  	return dentry; /* try again with same dentry */
  }
  
-@@ -2392,7 +2393,7 @@ again:
+@@ -2395,7 +2396,7 @@ again:
  	if (dentry->d_lockref.count == 1) {
  		if (!spin_trylock(&inode->i_lock)) {
  			spin_unlock(&dentry->d_lock);
@@ -9318,7 +9383,7 @@ index 4227dc4..9c00e2e 100644
  
  		/*
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 02c6875..c246b29 100644
+index fce3cc1..2893702 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
 @@ -14,6 +14,7 @@
@@ -13651,7 +13716,7 @@ index 2a89545..0486a8e 100644
  
  	build_all_zonelists(NULL, NULL);
 diff --git a/ipc/mqueue.c b/ipc/mqueue.c
-index 3aaea7f..a24ba9f 100644
+index c3fc5c2..161a180 100644
 --- a/ipc/mqueue.c
 +++ b/ipc/mqueue.c
 @@ -47,8 +47,7 @@
@@ -13664,7 +13729,7 @@ index 3aaea7f..a24ba9f 100644
  
  struct posix_msg_tree_node {
  	struct rb_node		rb_node;
-@@ -571,15 +570,12 @@ static int wq_sleep(struct mqueue_inode_info *info, int sr,
+@@ -568,15 +567,12 @@ static int wq_sleep(struct mqueue_inode_info *info, int sr,
  	wq_add(info, sr, ewp);
  
  	for (;;) {
@@ -13681,7 +13746,7 @@ index 3aaea7f..a24ba9f 100644
  		if (ewp->state == STATE_READY) {
  			retval = 0;
  			goto out;
-@@ -907,11 +903,15 @@ out_name:
+@@ -904,11 +900,15 @@ out_name:
   * list of waiting receivers. A sender checks that list before adding the new
   * message into the message array. If there is a waiting receiver, then it
   * bypasses the message array and directly hands the message over to the
@@ -13702,7 +13767,7 @@ index 3aaea7f..a24ba9f 100644
   *
   * The same algorithm is used for senders.
   */
-@@ -919,21 +919,29 @@ out_name:
+@@ -916,21 +916,29 @@ out_name:
  /* pipelined_send() - send a message directly to the task waiting in
   * sys_mq_timedreceive() (without inserting message into a queue).
   */
@@ -13737,7 +13802,7 @@ index 3aaea7f..a24ba9f 100644
  {
  	struct ext_wait_queue *sender = wq_get_first_waiter(info, SEND);
  
-@@ -944,10 +952,9 @@ static inline void pipelined_receive(struct mqueue_inode_info *info)
+@@ -941,10 +949,9 @@ static inline void pipelined_receive(struct mqueue_inode_info *info)
  	}
  	if (msg_insert(sender->msg, info))
  		return;
@@ -13750,7 +13815,7 @@ index 3aaea7f..a24ba9f 100644
  	sender->state = STATE_READY;
  }
  
-@@ -965,6 +972,7 @@ SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
+@@ -962,6 +969,7 @@ SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
  	struct timespec ts;
  	struct posix_msg_tree_node *new_leaf = NULL;
  	int ret = 0;
@@ -13758,7 +13823,7 @@ index 3aaea7f..a24ba9f 100644
  
  	if (u_abs_timeout) {
  		int res = prepare_timeout(u_abs_timeout, &expires, &ts);
-@@ -1049,7 +1057,7 @@ SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
+@@ -1045,7 +1053,7 @@ SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
  	} else {
  		receiver = wq_get_first_waiter(info, RECV);
  		if (receiver) {
@@ -13767,7 +13832,7 @@ index 3aaea7f..a24ba9f 100644
  		} else {
  			/* adds message to the queue */
  			ret = msg_insert(msg_ptr, info);
-@@ -1062,6 +1070,7 @@ SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
+@@ -1058,6 +1066,7 @@ SYSCALL_DEFINE5(mq_timedsend, mqd_t, mqdes, const char __user *, u_msg_ptr,
  	}
  out_unlock:
  	spin_unlock(&info->lock);
@@ -13775,7 +13840,7 @@ index 3aaea7f..a24ba9f 100644
  out_free:
  	if (ret)
  		free_msg(msg_ptr);
-@@ -1149,14 +1158,17 @@ SYSCALL_DEFINE5(mq_timedreceive, mqd_t, mqdes, char __user *, u_msg_ptr,
+@@ -1144,14 +1153,17 @@ SYSCALL_DEFINE5(mq_timedreceive, mqd_t, mqdes, char __user *, u_msg_ptr,
  			msg_ptr = wait.msg;
  		}
  	} else {
@@ -19771,7 +19836,7 @@ index 0000000..c996f75
 +}
 +EXPORT_SYMBOL_GPL(swork_put);
 diff --git a/kernel/signal.c b/kernel/signal.c
-index d51c5dd..7dc2ebe 100644
+index 0206be7..1336e4c 100644
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
 @@ -14,6 +14,7 @@
@@ -24922,6 +24987,28 @@ index 547f7f9..8fcdbc2 100644
  
  	db = get_bucket((unsigned long) addr);
  
+diff --git a/lib/dump_stack.c b/lib/dump_stack.c
+index 6745c62..7ccbc6f 100644
+--- a/lib/dump_stack.c
++++ b/lib/dump_stack.c
+@@ -33,7 +33,7 @@ asmlinkage __visible void dump_stack(void)
+ 	 * Permit this cpu to perform nested stack dumps while serialising
+ 	 * against other CPUs
+ 	 */
+-	preempt_disable();
++	migrate_disable();
+ 
+ retry:
+ 	cpu = smp_processor_id();
+@@ -52,7 +52,7 @@ retry:
+ 	if (!was_locked)
+ 		atomic_set(&dump_lock, -1);
+ 
+-	preempt_enable();
++	migrate_enable();
+ }
+ #else
+ asmlinkage __visible void dump_stack(void)
 diff --git a/lib/idr.c b/lib/idr.c
 index 5335c43..d0681a3 100644
 --- a/lib/idr.c
@@ -25343,11 +25430,11 @@ index fe9a325..3a5f2b3 100644
   *
 diff --git a/localversion-rt b/localversion-rt
 new file mode 100644
-index 0000000..1445cd6
+index 0000000..0efe7ba
 --- /dev/null
 +++ b/localversion-rt
 @@ -0,0 +1 @@
-+-rt3
++-rt5
 diff --git a/mm/Kconfig b/mm/Kconfig
 index 390214d..0cc4537 100644
 --- a/mm/Kconfig
@@ -27251,7 +27338,7 @@ index fe1610d..ef1eb20 100644
  		}
  		prb_close_block(pkc, pbd, po, status);
 diff --git a/net/rds/ib_rdma.c b/net/rds/ib_rdma.c
-index 273b8bf..f64b6e8 100644
+index 657ba9f..c8faaf3 100644
 --- a/net/rds/ib_rdma.c
 +++ b/net/rds/ib_rdma.c
 @@ -34,6 +34,7 @@
@@ -27338,7 +27425,7 @@ index 6fdc97e..523e042 100755
  
  # Truncate to maximum length
 diff --git a/sound/core/pcm_native.c b/sound/core/pcm_native.c
-index d126c03..5dce6d8 100644
+index 75888dd..ec8486c 100644
 --- a/sound/core/pcm_native.c
 +++ b/sound/core/pcm_native.c
 @@ -123,7 +123,7 @@ EXPORT_SYMBOL_GPL(snd_pcm_stream_unlock);
@@ -27472,5 +27559,5 @@ index 9097741..de93076 100644
  			if (!kvm_vcpu_eligible_for_directed_yield(vcpu))
  				continue;
 -- 
-2.4.6
+2.5.0
 

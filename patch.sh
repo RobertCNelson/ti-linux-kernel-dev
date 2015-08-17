@@ -150,14 +150,14 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-	rt_patch="4.1.3-rt3"
+	rt_patch="4.1.5-rt5"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/4.1/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -rf patch-${rt_patch}.patch.xz
 
-		sed -i -e 's:rt1:rt3:g' ../patches/rt/0002-rt-we-append-rt-on-our-own.patch
+		sed -i -e 's:rt3:rt5:g' ../patches/rt/0002-rt-we-append-rt-on-our-own.patch
 		exit 2
 	fi
 
@@ -209,8 +209,6 @@ fixes () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
-
-	${git} "${DIR}/patches/fixes/0001-trusty-gcc-4.8-4.8.2-19ubuntu1-has-fix.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
@@ -298,8 +296,10 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0010-nvmem-set-the-size-for-the-nvmem-binary-file.patch"
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0011-nvmem-add-permission-flags-in-nvmem_config.patch"
 
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0012-nvmem-core-fix-a-copy-paste-error.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=11
+		number=12
 		cleanup
 	fi
 
@@ -559,7 +559,7 @@ sgx () {
 rt
 reverts
 backports
-fixes
+#fixes
 pru
 bbb_overlays
 beaglebone

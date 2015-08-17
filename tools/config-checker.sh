@@ -1129,13 +1129,14 @@ config="CONFIG_HWSPINLOCK" ; config_enable
 # Remoteproc drivers
 #
 config="CONFIG_REMOTEPROC" ; config_enable
-config="CONFIG_OMAP_REMOTEPROC" ; config_enable
+config="CONFIG_OMAP_REMOTEPROC" ; config_module
+config="CONFIG_OMAP_REMOTEPROC_WATCHDOG" ; config_enable
 config="CONFIG_WKUP_M3_RPROC" ; config_enable
 
 #
 # Rpmsg drivers
 #
-config="CONFIG_RPMSG" ; config_enable
+config="CONFIG_RPMSG" ; config_module
 
 #
 # SOC (System On Chip) specific Drivers
