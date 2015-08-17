@@ -186,8 +186,6 @@ fixes () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/fixes/0001-trusty-gcc-4.8-4.8.2-19ubuntu1-has-fix.patch"
-
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
@@ -274,8 +272,10 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0010-nvmem-set-the-size-for-the-nvmem-binary-file.patch"
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0011-nvmem-add-permission-flags-in-nvmem_config.patch"
 
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0012-nvmem-core-fix-a-copy-paste-error.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=11
+		number=12
 		cleanup
 	fi
 
@@ -534,7 +534,7 @@ sgx () {
 ###
 reverts
 backports
-fixes
+#fixes
 pru
 bbb_overlays
 beaglebone
