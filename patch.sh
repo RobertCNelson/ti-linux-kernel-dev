@@ -88,7 +88,7 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-	rt_patch="3.14.48-rt48"
+	rt_patch="3.14.49-rt50"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/3.14/patch-${rt_patch}.patch.xz

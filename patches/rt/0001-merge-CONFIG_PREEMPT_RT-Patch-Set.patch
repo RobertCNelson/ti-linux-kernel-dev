@@ -1,6 +1,6 @@
-From 771ca3ec219a99a75f088145015eb72228a75cc3 Mon Sep 17 00:00:00 2001
+From ab0ebe1db53e878bc188e1df7c52bfc43cfaa933 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 3 Aug 2015 15:08:28 -0500
+Date: Tue, 18 Aug 2015 11:15:47 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -77,6 +77,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/powerpc/kernel/misc_32.S                      |    2 +
  arch/powerpc/kernel/misc_64.S                      |    2 +
  arch/powerpc/kernel/time.c                         |    2 +-
+ arch/powerpc/kvm/Kconfig                           |    1 +
  arch/powerpc/kvm/book3s_hv.c                       |   20 +-
  arch/powerpc/mm/fault.c                            |    2 +-
  arch/s390/include/asm/Kbuild                       |    1 +
@@ -103,7 +104,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/x86/crypto/aesni-intel_glue.c                 |   24 +-
  arch/x86/crypto/cast5_avx_glue.c                   |   21 +-
  arch/x86/crypto/glue_helper.c                      |   31 +-
- arch/x86/include/asm/Kbuild                        |    1 +
+ arch/x86/include/asm/irq_work.h                    |   11 +
  arch/x86/include/asm/preempt.h                     |   18 +-
  arch/x86/include/asm/signal.h                      |   13 +
  arch/x86/include/asm/stackprotector.h              |   10 +-
@@ -117,6 +118,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/x86/kernel/entry_32.S                         |   20 +-
  arch/x86/kernel/entry_64.S                         |   31 +-
  arch/x86/kernel/irq_32.c                           |    2 +
+ arch/x86/kernel/irq_work.c                         |    2 +-
  arch/x86/kernel/process_32.c                       |   32 +
  arch/x86/kernel/signal.c                           |    8 +
  arch/x86/kernel/traps.c                            |   28 +-
@@ -210,6 +212,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/namespace.c                                     |    8 +-
  fs/ntfs/aops.c                                     |   14 +-
  fs/timerfd.c                                       |    5 +-
+ fs/xfs/xfs_linux.h                                 |    2 +-
  include/acpi/platform/aclinux.h                    |   14 +
  include/asm-generic/bug.h                          |   14 +
  include/asm-generic/irq_work.h                     |   10 +
@@ -388,7 +391,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/page_alloc.c                                    |  145 ++-
  mm/page_cgroup.c                                   |   11 +
  mm/slab.h                                          |    4 +
- mm/slub.c                                          |  126 +-
+ mm/slub.c                                          |  198 +--
  mm/swap.c                                          |   34 +-
  mm/vmalloc.c                                       |   13 +-
  mm/vmstat.c                                        |    6 +
@@ -406,9 +409,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  scripts/mkcompile_h                                |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 401 files changed, 12049 insertions(+), 2153 deletions(-)
+ 404 files changed, 12094 insertions(+), 2195 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
+ create mode 100644 arch/x86/include/asm/irq_work.h
  create mode 100644 drivers/misc/hwlat_detector.c
  create mode 100644 include/asm-generic/irq_work.h
  create mode 100644 include/linux/locallock.h
@@ -2222,6 +2226,18 @@ index f8b994a..5bec5fd 100644
  
  /*
   * 64-bit uses a byte in the PACA, 32-bit uses a per-cpu variable...
+diff --git a/arch/powerpc/kvm/Kconfig b/arch/powerpc/kvm/Kconfig
+index 141b202..a0258b2 100644
+--- a/arch/powerpc/kvm/Kconfig
++++ b/arch/powerpc/kvm/Kconfig
+@@ -172,6 +172,7 @@ config KVM_E500MC
+ config KVM_MPIC
+ 	bool "KVM in-kernel MPIC emulation"
+ 	depends on KVM && E500
++	depends on !PREEMPT_RT_FULL
+ 	select HAVE_KVM_IRQCHIP
+ 	select HAVE_KVM_IRQ_ROUTING
+ 	select HAVE_KVM_MSI
 diff --git a/arch/powerpc/kvm/book3s_hv.c b/arch/powerpc/kvm/book3s_hv.c
 index 7a25d92..0019281 100644
 --- a/arch/powerpc/kvm/book3s_hv.c
@@ -2922,15 +2938,23 @@ index 432f1d76..4a2bd21 100644
  	return err;
  }
  EXPORT_SYMBOL_GPL(glue_xts_crypt_128bit);
-diff --git a/arch/x86/include/asm/Kbuild b/arch/x86/include/asm/Kbuild
-index 7f66985..1eb77ac 100644
---- a/arch/x86/include/asm/Kbuild
-+++ b/arch/x86/include/asm/Kbuild
-@@ -5,3 +5,4 @@ genhdr-y += unistd_64.h
- genhdr-y += unistd_x32.h
- 
- generic-y += clkdev.h
-+generic-y += irq_work.h
+diff --git a/arch/x86/include/asm/irq_work.h b/arch/x86/include/asm/irq_work.h
+new file mode 100644
+index 0000000..78162f8
+--- /dev/null
++++ b/arch/x86/include/asm/irq_work.h
+@@ -0,0 +1,11 @@
++#ifndef _ASM_IRQ_WORK_H
++#define _ASM_IRQ_WORK_H
++
++#include <asm/processor.h>
++
++static inline bool arch_irq_work_has_interrupt(void)
++{
++	return cpu_has_apic;
++}
++
++#endif /* _ASM_IRQ_WORK_H */
 diff --git a/arch/x86/include/asm/preempt.h b/arch/x86/include/asm/preempt.h
 index b39e194..660e9e6 100644
 --- a/arch/x86/include/asm/preempt.h
@@ -3576,6 +3600,19 @@ index d7fcbed..cec8682 100644
  
  bool handle_irq(unsigned irq, struct pt_regs *regs)
  {
+diff --git a/arch/x86/kernel/irq_work.c b/arch/x86/kernel/irq_work.c
+index 1de84e3..15d741d 100644
+--- a/arch/x86/kernel/irq_work.c
++++ b/arch/x86/kernel/irq_work.c
+@@ -41,7 +41,7 @@ __visible void smp_trace_irq_work_interrupt(struct pt_regs *regs)
+ void arch_irq_work_raise(void)
+ {
+ #ifdef CONFIG_X86_LOCAL_APIC
+-	if (!cpu_has_apic)
++	if (!arch_irq_work_has_interrupt())
+ 		return;
+ 
+ 	apic->send_IPI_self(IRQ_WORK_VECTOR);
 diff --git a/arch/x86/kernel/process_32.c b/arch/x86/kernel/process_32.c
 index 0de43e9..57dc769 100644
 --- a/arch/x86/kernel/process_32.c
@@ -7939,7 +7976,7 @@ index eef21c6..8a33054 100644
  		__this_cpu_inc(bh_accounting.nr);
  		recalc_bh_state();
 diff --git a/fs/dcache.c b/fs/dcache.c
-index 798155d..d10f41a 100644
+index 6dadeb8..6b53185 100644
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
 @@ -19,6 +19,7 @@
@@ -7950,7 +7987,7 @@ index 798155d..d10f41a 100644
  #include <linux/slab.h>
  #include <linux/init.h>
  #include <linux/hash.h>
-@@ -516,7 +517,7 @@ dentry_kill(struct dentry *dentry, int unlock_on_failure)
+@@ -464,7 +465,7 @@ dentry_kill(struct dentry *dentry, int unlock_on_failure)
  relock:
  		if (unlock_on_failure) {
  			spin_unlock(&dentry->d_lock);
@@ -7959,7 +7996,7 @@ index 798155d..d10f41a 100644
  		}
  		return dentry; /* try again with same dentry */
  	}
-@@ -2378,7 +2379,7 @@ again:
+@@ -2267,7 +2268,7 @@ again:
  	if (dentry->d_lockref.count == 1) {
  		if (!spin_trylock(&inode->i_lock)) {
  			spin_unlock(&dentry->d_lock);
@@ -8125,6 +8162,19 @@ index 9293121..d20e45a 100644
  	}
  
  	/*
+diff --git a/fs/xfs/xfs_linux.h b/fs/xfs/xfs_linux.h
+index f9bb590..8483f8c 100644
+--- a/fs/xfs/xfs_linux.h
++++ b/fs/xfs/xfs_linux.h
+@@ -131,7 +131,7 @@ typedef __uint64_t __psunsigned_t;
+ /*
+  * Feature macros (disable/enable)
+  */
+-#ifdef CONFIG_SMP
++#if defined(CONFIG_SMP) && !defined(CONFIG_PREEMPT_RT_FULL)
+ #define HAVE_PERCPU_SB	/* per cpu superblock counters are a 2.6 feature */
+ #else
+ #undef  HAVE_PERCPU_SB	/* per cpu superblock counters are a 2.6 feature */
 diff --git a/include/acpi/platform/aclinux.h b/include/acpi/platform/aclinux.h
 index 008aa28..0c4654f 100644
 --- a/include/acpi/platform/aclinux.h
@@ -12287,10 +12337,10 @@ index 008edce..6e54c37 100644
  
  	build_all_zonelists(NULL, NULL);
 diff --git a/ipc/mqueue.c b/ipc/mqueue.c
-index c3b3117..ab084f5 100644
+index 9699d3f..76ea908 100644
 --- a/ipc/mqueue.c
 +++ b/ipc/mqueue.c
-@@ -923,12 +923,17 @@ static inline void pipelined_send(struct mqueue_inode_info *info,
+@@ -920,12 +920,17 @@ static inline void pipelined_send(struct mqueue_inode_info *info,
  				  struct msg_msg *message,
  				  struct ext_wait_queue *receiver)
  {
@@ -12308,7 +12358,7 @@ index c3b3117..ab084f5 100644
  }
  
  /* pipelined_receive() - if there is task waiting in sys_mq_timedsend()
-@@ -942,13 +947,18 @@ static inline void pipelined_receive(struct mqueue_inode_info *info)
+@@ -939,13 +944,18 @@ static inline void pipelined_receive(struct mqueue_inode_info *info)
  		wake_up_interruptible(&info->wait_q);
  		return;
  	}
@@ -20560,7 +20610,7 @@ index 0000000..c996f75
 +}
 +EXPORT_SYMBOL_GPL(swork_put);
 diff --git a/kernel/signal.c b/kernel/signal.c
-index 52f881d..ea098c6 100644
+index 15c22ee..aa7b1cd 100644
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
 @@ -14,6 +14,7 @@
@@ -25314,11 +25364,11 @@ index 04abe53..1154792 100644
  
 diff --git a/localversion-rt b/localversion-rt
 new file mode 100644
-index 0000000..2470798
+index 0000000..42c3846
 --- /dev/null
 +++ b/localversion-rt
 @@ -0,0 +1 @@
-+-rt48
++-rt50
 diff --git a/mm/Kconfig b/mm/Kconfig
 index 0862816..ef4cea9 100644
 --- a/mm/Kconfig
@@ -25421,10 +25471,10 @@ index b58d4fb..be24d2d 100644
  	if (!sync)
  		goto out;
 diff --git a/mm/memory.c b/mm/memory.c
-index 749e1c6..2d55fd7 100644
+index e9ddc7a..5ad5faf 100644
 --- a/mm/memory.c
 +++ b/mm/memory.c
-@@ -3696,6 +3696,32 @@ unlock:
+@@ -3701,6 +3701,32 @@ unlock:
  	return 0;
  }
  
@@ -25873,7 +25923,7 @@ index 8184a7c..d037465 100644
  #ifdef CONFIG_SLAB
  	struct list_head slabs_partial;	/* partial list first, better asm code */
 diff --git a/mm/slub.c b/mm/slub.c
-index 7611f14..93eeaca 100644
+index 7611f14..f21e9bc 100644
 --- a/mm/slub.c
 +++ b/mm/slub.c
 @@ -1109,7 +1109,7 @@ static noinline struct kmem_cache_node *free_debug_processing(
@@ -25894,7 +25944,7 @@ index 7611f14..93eeaca 100644
  	slab_fix(s, "Object at 0x%p not freed", object);
  	return NULL;
  }
-@@ -1310,6 +1310,12 @@ static inline void slab_free_hook(struct kmem_cache *s, void *x)
+@@ -1310,6 +1310,20 @@ static inline void slab_free_hook(struct kmem_cache *s, void *x)
  
  #endif /* CONFIG_SLUB_DEBUG */
  
@@ -25904,14 +25954,24 @@ index 7611f14..93eeaca 100644
 +};
 +static DEFINE_PER_CPU(struct slub_free_list, slub_free_list);
 +
++static void setup_object(struct kmem_cache *s, struct page *page,
++				void *object)
++{
++	setup_object_debug(s, page, object);
++	if (unlikely(s->ctor))
++		s->ctor(object);
++}
++
  /*
   * Slab allocation and freeing
   */
-@@ -1331,10 +1337,15 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
+@@ -1331,10 +1345,17 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
  	struct page *page;
  	struct kmem_cache_order_objects oo = s->oo;
  	gfp_t alloc_gfp;
 +	bool enableirqs;
++	void *start, *last, *p;
++	int idx, order;
  
  	flags &= gfp_allowed_mask;
  
@@ -25924,27 +25984,107 @@ index 7611f14..93eeaca 100644
  		local_irq_enable();
  
  	flags |= s->allocflags;
-@@ -1374,7 +1385,7 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
+@@ -1353,13 +1374,13 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
+ 		 * Try a lower order alloc if possible
+ 		 */
+ 		page = alloc_slab_page(flags, node, oo);
+-
+-		if (page)
+-			stat(s, ORDER_FALLBACK);
++		if (unlikely(!page))
++			goto out;
++		stat(s, ORDER_FALLBACK);
+ 	}
+ 
+-	if (kmemcheck_enabled && page
+-		&& !(s->flags & (SLAB_NOTRACK | DEBUG_DEFAULT_FLAGS))) {
++	if (kmemcheck_enabled &&
++	    !(s->flags & (SLAB_NOTRACK | DEBUG_DEFAULT_FLAGS))) {
+ 		int pages = 1 << oo_order(oo);
+ 
+ 		kmemcheck_alloc_shadow(page, oo_order(oo), flags, node);
+@@ -1374,45 +1395,9 @@ static struct page *allocate_slab(struct kmem_cache *s, gfp_t flags, int node)
  			kmemcheck_mark_unallocated_pages(page, pages);
  	}
  
 -	if (flags & __GFP_WAIT)
+-		local_irq_disable();
+-	if (!page)
+-		return NULL;
+-
+ 	page->objects = oo_objects(oo);
+-	mod_zone_page_state(page_zone(page),
+-		(s->flags & SLAB_RECLAIM_ACCOUNT) ?
+-		NR_SLAB_RECLAIMABLE : NR_SLAB_UNRECLAIMABLE,
+-		1 << oo_order(oo));
+-
+-	return page;
+-}
+-
+-static void setup_object(struct kmem_cache *s, struct page *page,
+-				void *object)
+-{
+-	setup_object_debug(s, page, object);
+-	if (unlikely(s->ctor))
+-		s->ctor(object);
+-}
+-
+-static struct page *new_slab(struct kmem_cache *s, gfp_t flags, int node)
+-{
+-	struct page *page;
+-	void *start;
+-	void *last;
+-	void *p;
+-	int order;
+-
+-	BUG_ON(flags & GFP_SLAB_BUG_MASK);
+-
+-	page = allocate_slab(s,
+-		flags & (GFP_RECLAIM_MASK | GFP_CONSTRAINT_MASK), node);
+-	if (!page)
+-		goto out;
+ 
+ 	order = compound_order(page);
+-	inc_slabs_node(s, page_to_nid(page), page->objects);
+ 	memcg_bind_pages(s, order);
+ 	page->slab_cache = s;
+ 	__SetPageSlab(page);
+@@ -1436,10 +1421,34 @@ static struct page *new_slab(struct kmem_cache *s, gfp_t flags, int node)
+ 	page->freelist = start;
+ 	page->inuse = page->objects;
+ 	page->frozen = 1;
++
+ out:
 +	if (enableirqs)
- 		local_irq_disable();
- 	if (!page)
- 		return NULL;
-@@ -1392,8 +1403,10 @@ static void setup_object(struct kmem_cache *s, struct page *page,
- 				void *object)
- {
- 	setup_object_debug(s, page, object);
-+#ifndef CONFIG_PREEMPT_RT_FULL
- 	if (unlikely(s->ctor))
- 		s->ctor(object);
-+#endif
++		local_irq_disable();
++	if (!page)
++		return NULL;
++
++	mod_zone_page_state(page_zone(page),
++		(s->flags & SLAB_RECLAIM_ACCOUNT) ?
++		NR_SLAB_RECLAIMABLE : NR_SLAB_UNRECLAIMABLE,
++		1 << oo_order(oo));
++
++	inc_slabs_node(s, page_to_nid(page), page->objects);
++
+ 	return page;
  }
  
- static struct page *new_slab(struct kmem_cache *s, gfp_t flags, int node)
-@@ -1471,6 +1484,16 @@ static void __free_slab(struct kmem_cache *s, struct page *page)
++static struct page *new_slab(struct kmem_cache *s, gfp_t flags, int node)
++{
++	if (unlikely(flags & GFP_SLAB_BUG_MASK)) {
++		pr_emerg("gfp: %u\n", flags & GFP_SLAB_BUG_MASK);
++		BUG();
++	}
++
++	return allocate_slab(s,
++		flags & (GFP_RECLAIM_MASK | GFP_CONSTRAINT_MASK), node);
++}
++
+ static void __free_slab(struct kmem_cache *s, struct page *page)
+ {
+ 	int order = compound_order(page);
+@@ -1471,6 +1480,16 @@ static void __free_slab(struct kmem_cache *s, struct page *page)
  	__free_memcg_kmem_pages(page, order);
  }
  
@@ -25961,7 +26101,7 @@ index 7611f14..93eeaca 100644
  #define need_reserve_slab_rcu						\
  	(sizeof(((struct page *)NULL)->lru) < sizeof(struct rcu_head))
  
-@@ -1505,6 +1528,12 @@ static void free_slab(struct kmem_cache *s, struct page *page)
+@@ -1505,6 +1524,12 @@ static void free_slab(struct kmem_cache *s, struct page *page)
  		}
  
  		call_rcu(head, rcu_free_slab);
@@ -25974,7 +26114,7 @@ index 7611f14..93eeaca 100644
  	} else
  		__free_slab(s, page);
  }
-@@ -1618,7 +1647,7 @@ static void *get_partial_node(struct kmem_cache *s, struct kmem_cache_node *n,
+@@ -1618,7 +1643,7 @@ static void *get_partial_node(struct kmem_cache *s, struct kmem_cache_node *n,
  	if (!n || !n->nr_partial)
  		return NULL;
  
@@ -25983,7 +26123,7 @@ index 7611f14..93eeaca 100644
  	list_for_each_entry_safe(page, page2, &n->partial, lru) {
  		void *t;
  
-@@ -1643,7 +1672,7 @@ static void *get_partial_node(struct kmem_cache *s, struct kmem_cache_node *n,
+@@ -1643,7 +1668,7 @@ static void *get_partial_node(struct kmem_cache *s, struct kmem_cache_node *n,
  			break;
  
  	}
@@ -25992,7 +26132,7 @@ index 7611f14..93eeaca 100644
  	return object;
  }
  
-@@ -1884,7 +1913,7 @@ redo:
+@@ -1884,7 +1909,7 @@ redo:
  			 * that acquire_slab() will see a slab page that
  			 * is frozen
  			 */
@@ -26001,7 +26141,7 @@ index 7611f14..93eeaca 100644
  		}
  	} else {
  		m = M_FULL;
-@@ -1895,7 +1924,7 @@ redo:
+@@ -1895,7 +1920,7 @@ redo:
  			 * slabs from diagnostic functions will not see
  			 * any frozen slabs.
  			 */
@@ -26010,7 +26150,7 @@ index 7611f14..93eeaca 100644
  		}
  	}
  
-@@ -1930,7 +1959,7 @@ redo:
+@@ -1930,7 +1955,7 @@ redo:
  		goto redo;
  
  	if (lock)
@@ -26019,7 +26159,7 @@ index 7611f14..93eeaca 100644
  
  	if (m == M_FREE) {
  		stat(s, DEACTIVATE_EMPTY);
-@@ -1962,10 +1991,10 @@ static void unfreeze_partials(struct kmem_cache *s,
+@@ -1962,10 +1987,10 @@ static void unfreeze_partials(struct kmem_cache *s,
  		n2 = get_node(s, page_to_nid(page));
  		if (n != n2) {
  			if (n)
@@ -26032,7 +26172,7 @@ index 7611f14..93eeaca 100644
  		}
  
  		do {
-@@ -1994,7 +2023,7 @@ static void unfreeze_partials(struct kmem_cache *s,
+@@ -1994,7 +2019,7 @@ static void unfreeze_partials(struct kmem_cache *s,
  	}
  
  	if (n)
@@ -26041,7 +26181,7 @@ index 7611f14..93eeaca 100644
  
  	while (discard_page) {
  		page = discard_page;
-@@ -2032,14 +2061,21 @@ static void put_cpu_partial(struct kmem_cache *s, struct page *page, int drain)
+@@ -2032,14 +2057,21 @@ static void put_cpu_partial(struct kmem_cache *s, struct page *page, int drain)
  			pobjects = oldpage->pobjects;
  			pages = oldpage->pages;
  			if (drain && pobjects > s->cpu_partial) {
@@ -26063,7 +26203,7 @@ index 7611f14..93eeaca 100644
  				oldpage = NULL;
  				pobjects = 0;
  				pages = 0;
-@@ -2103,7 +2139,22 @@ static bool has_cpu_slab(int cpu, void *info)
+@@ -2103,7 +2135,22 @@ static bool has_cpu_slab(int cpu, void *info)
  
  static void flush_all(struct kmem_cache *s)
  {
@@ -26086,7 +26226,7 @@ index 7611f14..93eeaca 100644
  }
  
  /*
-@@ -2131,10 +2182,10 @@ static unsigned long count_partial(struct kmem_cache_node *n,
+@@ -2131,10 +2178,10 @@ static unsigned long count_partial(struct kmem_cache_node *n,
  	unsigned long x = 0;
  	struct page *page;
  
@@ -26099,7 +26239,7 @@ index 7611f14..93eeaca 100644
  	return x;
  }
  
-@@ -2277,9 +2328,11 @@ static inline void *get_freelist(struct kmem_cache *s, struct page *page)
+@@ -2277,9 +2324,11 @@ static inline void *get_freelist(struct kmem_cache *s, struct page *page)
  static void *__slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
  			  unsigned long addr, struct kmem_cache_cpu *c)
  {
@@ -26111,7 +26251,7 @@ index 7611f14..93eeaca 100644
  
  	local_irq_save(flags);
  #ifdef CONFIG_PREEMPT
-@@ -2342,7 +2395,13 @@ load_freelist:
+@@ -2342,7 +2391,13 @@ load_freelist:
  	VM_BUG_ON(!c->page->frozen);
  	c->freelist = get_freepointer(s, freelist);
  	c->tid = next_tid(c->tid);
@@ -26125,7 +26265,7 @@ index 7611f14..93eeaca 100644
  	return freelist;
  
  new_slab:
-@@ -2360,9 +2419,7 @@ new_slab:
+@@ -2360,9 +2415,7 @@ new_slab:
  	if (unlikely(!freelist)) {
  		if (!(gfpflags & __GFP_NOWARN) && printk_ratelimit())
  			slab_out_of_memory(s, gfpflags, node);
@@ -26136,7 +26276,7 @@ index 7611f14..93eeaca 100644
  	}
  
  	page = c->page;
-@@ -2377,8 +2434,7 @@ new_slab:
+@@ -2377,8 +2430,7 @@ new_slab:
  	deactivate_slab(s, page, get_freepointer(s, freelist));
  	c->page = NULL;
  	c->freelist = NULL;
@@ -26146,18 +26286,7 @@ index 7611f14..93eeaca 100644
  }
  
  /*
-@@ -2463,6 +2519,10 @@ redo:
- 
- 	if (unlikely(gfpflags & __GFP_ZERO) && object)
- 		memset(object, 0, s->object_size);
-+#ifdef CONFIG_PREEMPT_RT_FULL
-+	if (unlikely(s->ctor) && object)
-+		s->ctor(object);
-+#endif
- 
- 	slab_post_alloc_hook(s, gfpflags, object);
- 
-@@ -2550,7 +2610,7 @@ static void __slab_free(struct kmem_cache *s, struct page *page,
+@@ -2550,7 +2602,7 @@ static void __slab_free(struct kmem_cache *s, struct page *page,
  
  	do {
  		if (unlikely(n)) {
@@ -26166,7 +26295,7 @@ index 7611f14..93eeaca 100644
  			n = NULL;
  		}
  		prior = page->freelist;
-@@ -2582,7 +2642,7 @@ static void __slab_free(struct kmem_cache *s, struct page *page,
+@@ -2582,7 +2634,7 @@ static void __slab_free(struct kmem_cache *s, struct page *page,
  				 * Otherwise the list_lock will synchronize with
  				 * other processors updating the list of slabs.
  				 */
@@ -26175,7 +26304,7 @@ index 7611f14..93eeaca 100644
  
  			}
  		}
-@@ -2624,7 +2684,7 @@ static void __slab_free(struct kmem_cache *s, struct page *page,
+@@ -2624,7 +2676,7 @@ static void __slab_free(struct kmem_cache *s, struct page *page,
  		add_partial(n, page, DEACTIVATE_TO_TAIL);
  		stat(s, FREE_ADD_PARTIAL);
  	}
@@ -26184,7 +26313,7 @@ index 7611f14..93eeaca 100644
  	return;
  
  slab_empty:
-@@ -2639,7 +2699,7 @@ slab_empty:
+@@ -2639,7 +2691,7 @@ slab_empty:
  		remove_full(s, n, page);
  	}
  
@@ -26193,7 +26322,7 @@ index 7611f14..93eeaca 100644
  	stat(s, FREE_SLAB);
  	discard_slab(s, page);
  }
-@@ -2841,7 +2901,7 @@ static void
+@@ -2841,7 +2893,7 @@ static void
  init_kmem_cache_node(struct kmem_cache_node *n)
  {
  	n->nr_partial = 0;
@@ -26202,7 +26331,7 @@ index 7611f14..93eeaca 100644
  	INIT_LIST_HEAD(&n->partial);
  #ifdef CONFIG_SLUB_DEBUG
  	atomic_long_set(&n->nr_slabs, 0);
-@@ -3431,7 +3491,7 @@ int kmem_cache_shrink(struct kmem_cache *s)
+@@ -3431,7 +3483,7 @@ int kmem_cache_shrink(struct kmem_cache *s)
  		for (i = 0; i < objects; i++)
  			INIT_LIST_HEAD(slabs_by_inuse + i);
  
@@ -26211,7 +26340,7 @@ index 7611f14..93eeaca 100644
  
  		/*
  		 * Build lists indexed by the items in use in each slab.
-@@ -3452,7 +3512,7 @@ int kmem_cache_shrink(struct kmem_cache *s)
+@@ -3452,7 +3504,7 @@ int kmem_cache_shrink(struct kmem_cache *s)
  		for (i = objects - 1; i > 0; i--)
  			list_splice(slabs_by_inuse + i, n->partial.prev);
  
@@ -26220,7 +26349,7 @@ index 7611f14..93eeaca 100644
  
  		/* Release empty slabs */
  		list_for_each_entry_safe(page, t, slabs_by_inuse, lru)
-@@ -3628,6 +3688,12 @@ void __init kmem_cache_init(void)
+@@ -3628,6 +3680,12 @@ void __init kmem_cache_init(void)
  {
  	static __initdata struct kmem_cache boot_kmem_cache,
  		boot_kmem_cache_node;
@@ -26233,7 +26362,7 @@ index 7611f14..93eeaca 100644
  
  	if (debug_guardpage_minorder())
  		slub_max_order = 0;
-@@ -3932,7 +3998,7 @@ static int validate_slab_node(struct kmem_cache *s,
+@@ -3932,7 +3990,7 @@ static int validate_slab_node(struct kmem_cache *s,
  	struct page *page;
  	unsigned long flags;
  
@@ -26242,7 +26371,7 @@ index 7611f14..93eeaca 100644
  
  	list_for_each_entry(page, &n->partial, lru) {
  		validate_slab_slab(s, page, map);
-@@ -3955,7 +4021,7 @@ static int validate_slab_node(struct kmem_cache *s,
+@@ -3955,7 +4013,7 @@ static int validate_slab_node(struct kmem_cache *s,
  			atomic_long_read(&n->nr_slabs));
  
  out:
@@ -26251,7 +26380,7 @@ index 7611f14..93eeaca 100644
  	return count;
  }
  
-@@ -4145,12 +4211,12 @@ static int list_locations(struct kmem_cache *s, char *buf,
+@@ -4145,12 +4203,12 @@ static int list_locations(struct kmem_cache *s, char *buf,
  		if (!atomic_long_read(&n->nr_slabs))
  			continue;
  
@@ -26988,7 +27117,7 @@ index 84a60b8..2fcf842 100644
  		}
  		prb_close_block(pkc, pbd, po, status);
 diff --git a/net/rds/ib_rdma.c b/net/rds/ib_rdma.c
-index e8fdb17..5a44c6e 100644
+index a985158..0f63c71 100644
 --- a/net/rds/ib_rdma.c
 +++ b/net/rds/ib_rdma.c
 @@ -34,6 +34,7 @@
@@ -27134,5 +27263,5 @@ index eed250e..28a7477 100644
  			if (!kvm_vcpu_eligible_for_directed_yield(vcpu))
  				continue;
 -- 
-2.4.6
+2.5.0
 
