@@ -183,11 +183,9 @@ reverts () {
 	${git} "${DIR}/patches/reverts/0006-Revert-drm-Always-enable-atomic-API.patch"
 	${git} "${DIR}/patches/reverts/0007-Revert-drm-omap-Use-destroy-helper-in-plane-reset-ha.patch"
 	${git} "${DIR}/patches/reverts/0008-Revert-drm-omap-add-manager-properties.patch"
-	${git} "${DIR}/patches/reverts/0009-Revert-drm-omap-subclass-drm_crtc_state.patch"
-	${git} "${DIR}/patches/reverts/0010-Revert-drm-omap-add-global-alpha-and-pre-multipled-a.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=10
+		number=8
 		cleanup
 	fi
 }
