@@ -148,15 +148,22 @@ reverts () {
 		start_cleanup
 	fi
 
-	#my major screw up...
-	#${git} "${DIR}/patches/reverts/0001-Revert-ARM-dts-am335x-boneblack-disable-RTC-only-sle.patch"
-
-	${git} "${DIR}/patches/reverts/0002-Revert-spi-spidev-Warn-loudly-if-instantiated-from-D.patch"
+	${git} "${DIR}/patches/reverts/0001-Revert-spi-spidev-Warn-loudly-if-instantiated-from-D.patch"
 	#am335x causing random reboots...
-	${git} "${DIR}/patches/reverts/0003-Revert-usb-musb-dsps-just-start-polling-already.patch"
+	${git} "${DIR}/patches/reverts/0002-Revert-usb-musb-dsps-just-start-polling-already.patch"
+
+	#need to bisect these, as they break video on x15...
+	${git} "${DIR}/patches/reverts/0003-Revert-drm-omap-Use-bitmaps-for-TILER-placement.patch"
+	${git} "${DIR}/patches/reverts/0004-Revert-drm-omap-fix-align_pitch-for-24-bits-per-pixe.patch"
+	${git} "${DIR}/patches/reverts/0005-Revert-drm-omap-remove-extra-drm_gem_free_mmap_offse.patch"
+	${git} "${DIR}/patches/reverts/0006-Revert-drm-Always-enable-atomic-API.patch"
+	${git} "${DIR}/patches/reverts/0007-Revert-drm-omap-Use-destroy-helper-in-plane-reset-ha.patch"
+	${git} "${DIR}/patches/reverts/0008-Revert-drm-omap-add-manager-properties.patch"
+	${git} "${DIR}/patches/reverts/0009-Revert-drm-omap-subclass-drm_crtc_state.patch"
+	${git} "${DIR}/patches/reverts/0010-Revert-drm-omap-add-global-alpha-and-pre-multipled-a.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=10
 		cleanup
 	fi
 }

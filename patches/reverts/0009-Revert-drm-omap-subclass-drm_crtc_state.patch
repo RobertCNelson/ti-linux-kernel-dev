@@ -1,0 +1,112 @@
+From c0e68f332870cab123ced115de186e61188ad4cb Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Mon, 24 Aug 2015 14:23:26 -0500
+Subject: [PATCH 09/10] Revert "drm/omap: subclass drm_crtc_state"
+
+This reverts commit 9ce386c2a47e7ecd2326263a3fe460f3a3c93e39.
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/gpu/drm/omapdrm/omap_crtc.c | 61 ++-----------------------------------
+ 1 file changed, 3 insertions(+), 58 deletions(-)
+
+diff --git a/drivers/gpu/drm/omapdrm/omap_crtc.c b/drivers/gpu/drm/omapdrm/omap_crtc.c
+index 69825ba..4484e6c 100644
+--- a/drivers/gpu/drm/omapdrm/omap_crtc.c
++++ b/drivers/gpu/drm/omapdrm/omap_crtc.c
+@@ -53,16 +53,6 @@ struct omap_crtc {
+ 	wait_queue_head_t pending_wait;
+ };
+ 
+-struct omap_crtc_state {
+-	struct drm_crtc_state base;
+-};
+-
+-static inline struct omap_crtc_state *
+-to_omap_crtc_state(struct drm_crtc_state *state)
+-{
+-	return container_of(state, struct omap_crtc_state, base);
+-}
+-
+ /* -----------------------------------------------------------------------------
+  * Helper Functions
+  */
+@@ -342,25 +332,6 @@ static void omap_crtc_vblank_irq(struct omap_drm_irq *irq, uint32_t irqstatus)
+  * CRTC Functions
+  */
+ 
+-static void omap_crtc_reset(struct drm_crtc *crtc)
+-{
+-	struct omap_crtc_state *omap_state;
+-
+-	if (crtc->state) {
+-		__drm_atomic_helper_crtc_destroy_state(crtc, crtc->state);
+-
+-		kfree(crtc->state);
+-		crtc->state = NULL;
+-	}
+-
+-	omap_state = kzalloc(sizeof(*omap_state), GFP_KERNEL);
+-	if (omap_state == NULL)
+-		return;
+-
+-	crtc->state = &omap_state->base;
+-	crtc->state->crtc = crtc;
+-}
+-
+ static void omap_crtc_destroy(struct drm_crtc *crtc)
+ {
+ 	struct omap_crtc *omap_crtc = to_omap_crtc(crtc);
+@@ -449,32 +420,6 @@ static void omap_crtc_atomic_flush(struct drm_crtc *crtc)
+ 				    (BIT(DRM_ROTATE_90) | BIT(DRM_ROTATE_270)));
+ }
+ 
+-static struct drm_crtc_state *
+-omap_crtc_atomic_duplicate_state(struct drm_crtc *crtc)
+-{
+-	struct omap_crtc_state *state;
+-	struct omap_crtc_state *copy;
+-
+-	if (WARN_ON(!crtc->state))
+-		return NULL;
+-
+-	state = to_omap_crtc_state(crtc->state);
+-	copy = kmemdup(state, sizeof(*state), GFP_KERNEL);
+-	if (copy == NULL)
+-		return NULL;
+-
+-	__drm_atomic_helper_crtc_duplicate_state(crtc, &copy->base);
+-
+-	return &copy->base;
+-}
+-
+-static void omap_crtc_atomic_destroy_state(struct drm_crtc *crtc,
+-					   struct drm_crtc_state *state)
+-{
+-	__drm_atomic_helper_crtc_destroy_state(crtc, state);
+-	kfree(to_omap_crtc_state(state));
+-}
+-
+ static int omap_crtc_atomic_set_property(struct drm_crtc *crtc,
+ 					 struct drm_crtc_state *state,
+ 					 struct drm_property *property,
+@@ -511,13 +456,13 @@ static int omap_crtc_atomic_get_property(struct drm_crtc *crtc,
+ }
+ 
+ static const struct drm_crtc_funcs omap_crtc_funcs = {
+-	.reset = omap_crtc_reset,
++	.reset = drm_atomic_helper_crtc_reset,
+ 	.set_config = drm_atomic_helper_set_config,
+ 	.destroy = omap_crtc_destroy,
+ 	.page_flip = drm_atomic_helper_page_flip,
+ 	.set_property = drm_atomic_helper_crtc_set_property,
+-	.atomic_duplicate_state = omap_crtc_atomic_duplicate_state,
+-	.atomic_destroy_state = omap_crtc_atomic_destroy_state,
++	.atomic_duplicate_state = drm_atomic_helper_crtc_duplicate_state,
++	.atomic_destroy_state = drm_atomic_helper_crtc_destroy_state,
+ 	.atomic_set_property = omap_crtc_atomic_set_property,
+ 	.atomic_get_property = omap_crtc_atomic_get_property,
+ };
+-- 
+2.5.0
+
