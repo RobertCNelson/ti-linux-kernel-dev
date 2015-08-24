@@ -1137,6 +1137,7 @@ config="CONFIG_WKUP_M3_RPROC" ; config_enable
 # Rpmsg drivers
 #
 config="CONFIG_RPMSG" ; config_module
+config="CONFIG_RPMSG_RPC" ; config_module
 
 #
 # SOC (System On Chip) specific Drivers
