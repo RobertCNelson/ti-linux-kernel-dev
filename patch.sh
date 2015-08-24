@@ -143,7 +143,7 @@ external_git
 
 reverts () {
 	echo "dir: reverts"
-	regenerate="enable"
+	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
