@@ -1,0 +1,117 @@
+From 3a130584cba381ee7dfdb5e4057b7781f6ec3c64 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Mon, 24 Aug 2015 14:23:27 -0500
+Subject: [PATCH 10/10] Revert "drm/omap: add global alpha and pre multipled
+ alpha props"
+
+This reverts commit 4f05988b7e18193dbd78139dc9955594cacd7485.
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/gpu/drm/omapdrm/omap_drv.c   | 10 ----------
+ drivers/gpu/drm/omapdrm/omap_drv.h   |  2 --
+ drivers/gpu/drm/omapdrm/omap_plane.c | 17 +----------------
+ 3 files changed, 1 insertion(+), 28 deletions(-)
+
+diff --git a/drivers/gpu/drm/omapdrm/omap_drv.c b/drivers/gpu/drm/omapdrm/omap_drv.c
+index b52ad52..864db1e 100644
+--- a/drivers/gpu/drm/omapdrm/omap_drv.c
++++ b/drivers/gpu/drm/omapdrm/omap_drv.c
+@@ -344,16 +344,6 @@ static int omap_modeset_init_properties(struct drm_device *dev)
+ 	if (!priv->zorder_prop)
+ 		return -ENOMEM;
+ 
+-	priv->global_alpha_prop = drm_property_create_range(dev, 0,
+-		"global_alpha", 0, 255);
+-	if (!priv->global_alpha_prop)
+-		return -ENOMEM;
+-
+-	priv->pre_mult_alpha_prop = drm_property_create_bool(dev, 0,
+-		"pre_mult_alpha");
+-	if (!priv->pre_mult_alpha_prop)
+-		return -ENOMEM;
+-
+ 	return 0;
+ }
+ 
+diff --git a/drivers/gpu/drm/omapdrm/omap_drv.h b/drivers/gpu/drm/omapdrm/omap_drv.h
+index 48fa99c..1ae8477 100644
+--- a/drivers/gpu/drm/omapdrm/omap_drv.h
++++ b/drivers/gpu/drm/omapdrm/omap_drv.h
+@@ -101,8 +101,6 @@ struct omap_drm_private {
+ 
+ 	/* properties: */
+ 	struct drm_property *zorder_prop;
+-	struct drm_property *global_alpha_prop;
+-	struct drm_property *pre_mult_alpha_prop;
+ 
+ 	/* irq handling: */
+ 	struct list_head irq_list;    /* list of omap_drm_irq */
+diff --git a/drivers/gpu/drm/omapdrm/omap_plane.c b/drivers/gpu/drm/omapdrm/omap_plane.c
+index ec29b1c..0989046 100644
+--- a/drivers/gpu/drm/omapdrm/omap_plane.c
++++ b/drivers/gpu/drm/omapdrm/omap_plane.c
+@@ -51,8 +51,6 @@ struct omap_plane_state {
+ 	struct drm_plane_state base;
+ 
+ 	unsigned int zorder;
+-	unsigned int global_alpha;
+-	unsigned int pre_mult_alpha;
+ };
+ 
+ static inline struct omap_plane_state *
+@@ -90,10 +88,9 @@ static void omap_plane_atomic_update(struct drm_plane *plane,
+ 	memset(&info, 0, sizeof(info));
+ 	info.rotation_type = OMAP_DSS_ROT_DMA;
+ 	info.rotation = OMAP_DSS_ROT_0;
++	info.global_alpha = 0xff;
+ 	info.mirror = 0;
+ 	info.zorder = omap_state->zorder;
+-	info.global_alpha = omap_state->global_alpha;
+-	info.pre_mult_alpha = omap_state->pre_mult_alpha;
+ 
+ 	memset(&win, 0, sizeof(win));
+ 	win.rotation = state->rotation;
+@@ -211,8 +208,6 @@ static void omap_plane_reset(struct drm_plane *plane)
+ 	omap_state->zorder = plane->type == DRM_PLANE_TYPE_PRIMARY
+ 			   ? 0 : omap_plane->id;
+ 	omap_state->base.rotation = BIT(DRM_ROTATE_0);
+-	omap_state->global_alpha = 0xff;
+-	omap_state->pre_mult_alpha = 0;
+ 
+ 	plane->state = &omap_state->base;
+ 	plane->state->plane = plane;
+@@ -245,8 +240,6 @@ void omap_plane_install_properties(struct drm_plane *plane,
+ 	}
+ 
+ 	drm_object_attach_property(obj, priv->zorder_prop, 0);
+-	drm_object_attach_property(obj, priv->global_alpha_prop, 0);
+-	drm_object_attach_property(obj, priv->pre_mult_alpha_prop, 0);
+ }
+ 
+ static struct drm_plane_state *
+@@ -285,10 +278,6 @@ static int omap_plane_atomic_set_property(struct drm_plane *plane,
+ 
+ 	if (property == priv->zorder_prop)
+ 		omap_state->zorder = val;
+-	else if (property == priv->global_alpha_prop)
+-		omap_state->global_alpha = val;
+-	else if (property == priv->pre_mult_alpha_prop)
+-		omap_state->pre_mult_alpha = val;
+ 	else
+ 		return -EINVAL;
+ 
+@@ -306,10 +295,6 @@ static int omap_plane_atomic_get_property(struct drm_plane *plane,
+ 
+ 	if (property == priv->zorder_prop)
+ 		*val = omap_state->zorder;
+-	else if (property == priv->global_alpha_prop)
+-		*val = omap_state->global_alpha;
+-	else if (property == priv->pre_mult_alpha_prop)
+-		*val = omap_state->pre_mult_alpha;
+ 	else
+ 		return -EINVAL;
+ 
+-- 
+2.5.0
+
