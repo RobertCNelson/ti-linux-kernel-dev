@@ -176,16 +176,11 @@ reverts () {
 	#am335x causing random reboots...
 	${git} "${DIR}/patches/reverts/0002-Revert-usb-musb-dsps-just-start-polling-already.patch"
 
-	#need to bisect these, as they break video on x15...
-	${git} "${DIR}/patches/reverts/0003-Revert-drm-omap-Use-bitmaps-for-TILER-placement.patch"
-	${git} "${DIR}/patches/reverts/0004-Revert-drm-omap-fix-align_pitch-for-24-bits-per-pixe.patch"
-	${git} "${DIR}/patches/reverts/0005-Revert-drm-omap-remove-extra-drm_gem_free_mmap_offse.patch"
-	${git} "${DIR}/patches/reverts/0006-Revert-drm-Always-enable-atomic-API.patch"
-	${git} "${DIR}/patches/reverts/0007-Revert-drm-omap-Use-destroy-helper-in-plane-reset-ha.patch"
-	${git} "${DIR}/patches/reverts/0008-Revert-drm-omap-add-manager-properties.patch"
+	#this commit breaks video on x15...
+	${git} "${DIR}/patches/reverts/0003-Revert-drm-omap-add-manager-properties.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=8
+		number=3
 		cleanup
 	fi
 }
