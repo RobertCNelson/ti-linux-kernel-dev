@@ -152,11 +152,8 @@ reverts () {
 	#am335x causing random reboots...
 	${git} "${DIR}/patches/reverts/0002-Revert-usb-musb-dsps-just-start-polling-already.patch"
 
-	#this commit breaks video on x15...
-	${git} "${DIR}/patches/reverts/0003-Revert-drm-omap-add-manager-properties.patch"
-
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=2
 		cleanup
 	fi
 }
@@ -185,6 +182,8 @@ fixes () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
+
+	${git} "${DIR}/patches/fixes/0001-omapdrm-omap_crtc_atomic_set_property-dont-EINVAL.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
@@ -552,7 +551,7 @@ sgx_am5 () {
 ###
 reverts
 backports
-#fixes
+fixes
 pru
 bbb_overlays
 beaglebone
