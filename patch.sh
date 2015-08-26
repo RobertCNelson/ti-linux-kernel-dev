@@ -207,7 +207,8 @@ fixes () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/fixes/0001-omapdrm-omap_crtc_atomic_set_property-dont-EINVAL.patch"
+	${git} "${DIR}/patches/fixes/0001-drm-omap-fix-props.patch"
+	${git} "${DIR}/patches/fixes/0002-drm-omap-check-if-rotation-is-supported.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
