@@ -183,9 +183,6 @@ fixes () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/fixes/0001-drm-omap-fix-props.patch"
-	${git} "${DIR}/patches/fixes/0002-drm-omap-check-if-rotation-is-supported.patch"
-
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
@@ -510,6 +507,28 @@ quieter () {
 	fi
 }
 
+sgx () {
+	echo "dir: sgx"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/sgx/0001-DT-gpu-add-binding-for-TI-SGX-driver.patch"
+	${git} "${DIR}/patches/sgx/0002-ARM-dts-DRA7xx-add-device-tree-entry-for-SGX.patch"
+	${git} "${DIR}/patches/sgx/0003-arm-dra7xx-Add-gpu-hwmod-data.patch"
+	${git} "${DIR}/patches/sgx/0004-drm-omap-Add-omapdrm-plugin-API.patch"
+	${git} "${DIR}/patches/sgx/0005-arm-Export-cache-flush-management-symbols-when-MULTI.patch"
+	${git} "${DIR}/patches/sgx/0006-ARM-dts-am33xx-add-DT-node-for-gpu.patch"
+	${git} "${DIR}/patches/sgx/0007-ARM-dts-am437x-add-DT-node-for-gpu.patch"
+	${git} "${DIR}/patches/sgx/0008-ARM-OMAP2-Use-pdata-quirks-for-sgx-deassert_hardrese.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=8
+		cleanup
+	fi
+}
+
 sgx_am3 () {
 	echo "dir: sgx_am3"
 	#regenerate="enable"
@@ -552,13 +571,14 @@ sgx_am5 () {
 ###
 reverts
 backports
-fixes
+#fixes
 pru
 bbb_overlays
 beaglebone
 quieter
-sgx_am3
-sgx_am5
+sgx
+#sgx_am3
+#sgx_am5
 
 packaging () {
 	echo "dir: packaging"
