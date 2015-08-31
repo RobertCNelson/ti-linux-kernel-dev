@@ -124,11 +124,19 @@ config="CONFIG_OMAP5_ERRATA_801819" ; config_enable
 # TI Audio/Display config options
 ##################################################
 
+CONFIG_LEDS_CLASS=y
+CONFIG_LEDS_TLC591XX=y
+
+config="CONFIG_LEDS_CLASS" ; config_enable
+config="CONFIG_LEDS_TLC591XX" ; config_enable
+
 CONFIG_BACKLIGHT_PWM=y
 CONFIG_BACKLIGHT_GPIO=y
+CONFIG_BACKLIGHT_LED=y
 
 config="CONFIG_BACKLIGHT_PWM" ; config_enable
 config="CONFIG_BACKLIGHT_GPIO" ; config_enable
+config="CONFIG_BACKLIGHT_LED" ; config_enable
 
 CONFIG_DRM=y
 CONFIG_DRM_I2C_NXP_TDA998X=y
@@ -160,6 +168,7 @@ CONFIG_DISPLAY_CONNECTOR_HDMI=y
 CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015=y
 CONFIG_DISPLAY_ENCODER_TPD12S015=y
 CONFIG_DISPLAY_ENCODER_SII9022=y
+CONFIG_DISPLAY_ENCODER_TC358768=y
 
 config="CONFIG_DISPLAY_PANEL_DPI" ; config_enable
 config="CONFIG_DISPLAY_PANEL_TLC59108" ; config_enable
@@ -167,6 +176,7 @@ config="CONFIG_DISPLAY_CONNECTOR_HDMI" ; config_enable
 config="CONFIG_DISPLAY_DRA7EVM_ENCODER_TPD12S015" ; config_enable
 config="CONFIG_DISPLAY_ENCODER_TPD12S015" ; config_enable
 config="CONFIG_DISPLAY_ENCODER_SII9022" ; config_enable
+config="CONFIG_DISPLAY_ENCODER_TC358768" ; config_enable
 
 CONFIG_CMA_SIZE_MBYTES=24
 
@@ -330,6 +340,14 @@ config="CONFIG_GPIO_PCF857X" ; config_enable
 #PCIe
 CONFIG_PCI=y
 CONFIG_PCI_DRA7XX=y
+CONFIG_PHY_TI_KEYSTONE_SERDES=y
+#These drivers have been used with DRA7x/AM57x PCIe RC with some success
+CONFIG_TIGON3=m
+CONFIG_SKGE=m
+CONFIG_E1000=m
+CONFIG_E1000E=m
+CONFIG_IWLWIFI=m
+CONFIG_IWLDVM=m
 
 #SATA
 CONFIG_AHCI=m
@@ -360,6 +378,13 @@ config="CONFIG_CAN" ; config_module
 config="CONFIG_CAN_C_CAN" ; config_module
 config="CONFIG_CAN_C_CAN_PLATFORM" ; config_module
 
+#USB MUSB DMA
+CONFIG_TI_CPPI41=y
+CONFIG_USB_TI_CPPI41_DMA=y
+
+config="CONFIG_TI_CPPI41" ; config_enable
+config="CONFIG_USB_TI_CPPI41_DMA" ; config_enable
+
 ##################################################
 # TI RPMsg/IPC Config Options
 ##################################################
@@ -367,6 +392,33 @@ config="CONFIG_CAN_C_CAN_PLATFORM" ; config_module
 CONFIG_HWSPINLOCK_OMAP=y
 
 config="CONFIG_HWSPINLOCK_OMAP" ; config_enable
+
+# Mailbox
+CONFIG_OMAP2PLUS_MBOX=y
+
+config="CONFIG_OMAP2PLUS_MBOX" ; config_enable
+
+# IOMMU
+CONFIG_IOMMU_SUPPORT=y
+CONFIG_OMAP_IOMMU=y
+CONFIG_OMAP_IOMMU_DEBUG=y
+
+config="CONFIG_IOMMU_SUPPORT" ; config_enable
+config="CONFIG_OMAP_IOMMU" ; config_enable
+config="CONFIG_OMAP_IOMMU_DEBUG" ; config_enable
+
+# Remoteproc
+CONFIG_OMAP_REMOTEPROC=m
+CONFIG_OMAP_REMOTEPROC_WATCHDOG=y
+
+config="CONFIG_OMAP_REMOTEPROC" ; config_module
+config="CONFIG_OMAP_REMOTEPROC_WATCHDOG" ; config_enable
+
+# RPMsg
+CONFIG_RPMSG_RPC=m
+
+config="CONFIG_RPMSG_RPC" ; config_module
+
 
 #exit
 echo "our defaults"
@@ -436,10 +488,9 @@ config="CONFIG_ARM_ERRATA_773022" ; config_disable
 #
 # Bus support
 #
-config="CONFIG_PCI" ; config_disable
-config="CONFIG_PCI_SYSCALL" ; config_disable
-
 #first check..
+#config="CONFIG_PCI" ; config_disable
+#config="CONFIG_PCI_SYSCALL" ; config_disable
 #exit
 
 #PCIe
@@ -447,7 +498,13 @@ CONFIG_PCI=y
 CONFIG_PCI_DRA7XX=y
 config="CONFIG_PCI" ; config_enable
 config="CONFIG_PCI_DRA7XX" ; config_enable
+#These drivers have been used with DRA7x/AM57x PCIe RC with some success
+config="CONFIG_TIGON3" ; config_module
+config="CONFIG_SKGE" ; config_module
+config="CONFIG_E1000" ; config_module
+config="CONFIG_E1000E" ; config_module
 config="CONFIG_IWLWIFI" ; config_module
+config="CONFIG_IWLDVM" ; config_module
 
 #
 # Kernel Features
@@ -1132,6 +1189,7 @@ config="CONFIG_REMOTEPROC" ; config_enable
 config="CONFIG_OMAP_REMOTEPROC" ; config_module
 config="CONFIG_OMAP_REMOTEPROC_WATCHDOG" ; config_enable
 config="CONFIG_WKUP_M3_RPROC" ; config_enable
+config="CONFIG_PRUSS_REMOTEPROC" ; config_module
 
 #
 # Rpmsg drivers
