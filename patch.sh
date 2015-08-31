@@ -437,6 +437,9 @@ beaglebone () {
 		device="am335x-bonegreen.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
+		#Just temp, while i wait for a an es2.x version...
+		device="am57xx-beagle-x15-alpha.dtb" ; dtb_makefile_append
+
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
 		exit 2
