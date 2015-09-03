@@ -541,59 +541,16 @@ sgx () {
 		start_cleanup
 	fi
 
-#	${git} "${DIR}/patches/sgx/0001-DT-gpu-add-binding-for-TI-SGX-driver.patch"
-#	${git} "${DIR}/patches/sgx/0002-ARM-dts-DRA7xx-add-device-tree-entry-for-SGX.patch"
-#	${git} "${DIR}/patches/sgx/0003-arm-dra7xx-Add-gpu-hwmod-data.patch"
-#	${git} "${DIR}/patches/sgx/0004-drm-omap-Add-omapdrm-plugin-API.patch"
-	${git} "${DIR}/patches/sgx/0005-arm-Export-cache-flush-management-symbols-when-MULTI.patch"
-	${git} "${DIR}/patches/sgx/0006-ARM-dts-am33xx-add-DT-node-for-gpu.patch"
-	${git} "${DIR}/patches/sgx/0007-ARM-dts-am437x-add-DT-node-for-gpu.patch"
-	${git} "${DIR}/patches/sgx/0008-ARM-OMAP2-Use-pdata-quirks-for-sgx-deassert_hardrese.patch"
+	${git} "${DIR}/patches/sgx/0001-arm-Export-cache-flush-management-symbols-when-MULTI.patch"
+	${git} "${DIR}/patches/sgx/0002-ARM-dts-am33xx-add-DT-node-for-gpu.patch"
+	${git} "${DIR}/patches/sgx/0003-ARM-dts-am437x-add-DT-node-for-gpu.patch"
+	${git} "${DIR}/patches/sgx/0004-ARM-OMAP2-Use-pdata-quirks-for-sgx-deassert_hardrese.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=8
+		number=4
 		cleanup
 	fi
 }
-
-sgx_am3 () {
-	echo "dir: sgx_am3"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/sgx_am3/0001-HACK-drm-fb_helper-enable-panning-support.patch"
-	${git} "${DIR}/patches/sgx_am3/0002-HACK-drm-tilcdc-add-vsync-callback-for-use-in-omaplf.patch"
-	${git} "${DIR}/patches/sgx_am3/0003-ARM-OMAP2-Use-pdata-quirks-for-sgx-deassert_hardrese.patch"
-	${git} "${DIR}/patches/sgx_am3/0004-ARM-dts-am33xx-add-DT-node-for-gpu.patch"
-	${git} "${DIR}/patches/sgx_am3/0005-arm-Export-cache-flush-management-symbols-when-MULTI.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
-		cleanup
-	fi
-}
-
-sgx_am5 () {
-	echo "dir: sgx_am5"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/sgx_am5/0001-DT-gpu-add-binding-for-TI-SGX-driver.patch"
-	${git} "${DIR}/patches/sgx_am5/0002-ARM-dts-DRA7xx-add-gpu-interface-clock.patch"
-	${git} "${DIR}/patches/sgx_am5/0003-ARM-dts-DRA7xx-add-device-tree-entry-for-SGX.patch"
-	${git} "${DIR}/patches/sgx_am5/0004-arm-dra7xx-Add-gpu-hwmod-data.patch"
-	${git} "${DIR}/patches/sgx_am5/0005-drm-omap-Add-omapdrm-plugin-API.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
-		cleanup
-	fi
-}
-
 
 ###
 rt
@@ -605,8 +562,6 @@ bbb_overlays
 beaglebone
 quieter
 sgx
-#sgx_am3
-#sgx_am5
 
 packaging () {
 	echo "dir: packaging"
