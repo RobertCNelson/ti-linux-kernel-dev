@@ -342,6 +342,9 @@ CONFIG_PCI=y
 CONFIG_PCI_DRA7XX=y
 CONFIG_PHY_TI_KEYSTONE_SERDES=y
 #These drivers have been used with DRA7x/AM57x PCIe RC with some success
+CONFIG_NET_VENDOR_BROADCOM=y
+CONFIG_NET_VENDOR_MARVELL=y
+CONFIG_NET_VENDOR_INTEL=y
 CONFIG_TIGON3=m
 CONFIG_SKGE=m
 CONFIG_E1000=m
@@ -499,6 +502,9 @@ CONFIG_PCI_DRA7XX=y
 config="CONFIG_PCI" ; config_enable
 config="CONFIG_PCI_DRA7XX" ; config_enable
 #These drivers have been used with DRA7x/AM57x PCIe RC with some success
+config="CONFIG_NET_VENDOR_BROADCOM" ; config_enable
+config="CONFIG_NET_VENDOR_MARVELL" ; config_enable
+config="CONFIG_NET_VENDOR_INTEL" ; config_enable
 config="CONFIG_TIGON3" ; config_module
 config="CONFIG_SKGE" ; config_module
 config="CONFIG_E1000" ; config_module
