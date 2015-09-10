@@ -133,14 +133,6 @@ external_git () {
 	fi
 }
 
-local_patch () {
-	echo "dir: dir"
-	${git} "${DIR}/patches/dir/0001-patch.patch"
-}
-
-external_git
-#local_patch
-
 rt_cleanup () {
 	echo "Fixing: drivers/gpio/gpio-omap.c"
 	sed -i -e 's/\<spin_lock_irqsave\>/raw_spin_lock_irqsave/g' drivers/gpio/gpio-omap.c
@@ -150,20 +142,32 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-	rt_patch="4.1.5-rt5"
+	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/4.1/patch-${rt_patch}.patch.xz
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
-		rm -rf patch-${rt_patch}.patch.xz
+		rm -f patch-${rt_patch}.patch.xz
+		rm -f localversion-rt
+		git add .
+		git commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
+		git format-patch -1 -o ../patches/rt/
 
-		sed -i -e 's:rt3:rt5:g' ../patches/rt/0002-rt-we-append-rt-on-our-own.patch
 		exit 2
 	fi
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 	${git} "${DIR}/patches/rt/0002-rt-we-append-rt-on-our-own.patch"
 }
+
+local_patch () {
+	echo "dir: dir"
+	${git} "${DIR}/patches/dir/0001-patch.patch"
+}
+
+external_git
+rt
+#local_patch
 
 reverts () {
 	echo "dir: reverts"
@@ -532,7 +536,6 @@ quieter () {
 }
 
 ###
-rt
 reverts
 backports
 #fixes
@@ -548,19 +551,9 @@ packaging () {
 		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
 		git commit -a -m 'packaging: sync builddeb changes' -s
 		git format-patch -1 -o "${DIR}/patches/packaging"
+		exit 2
 	else
 		${git} "${DIR}/patches/packaging/0001-packaging-sync-builddeb-changes.patch"
-	fi
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	#${git} "${DIR}/patches/packaging/0002-deb-pkg-no-dtbs_install.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
 	fi
 }
 
