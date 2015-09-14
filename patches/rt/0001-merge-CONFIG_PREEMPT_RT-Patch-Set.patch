@@ -1,6 +1,6 @@
-From ab0ebe1db53e878bc188e1df7c52bfc43cfaa933 Mon Sep 17 00:00:00 2001
+From 360da6a7ca92029492ed538c62faa4b44c74715f Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 18 Aug 2015 11:15:47 -0500
+Date: Mon, 14 Sep 2015 13:26:09 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -381,7 +381,6 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  lib/radix-tree.c                                   |    5 +-
  lib/scatterlist.c                                  |    6 +-
  lib/smp_processor_id.c                             |    6 +-
- localversion-rt                                    |    1 +
  mm/Kconfig                                         |    2 +-
  mm/bounce.c                                        |    4 +-
  mm/highmem.c                                       |    6 +-
@@ -409,7 +408,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  scripts/mkcompile_h                                |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 404 files changed, 12094 insertions(+), 2195 deletions(-)
+ 403 files changed, 12093 insertions(+), 2195 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 arch/x86/include/asm/irq_work.h
@@ -432,7 +431,6 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 kernel/sched/wait-simple.c
  create mode 100644 kernel/sched/work-simple.c
  create mode 100644 kernel/trace/latency_hist.c
- create mode 100644 localversion-rt
 
 diff --git a/Documentation/hwlat_detector.txt b/Documentation/hwlat_detector.txt
 new file mode 100644
@@ -7405,10 +7403,10 @@ index 34a1b1f..d911312 100644
  	list_for_each_entry_safe(fcf, next, &del_list, list) {
  		/* Removes fcf from current list */
 diff --git a/drivers/scsi/libfc/fc_exch.c b/drivers/scsi/libfc/fc_exch.c
-index 1b3a094..50af66a 100644
+index 30f9ef0..6c686bc 100644
 --- a/drivers/scsi/libfc/fc_exch.c
 +++ b/drivers/scsi/libfc/fc_exch.c
-@@ -816,10 +816,10 @@ static struct fc_exch *fc_exch_em_alloc(struct fc_lport *lport,
+@@ -814,10 +814,10 @@ static struct fc_exch *fc_exch_em_alloc(struct fc_lport *lport,
  	}
  	memset(ep, 0, sizeof(*ep));
  
@@ -12438,10 +12436,10 @@ index 6498531..0ab7483 100644
  }
  
 diff --git a/ipc/sem.c b/ipc/sem.c
-index bee5554..e5e3716 100644
+index e53c96f..b77d639 100644
 --- a/ipc/sem.c
 +++ b/ipc/sem.c
-@@ -667,6 +667,13 @@ undo:
+@@ -683,6 +683,13 @@ undo:
  static void wake_up_sem_queue_prepare(struct list_head *pt,
  				struct sem_queue *q, int error)
  {
@@ -12455,7 +12453,7 @@ index bee5554..e5e3716 100644
  	if (list_empty(pt)) {
  		/*
  		 * Hold preempt off so that we don't get preempted and have the
-@@ -678,6 +685,7 @@ static void wake_up_sem_queue_prepare(struct list_head *pt,
+@@ -694,6 +701,7 @@ static void wake_up_sem_queue_prepare(struct list_head *pt,
  	q->pid = error;
  
  	list_add_tail(&q->list, pt);
@@ -12463,7 +12461,7 @@ index bee5554..e5e3716 100644
  }
  
  /**
-@@ -691,6 +699,7 @@ static void wake_up_sem_queue_prepare(struct list_head *pt,
+@@ -707,6 +715,7 @@ static void wake_up_sem_queue_prepare(struct list_head *pt,
   */
  static void wake_up_sem_queue_do(struct list_head *pt)
  {
@@ -12471,7 +12469,7 @@ index bee5554..e5e3716 100644
  	struct sem_queue *q, *t;
  	int did_something;
  
-@@ -703,6 +712,7 @@ static void wake_up_sem_queue_do(struct list_head *pt)
+@@ -719,6 +728,7 @@ static void wake_up_sem_queue_do(struct list_head *pt)
  	}
  	if (did_something)
  		preempt_enable();
@@ -12979,10 +12977,10 @@ index 14ff484..399dba6 100644
  	return r;
  }
 diff --git a/kernel/events/core.c b/kernel/events/core.c
-index 60146fe..2c1e365 100644
+index 3bf20e3..c8ba639 100644
 --- a/kernel/events/core.c
 +++ b/kernel/events/core.c
-@@ -6149,6 +6149,7 @@ static void perf_swevent_init_hrtimer(struct perf_event *event)
+@@ -6192,6 +6192,7 @@ static void perf_swevent_init_hrtimer(struct perf_event *event)
  
  	hrtimer_init(&hwc->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
  	hwc->hrtimer.function = perf_swevent_hrtimer;
@@ -25362,13 +25360,6 @@ index 04abe53..1154792 100644
  	print_symbol("caller is %s\n", (long)__builtin_return_address(0));
  	dump_stack();
  
-diff --git a/localversion-rt b/localversion-rt
-new file mode 100644
-index 0000000..42c3846
---- /dev/null
-+++ b/localversion-rt
-@@ -0,0 +1 @@
-+-rt50
 diff --git a/mm/Kconfig b/mm/Kconfig
 index 0862816..ef4cea9 100644
 --- a/mm/Kconfig
@@ -27263,5 +27254,5 @@ index eed250e..28a7477 100644
  			if (!kvm_vcpu_eligible_for_directed_yield(vcpu))
  				continue;
 -- 
-2.5.0
+2.5.1
 
