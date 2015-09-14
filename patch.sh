@@ -70,7 +70,7 @@ pick () {
 }
 
 external_git () {
-	git_tag=""
+	git_tag="ti-linux-3.14.y"
 	echo "pulling: ${git_tag}"
 	git pull ${git_opts} ${git_patchset} ${git_tag}
 }
@@ -104,7 +104,7 @@ local_patch () {
 	${git} "${DIR}/patches/dir/0001-patch.patch"
 }
 
-#external_git
+external_git
 #rt
 #local_patch
 
