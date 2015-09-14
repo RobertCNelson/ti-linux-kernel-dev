@@ -1590,7 +1590,7 @@ index bb28af7..780ca50 100644
  static inline void sp804_clockevents_init(void __iomem *base, unsigned int irq, const char *name)
 diff --git a/arch/arm/include/asm/ipipe.h b/arch/arm/include/asm/ipipe.h
 new file mode 100644
-index 0000000..5ec5eff
+index 0000000..50e20e3
 --- /dev/null
 +++ b/arch/arm/include/asm/ipipe.h
 @@ -0,0 +1,272 @@
@@ -1638,7 +1638,7 @@ index 0000000..5ec5eff
 +#include <linux/jump_label.h>
 +#include <linux/ipipe_trace.h>
 +
-+#define IPIPE_CORE_RELEASE	11
++#define IPIPE_CORE_RELEASE	12
 +
 +struct ipipe_domain;
 +
@@ -2863,7 +2863,7 @@ index 0000000..6579eec
 +
 +#endif
 diff --git a/arch/arm/include/asm/setup.h b/arch/arm/include/asm/setup.h
-index 8d6a089..d78ed9a 100644
+index 8d6a089..60c89d6 100644
 --- a/arch/arm/include/asm/setup.h
 +++ b/arch/arm/include/asm/setup.h
 @@ -53,4 +53,10 @@ extern int arm_add_memory(u64 start, u64 size);
@@ -2871,7 +2871,7 @@ index 8d6a089..d78ed9a 100644
  extern void dump_machine_table(void);
  
 +#ifdef CONFIG_IPIPE
-+void __init smp_build_cpu_revmap(void);
++void smp_build_cpu_revmap(void);
 +#else
 +static inline void smp_build_cpu_revmap(void) { }
 +#endif
@@ -7745,7 +7745,7 @@ index b4c4ab9..795b538 100644
  	if (chip->irq_ack)
  		chip->irq_ack(&desc->irq_data);
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
-index 1ee3cb6..717bef0 100644
+index 73d80b8..8d11381 100644
 --- a/arch/arm/mach-omap2/timer.c
 +++ b/arch/arm/mach-omap2/timer.c
 @@ -42,6 +42,9 @@
@@ -7758,7 +7758,7 @@ index 1ee3cb6..717bef0 100644
  
  #include <asm/mach/time.h>
  #include <asm/smp_twd.h>
-@@ -64,6 +67,11 @@
+@@ -62,11 +65,23 @@
  #define INCREMENTER_DENUMERATOR_RELOAD_OFFSET		0x14
  #define NUMERATOR_DENUMERATOR_MASK			0xfffff000
  
@@ -7770,10 +7770,9 @@ index 1ee3cb6..717bef0 100644
  /* Clockevent code */
  
  static struct omap_dm_timer clkev;
-@@ -72,6 +80,12 @@ static struct clock_event_device clockevent_gpt;
- /* Clockevent hwmod for am335x and am437x suspend */
- struct omap_hwmod *clockevent_gpt_hwmod;
+ static struct clock_event_device clockevent_gpt;
  
++
 +static void omap2_gp_timer_ack(void)
 +{
 +	__omap_dm_timer_write_status(&clkev, OMAP_TIMER_INT_OVERFLOW);
@@ -7783,7 +7782,7 @@ index 1ee3cb6..717bef0 100644
  #ifdef CONFIG_SOC_HAS_REALTIME_COUNTER
  static unsigned long arch_timer_freq;
  
-@@ -85,7 +99,8 @@ static irqreturn_t omap2_gp_timer_interrupt(int irq, void *dev_id)
+@@ -80,7 +95,8 @@ static irqreturn_t omap2_gp_timer_interrupt(int irq, void *dev_id)
  {
  	struct clock_event_device *evt = &clockevent_gpt;
  
@@ -7793,7 +7792,7 @@ index 1ee3cb6..717bef0 100644
  
  	evt->event_handler(evt);
  	return IRQ_HANDLED;
-@@ -101,7 +116,7 @@ static int omap2_gp_timer_set_next_event(unsigned long cycles,
+@@ -96,7 +112,7 @@ static int omap2_gp_timer_set_next_event(unsigned long cycles,
  					 struct clock_event_device *evt)
  {
  	__omap_dm_timer_load_start(&clkev, OMAP_TIMER_CTRL_ST,
@@ -7802,7 +7801,7 @@ index 1ee3cb6..717bef0 100644
  
  	return 0;
  }
-@@ -111,7 +126,7 @@ static void omap2_gp_timer_set_mode(enum clock_event_mode mode,
+@@ -106,7 +122,7 @@ static void omap2_gp_timer_set_mode(enum clock_event_mode mode,
  {
  	u32 period;
  
@@ -7811,7 +7810,7 @@ index 1ee3cb6..717bef0 100644
  
  	switch (mode) {
  	case CLOCK_EVT_MODE_PERIODIC:
-@@ -119,10 +134,10 @@ static void omap2_gp_timer_set_mode(enum clock_event_mode mode,
+@@ -114,10 +130,10 @@ static void omap2_gp_timer_set_mode(enum clock_event_mode mode,
  		period -= 1;
  		/* Looks like we need to first set the load value separately */
  		__omap_dm_timer_write(&clkev, OMAP_TIMER_LOAD_REG,
@@ -7824,7 +7823,7 @@ index 1ee3cb6..717bef0 100644
  		break;
  	case CLOCK_EVT_MODE_ONESHOT:
  		break;
-@@ -274,7 +289,7 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
+@@ -227,7 +243,7 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
  					 const char *fck_source,
  					 const char *property,
  					 const char **timer_name,
@@ -7833,7 +7832,7 @@ index 1ee3cb6..717bef0 100644
  {
  	char name[10]; /* 10 = sizeof("gptXX_Xck0") */
  	const char *oh_name = NULL;
-@@ -298,6 +313,9 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
+@@ -251,6 +267,9 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
  			return -ENXIO;
  
  		timer->io_base = of_iomap(np, 0);
@@ -7843,7 +7842,7 @@ index 1ee3cb6..717bef0 100644
  
  		of_node_put(np);
  	} else {
-@@ -327,6 +345,7 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
+@@ -280,6 +299,7 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
  			return -ENXIO;
  
  		/* Static mapping, never released */
@@ -7851,7 +7850,7 @@ index 1ee3cb6..717bef0 100644
  		timer->io_base = ioremap(mem.start, mem.end - mem.start);
  	}
  
-@@ -357,6 +376,15 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
+@@ -310,6 +330,15 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
  	omap_hwmod_setup_one(oh_name);
  	omap_hwmod_enable(oh);
  	__omap_dm_timer_init_regs(timer);
@@ -7867,7 +7866,7 @@ index 1ee3cb6..717bef0 100644
  
  	if (posted)
  		__omap_dm_timer_enable_posted(timer);
-@@ -371,11 +399,63 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
+@@ -324,11 +353,63 @@ static int __init omap_dm_timer_init_one(struct omap_dm_timer *timer,
  	return r;
  }
  
@@ -7932,7 +7931,7 @@ index 1ee3cb6..717bef0 100644
  
  	clkev.id = gptimer_id;
  	clkev.errata = omap_dm_timer_get_errata();
-@@ -387,8 +467,33 @@ static void __init omap2_gp_clockevent_init(int gptimer_id,
+@@ -340,8 +421,33 @@ static void __init omap2_gp_clockevent_init(int gptimer_id,
  	 */
  	__omap_dm_timer_override_errata(&clkev, OMAP_TIMER_ERRATA_I103_I767);
  
@@ -7967,7 +7966,7 @@ index 1ee3cb6..717bef0 100644
  	BUG_ON(res);
  
  	omap2_gp_timer_irq.dev_id = &clkev;
-@@ -398,6 +503,16 @@ static void __init omap2_gp_clockevent_init(int gptimer_id,
+@@ -351,6 +457,16 @@ static void __init omap2_gp_clockevent_init(int gptimer_id,
  
  	clockevent_gpt.cpumask = cpu_possible_mask;
  	clockevent_gpt.irq = omap_dm_timer_get_irq(&clkev);
@@ -7984,8 +7983,8 @@ index 1ee3cb6..717bef0 100644
  	clockevents_config_and_register(&clockevent_gpt, clkev.rate,
  					3, /* Timer internal resynch latency */
  					0xffffffff);
-@@ -541,14 +656,16 @@ static void omap2_gptimer_clksrc_resume(struct clocksource *unused)
- 				   OMAP_TIMER_NONPOSTED);
+@@ -454,18 +570,21 @@ static int __init __maybe_unused omap2_sync32k_clocksource_init(void)
+ 	return ret;
  }
  
 +/* Setup free-running counter for clocksource */
@@ -8000,10 +7999,6 @@ index 1ee3cb6..717bef0 100644
  	clksrc.errata = omap_dm_timer_get_errata();
 +	__omap_dm_timer_override_errata(&clksrc, OMAP_TIMER_ERRATA_I103_I767);
  
- 	if (soc_is_am43xx()) {
- 		clocksource_gpt.suspend = omap2_gptimer_clksrc_suspend;
-@@ -557,7 +674,8 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
- 
  	res = omap_dm_timer_init_one(&clksrc, fck_source, property,
  				     &clocksource_gpt.name,
 -				     OMAP_TIMER_NONPOSTED);
@@ -8012,7 +8007,7 @@ index 1ee3cb6..717bef0 100644
  	BUG_ON(res);
  
  	__omap_dm_timer_load_start(&clksrc,
-@@ -565,6 +683,21 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
+@@ -473,6 +592,21 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  				   OMAP_TIMER_NONPOSTED);
  	sched_clock_register(dmtimer_read_sched_clock, 32, clksrc.rate);
  
@@ -8034,7 +8029,7 @@ index 1ee3cb6..717bef0 100644
  	if (clocksource_register_hz(&clocksource_gpt, clksrc.rate))
  		pr_err("Could not register clocksource %s\n",
  			clocksource_gpt.name);
-@@ -700,6 +833,7 @@ void __init omap##name##_gptimer_timer_init(void)			\
+@@ -577,6 +711,7 @@ void __init omap##name##_gptimer_timer_init(void)			\
  					clksrc_prop);			\
  }
  
@@ -8042,7 +8037,7 @@ index 1ee3cb6..717bef0 100644
  #define OMAP_SYS_32K_TIMER_INIT(name, clkev_nr, clkev_src, clkev_prop,	\
  				clksrc_nr, clksrc_src, clksrc_prop)	\
  void __init omap##name##_sync32k_timer_init(void)		\
-@@ -714,6 +848,34 @@ void __init omap##name##_sync32k_timer_init(void)		\
+@@ -591,6 +726,34 @@ void __init omap##name##_sync32k_timer_init(void)		\
  	else								\
  		omap2_sync32k_clocksource_init();			\
  }
@@ -8110,7 +8105,7 @@ index 0eecd83..2367d9d 100644
  }
  
 diff --git a/arch/arm/mach-pxa/lpd270.c b/arch/arm/mach-pxa/lpd270.c
-index 9f6ec16..a5cecc6 100644
+index 9f6ec167..a5cecc6 100644
 --- a/arch/arm/mach-pxa/lpd270.c
 +++ b/arch/arm/mach-pxa/lpd270.c
 @@ -24,6 +24,7 @@
@@ -12955,7 +12950,7 @@ index 10be1dd..cfad863 100644
   * or should we not care like we do now ? --BenH.
 diff --git a/arch/powerpc/include/asm/ipipe.h b/arch/powerpc/include/asm/ipipe.h
 new file mode 100644
-index 0000000..40aca5b
+index 0000000..1533d8b
 --- /dev/null
 +++ b/arch/powerpc/include/asm/ipipe.h
 @@ -0,0 +1,157 @@
@@ -13000,7 +12995,7 @@ index 0000000..40aca5b
 +#include <linux/cache.h>
 +#include <linux/threads.h>
 +
-+#define IPIPE_CORE_RELEASE	8
++#define IPIPE_CORE_RELEASE	9
 +
 +struct ipipe_domain;
 +
@@ -15077,10 +15072,10 @@ index 3fdef0f..72c186e 100644
  	li	r0,0
 diff --git a/arch/powerpc/kernel/ipipe.c b/arch/powerpc/kernel/ipipe.c
 new file mode 100644
-index 0000000..822dd9e
+index 0000000..d47e1b4
 --- /dev/null
 +++ b/arch/powerpc/kernel/ipipe.c
-@@ -0,0 +1,394 @@
+@@ -0,0 +1,391 @@
 +/* -*- linux-c -*-
 + * linux/arch/powerpc/kernel/ipipe.c
 + *
@@ -15445,9 +15440,6 @@ index 0000000..822dd9e
 +
 +	return __ipipe_exit_irq(regs);
 +}
-+
-+EXPORT_SYMBOL_GPL(show_stack);
-+EXPORT_SYMBOL_GPL(_switch);
 +
 +#ifndef CONFIG_SMP
 +EXPORT_SYMBOL_GPL(last_task_used_math);
@@ -24396,7 +24388,15 @@ index 4243190..7710b7a 100644
  static void gpio_unmask_irq(struct irq_data *d)
  {
  	struct gpio_bank *bank = irq_data_get_irq_chip_data(d);
-@@ -1114,6 +1138,7 @@ static void omap_gpio_chip_init(struct gpio_bank *bank, struct irq_chip *irqc)
+@@ -867,6 +891,7 @@ static struct irq_chip gpio_irq_chip = {
+ 	.irq_shutdown	= gpio_irq_shutdown,
+ 	.irq_ack	= gpio_ack_irq,
+ 	.irq_mask	= gpio_mask_irq,
++	.irq_mask_ack	= gpio_mask_ack_irq,
+ 	.irq_unmask	= gpio_unmask_irq,
+ 	.irq_set_type	= gpio_irq_type,
+ 	.irq_set_wake	= gpio_wake_enable,
+@@ -1124,6 +1149,7 @@ static void omap_gpio_chip_init(struct gpio_bank *bank)
  			set_irq_flags(irq, IRQF_VALID);
  		}
  	}
@@ -24404,15 +24404,7 @@ index 4243190..7710b7a 100644
  	irq_set_chained_handler(bank->irq, gpio_irq_handler);
  	irq_set_handler_data(bank->irq, bank);
  }
-@@ -1152,6 +1177,7 @@ static int omap_gpio_probe(struct platform_device *pdev)
- 	irqc->irq_shutdown = gpio_irq_shutdown,
- 	irqc->irq_ack = gpio_ack_irq,
- 	irqc->irq_mask = gpio_mask_irq,
-+	irqc->irq_mask_ack = gpio_mask_ack_irq,
- 	irqc->irq_unmask = gpio_unmask_irq,
- 	irqc->irq_set_type = gpio_irq_type,
- 	irqc->irq_set_wake = gpio_wake_enable,
-@@ -1253,6 +1279,164 @@ static int omap_gpio_probe(struct platform_device *pdev)
+@@ -1256,6 +1282,164 @@ static int omap_gpio_probe(struct platform_device *pdev)
  
  #ifdef CONFIG_ARCH_OMAP2PLUS
  
@@ -24440,13 +24432,13 @@ index 4243190..7710b7a 100644
 +#endif /* gic */
 +}
 +
-+static void omap2plus_enable_irqdesc(struct ipipe_domain *ipd, unsigned irq, struct irq_chip *irqc)
++static void omap2plus_enable_irqdesc(struct ipipe_domain *ipd, unsigned irq)
 +{
 +	struct irq_desc *desc = irq_to_desc(irq);
 +	struct irq_data *idata = irq_desc_get_irq_data(desc);
 +	struct irq_chip *chip = irq_data_get_irq_chip(idata);
 +
-+	if (chip == irqc) {
++	if (chip == &gpio_irq_chip) {
 +		/* It is a gpio. */
 +		struct gpio_bank *bank = irq_data_get_irq_chip_data(idata);
 +
@@ -24463,13 +24455,13 @@ index 4243190..7710b7a 100644
 +		omap2plus_pic_set_irq_prio(irq, ipd != &ipipe_root);
 +}
 +
-+static void omap2plus_disable_irqdesc(struct ipipe_domain *ipd, unsigned irq, struct irq_chip *irqc)
++static void omap2plus_disable_irqdesc(struct ipipe_domain *ipd, unsigned irq)
 +{
 +	struct irq_desc *desc = irq_to_desc(irq);
 +	struct irq_data *idata = irq_desc_get_irq_data(desc);
 +	struct irq_chip *chip = irq_data_get_irq_chip(idata);
 +
-+	if (chip == irqc) {
++	if (chip == &gpio_irq_chip) {
 +		/* It is a gpio. */
 +		struct gpio_bank *bank = irq_data_get_irq_chip_data(idata);
 +

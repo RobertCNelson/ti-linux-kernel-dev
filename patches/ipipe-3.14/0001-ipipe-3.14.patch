@@ -1,6 +1,6 @@
-From dd000ac321dab05be8737519ae219d0940cd16cb Mon Sep 17 00:00:00 2001
+From 84a4c3f1f672166c7988170b9c74aea3fc94e865 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 3 Aug 2015 15:23:38 -0500
+Date: Mon, 14 Sep 2015 14:07:32 -0500
 Subject: [PATCH] ipipe-3.14
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -228,7 +228,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/powerpc/kernel/idle.c                       |   46 +-
  arch/powerpc/kernel/idle_power4.S                |    5 +-
  arch/powerpc/kernel/idle_power7.S                |    4 +
- arch/powerpc/kernel/ipipe.c                      |  394 +++++
+ arch/powerpc/kernel/ipipe.c                      |  391 +++++
  arch/powerpc/kernel/irq.c                        |  105 +-
  arch/powerpc/kernel/misc_32.S                    |    2 +
  arch/powerpc/kernel/misc_64.S                    |    2 +
@@ -462,7 +462,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/mprotect.c                                    |   10 +-
  mm/vmalloc.c                                     |    2 +
  scripts/ipipe/genpatches.sh                      |  170 ++
- 457 files changed, 20482 insertions(+), 1604 deletions(-)
+ 457 files changed, 20479 insertions(+), 1604 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -2098,7 +2098,7 @@ index bb28af7..780ca50 100644
  static inline void sp804_clockevents_init(void __iomem *base, unsigned int irq, const char *name)
 diff --git a/arch/arm/include/asm/ipipe.h b/arch/arm/include/asm/ipipe.h
 new file mode 100644
-index 0000000..5ec5eff
+index 0000000..50e20e3
 --- /dev/null
 +++ b/arch/arm/include/asm/ipipe.h
 @@ -0,0 +1,272 @@
@@ -2146,7 +2146,7 @@ index 0000000..5ec5eff
 +#include <linux/jump_label.h>
 +#include <linux/ipipe_trace.h>
 +
-+#define IPIPE_CORE_RELEASE	11
++#define IPIPE_CORE_RELEASE	12
 +
 +struct ipipe_domain;
 +
@@ -3371,7 +3371,7 @@ index 0000000..6579eec
 +
 +#endif
 diff --git a/arch/arm/include/asm/setup.h b/arch/arm/include/asm/setup.h
-index 8d6a089..d78ed9a 100644
+index 8d6a089..60c89d6 100644
 --- a/arch/arm/include/asm/setup.h
 +++ b/arch/arm/include/asm/setup.h
 @@ -53,4 +53,10 @@ extern int arm_add_memory(u64 start, u64 size);
@@ -3379,7 +3379,7 @@ index 8d6a089..d78ed9a 100644
  extern void dump_machine_table(void);
  
 +#ifdef CONFIG_IPIPE
-+void __init smp_build_cpu_revmap(void);
++void smp_build_cpu_revmap(void);
 +#else
 +static inline void smp_build_cpu_revmap(void) { }
 +#endif
@@ -8618,7 +8618,7 @@ index 0eecd83..2367d9d 100644
  }
  
 diff --git a/arch/arm/mach-pxa/lpd270.c b/arch/arm/mach-pxa/lpd270.c
-index 9f6ec16..a5cecc6 100644
+index 9f6ec167..a5cecc6 100644
 --- a/arch/arm/mach-pxa/lpd270.c
 +++ b/arch/arm/mach-pxa/lpd270.c
 @@ -24,6 +24,7 @@
@@ -13463,7 +13463,7 @@ index 10be1dd..cfad863 100644
   * or should we not care like we do now ? --BenH.
 diff --git a/arch/powerpc/include/asm/ipipe.h b/arch/powerpc/include/asm/ipipe.h
 new file mode 100644
-index 0000000..40aca5b
+index 0000000..1533d8b
 --- /dev/null
 +++ b/arch/powerpc/include/asm/ipipe.h
 @@ -0,0 +1,157 @@
@@ -13508,7 +13508,7 @@ index 0000000..40aca5b
 +#include <linux/cache.h>
 +#include <linux/threads.h>
 +
-+#define IPIPE_CORE_RELEASE	8
++#define IPIPE_CORE_RELEASE	9
 +
 +struct ipipe_domain;
 +
@@ -15585,10 +15585,10 @@ index 3fdef0f..72c186e 100644
  	li	r0,0
 diff --git a/arch/powerpc/kernel/ipipe.c b/arch/powerpc/kernel/ipipe.c
 new file mode 100644
-index 0000000..822dd9e
+index 0000000..d47e1b4
 --- /dev/null
 +++ b/arch/powerpc/kernel/ipipe.c
-@@ -0,0 +1,394 @@
+@@ -0,0 +1,391 @@
 +/* -*- linux-c -*-
 + * linux/arch/powerpc/kernel/ipipe.c
 + *
@@ -15953,9 +15953,6 @@ index 0000000..822dd9e
 +
 +	return __ipipe_exit_irq(regs);
 +}
-+
-+EXPORT_SYMBOL_GPL(show_stack);
-+EXPORT_SYMBOL_GPL(_switch);
 +
 +#ifndef CONFIG_SMP
 +EXPORT_SYMBOL_GPL(last_task_used_math);
@@ -34721,7 +34718,7 @@ index 7d50f79..78cdd0f 100644
  		unsigned flags = curr->flags;
  
 diff --git a/kernel/signal.c b/kernel/signal.c
-index 52f881d..9444bce 100644
+index 15c22ee..041d4b6 100644
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
 @@ -687,6 +687,10 @@ int dequeue_signal(struct task_struct *tsk, sigset_t *mask, siginfo_t *info)
@@ -35505,7 +35502,7 @@ index 0862816..aacbf2df 100644
  	help
  	  Transparent Hugepages allows the kernel to use huge pages and
 diff --git a/mm/memory.c b/mm/memory.c
-index 749e1c6..090df7e 100644
+index e9ddc7a..83cc5e17 100644
 --- a/mm/memory.c
 +++ b/mm/memory.c
 @@ -788,6 +788,34 @@ out:
@@ -35668,7 +35665,7 @@ index 749e1c6..090df7e 100644
  /*
   * This routine handles present pages, when users try to write
   * to a shared page. It is done by copying the page to a new address
-@@ -4270,6 +4316,41 @@ void copy_user_huge_page(struct page *dst, struct page *src,
+@@ -4275,6 +4321,41 @@ void copy_user_huge_page(struct page *dst, struct page *src,
  }
  #endif /* CONFIG_TRANSPARENT_HUGEPAGE || CONFIG_HUGETLBFS */
  
@@ -36023,5 +36020,5 @@ index 0000000..13c1a2c
 +}
 +'
 -- 
-2.4.6
+2.5.1
 

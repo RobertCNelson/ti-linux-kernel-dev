@@ -75,11 +75,6 @@ external_git () {
 	git pull ${git_opts} ${git_patchset} ${git_tag}
 }
 
-local_patch () {
-	echo "dir: dir"
-	${git} "${DIR}/patches/dir/0001-patch.patch"
-}
-
 rt_cleanup () {
 	echo "Fixing: drivers/gpio/gpio-omap.c"
 	sed -i -e 's/\<spin_lock_irqsave\>/raw_spin_lock_irqsave/g' drivers/gpio/gpio-omap.c
@@ -128,9 +123,9 @@ ipipe () {
 	#git checkout v3.14.44 -b ipipe-3.14
 	#git pull --no-edit git://git.xenomai.org/ipipe.git ipipe-3.14
 	#
-	#commit 0e6abeded3dc9a22eb63c5edae607008300eafac
+	#commit 4a903c4ac406d52d84f2a438df939e73ac17bef3
 
-	#git diff v3.14.44...0e6abeded3dc9a22eb63c5edae607008300eafac > ../patches/ipipe-3.14/ipipe-3.14.diff
+	#git diff v3.14.44...4a903c4ac406d52d84f2a438df939e73ac17bef3 > ../patches/ipipe-3.14/ipipe-3.14.diff
 
 	#exit 2
 
