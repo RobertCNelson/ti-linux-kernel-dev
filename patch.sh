@@ -134,8 +134,10 @@ external_git () {
 }
 
 rt_cleanup () {
-	echo "rt: needs fixup"
-	exit 2
+	echo "Fixing: drivers/gpio/gpio-omap.c"
+	sed -i -e 's/\<spin_lock_irqsave\>/raw_spin_lock_irqsave/g' drivers/gpio/gpio-omap.c
+	sed -i -e 's/\<spin_unlock_irqrestore\>/raw_spin_unlock_irqrestore/g' drivers/gpio/gpio-omap.c
+	rm -rf drivers/gpio/gpio-omap.c.rej
 }
 
 rt () {
