@@ -76,8 +76,14 @@ external_git () {
 }
 
 rt_cleanup () {
-	echo "rt: needs fixup"
-	exit 2
+	echo "Fixing: drivers/gpio/gpio-omap.c"
+	sed -i -e 's/\<spin_lock_irqsave\>/raw_spin_lock_irqsave/g' drivers/gpio/gpio-omap.c
+	sed -i -e 's/\<spin_unlock_irqrestore\>/raw_spin_unlock_irqrestore/g' drivers/gpio/gpio-omap.c
+	rm -rf drivers/gpio/gpio-omap.c.rej
+
+	echo "Fixing: drivers/tty/serial/8250/8250_core.c"
+	cp -v ../patches/rt/8250_core.c drivers/tty/serial/8250/8250_core.c
+	rm -rf drivers/tty/serial/8250/8250_core.c.rej
 }
 
 rt () {
@@ -95,6 +101,10 @@ rt () {
 
 		exit 2
 	fi
+
+	#merge notes:
+	#drivers/usb/gadget/function/f_fs.c
+	#drivers/usb/gadget/legacy/inode.c
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
