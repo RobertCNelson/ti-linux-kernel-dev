@@ -136,7 +136,7 @@ mmc_write_boot () {
 		sudo mkdir -p "${location}/dtbs"
 
 		echo "Installing ${KERNEL_UTS}-dtbs.tar.gz to ${partition}"
-		sudo tar "{UNTAR} "${DIR}/deploy/${KERNEL_UTS}-dtbs.tar.gz" -C "${location}/dtbs/"
+		sudo tar ${UNTAR} "${DIR}/deploy/${KERNEL_UTS}-dtbs.tar.gz" -C "${location}/dtbs/"
 		sync
 	fi
 }
