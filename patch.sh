@@ -538,13 +538,13 @@ quieter () {
 }
 
 ###
-reverts
-backports
-fixes
-pru
-bbb_overlays
-beaglebone
-quieter
+#reverts
+#backports
+#fixes
+#pru
+#bbb_overlays
+#beaglebone
+#quieter
 
 packaging () {
 	echo "dir: packaging"
