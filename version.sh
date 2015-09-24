@@ -20,7 +20,7 @@ KERNEL_TAG=${KERNEL_REL}.6
 BUILD=${build_prefix}-r16.1
 kernel_rt=".5-rt5"
 
-#v3.X-rcX + upto SHA
+#v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
 #KERNEL_SHA=""
 

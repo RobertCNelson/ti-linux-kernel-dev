@@ -38,7 +38,12 @@ if [ -e ${DIR}/version.sh ]; then
 	cp ${DIR}/patches/defconfig ${DIR}/KERNEL/arch/arm/configs/${example}_defconfig
 	git add arch/arm/configs/${example}_defconfig
 
-	git commit -a -m "${KERNEL_TAG}-${BUILD} ${example}_defconfig" -m "4.1 TI Delta: ${compare}/${ti_git_old_release}...${ti_git_post}" -s
+	if [ "x${ti_git_old_release}" = "x${ti_git_post}" ] ; then
+		git commit -a -m "${KERNEL_TAG}-${BUILD} ${example}_defconfig" -s
+	else
+		git commit -a -m "${KERNEL_TAG}-${BUILD} ${example}_defconfig" -m "4.1 TI Delta: ${compare}/${ti_git_old_release}...${ti_git_post}" -s
+	fi
+
 	git tag -a "${KERNEL_TAG}-${BUILD}" -m "${KERNEL_TAG}-${BUILD}" -f
 
 	#push tag
