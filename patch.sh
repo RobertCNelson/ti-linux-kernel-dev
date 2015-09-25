@@ -123,9 +123,9 @@ ipipe () {
 	#git checkout v3.14.44 -b ipipe-3.14
 	#git pull --no-edit git://git.xenomai.org/ipipe.git ipipe-3.14
 	#
-	#commit 4a903c4ac406d52d84f2a438df939e73ac17bef3
+	#commit a5fa6b64386f1ccff2e7c1c4e6ec79558b0d62fe
 
-	#git diff v3.14.44...4a903c4ac406d52d84f2a438df939e73ac17bef3 > ../patches/ipipe-3.14/ipipe-3.14.diff
+	#git diff v3.14.44...a5fa6b64386f1ccff2e7c1c4e6ec79558b0d62fe > ../patches/ipipe-3.14/ipipe-3.14.diff
 
 	#exit 2
 

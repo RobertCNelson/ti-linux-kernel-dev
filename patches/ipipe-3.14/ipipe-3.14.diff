@@ -3663,10 +3663,10 @@ index 88c6bab..cf2772a 100644
   * have in theory up to 7 arguments to a function - r0 to r6.
 diff --git a/arch/arm/kernel/ipipe.c b/arch/arm/kernel/ipipe.c
 new file mode 100644
-index 0000000..8a6c9bc
+index 0000000..eba1d0c
 --- /dev/null
 +++ b/arch/arm/kernel/ipipe.c
-@@ -0,0 +1,575 @@
+@@ -0,0 +1,560 @@
 +/* -*- linux-c -*-
 + * linux/arch/arm/kernel/ipipe.c
 + *
@@ -3902,21 +3902,6 @@ index 0000000..8a6c9bc
 +extern unsigned int smp_on_up;
 +EXPORT_SYMBOL_GPL(smp_on_up);
 +#endif /* SMP_ON_UP */
-+
-+/*
-+ * ipipe_raise_irq() -- Push the interrupt at front of the pipeline
-+ * just like if it has been actually received from a hw source. Also
-+ * works for virtual interrupts.
-+ */
-+void ipipe_raise_irq(unsigned irq)
-+{
-+	unsigned long flags;
-+
-+	flags = hard_local_irq_save();
-+	__ipipe_dispatch_irq(irq, IPIPE_IRQF_NOACK);
-+	hard_local_irq_restore(flags);
-+}
-+EXPORT_SYMBOL_GPL(ipipe_raise_irq);
 +
 +int ipipe_get_sysinfo(struct ipipe_sysinfo *info)
 +{
@@ -11505,7 +11490,7 @@ index a017359..e6ad56f 100644
  	} \
  } \
 diff --git a/arch/blackfin/kernel/ipipe.c b/arch/blackfin/kernel/ipipe.c
-index f657b38..3a7acb8 100644
+index f657b38..9ee8c7c 100644
 --- a/arch/blackfin/kernel/ipipe.c
 +++ b/arch/blackfin/kernel/ipipe.c
 @@ -32,32 +32,29 @@
@@ -11554,7 +11539,7 @@ index f657b38..3a7acb8 100644
  
  /*
   * __ipipe_enable_pipeline() -- We are running on the boot CPU, hw
-@@ -71,214 +68,86 @@ void __ipipe_enable_pipeline(void)
+@@ -71,214 +68,76 @@ void __ipipe_enable_pipeline(void)
  	__ipipe_freq_scale = 1000000000UL / __ipipe_core_clock;
  
  	for (irq = 0; irq < NR_IRQS; ++irq)
@@ -11774,10 +11759,9 @@ index f657b38..3a7acb8 100644
 - * works for virtual interrupts.
 - */
 -int ipipe_trigger_irq(unsigned irq)
-+void ipipe_raise_irq(unsigned int irq)
- {
- 	unsigned long flags;
- 
+-{
+-	unsigned long flags;
+-
 -#ifdef CONFIG_IPIPE_DEBUG
 -	if (irq >= IPIPE_NR_IRQS ||
 -	    (ipipe_virtual_irq_p(irq)
@@ -11785,20 +11769,19 @@ index f657b38..3a7acb8 100644
 -		return -EINVAL;
 -#endif
 -
- 	flags = hard_local_irq_save();
- 	__ipipe_handle_irq(irq, NULL);
- 	hard_local_irq_restore(flags);
+-	flags = hard_local_irq_save();
+-	__ipipe_handle_irq(irq, NULL);
+-	hard_local_irq_restore(flags);
 -
 -	return 1;
- }
-+EXPORT_SYMBOL_GPL(ipipe_raise_irq);
- 
+-}
+-
 -asmlinkage void __ipipe_sync_root(void)
 +void __ipipe_sync_root(void)
  {
  	void (*irq_tail_hook)(void) = (void (*)(void))__ipipe_irq_tail_hook;
  	struct ipipe_percpu_domain_data *p;
-@@ -293,23 +162,14 @@ asmlinkage void __ipipe_sync_root(void)
+@@ -293,23 +152,14 @@ asmlinkage void __ipipe_sync_root(void)
  
  	clear_thread_flag(TIF_IRQ_SYNC);
  
@@ -11825,7 +11808,7 @@ index f657b38..3a7acb8 100644
  {
  	/*
  	 * This code is called by the ins{bwl} routines (see
-@@ -320,12 +180,15 @@ void __ipipe_disable_root_irqs_hw(void)
+@@ -320,12 +170,15 @@ void __ipipe_disable_root_irqs_hw(void)
  	 * the real-time domain.
  	 */
  	bfin_sti(__ipipe_irq_lvmask);
@@ -11844,7 +11827,7 @@ index f657b38..3a7acb8 100644
  	bfin_sti(bfin_irq_flags);
  }
  
-@@ -334,64 +197,155 @@ void __ipipe_enable_root_irqs_hw(void)
+@@ -334,64 +187,155 @@ void __ipipe_enable_root_irqs_hw(void)
   * manipulation routines, but let's prepare for SMP support in the
   * same move, preventing CPU migration as required.
   */
@@ -14606,7 +14589,7 @@ index 5193116..ab85bde 100644
  #ifdef CONFIG_PPC_DOORBELL
  	STD_EXCEPTION_COMMON_ASYNC(0xa00, doorbell_super, .doorbell_exception)
 diff --git a/arch/powerpc/kernel/fpu.S b/arch/powerpc/kernel/fpu.S
-index 9ad236e..65b8f7c 100644
+index 9ad236e..76482dc 100644
 --- a/arch/powerpc/kernel/fpu.S
 +++ b/arch/powerpc/kernel/fpu.S
 @@ -195,7 +195,17 @@ END_FTR_SECTION_IFSET(CPU_FTR_VSX)
@@ -14614,12 +14597,12 @@ index 9ad236e..65b8f7c 100644
   */
  _GLOBAL(giveup_fpu)
 +#ifdef CONFIG_IPIPE
-+	mfmsr	r6
++	mfmsr	r10
 +#ifdef CONFIG_PPC64	
-+	rldicl	r5,r6,48,1		/* clear MSR_EE */
++	rldicl	r5,r10,48,1		/* clear MSR_EE */
 +	rotldi	r5,r5,16
 +#else
-+	rlwinm	r5,r6,0,17,15		/* clear MSR_EE */
++	rlwinm	r5,r10,0,17,15		/* clear MSR_EE */
 +#endif	
 +#else	
  	mfmsr	r5
@@ -14642,7 +14625,7 @@ index 9ad236e..65b8f7c 100644
  #endif /* CONFIG_SMP */
 +2:
 +#ifdef CONFIG_IPIPE		/* restore interrupt state */
-+	andi.	r6,r6,MSR_EE
++	andi.	r10,r10,MSR_EE
 +	beqlr
 +	mfmsr	r5
 +	ori	r5,r5,MSR_EE
@@ -15072,10 +15055,10 @@ index 3fdef0f..72c186e 100644
  	li	r0,0
 diff --git a/arch/powerpc/kernel/ipipe.c b/arch/powerpc/kernel/ipipe.c
 new file mode 100644
-index 0000000..d47e1b4
+index 0000000..9995b4f
 --- /dev/null
 +++ b/arch/powerpc/kernel/ipipe.c
-@@ -0,0 +1,391 @@
+@@ -0,0 +1,381 @@
 +/* -*- linux-c -*-
 + * linux/arch/powerpc/kernel/ipipe.c
 + *
@@ -15330,16 +15313,6 @@ index 0000000..d47e1b4
 +	return 0;
 +}
 +EXPORT_SYMBOL_GPL(ipipe_get_sysinfo);
-+
-+void ipipe_raise_irq(unsigned int irq)
-+{
-+	unsigned long flags;
-+
-+	flags = hard_local_irq_save();
-+	__ipipe_handle_irq(irq, NULL);
-+	hard_local_irq_restore(flags);
-+}
-+EXPORT_SYMBOL_GPL(ipipe_raise_irq);
 +
 +static int __ipipe_exit_irq(struct pt_regs *regs)
 +{
@@ -21787,10 +21760,10 @@ index 2e977b5..e91576e 100644
  handle_real_irq:
 diff --git a/arch/x86/kernel/ipipe.c b/arch/x86/kernel/ipipe.c
 new file mode 100644
-index 0000000..1bcee82
+index 0000000..73b1a0e
 --- /dev/null
 +++ b/arch/x86/kernel/ipipe.c
-@@ -0,0 +1,584 @@
+@@ -0,0 +1,570 @@
 +/*   -*- linux-c -*-
 + *   linux/arch/x86/kernel/ipipe.c
 + *
@@ -21852,20 +21825,6 @@ index 0000000..1bcee82
 +
 +DEFINE_PER_CPU(unsigned long, __ipipe_cr2);
 +EXPORT_PER_CPU_SYMBOL_GPL(__ipipe_cr2);
-+
-+void ipipe_raise_irq(unsigned int irq)
-+{
-+	struct pt_regs regs;
-+	unsigned long flags;
-+
-+	flags = hard_local_irq_save();
-+	regs.flags = flags;
-+	regs.orig_ax = irq;  /* >= 0, IRQ won't be acked */
-+	regs.cs = __KERNEL_CS;
-+	__ipipe_handle_irq(&regs);
-+	hard_local_irq_restore(flags);
-+}
-+EXPORT_SYMBOL_GPL(ipipe_raise_irq);
 +
 +int ipipe_get_sysinfo(struct ipipe_sysinfo *info)
 +{
@@ -29139,10 +29098,10 @@ index 0000000..797a849
 +}
 diff --git a/kernel/ipipe/core.c b/kernel/ipipe/core.c
 new file mode 100644
-index 0000000..c5b022b
+index 0000000..026f6d9
 --- /dev/null
 +++ b/kernel/ipipe/core.c
-@@ -0,0 +1,1929 @@
+@@ -0,0 +1,1956 @@
 +/* -*- linux-c -*-
 + * linux/kernel/ipipe/core.c
 + *
@@ -30543,6 +30502,33 @@ index 0000000..c5b022b
 +sync:
 +	__ipipe_sync_pipeline(ipipe_head_domain);
 +}
++
++void ipipe_raise_irq(unsigned int irq)
++{
++	struct ipipe_domain *ipd = ipipe_head_domain;
++	unsigned long flags, control;
++
++	flags = hard_local_irq_save();
++
++	/*
++	 * Fast path: raising a virtual IRQ handled by the head
++	 * domain.
++	 */
++	if (likely(ipipe_virtual_irq_p(irq) && ipd != ipipe_root_domain)) {
++		control = ipd->irqs[irq].control;
++		if (likely(control & IPIPE_HANDLE_MASK)) {
++			dispatch_irq_head(irq);
++			goto out;
++		}
++	}
++
++	/* Emulate regular device IRQ receipt. */
++	__ipipe_dispatch_irq(irq, IPIPE_IRQF_NOACK);
++out:
++	hard_local_irq_restore(flags);
++
++}
++EXPORT_SYMBOL_GPL(ipipe_raise_irq);
 +
 +#ifdef CONFIG_PREEMPT
 +
@@ -33024,7 +33010,7 @@ index 0000000..5cce0bc
 +#endif /* !CONFIG_IPIPE_TRACE_MCOUNT */
 +}
 diff --git a/kernel/irq/chip.c b/kernel/irq/chip.c
-index dc04c16..2296ca9 100644
+index dc04c16..dff8902 100644
 --- a/kernel/irq/chip.c
 +++ b/kernel/irq/chip.c
 @@ -15,6 +15,7 @@
@@ -33073,7 +33059,7 @@ index dc04c16..2296ca9 100644
  		desc->irq_data.chip->irq_shutdown(&desc->irq_data);
 -	else if (desc->irq_data.chip->irq_disable)
 +#ifdef CONFIG_IPIPE
-+		desc->istate |= ~IPIPE_IRQS_NEEDS_STARTUP;
++		desc->istate |= IPIPE_IRQS_NEEDS_STARTUP;
 +#endif
 +	} else if (desc->irq_data.chip->irq_disable)
  		desc->irq_data.chip->irq_disable(&desc->irq_data);
