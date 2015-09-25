@@ -32,5 +32,5 @@ DEBARCH=armhf
 
 ti_git_old_release="6bbbdf074c2f925f5ca8b468999482904dc9aeaf"
 ti_git_pre="6bbbdf074c2f925f5ca8b468999482904dc9aeaf"
-ti_git_post="6bbbdf074c2f925f5ca8b468999482904dc9aeaf"
+ti_git_post="f53924f14c00ed02b1796fb98bdeece84d483b1e"
 #
