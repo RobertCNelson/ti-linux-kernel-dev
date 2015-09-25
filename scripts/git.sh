@@ -25,14 +25,14 @@ DIR=$PWD
 git_kernel_stable () {
 	echo "-----------------------------"
 	echo "scripts/git: fetching from: ${linux_stable}"
-	git fetch ${linux_stable} master --tags || true
+	git fetch "${linux_stable}" master --tags || true
 }
 
 git_kernel_torvalds () {
 	echo "-----------------------------"
 	echo "scripts/git: pulling from: ${torvalds_linux}"
-	git pull ${git_opts} ${torvalds_linux} master --tags || true
-	git tag | grep v${KERNEL_TAG} >/dev/null 2>&1 || git_kernel_stable
+	git pull "${git_opts}" "${torvalds_linux}" master --tags || true
+	git tag | grep v"${KERNEL_TAG}" >/dev/null 2>&1 || git_kernel_stable
 }
 
 check_and_or_clone () {
@@ -50,7 +50,7 @@ check_and_or_clone () {
 			echo "-----------------------------"
 			echo "scripts/git: LINUX_GIT not defined in system.sh"
 			echo "cloning ${torvalds_linux} into default location: ${DIR}/ignore/linux-src"
-			git clone ${torvalds_linux} ${DIR}/ignore/linux-src
+			git clone "${torvalds_linux}" "${DIR}/ignore/linux-src"
 		fi
 		LINUX_GIT="${DIR}/ignore/linux-src"
 	fi
@@ -83,26 +83,26 @@ git_kernel () {
 		check_and_or_clone
 	fi
 
-	cd ${LINUX_GIT}/
+	cd "${LINUX_GIT}/" || exit
 	echo "-----------------------------"
 	echo "scripts/git: Debug: LINUX_GIT is setup as: [${LINUX_GIT}]."
-	echo "scripts/git: [`cat .git/config | grep url | sed 's/\t//g' | sed 's/ //g'`]"
+	echo "scripts/git: [$(cat .git/config | grep url | sed 's/\t//g' | sed 's/ //g')]"
 	git fetch || true
 	echo "-----------------------------"
-	cd ${DIR}/
+	cd "${DIR}/" || exit
 
 	if [ ! -f "${DIR}/KERNEL/.git/config" ] ; then
-		rm -rf ${DIR}/KERNEL/ || true
-		git clone --shared ${LINUX_GIT} ${DIR}/KERNEL
+		rm -rf "${DIR}/KERNEL/" || true
+		git clone --shared "${LINUX_GIT}" "${DIR}/KERNEL"
 	fi
 
 	#Automaticly, just recover the git repo from a git crash
 	if [ -f "${DIR}/KERNEL/.git/index.lock" ] ; then
-		rm -rf ${DIR}/KERNEL/ || true
-		git clone --shared ${LINUX_GIT} ${DIR}/KERNEL
+		rm -rf "${DIR}/KERNEL/" || true
+		git clone --shared "${LINUX_GIT}" "${DIR}/KERNEL"
 	fi
 
-	cd ${DIR}/KERNEL/
+	cd "${DIR}/KERNEL/" || exit
 
 	if [ "x${git_has_local}" = "xenable" ] ; then
 		#Debian Jessie: git version 2.0.0.rc0
@@ -129,9 +129,9 @@ git_kernel () {
 	git reset --hard HEAD
 	git checkout master -f
 
-	git pull ${git_opts} || true
+	git pull "${git_opts}" || true
 
-	git tag | grep v${KERNEL_TAG} | grep -v rc >/dev/null 2>&1 || git_kernel_torvalds
+	git tag | grep "v${KERNEL_TAG}" | grep -v rc >/dev/null 2>&1 || git_kernel_torvalds
 
 	if [ "${KERNEL_SHA}" ] ; then
 		git_kernel_torvalds
@@ -141,68 +141,33 @@ git_kernel () {
 	unset git_branch_has_list
 	LC_ALL=C git help branch | grep -m 1 -e "--list" >/dev/null 2>&1 && git_branch_has_list=enable
 	if [ "x${git_branch_has_list}" = "xenable" ] ; then
-		test_for_branch=$(git branch --list v${KERNEL_TAG}-${BUILD})
+		test_for_branch=$(git branch --list "v${KERNEL_TAG}-${BUILD}")
 		if [ "x${test_for_branch}" != "x" ] ; then
-			git branch v${KERNEL_TAG}-${BUILD} -D
+			git branch "v${KERNEL_TAG}-${BUILD}" -D
 		fi
 	else
 		echo "git: the following error: [error: branch 'v${KERNEL_TAG}-${BUILD}' not found.] is safe to ignore."
-		git branch v${KERNEL_TAG}-${BUILD} -D || true
+		git branch "v${KERNEL_TAG}-${BUILD}" -D || true
 	fi
 
 	if [ ! "${KERNEL_SHA}" ] ; then
-		git checkout v${KERNEL_TAG} -b v${KERNEL_TAG}-${BUILD}
+		git checkout "v${KERNEL_TAG}" -b "v${KERNEL_TAG}-${BUILD}"
 	else
-		git checkout ${KERNEL_SHA} -b v${KERNEL_TAG}-${BUILD}
+		git checkout "${KERNEL_SHA}" -b "v${KERNEL_TAG}-${BUILD}"
 	fi
 
 	if [ "${TOPOFTREE}" ] ; then
-		git pull ${git_opts} ${torvalds_linux} master || true
-		git pull ${git_opts} ${torvalds_linux} master --tags || true
+		git pull "${git_opts}" "${torvalds_linux}" master || true
+		git pull "${git_opts}" "${torvalds_linux}" master --tags || true
 	fi
 
 	git describe
 
-	cd ${DIR}/
+	cd "${DIR}/" || exit
 }
 
-git_xenomai () {
-	XENO_GIT="${DIR}/ignore/xenomai"
-
-	echo "-----------------------------"
-	echo "scripts/git: Xenomai 3 repository"
-
-	# Check/clone/update local xenomai repository
-	if [ ! -f "${XENO_GIT}/.git/config" ] ; then
-		rm -rf ${XENO_GIT} || true
-		echo "scripts/git: Cloning ${xenomai} into ${XENO_GIT}"
-		git clone ${xenomai} ${XENO_GIT}
-	fi
-
-	#Automaticly, just recover the git repo from a git crash
-	if [ -f "${XENO_GIT}/ignore/xenomai/.git/index.lock" ] ; then
-		rm -rf ${XENO_GIT}/ignore/xenomai/ || true
-		echo "scripts/git: xenomai repository ${XENO_GIT} wedged"
-		echo "Recloning..."
-		git clone ${xenomai} ${XENO_GIT}
-	fi
-
-	cd "${XENO_GIT}"
-	git am --abort || echo "git tree is clean..."
-	git add --all
-	git commit --allow-empty -a -m 'empty cleanup commit'
-
-	git reset --hard HEAD
-
-	if [ "x${xenomai_checkout}" = "x" ] ; then
-		git checkout master -f
-	else
-		git checkout ${xenomai_checkout} -f
-	fi
-}
-
-. ${DIR}/version.sh
-. ${DIR}/system.sh
+. "${DIR}/version.sh"
+. "${DIR}/system.sh"
 
 #Debian 7 (Wheezy): git version 1.7.10.4 and later needs "--no-edit"
 unset git_opts
@@ -232,7 +197,5 @@ fi
 
 torvalds_linux="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 linux_stable="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
-xenomai="https://github.com/rcn-ee/xenomai-3"
 
 git_kernel
-git_xenomai
