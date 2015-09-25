@@ -138,6 +138,7 @@ ipipe () {
 	OUTPATCH=$(mktemp "${DIR}/ignore/xenomai-patch.XXXXXXXXXX") || { echo "Failed to create temp file"; exit 1; }
 
 	cd ${DIR}/ignore/xenomai/
+	git reset HEAD --hard
 	patch -p1 < ${DIR}/patches/ipipe-3.14/fixes-prepare-kernel.diff
 	cd -
 
