@@ -536,6 +536,21 @@ quieter () {
 	fi
 }
 
+dts () {
+	echo "dir: dts"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/dts/0001-am57xx-beagle-x15-dsp-debugss.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+}
+
 ###
 #reverts
 #backports
@@ -544,6 +559,7 @@ quieter () {
 #bbb_overlays
 #beaglebone
 #quieter
+dts
 
 packaging () {
 	echo "dir: packaging"
