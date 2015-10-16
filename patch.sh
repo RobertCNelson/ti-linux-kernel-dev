@@ -541,10 +541,12 @@ quieter () {
 		start_cleanup
 	fi
 
+	#quiet some hide obvious things...
 	${git} "${DIR}/patches/quieter/0001-quiet-8250_omap.c-use-pr_info-over-pr_err.patch"
+	${git} "${DIR}/patches/quieter/0002-quiet-topology.c-use-pr_info-over-pr_err-missing-clo.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
+		number=2
 		cleanup
 	fi
 }
