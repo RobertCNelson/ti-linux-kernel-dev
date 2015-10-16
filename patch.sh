@@ -210,6 +210,8 @@ fixes () {
 		start_cleanup
 	fi
 
+	${git} "${DIR}/patches/fixes/0001-Fix-remoteproc-to-work-with-the-PRU-GNU-Binutils-por.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
