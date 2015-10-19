@@ -1,0 +1,50 @@
+From 463bb14e6fc957a7d5ec9434afed29430debbbfb Mon Sep 17 00:00:00 2001
+From: Grygorii Strashko <grygorii.strashko@linaro.org>
+Date: Mon, 13 Jul 2015 17:08:08 +0300
+Subject: [PATCH 02/21] gpio: omap: fix omap_gpio_free to not clean up irq
+ configuration
+
+commit 5f982c70a7c3382d3532ac6d13fdea48ab38b934 upstream
+
+This patch fixes following issue:
+- GPIOn is used as IRQ by some dev, for example PCF8575.INT ->  gpio6.11
+- PCFx driver knows nothing about type of IRQ line (GPIO or not)
+  so it doesn't request gpio and just do request_irq()
+- If gpio6.11 will be exported through the sysfs and then un-xeported
+then IRQs from PCFx will not be received any more, because
+IRQ configuration for gpio6.11 will be cleaned up unconditionally
+in omap_gpio_free.
+
+Fix this by removing all GPIO IRQ specific code from omap_gpio_free()
+and also do GPIO clean up (change direction to 'in' and disable debounce)
+only if corresponding GPIO is not used as IRQ too.
+GPIO IRQ will be properly cleaned up by GPIO irqchip code.
+
+Signed-off-by: Grygorii Strashko <grygorii.strashko@linaro.org>
+Tested-by: Tony Lindgren <tony@atomide.com>
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+Signed-off-by: Grygorii Strashko <grygorii.strashko@ti.com>
+---
+ drivers/gpio/gpio-omap.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
+index 6efee35..5052661 100644
+--- a/drivers/gpio/gpio-omap.c
++++ b/drivers/gpio/gpio-omap.c
+@@ -690,8 +690,11 @@ static void omap_gpio_free(struct gpio_chip *chip, unsigned offset)
+ 
+ 	spin_lock_irqsave(&bank->lock, flags);
+ 	bank->mod_usage &= ~(BIT(offset));
++	if (!LINE_USED(bank->irq_usage, offset)) {
++		omap_set_gpio_direction(bank, offset, 1);
++		omap_clear_gpio_debounce(bank, offset);
++	}
+ 	omap_disable_gpio_module(bank, offset);
+-	omap_reset_gpio(bank, offset);
+ 	spin_unlock_irqrestore(&bank->lock, flags);
+ 
+ 	/*
+-- 
+2.6.1
+

@@ -1,0 +1,52 @@
+From 58ac52221b71c6a7e067ebe2f13e595cb99e17b6 Mon Sep 17 00:00:00 2001
+From: Grygorii Strashko <grygorii.strashko@ti.com>
+Date: Mon, 28 Sep 2015 18:36:14 -0500
+Subject: [PATCH 19/21] gpio: omap: fix static checker warning
+
+This patch fixes below static checker warning by changing
+type of irq field in struct gpio_bank from u16 to int.
+
+drivers/gpio/gpio-omap.c:1191 omap_gpio_probe()
+	warn: assigning (-6) to unsigned variable 'bank->irq'
+
+drivers/gpio/gpio-omap.c
+  1188          bank->irq = platform_get_irq(pdev, 0);
+  1189          if (bank->irq <= 0) {
+
+bank->irq is u16.
+
+  1190                  if (!bank->irq)
+  1191                          bank->irq = -ENXIO;
+
+Does not work.
+
+  1192                  if (bank->irq != -EPROBE_DEFER)
+
+Does not work.
+
+  1193                          dev_err(dev,
+  1194                                  "can't get irq resource ret=%d\n", bank->irq);
+  1195                  return bank->irq;
+  1196          }
+
+Signed-off-by: Grygorii Strashko <grygorii.strashko@ti.com>
+---
+ drivers/gpio/gpio-omap.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
+index 3682ed8..a2de9a3 100644
+--- a/drivers/gpio/gpio-omap.c
++++ b/drivers/gpio/gpio-omap.c
+@@ -51,7 +51,7 @@ struct gpio_regs {
+ struct gpio_bank {
+ 	struct list_head node;
+ 	void __iomem *base;
+-	u16 irq;
++	int irq;
+ 	u32 non_wakeup_gpios;
+ 	u32 enabled_non_wakeup_gpios;
+ 	struct gpio_regs context;
+-- 
+2.6.1
+

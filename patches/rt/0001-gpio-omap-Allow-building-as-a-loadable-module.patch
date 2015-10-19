@@ -1,0 +1,139 @@
+From ed28ad9cd730334b1df1de8268c2fef20766cb59 Mon Sep 17 00:00:00 2001
+From: Tony Lindgren <tony@atomide.com>
+Date: Mon, 13 Jul 2015 17:04:15 +0300
+Subject: [PATCH 01/21] gpio: omap: Allow building as a loadable module
+
+commit cac089f9026e9ddb3481daf08f0fc4e5949fa1af upstream
+
+We currently get all kinds of errors building the omap gpio driver
+as a module starting with:
+
+undefined reference to `omap2_gpio_resume_after_idle'
+undefined reference to `omap2_gpio_prepare_for_idle'
+...
+
+Let's fix the issue by adding inline functions to the header.
+Note that we can now also remove the two unused functions for
+omap_set_gpio_debounce and omap_set_gpio_debounce_time.
+
+Then doing rmmod on the module produces further warnings
+because of missing exit related functions. Let's add those.
+
+And finally, we can make the Kconfig entry just a tristate
+option that's selected for omaps.
+
+Cc: Javier Martinez Canillas <javier@dowhile0.org>
+Cc: Kevin Hilman <khilman@deeprootsystems.com>
+Cc: Nishanth Menon <nm@ti.com>
+Signed-off-by: Tony Lindgren <tony@atomide.com>
+Reviewed-by: Grygorii Strashko <grygorii.strashko@linaro.org>
+Acked-by: Santosh Shilimkar <ssantosh@kernel.org>
+Reviewed-by: Felipe Balbi <balbi@ti.com>
+Signed-off-by: Linus Walleij <linus.walleij@linaro.org>
+Signed-off-by: Grygorii Strashko <grygorii.strashko@ti.com>
+---
+ drivers/gpio/Kconfig                    |  2 +-
+ drivers/gpio/gpio-omap.c                | 24 ++++++++++++++++++++++++
+ include/linux/platform_data/gpio-omap.h | 12 ++++++++++--
+ 3 files changed, 35 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
+index caefe80..ff7df95 100644
+--- a/drivers/gpio/Kconfig
++++ b/drivers/gpio/Kconfig
+@@ -308,7 +308,7 @@ config GPIO_OCTEON
+ 	  family of SOCs.
+ 
+ config GPIO_OMAP
+-	bool "TI OMAP GPIO support" if COMPILE_TEST && !ARCH_OMAP2PLUS
++	tristate "TI OMAP GPIO support" if ARCH_OMAP2PLUS || COMPILE_TEST
+ 	default y if ARCH_OMAP
+ 	depends on ARM
+ 	select GENERIC_IRQ_CHIP
+diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
+index b232397..6efee35 100644
+--- a/drivers/gpio/gpio-omap.c
++++ b/drivers/gpio/gpio-omap.c
+@@ -1233,6 +1233,17 @@ static int omap_gpio_probe(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
++static int omap_gpio_remove(struct platform_device *pdev)
++{
++	struct gpio_bank *bank = platform_get_drvdata(pdev);
++
++	list_del(&bank->node);
++	gpiochip_remove(&bank->chip);
++	pm_runtime_disable(bank->dev);
++
++	return 0;
++}
++
+ #ifdef CONFIG_ARCH_OMAP2PLUS
+ 
+ #if defined(CONFIG_PM)
+@@ -1418,6 +1429,7 @@ static int omap_gpio_runtime_resume(struct device *dev)
+ }
+ #endif /* CONFIG_PM */
+ 
++#if IS_BUILTIN(CONFIG_GPIO_OMAP)
+ void omap2_gpio_prepare_for_idle(int pwr_mode)
+ {
+ 	struct gpio_bank *bank;
+@@ -1443,6 +1455,7 @@ void omap2_gpio_resume_after_idle(void)
+ 		pm_runtime_get_sync(bank->dev);
+ 	}
+ }
++#endif
+ 
+ #if defined(CONFIG_PM)
+ static void omap_gpio_init_context(struct gpio_bank *p)
+@@ -1598,6 +1611,7 @@ MODULE_DEVICE_TABLE(of, omap_gpio_match);
+ 
+ static struct platform_driver omap_gpio_driver = {
+ 	.probe		= omap_gpio_probe,
++	.remove		= omap_gpio_remove,
+ 	.driver		= {
+ 		.name	= "omap_gpio",
+ 		.pm	= &gpio_pm_ops,
+@@ -1615,3 +1629,13 @@ static int __init omap_gpio_drv_reg(void)
+ 	return platform_driver_register(&omap_gpio_driver);
+ }
+ postcore_initcall(omap_gpio_drv_reg);
++
++static void __exit omap_gpio_exit(void)
++{
++	platform_driver_unregister(&omap_gpio_driver);
++}
++module_exit(omap_gpio_exit);
++
++MODULE_DESCRIPTION("omap gpio driver");
++MODULE_ALIAS("platform:gpio-omap");
++MODULE_LICENSE("GPL v2");
+diff --git a/include/linux/platform_data/gpio-omap.h b/include/linux/platform_data/gpio-omap.h
+index 5d50b25..cb26181 100644
+--- a/include/linux/platform_data/gpio-omap.h
++++ b/include/linux/platform_data/gpio-omap.h
+@@ -208,9 +208,17 @@ struct omap_gpio_platform_data {
+ 	int (*get_context_loss_count)(struct device *dev);
+ };
+ 
++#if IS_BUILTIN(CONFIG_GPIO_OMAP)
+ extern void omap2_gpio_prepare_for_idle(int off_mode);
+ extern void omap2_gpio_resume_after_idle(void);
+-extern void omap_set_gpio_debounce(int gpio, int enable);
+-extern void omap_set_gpio_debounce_time(int gpio, int enable);
++#else
++static inline void omap2_gpio_prepare_for_idle(int off_mode)
++{
++}
++
++static inline void omap2_gpio_resume_after_idle(void)
++{
++}
++#endif
+ 
+ #endif
+-- 
+2.6.1
+

@@ -143,6 +143,44 @@ rt_cleanup () {
 rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
+
+	#omap_gpio="enable"
+	if [ "x${omap_gpio}" = "xenable" ] ; then
+
+		#regenerate="enable"
+		if [ "x${regenerate}" = "xenable" ] ; then
+			start_cleanup
+		fi
+		#v4.1.10
+		${git} "${DIR}/patches/rt/0001-gpio-omap-Allow-building-as-a-loadable-module.patch"
+		${git} "${DIR}/patches/rt/0002-gpio-omap-fix-omap_gpio_free-to-not-clean-up-irq-con.patch"
+		${git} "${DIR}/patches/rt/0003-gpio-omap-fix-error-handling-in-omap_gpio_irq_type.patch"
+		${git} "${DIR}/patches/rt/0004-gpio-omap-rework-omap_x_irq_shutdown-to-touch-only-i.patch"
+		${git} "${DIR}/patches/rt/0005-gpio-omap-rework-omap_gpio_request-to-touch-only-gpi.patch"
+		${git} "${DIR}/patches/rt/0006-gpio-omap-rework-omap_gpio_irq_startup-to-handle-cur.patch"
+		${git} "${DIR}/patches/rt/0007-gpio-omap-add-missed-spin_unlock_irqrestore-in-omap_.patch"
+		${git} "${DIR}/patches/rt/0008-gpio-omap-prevent-module-from-being-unloaded-while-i.patch"
+		${git} "${DIR}/patches/rt/0009-ARM-OMAP2-Drop-the-concept-of-certain-power-domains-.patch"
+		${git} "${DIR}/patches/rt/0010-gpio-omap-use-raw-locks-for-locking.patch"
+		${git} "${DIR}/patches/rt/0011-gpio-omap-Fix-missing-raw-locks-conversion.patch"
+		${git} "${DIR}/patches/rt/0012-gpio-omap-remove-wrong-irq_domain_remove-usage-in-pr.patch"
+		${git} "${DIR}/patches/rt/0013-gpio-omap-switch-to-use-platform_get_irq.patch"
+		${git} "${DIR}/patches/rt/0014-gpio-omap-fix-omap2_set_gpio_debounce.patch"
+		${git} "${DIR}/patches/rt/0015-gpio-omap-protect-regs-access-in-omap_gpio_irq_handl.patch"
+		${git} "${DIR}/patches/rt/0016-gpio-omap-fix-clk_prepare-unprepare-usage.patch"
+		${git} "${DIR}/patches/rt/0017-gpio-omap-Fix-gpiochip_add-handling-for-deferred-pro.patch"
+		${git} "${DIR}/patches/rt/0018-gpio-omap-Fix-GPIO-numbering-for-deferred-probe.patch"
+		${git} "${DIR}/patches/rt/0019-gpio-omap-fix-static-checker-warning.patch"
+		${git} "${DIR}/patches/rt/0020-gpio-omap-move-pm-runtime-in-irq_chip.irq_bus_lock-s.patch"
+		${git} "${DIR}/patches/rt/0021-gpio-omap-convert-to-use-generic-irq-handler.patch"
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			number=21
+			cleanup
+		fi
+	fi
+
+	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
