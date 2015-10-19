@@ -1,6 +1,6 @@
-From e8410cbf12511a2a17bff46172d3bd0dad5ef079 Mon Sep 17 00:00:00 2001
+From d738d313a33f3ad75107c511d9dba7e7e4ea8f81 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 8 Oct 2015 10:08:43 -0500
+Date: Mon, 19 Oct 2015 10:15:38 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -36,11 +36,13 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/mm/fault.c                                |    8 +-
  arch/arm/mm/highmem.c                              |   45 +-
  arch/arm/plat-versatile/platsmp.c                  |   10 +-
- arch/arm64/Kconfig                                 |    2 +
+ arch/arm64/Kconfig                                 |    4 +-
  arch/arm64/include/asm/futex.h                     |    4 +-
  arch/arm64/include/asm/thread_info.h               |    3 +
  arch/arm64/kernel/asm-offsets.c                    |    1 +
+ arch/arm64/kernel/debug-monitors.c                 |   21 +-
  arch/arm64/kernel/entry.S                          |   13 +-
+ arch/arm64/kernel/insn.c                           |    6 +-
  arch/arm64/kernel/perf_event.c                     |    2 +-
  arch/arm64/mm/fault.c                              |    2 +-
  arch/avr32/include/asm/uaccess.h                   |   12 +-
@@ -347,7 +349,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/sched/rt.c                                  |    2 +
  kernel/sched/sched.h                               |   10 +
  kernel/sched/wait-simple.c                         |  115 ++
- kernel/sched/work-simple.c                         |  172 +++
+ kernel/sched/work-simple.c                         |  173 +++
  kernel/signal.c                                    |  135 ++-
  kernel/softirq.c                                   |  724 +++++++++---
  kernel/stop_machine.c                              |   98 +-
@@ -399,7 +401,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/vmalloc.c                                       |   13 +-
  mm/vmstat.c                                        |    6 +
  mm/workingset.c                                    |   23 +-
- net/core/dev.c                                     |  106 +-
+ net/core/dev.c                                     |  108 +-
  net/core/skbuff.c                                  |    6 +-
  net/core/sock.c                                    |    3 +-
  net/ipv4/icmp.c                                    |   30 +
@@ -415,7 +417,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  sound/soc/intel/atom/sst/sst.c                     |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 410 files changed, 11848 insertions(+), 2057 deletions(-)
+ 412 files changed, 11865 insertions(+), 2072 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 drivers/misc/hwlat_detector.c
@@ -842,10 +844,10 @@ index 19f4cc6..e16a259 100644
  	select HAVE_REGS_AND_STACK_ACCESS_API
  	select HAVE_SYSCALL_TRACEPOINTS
 diff --git a/arch/arm/include/asm/cmpxchg.h b/arch/arm/include/asm/cmpxchg.h
-index abb2c37..2386e97 100644
+index 21d8bcb..681b589 100644
 --- a/arch/arm/include/asm/cmpxchg.h
 +++ b/arch/arm/include/asm/cmpxchg.h
-@@ -129,6 +129,8 @@ static inline unsigned long __xchg(unsigned long x, volatile void *ptr, int size
+@@ -133,6 +133,8 @@ static inline unsigned long __xchg(unsigned long x, volatile void *ptr, int size
  
  #else	/* min ARCH >= ARMv6 */
  
@@ -1049,7 +1051,7 @@ index 423663e..365934f 100644
  		} else {
  			if (unlikely(!user_mode(regs)))
 diff --git a/arch/arm/kernel/smp.c b/arch/arm/kernel/smp.c
-index 3d6b782..e3efa4e 100644
+index f6f0a76..9e99fba 100644
 --- a/arch/arm/kernel/smp.c
 +++ b/arch/arm/kernel/smp.c
 @@ -215,8 +215,6 @@ int __cpu_disable(void)
@@ -1755,7 +1757,7 @@ index 53feb90..b4a8d54 100644
  	return pen_release != -1 ? -ENOSYS : 0;
  }
 diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
-index 6f0a3b4..2cc65a6 100644
+index 6f0a3b4..09a4125 100644
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
 @@ -69,8 +69,10 @@ config ARM64
@@ -1769,6 +1771,15 @@ index 6f0a3b4..2cc65a6 100644
  	select MODULES_USE_ELF_RELA
  	select NO_BOOTMEM
  	select OF
+@@ -599,7 +601,7 @@ config XEN_DOM0
+ 
+ config XEN
+ 	bool "Xen guest support on ARM64"
+-	depends on ARM64 && OF
++	depends on ARM64 && OF && !PREEMPT_RT_FULL
+ 	select SWIOTLB_XEN
+ 	help
+ 	  Say Y if you want to run Linux in a Virtual Machine on Xen on ARM64.
 diff --git a/arch/arm64/include/asm/futex.h b/arch/arm64/include/asm/futex.h
 index 5f750dc..74069b3 100644
 --- a/arch/arm64/include/asm/futex.h
@@ -1831,6 +1842,54 @@ index da675cc..c73e2ae 100644
    DEFINE(TI_ADDR_LIMIT,		offsetof(struct thread_info, addr_limit));
    DEFINE(TI_TASK,		offsetof(struct thread_info, task));
    DEFINE(TI_CPU,		offsetof(struct thread_info, cpu));
+diff --git a/arch/arm64/kernel/debug-monitors.c b/arch/arm64/kernel/debug-monitors.c
+index b056369..70654d84 100644
+--- a/arch/arm64/kernel/debug-monitors.c
++++ b/arch/arm64/kernel/debug-monitors.c
+@@ -271,20 +271,21 @@ static int single_step_handler(unsigned long addr, unsigned int esr,
+  * Use reader/writer locks instead of plain spinlock.
+  */
+ static LIST_HEAD(break_hook);
+-static DEFINE_RWLOCK(break_hook_lock);
++static DEFINE_SPINLOCK(break_hook_lock);
+ 
+ void register_break_hook(struct break_hook *hook)
+ {
+-	write_lock(&break_hook_lock);
+-	list_add(&hook->node, &break_hook);
+-	write_unlock(&break_hook_lock);
++	spin_lock(&break_hook_lock);
++	list_add_rcu(&hook->node, &break_hook);
++	spin_unlock(&break_hook_lock);
+ }
+ 
+ void unregister_break_hook(struct break_hook *hook)
+ {
+-	write_lock(&break_hook_lock);
+-	list_del(&hook->node);
+-	write_unlock(&break_hook_lock);
++	spin_lock(&break_hook_lock);
++	list_del_rcu(&hook->node);
++	spin_unlock(&break_hook_lock);
++	synchronize_rcu();
+ }
+ 
+ static int call_break_hook(struct pt_regs *regs, unsigned int esr)
+@@ -292,11 +293,11 @@ static int call_break_hook(struct pt_regs *regs, unsigned int esr)
+ 	struct break_hook *hook;
+ 	int (*fn)(struct pt_regs *regs, unsigned int esr) = NULL;
+ 
+-	read_lock(&break_hook_lock);
+-	list_for_each_entry(hook, &break_hook, node)
++	rcu_read_lock();
++	list_for_each_entry_rcu(hook, &break_hook, node)
+ 		if ((esr & hook->esr_mask) == hook->esr_val)
+ 			fn = hook->fn;
+-	read_unlock(&break_hook_lock);
++	rcu_read_unlock();
+ 
+ 	return fn ? fn(regs, esr) : DBG_HOOK_ERROR;
+ }
 diff --git a/arch/arm64/kernel/entry.S b/arch/arm64/kernel/entry.S
 index bddd04d..6515be3 100644
 --- a/arch/arm64/kernel/entry.S
@@ -1871,6 +1930,35 @@ index bddd04d..6515be3 100644
  	/* TIF_SIGPENDING, TIF_NOTIFY_RESUME or TIF_FOREIGN_FPSTATE case */
  	ldr	x2, [sp, #S_PSTATE]
  	mov	x0, sp				// 'regs'
+diff --git a/arch/arm64/kernel/insn.c b/arch/arm64/kernel/insn.c
+index 9249020..30eb88e 100644
+--- a/arch/arm64/kernel/insn.c
++++ b/arch/arm64/kernel/insn.c
+@@ -77,7 +77,7 @@ bool __kprobes aarch64_insn_is_nop(u32 insn)
+ 	}
+ }
+ 
+-static DEFINE_SPINLOCK(patch_lock);
++static DEFINE_RAW_SPINLOCK(patch_lock);
+ 
+ static void __kprobes *patch_map(void *addr, int fixmap)
+ {
+@@ -124,13 +124,13 @@ static int __kprobes __aarch64_insn_write(void *addr, u32 insn)
+ 	unsigned long flags = 0;
+ 	int ret;
+ 
+-	spin_lock_irqsave(&patch_lock, flags);
++	raw_spin_lock_irqsave(&patch_lock, flags);
+ 	waddr = patch_map(addr, FIX_TEXT_POKE0);
+ 
+ 	ret = probe_kernel_write(waddr, &insn, AARCH64_INSN_SIZE);
+ 
+ 	patch_unmap(FIX_TEXT_POKE0);
+-	spin_unlock_irqrestore(&patch_lock, flags);
++	raw_spin_unlock_irqrestore(&patch_lock, flags);
+ 
+ 	return ret;
+ }
 diff --git a/arch/arm64/kernel/perf_event.c b/arch/arm64/kernel/perf_event.c
 index 7778453..fd26e57 100644
 --- a/arch/arm64/kernel/perf_event.c
@@ -14856,10 +14944,10 @@ index 2579e40..bf20e0a 100644
  		 * Fixup the pi_state owner and possibly acquire the lock if we
  		 * haven't already.
 diff --git a/kernel/irq/handle.c b/kernel/irq/handle.c
-index 6354802..26a6367 100644
+index d2603ca..5707864 100644
 --- a/kernel/irq/handle.c
 +++ b/kernel/irq/handle.c
-@@ -133,6 +133,8 @@ void __irq_wake_thread(struct irq_desc *desc, struct irqaction *action)
+@@ -134,6 +134,8 @@ void __irq_wake_thread(struct irq_desc *desc, struct irqaction *action)
  irqreturn_t
  handle_irq_event_percpu(struct irq_desc *desc, struct irqaction *action)
  {
@@ -14868,7 +14956,7 @@ index 6354802..26a6367 100644
  	irqreturn_t retval = IRQ_NONE;
  	unsigned int flags = 0, irq = desc->irq_data.irq;
  
-@@ -173,7 +175,11 @@ handle_irq_event_percpu(struct irq_desc *desc, struct irqaction *action)
+@@ -174,7 +176,11 @@ handle_irq_event_percpu(struct irq_desc *desc, struct irqaction *action)
  		action = action->next;
  	} while (action);
  
@@ -19831,10 +19919,10 @@ index 0000000..7dfa86d
 +EXPORT_SYMBOL(__swait_wake);
 diff --git a/kernel/sched/work-simple.c b/kernel/sched/work-simple.c
 new file mode 100644
-index 0000000..c996f75
+index 0000000..e57a052
 --- /dev/null
 +++ b/kernel/sched/work-simple.c
-@@ -0,0 +1,172 @@
+@@ -0,0 +1,173 @@
 +/*
 + * Copyright (C) 2014 BMW Car IT GmbH, Daniel Wagner daniel.wagner@bmw-carit.de
 + *
@@ -19847,6 +19935,7 @@ index 0000000..c996f75
 +#include <linux/kthread.h>
 +#include <linux/slab.h>
 +#include <linux/spinlock.h>
++#include <linux/export.h>
 +
 +#define SWORK_EVENT_PENDING     (1 << 0)
 +
@@ -27025,7 +27114,7 @@ index aa01713..263d019 100644
  	return ret;
  }
 diff --git a/net/core/dev.c b/net/core/dev.c
-index a42b232..4969c0d 100644
+index a42b232..f8c23de 100644
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
 @@ -184,6 +184,7 @@ static unsigned int napi_gen_id;
@@ -27284,7 +27373,7 @@ index a42b232..4969c0d 100644
  }
  EXPORT_SYMBOL(__napi_schedule);
  
-@@ -7167,6 +7210,7 @@ static int dev_cpu_callback(struct notifier_block *nfb,
+@@ -7167,16 +7210,20 @@ static int dev_cpu_callback(struct notifier_block *nfb,
  
  	raise_softirq_irqoff(NET_TX_SOFTIRQ);
  	local_irq_enable();
@@ -27292,7 +27381,11 @@ index a42b232..4969c0d 100644
  
  	/* Process offline CPU's input_pkt_queue */
  	while ((skb = __skb_dequeue(&oldsd->process_queue))) {
-@@ -7177,6 +7221,9 @@ static int dev_cpu_callback(struct notifier_block *nfb,
+ 		netif_rx_ni(skb);
+ 		input_queue_head_incr(oldsd);
+ 	}
+-	while ((skb = skb_dequeue(&oldsd->input_pkt_queue))) {
++	while ((skb = __skb_dequeue(&oldsd->input_pkt_queue))) {
  		netif_rx_ni(skb);
  		input_queue_head_incr(oldsd);
  	}
