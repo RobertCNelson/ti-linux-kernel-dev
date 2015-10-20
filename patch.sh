@@ -538,7 +538,7 @@ beaglebone () {
 
 quieter () {
 	echo "dir: quieter"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
@@ -548,9 +548,10 @@ quieter () {
 	${git} "${DIR}/patches/quieter/0002-quiet-topology.c-use-pr_info-over-pr_err-missing-clo.patch"
 	${git} "${DIR}/patches/quieter/0003-quiet-vgaarb-use-pr_info-over-pr_err.patch"
 	${git} "${DIR}/patches/quieter/0004-quiet-omap_hsmmc.c-dont-complain-about-something-we-.patch"
+	${git} "${DIR}/patches/quieter/0005-quiet-arch-arm-mach-omap2-voltage.c-legacy-harmless.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=4
+		number=5
 		cleanup
 	fi
 }
