@@ -538,7 +538,7 @@ beaglebone () {
 
 quieter () {
 	echo "dir: quieter"
-	regenerate="enable"
+	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
