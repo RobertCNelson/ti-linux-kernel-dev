@@ -1330,4 +1330,15 @@ config="CONFIG_CRYPTO_SHA256_ARM" ; config_module
 config="CONFIG_CRYPTO_SHA512_ARM_NEON" ; config_module
 config="CONFIG_CRYPTO_AES_ARM" ; config_module
 config="CONFIG_CRYPTO_AES_ARM_BS" ; config_module
+
+#debian changes
+# * Disable CRAMFS; it was obsoleted by squashfs and initramfs
+config="CONFIG_CRAMFS" ; config_disable
+#* mm: Change ZBUD back to built-in, as it's not really useful as a module
+config="CONFIG_ZBUD" ; config_enable
+
+#user resquests
+config="CONFIG_I2C_MUX_PCA954x" ; config_enable
+config="CONFIG_SND_SEQUENCER_OSS" ; config_enable
+config="CONFIG_SND_DUMMY" ; config_module
 #
