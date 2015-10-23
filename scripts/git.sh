@@ -196,6 +196,9 @@ git_xenomai () {
 	git commit --allow-empty -a -m 'empty cleanup commit'
 
 	git reset --hard HEAD
+	git checkout master -f
+
+	git pull "${git_opts}" || true
 
 	if [ "x${xenomai_checkout}" = "x" ] ; then
 		git checkout master -f

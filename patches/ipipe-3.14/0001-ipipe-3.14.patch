@@ -1,6 +1,6 @@
-From 2c1ec73f2e6eed062e30d1c5cb83b650550e44fa Mon Sep 17 00:00:00 2001
+From a219e5738fc84e7d507c28167967c7c1f034d85a Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 25 Sep 2015 15:20:44 -0500
+Date: Fri, 23 Oct 2015 11:08:46 -0500
 Subject: [PATCH] ipipe-3.14
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -9,10 +9,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/compressed/decompress.c            |    4 +-
  arch/arm/boot/compressed/head.S                  |    9 +
  arch/arm/boot/compressed/string.c                |   17 +
- arch/arm/boot/dts/imx6qdl.dtsi                   |    6 +
+ arch/arm/boot/dts/imx6qdl.dtsi                   |    7 +
  arch/arm/boot/dts/omap3-igep0020-3430.dts        |  228 +++
  arch/arm/boot/dts/omap3430-igep.dtsi             |  221 +++
- arch/arm/boot/dts/omap4.dtsi                     |    7 +
+ arch/arm/boot/dts/omap4.dtsi                     |    8 +
  arch/arm/common/it8152.c                         |    7 +-
  arch/arm/common/timer-sp.c                       |   59 +-
  arch/arm/include/asm/Kbuild                      |    1 -
@@ -54,7 +54,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/kernel/entry-common.S                   |  131 +-
  arch/arm/kernel/entry-header.S                   |   67 +-
  arch/arm/kernel/ipipe.c                          |  560 +++++++
- arch/arm/kernel/ipipe_tsc.c                      |  201 +++
+ arch/arm/kernel/ipipe_tsc.c                      |  203 +++
  arch/arm/kernel/ipipe_tsc_asm.S                  |  298 ++++
  arch/arm/kernel/process.c                        |   42 +-
  arch/arm/kernel/ptrace.c                         |    4 +
@@ -315,12 +315,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/x86/kernel/i387.c                           |    3 +
  arch/x86/kernel/i8253.c                          |    4 +
  arch/x86/kernel/i8259.c                          |   30 +-
- arch/x86/kernel/ipipe.c                          |  570 +++++++
+ arch/x86/kernel/ipipe.c                          |  574 +++++++
  arch/x86/kernel/irq.c                            |    9 +-
  arch/x86/kernel/irqinit.c                        |   12 +
  arch/x86/kernel/kgdb.c                           |   24 +-
  arch/x86/kernel/pcspeaker.c                      |    7 +
- arch/x86/kernel/process.c                        |   22 +-
+ arch/x86/kernel/process.c                        |   26 +-
  arch/x86/kernel/process_32.c                     |    2 +-
  arch/x86/kernel/process_64.c                     |    4 +-
  arch/x86/kernel/ptrace.c                         |    5 +
@@ -382,7 +382,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/ftrace.h                           |    1 +
  include/linux/hardirq.h                          |    2 +
  include/linux/i8253.h                            |    3 +-
- include/linux/ipipe.h                            |  455 +++++
+ include/linux/ipipe.h                            |  461 +++++
  include/linux/ipipe_base.h                       |  358 ++++
  include/linux/ipipe_compat.h                     |  319 ++++
  include/linux/ipipe_debug.h                      |  100 ++
@@ -420,7 +420,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/ipipe/compat.c                            |  273 +++
  kernel/ipipe/core.c                              | 1956 ++++++++++++++++++++++
  kernel/ipipe/timer.c                             |  492 ++++++
- kernel/ipipe/tracer.c                            | 1447 ++++++++++++++++
+ kernel/ipipe/tracer.c                            | 1468 ++++++++++++++++
  kernel/irq/chip.c                                |  229 ++-
  kernel/irq/generic-chip.c                        |   45 +-
  kernel/irq/internals.h                           |    3 +
@@ -462,7 +462,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/mprotect.c                                    |   10 +-
  mm/vmalloc.c                                     |    2 +
  scripts/ipipe/genpatches.sh                      |  170 ++
- 457 files changed, 20465 insertions(+), 1612 deletions(-)
+ 457 files changed, 20504 insertions(+), 1612 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -652,16 +652,17 @@ index 36e53ef..3651693 100644
  {
  	const unsigned char *p = s;
 diff --git a/arch/arm/boot/dts/imx6qdl.dtsi b/arch/arm/boot/dts/imx6qdl.dtsi
-index fb28b2e..150beb5 100644
+index fb28b2e..bf84723 100644
 --- a/arch/arm/boot/dts/imx6qdl.dtsi
 +++ b/arch/arm/boot/dts/imx6qdl.dtsi
-@@ -106,6 +106,12 @@
+@@ -106,6 +106,13 @@
  			clocks = <&clks 15>;
  		};
  
 +		timer@00a00200 {
 +			compatible = "arm,cortex-a9-global-timer";
 +			reg = <0x00a00200 0x20>;
++			interrupts = <1 11 0xf01>;
 +			clocks = <&clks 15>;
 +		};
 +
@@ -1130,10 +1131,10 @@ index 0000000..4b25210
 +	power = <50>;
 +};
 diff --git a/arch/arm/boot/dts/omap4.dtsi b/arch/arm/boot/dts/omap4.dtsi
-index 38fd6b8..965b43c 100644
+index 38fd6b8..66b16ed3 100644
 --- a/arch/arm/boot/dts/omap4.dtsi
 +++ b/arch/arm/boot/dts/omap4.dtsi
-@@ -69,10 +69,17 @@
+@@ -69,10 +69,18 @@
  
  	local-timer@48240600 {
  		compatible = "arm,cortex-a9-twd-timer";
@@ -1146,6 +1147,7 @@ index 38fd6b8..965b43c 100644
 +		compatible = "arm,cortex-a9-global-timer";
 +		reg = <0x48240200 0x20>;
 +		clocks = <&mpu_periphclk>;
++		interrupts = <GIC_PPI 11 (GIC_CPU_MASK_RAW(3) | IRQ_TYPE_LEVEL_HIGH)>;
 +	};
 +
  	/*
@@ -2098,7 +2100,7 @@ index bb28af7..780ca50 100644
  static inline void sp804_clockevents_init(void __iomem *base, unsigned int irq, const char *name)
 diff --git a/arch/arm/include/asm/ipipe.h b/arch/arm/include/asm/ipipe.h
 new file mode 100644
-index 0000000..50e20e3
+index 0000000..80360b0
 --- /dev/null
 +++ b/arch/arm/include/asm/ipipe.h
 @@ -0,0 +1,272 @@
@@ -2146,7 +2148,7 @@ index 0000000..50e20e3
 +#include <linux/jump_label.h>
 +#include <linux/ipipe_trace.h>
 +
-+#define IPIPE_CORE_RELEASE	12
++#define IPIPE_CORE_RELEASE	13
 +
 +struct ipipe_domain;
 +
@@ -4737,10 +4739,10 @@ index 0000000..eba1d0c
 +EXPORT_SYMBOL_GPL(cpu_architecture);
 diff --git a/arch/arm/kernel/ipipe_tsc.c b/arch/arm/kernel/ipipe_tsc.c
 new file mode 100644
-index 0000000..d42ceee
+index 0000000..2e48631
 --- /dev/null
 +++ b/arch/arm/kernel/ipipe_tsc.c
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,203 @@
 +#include <linux/kernel.h>
 +#include <linux/module.h>
 +#include <linux/sched.h>
@@ -4908,6 +4910,8 @@ index 0000000..d42ceee
 +	ipipe_tsc_update_timer.function = __ipipe_tsc_update_fn;
 +	mod_timer(&ipipe_tsc_update_timer,
 +		jiffies + ipipe_tsc_update_timer.data);
++
++	__ipipe_tracer_hrclock_initialized();
 +}
 +
 +void __ipipe_mach_get_tscinfo(struct __ipipe_tscinfo *info)
@@ -5369,10 +5373,10 @@ index 63b310c..627b4f8 100644
  void __init smp_setup_processor_id(void)
  {
 diff --git a/arch/arm/kernel/signal.c b/arch/arm/kernel/signal.c
-index 04d6388..f0616de 100644
+index 1e5a4fd..379ac94 100644
 --- a/arch/arm/kernel/signal.c
 +++ b/arch/arm/kernel/signal.c
-@@ -574,11 +574,13 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
+@@ -579,11 +579,13 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
  {
  	do {
  		if (likely(thread_flags & _TIF_NEED_RESCHED)) {
@@ -5387,7 +5391,7 @@ index 04d6388..f0616de 100644
  			if (thread_flags & _TIF_SIGPENDING) {
  				int restart = do_signal(regs, syscall);
  				if (unlikely(restart)) {
-@@ -595,7 +597,7 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
+@@ -600,7 +602,7 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
  				tracehook_notify_resume(regs);
  			}
  		}
@@ -11379,7 +11383,7 @@ index 9ceccef..3c94fa7 100644
  
  comment "Processor and Board Settings"
 diff --git a/arch/blackfin/include/asm/ipipe.h b/arch/blackfin/include/asm/ipipe.h
-index 17b5e92..8b74b1b 100644
+index 17b5e92..44ed44e 100644
 --- a/arch/blackfin/include/asm/ipipe.h
 +++ b/arch/blackfin/include/asm/ipipe.h
 @@ -28,7 +28,7 @@
@@ -11399,7 +11403,7 @@ index 17b5e92..8b74b1b 100644
 -#define IPIPE_MAJOR_NUMBER    1
 -#define IPIPE_MINOR_NUMBER    16
 -#define IPIPE_PATCH_NUMBER    1
-+#define IPIPE_CORE_RELEASE	7
++#define IPIPE_CORE_RELEASE	8
  
  #ifdef CONFIG_SMP
  #error "I-pipe/blackfin: SMP not implemented"
@@ -13446,7 +13450,7 @@ index 10be1dd..cfad863 100644
   * or should we not care like we do now ? --BenH.
 diff --git a/arch/powerpc/include/asm/ipipe.h b/arch/powerpc/include/asm/ipipe.h
 new file mode 100644
-index 0000000..1533d8b
+index 0000000..9a17699
 --- /dev/null
 +++ b/arch/powerpc/include/asm/ipipe.h
 @@ -0,0 +1,157 @@
@@ -13491,7 +13495,7 @@ index 0000000..1533d8b
 +#include <linux/cache.h>
 +#include <linux/threads.h>
 +
-+#define IPIPE_CORE_RELEASE	9
++#define IPIPE_CORE_RELEASE	10
 +
 +struct ipipe_domain;
 +
@@ -18005,10 +18009,10 @@ index b83f325..636a710 100644
  			eimr |=  1 << (31 - errint);
  			mpic_fsl_err_write(mpic->err_regs, eimr);
 diff --git a/arch/powerpc/sysdev/fsl_msi.c b/arch/powerpc/sysdev/fsl_msi.c
-index 77efbae..4d1a2b4 100644
+index 4a9b367..fdd24c2 100644
 --- a/arch/powerpc/sysdev/fsl_msi.c
 +++ b/arch/powerpc/sysdev/fsl_msi.c
-@@ -254,7 +254,9 @@ static void fsl_msi_cascade(unsigned int irq, struct irq_desc *desc)
+@@ -255,7 +255,9 @@ static void fsl_msi_cascade(unsigned int irq, struct irq_desc *desc)
  	cascade_data = irq_get_handler_data(irq);
  	msi_data = cascade_data->msi_data;
  
@@ -18018,7 +18022,7 @@ index 77efbae..4d1a2b4 100644
  	if ((msi_data->feature &  FSL_PIC_IP_MASK) == FSL_PIC_IP_IPIC) {
  		if (chip->irq_mask_ack)
  			chip->irq_mask_ack(idata);
-@@ -264,15 +266,18 @@ static void fsl_msi_cascade(unsigned int irq, struct irq_desc *desc)
+@@ -265,15 +267,18 @@ static void fsl_msi_cascade(unsigned int irq, struct irq_desc *desc)
  		}
  	}
  
@@ -18038,7 +18042,7 @@ index 77efbae..4d1a2b4 100644
  	switch (msi_data->feature & FSL_PIC_IP_MASK) {
  	case FSL_PIC_IP_MPIC:
  		msir_value = fsl_msi_read(msi_data->msi_regs,
-@@ -302,11 +307,10 @@ static void fsl_msi_cascade(unsigned int irq, struct irq_desc *desc)
+@@ -303,11 +308,10 @@ static void fsl_msi_cascade(unsigned int irq, struct irq_desc *desc)
  				msi_hwirq(msi_data, msir_index,
  					  intr_index + have_shift));
  		if (cascade_irq != NO_IRQ)
@@ -18051,7 +18055,7 @@ index 77efbae..4d1a2b4 100644
  
  	switch (msi_data->feature & FSL_PIC_IP_MASK) {
  	case FSL_PIC_IP_MPIC:
-@@ -318,8 +322,11 @@ static void fsl_msi_cascade(unsigned int irq, struct irq_desc *desc)
+@@ -319,8 +323,11 @@ static void fsl_msi_cascade(unsigned int irq, struct irq_desc *desc)
  			chip->irq_unmask(idata);
  		break;
  	}
@@ -19026,7 +19030,7 @@ index 615fa90..e0a62ab 100644
  extern void default_send_IPI_mask_sequence_phys(const struct cpumask *mask,
 diff --git a/arch/x86/include/asm/ipipe.h b/arch/x86/include/asm/ipipe.h
 new file mode 100644
-index 0000000..6766b3d
+index 0000000..d72faf1
 --- /dev/null
 +++ b/arch/x86/include/asm/ipipe.h
 @@ -0,0 +1,96 @@
@@ -19056,7 +19060,7 @@ index 0000000..6766b3d
 +
 +#ifdef CONFIG_IPIPE
 +
-+#define IPIPE_CORE_RELEASE	9
++#define IPIPE_CORE_RELEASE	10
 +
 +struct ipipe_domain;
 +
@@ -19331,7 +19335,7 @@ index 0000000..d000d7e
 +#endif	/* !__X86_IPIPE_64_H */
 diff --git a/arch/x86/include/asm/ipipe_base.h b/arch/x86/include/asm/ipipe_base.h
 new file mode 100644
-index 0000000..3ebadc1
+index 0000000..f665cfa
 --- /dev/null
 +++ b/arch/x86/include/asm/ipipe_base.h
 @@ -0,0 +1,231 @@
@@ -19441,7 +19445,7 @@ index 0000000..3ebadc1
 +#endif
 +}
 +
-+void __ipipe_halt_root(void);
++void __ipipe_halt_root(int use_mwait);
 +
 +void ipipe_hrtimer_interrupt(void);
 +
@@ -19596,7 +19600,7 @@ index 5702d7e..dd61aa6 100644
  
  #define FPU_IRQ				  13
 diff --git a/arch/x86/include/asm/irqflags.h b/arch/x86/include/asm/irqflags.h
-index 0a8b519..0d052b7 100644
+index 0a8b519..c52d5e0 100644
 --- a/arch/x86/include/asm/irqflags.h
 +++ b/arch/x86/include/asm/irqflags.h
 @@ -4,6 +4,11 @@
@@ -19677,7 +19681,7 @@ index 0a8b519..0d052b7 100644
  {
 +#ifdef CONFIG_IPIPE
 +	barrier();
-+	__ipipe_halt_root();
++	__ipipe_halt_root(0);
 +#else
  	native_safe_halt();
 +#endif
@@ -20113,7 +20117,7 @@ index 56bac86..ab267ad 100644
  obj-$(CONFIG_APM)		+= apm.o
  obj-$(CONFIG_SMP)		+= smp.o
 diff --git a/arch/x86/kernel/apic/apic.c b/arch/x86/kernel/apic/apic.c
-index 523f147..131b5eb 100644
+index b6ee63a..13124e7 100644
 --- a/arch/x86/kernel/apic/apic.c
 +++ b/arch/x86/kernel/apic/apic.c
 @@ -34,6 +34,7 @@
@@ -20124,7 +20128,7 @@ index 523f147..131b5eb 100644
  
  #include <asm/trace/irq_vectors.h>
  #include <asm/irq_remapping.h>
-@@ -498,7 +499,7 @@ static void lapic_timer_setup(enum clock_event_mode mode,
+@@ -505,7 +506,7 @@ static void lapic_timer_setup(enum clock_event_mode mode,
  	if (evt->features & CLOCK_EVT_FEAT_DUMMY)
  		return;
  
@@ -20133,7 +20137,7 @@ index 523f147..131b5eb 100644
  
  	switch (mode) {
  	case CLOCK_EVT_MODE_PERIODIC:
-@@ -518,7 +519,7 @@ static void lapic_timer_setup(enum clock_event_mode mode,
+@@ -525,7 +526,7 @@ static void lapic_timer_setup(enum clock_event_mode mode,
  		break;
  	}
  
@@ -20142,7 +20146,7 @@ index 523f147..131b5eb 100644
  }
  
  /*
-@@ -531,6 +532,17 @@ static void lapic_timer_broadcast(const struct cpumask *mask)
+@@ -538,6 +539,17 @@ static void lapic_timer_broadcast(const struct cpumask *mask)
  #endif
  }
  
@@ -20160,7 +20164,7 @@ index 523f147..131b5eb 100644
  
  /*
   * The local apic timer can be used for any function which is CPU local.
-@@ -564,6 +576,16 @@ static void setup_APIC_timer(void)
+@@ -571,6 +583,16 @@ static void setup_APIC_timer(void)
  
  	memcpy(levt, &lapic_clockevent, sizeof(*levt));
  	levt->cpumask = cpumask_of(smp_processor_id());
@@ -20177,7 +20181,7 @@ index 523f147..131b5eb 100644
  
  	if (this_cpu_has(X86_FEATURE_TSC_DEADLINE_TIMER)) {
  		levt->features &= ~(CLOCK_EVT_FEAT_PERIODIC |
-@@ -1094,7 +1116,7 @@ void lapic_shutdown(void)
+@@ -1101,7 +1123,7 @@ void lapic_shutdown(void)
  	if (!cpu_has_apic && !apic_from_smp_config())
  		return;
  
@@ -20186,7 +20190,7 @@ index 523f147..131b5eb 100644
  
  #ifdef CONFIG_X86_32
  	if (!enabled_via_apicbase)
-@@ -1104,7 +1126,7 @@ void lapic_shutdown(void)
+@@ -1111,7 +1133,7 @@ void lapic_shutdown(void)
  		disable_local_APIC();
  
  
@@ -20195,7 +20199,7 @@ index 523f147..131b5eb 100644
  }
  
  /*
-@@ -1376,7 +1398,7 @@ void setup_local_APIC(void)
+@@ -1383,7 +1405,7 @@ void setup_local_APIC(void)
  			value = apic_read(APIC_ISR + i*0x10);
  			for (j = 31; j >= 0; j--) {
  				if (value & (1<<j)) {
@@ -20204,7 +20208,7 @@ index 523f147..131b5eb 100644
  					acked++;
  				}
  			}
-@@ -1945,7 +1967,7 @@ static inline void __smp_spurious_interrupt(void)
+@@ -1952,7 +1974,7 @@ static inline void __smp_spurious_interrupt(void)
  	 */
  	v = apic_read(APIC_ISR + ((SPURIOUS_APIC_VECTOR & ~0x1f) >> 1));
  	if (v & (1 << (SPURIOUS_APIC_VECTOR & 0x1f)))
@@ -20213,7 +20217,7 @@ index 523f147..131b5eb 100644
  
  	inc_irq_stat(irq_spurious_count);
  
-@@ -2352,7 +2374,7 @@ static void lapic_resume(void)
+@@ -2359,7 +2381,7 @@ static void lapic_resume(void)
  	if (!apic_pm_state.active)
  		return;
  
@@ -20222,7 +20226,7 @@ index 523f147..131b5eb 100644
  
  	/*
  	 * IO-APIC and PIC have their own resume routines.
-@@ -2406,7 +2428,7 @@ static void lapic_resume(void)
+@@ -2413,7 +2435,7 @@ static void lapic_resume(void)
  
  	irq_remapping_reenable(x2apic_mode);
  
@@ -21489,7 +21493,7 @@ index c5a9cb9..1c20915 100644
  	CFI_ENDPROC
  END(general_protection)
 diff --git a/arch/x86/kernel/entry_64.S b/arch/x86/kernel/entry_64.S
-index 06469ee..9eed709 100644
+index f2f2b97..ac9ac76 100644
 --- a/arch/x86/kernel/entry_64.S
 +++ b/arch/x86/kernel/entry_64.S
 @@ -50,6 +50,7 @@
@@ -22273,10 +22277,10 @@ index 2e977b5..e91576e 100644
  handle_real_irq:
 diff --git a/arch/x86/kernel/ipipe.c b/arch/x86/kernel/ipipe.c
 new file mode 100644
-index 0000000..73b1a0e
+index 0000000..e556d14
 --- /dev/null
 +++ b/arch/x86/kernel/ipipe.c
-@@ -0,0 +1,570 @@
+@@ -0,0 +1,574 @@
 +/*   -*- linux-c -*-
 + *   linux/arch/x86/kernel/ipipe.c
 + *
@@ -22551,7 +22555,7 @@ index 0000000..73b1a0e
 +		regs->flags |= X86_EFLAGS_IF;
 +}
 +
-+void __ipipe_halt_root(void)
++void __ipipe_halt_root(int use_mwait)
 +{
 +	struct ipipe_percpu_domain_data *p;
 +
@@ -22571,7 +22575,11 @@ index 0000000..73b1a0e
 +#ifdef CONFIG_IPIPE_TRACE_IRQSOFF
 +		ipipe_trace_end(0x8000000E);
 +#endif /* CONFIG_IPIPE_TRACE_IRQSOFF */
-+		asm volatile("sti; hlt": : :"memory");
++		if (use_mwait)
++			asm volatile("sti; .byte 0x0f, 0x01, 0xc9;"
++				     :: "a" (0), "c" (0));
++		else
++			asm volatile("sti; hlt": : :"memory");
 +	}
 +}
 +EXPORT_SYMBOL_GPL(__ipipe_halt_root);
@@ -23007,7 +23015,7 @@ index a311ffc..482b42f 100644
  
  	return IS_ERR(pd) ? PTR_ERR(pd) : 0;
 diff --git a/arch/x86/kernel/process.c b/arch/x86/kernel/process.c
-index 1a1ff42..f4daaaa 100644
+index 1a1ff42..30d929c 100644
 --- a/arch/x86/kernel/process.c
 +++ b/arch/x86/kernel/process.c
 @@ -94,6 +94,10 @@ void arch_task_cache_init(void)
@@ -23074,6 +23082,18 @@ index 1a1ff42..f4daaaa 100644
  		}
  	}
  
+@@ -437,7 +455,11 @@ static void mwait_idle(void)
+ 
+ 		__monitor((void *)&current_thread_info()->flags, 0, 0);
+ 		if (!need_resched())
++#ifdef CONFIG_IPIPE
++			__ipipe_halt_root(1);
++#else
+ 			__sti_mwait(0, 0);
++#endif
+ 		else
+ 			local_irq_enable();
+ 	} else
 diff --git a/arch/x86/kernel/process_32.c b/arch/x86/kernel/process_32.c
 index 0de43e9..46f88a9 100644
 --- a/arch/x86/kernel/process_32.c
@@ -23250,10 +23270,10 @@ index b1d9002..9cf6e8e 100644
  	set_intr_gate(X86_TRAP_PF, page_fault);
  #endif
 diff --git a/arch/x86/kernel/tsc.c b/arch/x86/kernel/tsc.c
-index b20bced..b17a543 100644
+index 8bc924f..9f37470 100644
 --- a/arch/x86/kernel/tsc.c
 +++ b/arch/x86/kernel/tsc.c
-@@ -652,15 +652,15 @@ unsigned long native_calibrate_tsc(void)
+@@ -653,15 +653,15 @@ unsigned long native_calibrate_tsc(void)
  	int hpet = is_hpet_enabled(), i, loopmin;
  
  	/* Calibrate TSC using MSR for Intel Atom SoCs */
@@ -23273,7 +23293,7 @@ index b20bced..b17a543 100644
  	if (fast_calibrate)
  		return fast_calibrate;
  
-@@ -703,11 +703,11 @@ unsigned long native_calibrate_tsc(void)
+@@ -704,11 +704,11 @@ unsigned long native_calibrate_tsc(void)
  		 * calibration, which will take at least 50ms, and
  		 * read the end value.
  		 */
@@ -23287,7 +23307,7 @@ index b20bced..b17a543 100644
  
  		/* Pick the lowest PIT TSC calibration so far */
  		tsc_pit_min = min(tsc_pit_min, tsc_pit_khz);
-@@ -949,7 +949,7 @@ core_initcall(cpufreq_tsc);
+@@ -950,7 +950,7 @@ core_initcall(cpufreq_tsc);
  
  /* clocksource code */
  
@@ -23296,7 +23316,7 @@ index b20bced..b17a543 100644
  
  /*
   * We compare the TSC to the cycle_last value in the clocksource
-@@ -977,7 +977,7 @@ static void resume_tsc(struct clocksource *cs)
+@@ -978,7 +978,7 @@ static void resume_tsc(struct clocksource *cs)
  		clocksource_tsc.cycle_last = 0;
  }
  
@@ -23377,7 +23397,7 @@ index 7a09aca..5c6595b 100644
  		if (eagerfpu == DISABLE) {
  			pr_err("eagerfpu not present, disabling some xstate features: 0x%llx\n",
 diff --git a/arch/x86/kvm/svm.c b/arch/x86/kvm/svm.c
-index 0746334..68660fb 100644
+index e23a539..2e19699 100644
 --- a/arch/x86/kvm/svm.c
 +++ b/arch/x86/kvm/svm.c
 @@ -3829,7 +3829,7 @@ static void svm_vcpu_run(struct kvm_vcpu *vcpu)
@@ -26150,10 +26170,10 @@ index e6bb36a..898a91a 100644
  
 diff --git a/include/linux/ipipe.h b/include/linux/ipipe.h
 new file mode 100644
-index 0000000..912f689
+index 0000000..fc31c97
 --- /dev/null
 +++ b/include/linux/ipipe.h
-@@ -0,0 +1,455 @@
+@@ -0,0 +1,461 @@
 +/* -*- linux-c -*-
 + * include/linux/ipipe.h
 + *
@@ -26569,6 +26589,12 @@ index 0000000..912f689
 +#else
 +#define __ipipe_uaccess_might_fault() might_fault()
 +#endif
++
++#ifdef CONFIG_IPIPE_TRACE
++void __ipipe_tracer_hrclock_initialized(void);
++#else /* !CONFIG_IPIPE_TRACE */
++#define __ipipe_tracer_hrclock_initialized()	do { } while(0)
++#endif /* !CONFIG_IPIPE_TRACE */
 +
 +#include <linux/ipipe_compat.h>
 +
@@ -29121,7 +29147,7 @@ index 81b3d67..b5c92de 100644
  	if (unlikely(in_atomic()))
  		printk(KERN_INFO "note: %s[%d] exited with preempt_count %d\n",
 diff --git a/kernel/fork.c b/kernel/fork.c
-index e2c6853..68c5ef5a 100644
+index 1394fb3..bf11194 100644
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
 @@ -315,6 +315,8 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
@@ -32071,10 +32097,10 @@ index 0000000..0c9b908
 +#endif /* CONFIG_IPIPE_HAVE_HOSTRT */
 diff --git a/kernel/ipipe/tracer.c b/kernel/ipipe/tracer.c
 new file mode 100644
-index 0000000..5cce0bc
+index 0000000..8388671
 --- /dev/null
 +++ b/kernel/ipipe/tracer.c
-@@ -0,0 +1,1447 @@
+@@ -0,0 +1,1468 @@
 +/* -*- linux-c -*-
 + * kernel/ipipe/tracer.c
 + *
@@ -32822,6 +32848,9 @@ index 0000000..5cce0bc
 +	unsigned long long abs_tsc;
 +	long us;
 +
++	if (!__ipipe_hrclock_ok())
++		return 0;
++
 +	/* ipipe_tsc2us works on unsigned => handle sign separately */
 +	abs_tsc = (tsc >= 0) ? tsc : -tsc;
 +	us = ipipe_tsc2us(abs_tsc);
@@ -33024,6 +33053,11 @@ index 0000000..5cce0bc
 +
 +		__ipipe_global_path_unlock(flags);
 +
++		if (!__ipipe_hrclock_ok()) {
++			seq_printf(m, "No hrclock available, dumping traces disabled\n");
++			return NULL;
++		}
++
 +		/* does this path actually contain data? */
 +		if (print_path->end == print_path->begin)
 +			return NULL;
@@ -33193,6 +33227,11 @@ index 0000000..5cce0bc
 +
 +		if (!print_path)
 +			return NULL;
++
++		if (!__ipipe_hrclock_ok()) {
++			seq_printf(m, "No hrclock available, dumping traces disabled\n");
++			return NULL;
++		}
 +
 +		/* back- and post-tracing length, post-trace length was frozen
 +		   in __ipipe_trace, back-trace may have to be reduced due to
@@ -33443,17 +33482,37 @@ index 0000000..5cce0bc
 +
 +extern struct proc_dir_entry *ipipe_proc_root;
 +
++void __init __ipipe_tracer_hrclock_initialized(void)
++{
++	unsigned long long start, end, min = ULLONG_MAX;
++	int i;
++
++#ifdef CONFIG_IPIPE_TRACE_VMALLOC
++	if (!per_cpu(trace_path, 0))
++		return;
++#endif
++	/* Calculate minimum overhead of __ipipe_trace() */
++	hard_local_irq_disable();
++	for (i = 0; i < 100; i++) {
++		ipipe_read_tsc(start);
++		__ipipe_trace(IPIPE_TRACE_FUNC, __BUILTIN_RETURN_ADDRESS0,
++			      __BUILTIN_RETURN_ADDRESS1, 0);
++		ipipe_read_tsc(end);
++
++		end -= start;
++		if (end < min)
++			min = end;
++	}
++	hard_local_irq_enable();
++	trace_overhead = ipipe_tsc2ns(min);
++}
++
 +void __init __ipipe_init_tracer(void)
 +{
 +	struct proc_dir_entry *trace_dir;
-+	unsigned long long start, end, min = ULLONG_MAX;
-+	int i;
 +#ifdef CONFIG_IPIPE_TRACE_VMALLOC
 +	int cpu, path;
 +#endif /* CONFIG_IPIPE_TRACE_VMALLOC */
-+
-+	if (!__ipipe_hrclock_ok())
-+		return;
 +
 +#ifdef CONFIG_IPIPE_TRACE_VMALLOC
 +	for_each_possible_cpu(cpu) {
@@ -33476,20 +33535,8 @@ index 0000000..5cce0bc
 +	}
 +#endif /* CONFIG_IPIPE_TRACE_VMALLOC */
 +
-+	/* Calculate minimum overhead of __ipipe_trace() */
-+	hard_local_irq_disable();
-+	for (i = 0; i < 100; i++) {
-+		ipipe_read_tsc(start);
-+		__ipipe_trace(IPIPE_TRACE_FUNC, __BUILTIN_RETURN_ADDRESS0,
-+			      __BUILTIN_RETURN_ADDRESS1, 0);
-+		ipipe_read_tsc(end);
-+
-+		end -= start;
-+		if (end < min)
-+			min = end;
-+	}
-+	hard_local_irq_enable();
-+	trace_overhead = ipipe_tsc2ns(min);
++	if (__ipipe_hrclock_ok() && !trace_overhead)
++		__ipipe_tracer_hrclock_initialized();
 +
 +#ifdef CONFIG_IPIPE_TRACE_ENABLE
 +	ipipe_trace_enable = 1;
@@ -34464,7 +34511,7 @@ index b30a292..27376a0 100644
  		return sched_clock();
  
 diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 5e973ef..fb3a19b 100644
+index a19262a..9b2b4a9 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
 @@ -1520,7 +1520,9 @@ void scheduler_ipi(void)
@@ -36006,5 +36053,5 @@ index 0000000..13c1a2c
 +}
 +'
 -- 
-2.5.3
+2.6.1
 

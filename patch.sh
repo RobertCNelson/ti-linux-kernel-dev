@@ -123,11 +123,12 @@ ipipe () {
 	#git checkout v3.14.44 -b ipipe-3.14
 	#git pull --no-edit git://git.xenomai.org/ipipe.git ipipe-3.14
 	#
-	#commit a5fa6b64386f1ccff2e7c1c4e6ec79558b0d62fe
+	#commit 242c9df10b908bc00a2e449c83dfe5bffc082ac1
 
-	#git diff v3.14.44...a5fa6b64386f1ccff2e7c1c4e6ec79558b0d62fe > ../patches/ipipe-3.14/ipipe-3.14.diff
+	#git diff v3.14.44...242c9df10b908bc00a2e449c83dfe5bffc082ac1 > ../patches/ipipe-3.14/ipipe-3.14.diff
 
 	#exit 2
+	#ipipe-core-3.14.44-arm-13
 
 	${git} "${DIR}/patches/ipipe-3.14/0001-ipipe-3.14.patch"
 
