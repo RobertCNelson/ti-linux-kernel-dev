@@ -558,6 +558,22 @@ quieter () {
 	fi
 }
 
+rpmsg () {
+	echo "dir: pru"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/pru/0003-Add-rpmsg_pru-support.patch"
+	${git} "${DIR}/patches/pru/0004-Update-from-git.ti.com-rpmsg-rpmsg.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+}
+
 ###
 reverts
 backports
@@ -566,6 +582,7 @@ pru
 bbb_overlays
 beaglebone
 quieter
+rpmsg
 
 packaging () {
 	echo "dir: packaging"
