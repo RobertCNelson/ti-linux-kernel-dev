@@ -389,9 +389,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0005-add-overlay-dtb.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0006-am335x-bone-common-cpsw-no-longer-need-to-define-bot.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0007-am335x-bone-common-drop-0x1a0-from-mmc.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0008-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=7
+		number=8
 		cleanup
 	fi
 
