@@ -265,11 +265,13 @@ x15 () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
+
 	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
 	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
+	${git} "${DIR}/patches/x15/dsp/0003-dra7.dtsi-64bit-address-fix-for-ocp.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=3
 		cleanup
 	fi
 }
