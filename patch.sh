@@ -221,23 +221,37 @@ fixes () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/fixes/0001-Fix-remoteproc-to-work-with-the-PRU-GNU-Binutils-por.patch"
-
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
 	fi
 }
 
-pru () {
-	echo "dir: pru"
+pru_uio () {
+	echo "dir: pru_uio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/pru/0001-Making-the-uio-pruss-driver-work.patch"
-	${git} "${DIR}/patches/pru/0002-Cleaned-up-error-reporting.patch"
+	${git} "${DIR}/patches/pru_uio/0001-Making-the-uio-pruss-driver-work.patch"
+	${git} "${DIR}/patches/pru_uio/0002-Cleaned-up-error-reporting.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+}
+
+pru_rpmsg () {
+	echo "dir: pru_rpmsg"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/pru_rpmsg/0001-Fix-remoteproc-to-work-with-the-PRU-GNU-Binutils-por.patch"
+	${git} "${DIR}/patches/pru_rpmsg/0002-Add-rpmsg_pru-support.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=2
@@ -587,12 +601,13 @@ rpmsg () {
 ###
 reverts
 backports
-fixes
-pru
+#fixes
+pru_uio
+pru_rpmsg
 bbb_overlays
 beaglebone
 quieter
-rpmsg
+
 
 packaging () {
 	echo "dir: packaging"
