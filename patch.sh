@@ -145,6 +145,14 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		git revert --no-edit 57293d164ce7c9cc91dd27050f6622edabbe0c02 -s
+		git revert --no-edit d906a24a7ab60868a191c25e437f92f48948b5ca -s
+		git revert --no-edit 98197d3de58a62785be3e421864d6145955f197d -s
+		git revert --no-edit 3905f7abd0410acdd497661e84c7f6ef672c1e04 -s
+
+		mkdir -p ${DIR}/patches/rt/reverts/
+		git format-patch -4 -o ../patches/rt/reverts/
+
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
@@ -155,6 +163,11 @@ rt () {
 
 		exit 2
 	fi
+
+	${git} "${DIR}/patches/rt/reverts/0001-Revert-sched-preempt-powerpc-kvm-Use-need_resched-in.patch"
+	${git} "${DIR}/patches/rt/reverts/0002-Revert-sched-preempt-xen-Use-need_resched-instead-of.patch"
+	${git} "${DIR}/patches/rt/reverts/0003-Revert-sched-preempt-Fix-cond_resched_lock-and-cond_.patch"
+	${git} "${DIR}/patches/rt/reverts/0004-Revert-sched-preempt-Rename-PREEMPT_CHECK_OFFSET-to-.patch"
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
@@ -176,11 +189,9 @@ reverts () {
 	fi
 
 	${git} "${DIR}/patches/reverts/0001-Revert-spi-spidev-Warn-loudly-if-instantiated-from-D.patch"
-	#am335x causing random reboots...
-	${git} "${DIR}/patches/reverts/0002-Revert-usb-musb-dsps-just-start-polling-already.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=1
 		cleanup
 	fi
 }
@@ -216,15 +227,46 @@ fixes () {
 	fi
 }
 
-pru () {
-	echo "dir: pru"
+pru_uio () {
+	echo "dir: pru_uio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/pru/0001-Making-the-uio-pruss-driver-work.patch"
-	${git} "${DIR}/patches/pru/0002-Cleaned-up-error-reporting.patch"
+	${git} "${DIR}/patches/pru_uio/0001-Making-the-uio-pruss-driver-work.patch"
+	${git} "${DIR}/patches/pru_uio/0002-Cleaned-up-error-reporting.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+}
+
+pru_rpmsg () {
+	echo "dir: pru_rpmsg"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/pru_rpmsg/0001-Fix-remoteproc-to-work-with-the-PRU-GNU-Binutils-por.patch"
+	${git} "${DIR}/patches/pru_rpmsg/0002-Add-rpmsg_pru-support.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+}
+
+x15 () {
+	echo "dir: x15/dsp"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
+	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=2
@@ -292,14 +334,27 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0007-nvmem-qfprom-Add-bindings-for-qfprom.patch"
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0008-nvmem-sunxi-Move-the-SID-driver-to-the-nvmem-framewo.patch"
 
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0009-nvmem-make-default-user-binary-file-root-access-only.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0010-nvmem-set-the-size-for-the-nvmem-binary-file.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0011-nvmem-add-permission-flags-in-nvmem_config.patch"
+#linux-next:
 
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0012-nvmem-core-fix-a-copy-paste-error.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0009-nvmem-Add-Vybrid-OCOTP-support.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0010-nvmem-imx-ocotp-Add-i.MX6-OCOTP-driver.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0011-nvmem-add-driver-for-ocotp-in-i.MX23-and-i.MX28.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0012-nvmem-Adding-bindings-for-rockchip-efuse.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0013-nvmem-rockchip_efuse_regmap_config-can-be-static.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0014-nvmem-core-fix-the-out-of-range-leak-in-read-write.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0015-nvmem-core-Handle-shift-bits-in-place-if-cell-nbits-.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0016-nvmem-core-Fix-memory-leak-in-nvmem_cell_write.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0017-nvmem-sunxi-Check-for-memory-allocation-failure.patch"
+
+#email...
+
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0018-nvmem-make-default-user-binary-file-root-access-only.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0019-nvmem-set-the-size-for-the-nvmem-binary-file.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0020-nvmem-add-permission-flags-in-nvmem_config.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0021-nvmem-fix-permissions-of-readonly-nvmem-binattr.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=12
+		number=21
 		cleanup
 	fi
 
@@ -373,9 +428,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0005-add-overlay-dtb.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0006-am335x-bone-common-cpsw-no-longer-need-to-define-bot.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0007-am335x-bone-common-drop-0x1a0-from-mmc.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0008-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=7
+		number=8
 		cleanup
 	fi
 
@@ -528,25 +584,31 @@ quieter () {
 		start_cleanup
 	fi
 
+	#quiet some hide obvious things...
 	${git} "${DIR}/patches/quieter/0001-quiet-8250_omap.c-use-pr_info-over-pr_err.patch"
+	${git} "${DIR}/patches/quieter/0002-quiet-topology.c-use-pr_info-over-pr_err-missing-clo.patch"
+	${git} "${DIR}/patches/quieter/0003-quiet-vgaarb-use-pr_info-over-pr_err.patch"
+	${git} "${DIR}/patches/quieter/0004-quiet-omap_hsmmc.c-dont-complain-about-something-we-.patch"
+	${git} "${DIR}/patches/quieter/0005-quiet-arch-arm-mach-omap2-voltage.c-legacy-harmless.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
+		number=5
 		cleanup
 	fi
 }
 
-dts () {
-	echo "dir: dts"
+rpmsg () {
+	echo "dir: pru"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/dts/0001-am57xx-beagle-x15-dsp-debugss.patch"
+	${git} "${DIR}/patches/pru/0003-Add-rpmsg_pru-support.patch"
+	${git} "${DIR}/patches/pru/0004-Update-from-git.ti.com-rpmsg-rpmsg.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
+		number=2
 		cleanup
 	fi
 }
@@ -555,11 +617,13 @@ dts () {
 #reverts
 #backports
 #fixes
-#pru
+x15
+#pru_uio
+#pru_rpmsg
 #bbb_overlays
 #beaglebone
 #quieter
-dts
+
 
 packaging () {
 	echo "dir: packaging"
