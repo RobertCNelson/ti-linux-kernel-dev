@@ -259,6 +259,21 @@ pru_rpmsg () {
 	fi
 }
 
+x15 () {
+	echo "dir: x15/dsp"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
+	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+}
+
 mainline () {
 	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/bbb_overlays/mainline/
 }
@@ -602,6 +617,7 @@ rpmsg () {
 reverts
 backports
 #fixes
+x15
 pru_uio
 pru_rpmsg
 bbb_overlays
