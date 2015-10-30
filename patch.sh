@@ -252,9 +252,10 @@ pru_rpmsg () {
 
 	${git} "${DIR}/patches/pru_rpmsg/0001-Fix-remoteproc-to-work-with-the-PRU-GNU-Binutils-por.patch"
 	${git} "${DIR}/patches/pru_rpmsg/0002-Add-rpmsg_pru-support.patch"
+	${git} "${DIR}/patches/pru_rpmsg/0003-ARM-samples-seccomp-no-m32.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=3
 		cleanup
 	fi
 }
@@ -268,10 +269,9 @@ x15 () {
 
 	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
 	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
-	${git} "${DIR}/patches/x15/dsp/0003-dra7.dtsi-64bit-address-fix-for-ocp.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=2
 		cleanup
 	fi
 }
@@ -590,27 +590,10 @@ quieter () {
 	${git} "${DIR}/patches/quieter/0001-quiet-8250_omap.c-use-pr_info-over-pr_err.patch"
 	${git} "${DIR}/patches/quieter/0002-quiet-topology.c-use-pr_info-over-pr_err-missing-clo.patch"
 	${git} "${DIR}/patches/quieter/0003-quiet-vgaarb-use-pr_info-over-pr_err.patch"
-	${git} "${DIR}/patches/quieter/0004-quiet-omap_hsmmc.c-dont-complain-about-something-we-.patch"
-	${git} "${DIR}/patches/quieter/0005-quiet-arch-arm-mach-omap2-voltage.c-legacy-harmless.patch"
+	${git} "${DIR}/patches/quieter/0004-quiet-arch-arm-mach-omap2-voltage.c-legacy-harmless.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
-		cleanup
-	fi
-}
-
-rpmsg () {
-	echo "dir: pru"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/pru/0003-Add-rpmsg_pru-support.patch"
-	${git} "${DIR}/patches/pru/0004-Update-from-git.ti.com-rpmsg-rpmsg.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=4
 		cleanup
 	fi
 }
