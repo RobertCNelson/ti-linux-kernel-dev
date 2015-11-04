@@ -518,6 +518,7 @@ beaglebone () {
 		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-replicape.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-spi0.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 
 		device="am335x-bonegreen.dtb" ; dtb_makefile_append
