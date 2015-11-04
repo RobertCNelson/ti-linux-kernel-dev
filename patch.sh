@@ -262,6 +262,8 @@ fixes () {
 		start_cleanup
 	fi
 
+	${git} "${DIR}/patches/fixes/0001-spi-disable-dma-fixes-spidev-loaded-as-an-overlay.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
@@ -643,7 +645,7 @@ quieter () {
 ###
 reverts
 backports
-#fixes
+fixes
 x15
 pru_uio
 pru_rpmsg
