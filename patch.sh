@@ -221,7 +221,8 @@ fixes () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/fixes/0001-spi-disable-dma-fixes-spidev-loaded-as-an-overlay.patch"
+	#${git} "${DIR}/patches/fixes/0001-spi-disable-dma-fixes-spidev-loaded-as-an-overlay.patch"
+	${git} "${DIR}/patches/fixes/0001-spi-omap2-mcspi-dt-add-ti-pio-mode-flag-to-disable-d.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
