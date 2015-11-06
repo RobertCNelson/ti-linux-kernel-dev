@@ -1,6 +1,6 @@
-From 24fa860059b4e493e40593d19a880b956e1f153d Mon Sep 17 00:00:00 2001
+From cdb7bdc913e48f38d093f72638f514503e350c92 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 4 Nov 2015 12:12:15 -0600
+Date: Fri, 6 Nov 2015 13:25:16 -0600
 Subject: [PATCH] sync: am335x-peripheral/pinmux
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -18,11 +18,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/am335x-boneblack-bbb-exp-c.dts   |  44 ++
  arch/arm/boot/dts/am335x-boneblack-bbb-exp-r.dts   |  44 ++
  .../arm/boot/dts/am335x-boneblack-emmc-overlay.dts |  38 ++
- .../arm/boot/dts/am335x-boneblack-hdmi-overlay.dts | 151 ++++++
- .../boot/dts/am335x-boneblack-nhdmi-overlay.dts    |  88 ++++
+ .../arm/boot/dts/am335x-boneblack-hdmi-overlay.dts | 162 ++++++
+ .../boot/dts/am335x-boneblack-nhdmi-overlay.dts    |  97 ++++
  arch/arm/boot/dts/am335x-boneblack-overlay.dts     |  18 +-
  arch/arm/boot/dts/am335x-boneblack-replicape.dts   |  12 +-
- arch/arm/boot/dts/am335x-boneblack-spi0.dts        | 177 +++++++
+ arch/arm/boot/dts/am335x-boneblack-spi0.dts        | 188 +++++++
  arch/arm/boot/dts/am335x-boneblack-wl1835mod.dts   |   7 +-
  arch/arm/boot/dts/am335x-bonegreen-overlay.dts     |  40 ++
  arch/arm/boot/dts/am335x-bonegreen.dts             |   8 +-
@@ -36,7 +36,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/am335x-peripheral-ttyS4.dtsi     |  13 +
  arch/arm/boot/dts/am335x-peripheral-ttyS5.dtsi     |  13 +
  include/dt-bindings/board/am335x-bbw-bbb-base.h    | 103 ++++
- 31 files changed, 2719 insertions(+), 19 deletions(-)
+ 31 files changed, 2750 insertions(+), 19 deletions(-)
  create mode 100644 arch/arm/boot/dts/am335x-arduino-tre.dts
  create mode 100644 arch/arm/boot/dts/am335x-bone-common-no-capemgr.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-emmc-in-reset.dtsi
@@ -1709,10 +1709,10 @@ index 0000000..a515059
 +};
 diff --git a/arch/arm/boot/dts/am335x-boneblack-hdmi-overlay.dts b/arch/arm/boot/dts/am335x-boneblack-hdmi-overlay.dts
 new file mode 100644
-index 0000000..ee96d20
+index 0000000..64c73c6
 --- /dev/null
 +++ b/arch/arm/boot/dts/am335x-boneblack-hdmi-overlay.dts
-@@ -0,0 +1,151 @@
+@@ -0,0 +1,162 @@
 +/*
 + * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
 + *
@@ -1809,6 +1809,26 @@ index 0000000..ee96d20
 +
 +&lcdc {
 +	status = "okay";
++	port {
++		lcdc_0: endpoint@0 {
++			remote-endpoint = <&hdmi_0>;
++		};
++	};
++};
++
++&i2c0 {
++	tda19988 {
++		compatible = "nxp,tda998x";
++		reg = <0x70>;
++		pinctrl-names = "default", "off";
++		pinctrl-0 = <&nxp_hdmi_bonelt_pins>;
++		pinctrl-1 = <&nxp_hdmi_bonelt_off_pins>;
++		port {
++			hdmi_0: endpoint@0 {
++				remote-endpoint = <&lcdc_0>;
++			};
++		};
++	};
 +};
 +
 +&mcasp0	{
@@ -1826,15 +1846,6 @@ index 0000000..ee96d20
 +};
 +
 +/ {
-+	hdmi {
-+		compatible = "ti,tilcdc,slave";
-+		i2c = <&i2c0>;
-+		pinctrl-names = "default", "off";
-+		pinctrl-0 = <&nxp_hdmi_bonelt_pins>;
-+		pinctrl-1 = <&nxp_hdmi_bonelt_off_pins>;
-+		status = "okay";
-+	};
-+
 +	clk_mcasp0_fixed: clk_mcasp0_fixed {
 +	      #clock-cells = <0>;
 +	      compatible = "fixed-clock";
@@ -1866,10 +1877,10 @@ index 0000000..ee96d20
 +};
 diff --git a/arch/arm/boot/dts/am335x-boneblack-nhdmi-overlay.dts b/arch/arm/boot/dts/am335x-boneblack-nhdmi-overlay.dts
 new file mode 100644
-index 0000000..ae74943
+index 0000000..9e06d9d
 --- /dev/null
 +++ b/arch/arm/boot/dts/am335x-boneblack-nhdmi-overlay.dts
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,97 @@
 +/*
 + * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
 + *
@@ -1946,16 +1957,25 @@ index 0000000..ae74943
 +
 +&lcdc {
 +	status = "okay";
++	port {
++		lcdc_0: endpoint@0 {
++			remote-endpoint = <&hdmi_0>;
++		};
++	};
 +};
 +
-+/ {
-+	hdmi {
-+		compatible = "ti,tilcdc,slave";
-+		i2c = <&i2c0>;
++&i2c0 {
++	tda19988 {
++		compatible = "nxp,tda998x";
++		reg = <0x70>;
 +		pinctrl-names = "default", "off";
 +		pinctrl-0 = <&nxp_hdmi_bonelt_pins>;
 +		pinctrl-1 = <&nxp_hdmi_bonelt_off_pins>;
-+		status = "okay";
++		port {
++			hdmi_0: endpoint@0 {
++				remote-endpoint = <&lcdc_0>;
++			};
++		};
 +	};
 +};
 diff --git a/arch/arm/boot/dts/am335x-boneblack-overlay.dts b/arch/arm/boot/dts/am335x-boneblack-overlay.dts
@@ -2027,10 +2047,10 @@ index 53371bb..c7708db 100644
 -};
 diff --git a/arch/arm/boot/dts/am335x-boneblack-spi0.dts b/arch/arm/boot/dts/am335x-boneblack-spi0.dts
 new file mode 100644
-index 0000000..c8606ef
+index 0000000..ba76575
 --- /dev/null
 +++ b/arch/arm/boot/dts/am335x-boneblack-spi0.dts
-@@ -0,0 +1,177 @@
+@@ -0,0 +1,188 @@
 +/*
 + * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
 + *
@@ -2134,6 +2154,26 @@ index 0000000..c8606ef
 +
 +&lcdc {
 +	status = "okay";
++	port {
++		lcdc_0: endpoint@0 {
++			remote-endpoint = <&hdmi_0>;
++		};
++	};
++};
++
++&i2c0 {
++	tda19988 {
++		compatible = "nxp,tda998x";
++		reg = <0x70>;
++		pinctrl-names = "default", "off";
++		pinctrl-0 = <&nxp_hdmi_bonelt_pins>;
++		pinctrl-1 = <&nxp_hdmi_bonelt_off_pins>;
++		port {
++			hdmi_0: endpoint@0 {
++				remote-endpoint = <&lcdc_0>;
++			};
++		};
++	};
 +};
 +
 +&mcasp0	{
@@ -2170,15 +2210,6 @@ index 0000000..c8606ef
 +};
 +
 +/ {
-+	hdmi {
-+		compatible = "ti,tilcdc,slave";
-+		i2c = <&i2c0>;
-+		pinctrl-names = "default", "off";
-+		pinctrl-0 = <&nxp_hdmi_bonelt_pins>;
-+		pinctrl-1 = <&nxp_hdmi_bonelt_off_pins>;
-+		status = "okay";
-+	};
-+
 +	clk_mcasp0_fixed: clk_mcasp0_fixed {
 +	      #clock-cells = <0>;
 +	      compatible = "fixed-clock";

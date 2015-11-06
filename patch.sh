@@ -495,6 +495,25 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/abbbi"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/abbbi/0001-drm-tilcdc-Remove-tilcdc-slave-support-for-tda998x-d.patch"
+	${git} "${DIR}/patches/beaglebone/abbbi/0002-drm-tilcdc-Add-support-for-external-tda998x-encoder.patch"
+	${git} "${DIR}/patches/beaglebone/abbbi/0003-drm-tilcdc-Add-DRM_TILCDC_SLAVE_COMPAT-for-ti-tilcdc.patch"
+	${git} "${DIR}/patches/beaglebone/abbbi/0004-gpu-drm-i2c-add-alternative-adv7511-driver-with-audi.patch"
+	${git} "${DIR}/patches/beaglebone/abbbi/0005-gpu-drm-i2c-adihdmi-componentize-driver-and-huge-ref.patch"
+	${git} "${DIR}/patches/beaglebone/abbbi/0006-ARM-dts-am335x-boneblack-Use-new-binding-for-HDMI.patch"
+	${git} "${DIR}/patches/beaglebone/abbbi/0007-ARM-dts-add-Arrow-BeagleBone-Black-Industrial-dts.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=7
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
