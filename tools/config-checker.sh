@@ -150,8 +150,10 @@ config="CONFIG_DRM" ; config_enable
 #config="CONFIG_DRM_TILCDC" ; config_enable
 
 #needs to be a module for loading *.dtbo's...
+config="CONFIG_DRM_I2C_ADIHDMI" ; config_module
 config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_module
 config="CONFIG_DRM_TILCDC" ; config_module
+config="CONFIG_DRM_TILCDC_SLAVE_COMPAT" ; config_enable
 
 config="CONFIG_DRM_OMAP" ; config_enable
 config="CONFIG_DRM_OMAP_NUM_CRTCS" ; option="2" ; config_value
@@ -863,8 +865,7 @@ config="CONFIG_DRM_IMX" ; config_disable
 #
 # I2C encoder or helper chips
 #
-config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
-
+#config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
 #config="CONFIG_DRM_IMX_FB_HELPER" ; config_enable
 #config="CONFIG_DRM_IMX_PARALLEL_DISPLAY" ; config_enable
 #config="CONFIG_DRM_IMX_TVE" ; config_enable
