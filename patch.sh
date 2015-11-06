@@ -222,9 +222,6 @@ fixes () {
 		start_cleanup
 	fi
 
-	#${git} "${DIR}/patches/fixes/0001-spi-disable-dma-fixes-spidev-loaded-as-an-overlay.patch"
-	${git} "${DIR}/patches/fixes/0001-spi-omap2-mcspi-dt-add-ti-pio-mode-flag-to-disable-d.patch"
-
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
@@ -339,28 +336,29 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0006-nvmem-qfprom-Add-Qualcomm-QFPROM-support.patch"
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0007-nvmem-qfprom-Add-bindings-for-qfprom.patch"
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0008-nvmem-sunxi-Move-the-SID-driver-to-the-nvmem-framewo.patch"
-
-#linux-next:
-
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0009-nvmem-Add-Vybrid-OCOTP-support.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0010-nvmem-imx-ocotp-Add-i.MX6-OCOTP-driver.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0011-nvmem-add-driver-for-ocotp-in-i.MX23-and-i.MX28.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0012-nvmem-Adding-bindings-for-rockchip-efuse.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0013-nvmem-rockchip_efuse_regmap_config-can-be-static.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0014-nvmem-core-fix-the-out-of-range-leak-in-read-write.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0015-nvmem-core-Handle-shift-bits-in-place-if-cell-nbits-.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0016-nvmem-core-Fix-memory-leak-in-nvmem_cell_write.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0017-nvmem-sunxi-Check-for-memory-allocation-failure.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0009-nvmem-Add-DT-binding-documentation-for-Vybrid-OCOTP-.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0010-nvmem-Add-Vybrid-OCOTP-support.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0011-nvmem-Add-i.MX6-OCOTP-device-tree-binding-documentat.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0012-nvmem-imx-ocotp-Add-i.MX6-OCOTP-driver.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0013-nvmem-add-binding-for-mxs-ocotp.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0014-nvmem-add-driver-for-ocotp-in-i.MX23-and-i.MX28.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0015-nvmem-rockchip-efuse-describe-the-usage-of-eFuse.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0016-nvmem-Adding-bindings-for-rockchip-efuse.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0017-nvmem-rockchip_efuse_regmap_config-can-be-static.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0018-nvmem-core-fix-the-out-of-range-leak-in-read-write.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0019-nvmem-core-Handle-shift-bits-in-place-if-cell-nbits-.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0020-nvmem-core-Fix-memory-leak-in-nvmem_cell_write.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0021-nvmem-sunxi-Check-for-memory-allocation-failure.patch"
 
 #email...
 
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0018-nvmem-make-default-user-binary-file-root-access-only.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0019-nvmem-set-the-size-for-the-nvmem-binary-file.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0020-nvmem-add-permission-flags-in-nvmem_config.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0021-nvmem-fix-permissions-of-readonly-nvmem-binattr.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0022-nvmem-make-default-user-binary-file-root-access-only.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0023-nvmem-set-the-size-for-the-nvmem-binary-file.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0024-nvmem-add-permission-flags-in-nvmem_config.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0025-nvmem-fix-permissions-of-readonly-nvmem-binattr.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=21
+		number=25
 		cleanup
 	fi
 
@@ -435,9 +433,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0006-am335x-bone-common-cpsw-no-longer-need-to-define-bot.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0007-am335x-bone-common-drop-0x1a0-from-mmc.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0008-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0009-spi-omap2-mcspi-ti-pio-mode.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=8
+		number=9
 		cleanup
 	fi
 
@@ -606,7 +605,7 @@ quieter () {
 ###
 reverts
 backports
-fixes
+#fixes
 x15
 pru_uio
 pru_rpmsg
