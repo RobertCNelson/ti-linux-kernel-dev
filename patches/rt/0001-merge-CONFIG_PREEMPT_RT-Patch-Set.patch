@@ -1,6 +1,6 @@
-From d45b4cbb31f3bc9c5554405e81df8ff1221998ef Mon Sep 17 00:00:00 2001
+From 8cfee5fe962bf5e60f8e9adfbc81a7ff95775c5d Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 2 Nov 2015 16:07:16 -0600
+Date: Mon, 9 Nov 2015 11:14:43 -0600
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -259,7 +259,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/percpu.h                             |   29 +
  include/linux/pid.h                                |    1 +
  include/linux/preempt.h                            |   59 +-
- include/linux/preempt_mask.h                       |   15 +-
+ include/linux/preempt_mask.h                       |   19 +-
  include/linux/printk.h                             |    2 +
  include/linux/radix-tree.h                         |    7 +-
  include/linux/random.h                             |    2 +-
@@ -271,7 +271,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/rwlock_types_rt.h                    |   33 +
  include/linux/rwsem.h                              |    6 +
  include/linux/rwsem_rt.h                           |  140 +++
- include/linux/sched.h                              |  233 +++-
+ include/linux/sched.h                              |  231 +++-
  include/linux/seqlock.h                            |   56 +-
  include/linux/signal.h                             |    1 +
  include/linux/skbuff.h                             |    7 +
@@ -307,6 +307,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  ipc/sem.c                                          |   10 +
  kernel/Kconfig.locks                               |    4 +-
  kernel/Kconfig.preempt                             |   33 +-
+ kernel/bpf/hashtab.c                               |   14 +-
  kernel/cgroup.c                                    |    9 +-
  kernel/cpu.c                                       |  325 ++++-
  kernel/debug/kdb/kdb_io.c                          |    6 +-
@@ -325,7 +326,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/locking/lockdep.c                           |    2 +
  kernel/locking/locktorture.c                       |    1 -
  kernel/locking/rt.c                                |  461 ++++++++
- kernel/locking/rtmutex.c                           |  750 +++++++++++-
+ kernel/locking/rtmutex.c                           |  752 +++++++++++-
  kernel/locking/rtmutex_common.h                    |   18 +
  kernel/locking/spinlock.c                          |    7 +
  kernel/locking/spinlock_debug.c                    |    5 +
@@ -408,7 +409,6 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/core/skbuff.c                                  |    6 +-
  net/core/sock.c                                    |    3 +-
  net/ipv4/icmp.c                                    |   30 +
- net/ipv4/inet_connection_sock.c                    |    2 +-
  net/ipv4/sysctl_net_ipv4.c                         |    7 +
  net/mac80211/rx.c                                  |    2 +-
  net/netfilter/core.c                               |    6 +
@@ -421,7 +421,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  sound/soc/intel/atom/sst/sst.c                     |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 416 files changed, 11889 insertions(+), 2088 deletions(-)
+ 416 files changed, 11899 insertions(+), 2094 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 drivers/misc/hwlat_detector.c
@@ -3127,7 +3127,7 @@ index 3caec2c..d4c4850 100644
  	select HAVE_KVM_IRQFD
  	select HAVE_KVM_IRQ_ROUTING
 diff --git a/arch/powerpc/kvm/book3s_hv.c b/arch/powerpc/kvm/book3s_hv.c
-index df81caa..3e9087f 100644
+index f1e0e55..1b5e411 100644
 --- a/arch/powerpc/kvm/book3s_hv.c
 +++ b/arch/powerpc/kvm/book3s_hv.c
 @@ -115,11 +115,11 @@ static bool kvmppc_ipi_thread(int cpu)
@@ -4122,7 +4122,7 @@ index 6a85598..3a506ce 100644
  }
  EXPORT_SYMBOL_GPL(glue_xts_crypt_128bit);
 diff --git a/arch/x86/include/asm/preempt.h b/arch/x86/include/asm/preempt.h
-index 8f327184..6ef9a16 100644
+index 67b6cd0..c08949b 100644
 --- a/arch/x86/include/asm/preempt.h
 +++ b/arch/x86/include/asm/preempt.h
 @@ -82,17 +82,33 @@ static __always_inline void __preempt_count_sub(int val)
@@ -4149,13 +4149,13 @@ index 8f327184..6ef9a16 100644
  /*
   * Returns true when we need to resched and can (barring IRQ state).
   */
- static __always_inline bool should_resched(void)
+ static __always_inline bool should_resched(int preempt_offset)
  {
 +#ifdef CONFIG_PREEMPT_LAZY
-+	return unlikely(!raw_cpu_read_4(__preempt_count) || \
++	return unlikely(raw_cpu_read_4(__preempt_count) == preempt_offset ||
 +			test_thread_flag(TIF_NEED_RESCHED_LAZY));
 +#else
- 	return unlikely(!raw_cpu_read_4(__preempt_count));
+ 	return unlikely(raw_cpu_read_4(__preempt_count) == preempt_offset);
 +#endif
  }
  
@@ -11185,10 +11185,10 @@ index 23705a5..2cc64b7 100644
  enum pid_type
  {
 diff --git a/include/linux/preempt.h b/include/linux/preempt.h
-index de83b4e..66587bf 100644
+index 8cd6725..8fa1d21 100644
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
-@@ -33,6 +33,20 @@ extern void preempt_count_sub(int val);
+@@ -34,6 +34,20 @@ extern void preempt_count_sub(int val);
  #define preempt_count_inc() preempt_count_add(1)
  #define preempt_count_dec() preempt_count_sub(1)
  
@@ -11209,7 +11209,7 @@ index de83b4e..66587bf 100644
  #ifdef CONFIG_PREEMPT_COUNT
  
  #define preempt_disable() \
-@@ -41,13 +55,25 @@ do { \
+@@ -42,13 +56,25 @@ do { \
  	barrier(); \
  } while (0)
  
@@ -11236,7 +11236,7 @@ index de83b4e..66587bf 100644
  
  #ifdef CONFIG_PREEMPT
  #define preempt_enable() \
-@@ -63,6 +89,13 @@ do { \
+@@ -64,6 +90,13 @@ do { \
  		__preempt_schedule(); \
  } while (0)
  
@@ -11250,7 +11250,7 @@ index de83b4e..66587bf 100644
  #else
  #define preempt_enable() \
  do { \
-@@ -121,6 +154,7 @@ do { \
+@@ -122,6 +155,7 @@ do { \
  #define preempt_disable_notrace()		barrier()
  #define preempt_enable_no_resched_notrace()	barrier()
  #define preempt_enable_notrace()		barrier()
@@ -11258,7 +11258,7 @@ index de83b4e..66587bf 100644
  
  #endif /* CONFIG_PREEMPT_COUNT */
  
-@@ -140,10 +174,31 @@ do { \
+@@ -141,10 +175,31 @@ do { \
  } while (0)
  #define preempt_fold_need_resched() \
  do { \
@@ -11292,7 +11292,7 @@ index de83b4e..66587bf 100644
  
  struct preempt_notifier;
 diff --git a/include/linux/preempt_mask.h b/include/linux/preempt_mask.h
-index dbeec4d..c7e373d 100644
+index 5cb25f1..26a3380 100644
 --- a/include/linux/preempt_mask.h
 +++ b/include/linux/preempt_mask.h
 @@ -44,16 +44,26 @@
@@ -11332,6 +11332,18 @@ index dbeec4d..c7e373d 100644
  
  /*
   * Are we in NMI context?
+@@ -83,7 +92,11 @@
+ /*
+  * The preempt_count offset after spin_lock()
+  */
++#if !defined(CONFIG_PREEMPT_RT_FULL)
+ #define PREEMPT_LOCK_OFFSET	PREEMPT_DISABLE_OFFSET
++#else
++#define PREEMPT_LOCK_OFFSET	0
++#endif
+ 
+ /*
+  * The preempt_count offset needed for things like:
 diff --git a/include/linux/printk.h b/include/linux/printk.h
 index 9b30871..08d0a75 100644
 --- a/include/linux/printk.h
@@ -11946,7 +11958,7 @@ index 0000000..928a05c
 +#endif
 +#endif
 diff --git a/include/linux/sched.h b/include/linux/sched.h
-index 26a2e61..9566584 100644
+index 61f4f2d..1a56c05 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
 @@ -26,6 +26,7 @@ struct sched_param {
@@ -12319,16 +12331,7 @@ index 26a2e61..9566584 100644
  /*
   * cond_resched() and cond_resched_lock(): latency reduction via
   * explicit rescheduling in places that are safe. The return
-@@ -2834,7 +3027,7 @@ extern int _cond_resched(void);
- 
- extern int __cond_resched_lock(spinlock_t *lock);
- 
--#ifdef CONFIG_PREEMPT_COUNT
-+#if defined(CONFIG_PREEMPT_COUNT) && !defined(CONFIG_PREEMPT_RT_FULL)
- #define PREEMPT_LOCK_OFFSET	PREEMPT_OFFSET
- #else
- #define PREEMPT_LOCK_OFFSET	0
-@@ -2845,12 +3038,16 @@ extern int __cond_resched_lock(spinlock_t *lock);
+@@ -2839,12 +3032,16 @@ extern int __cond_resched_lock(spinlock_t *lock);
  	__cond_resched_lock(lock);				\
  })
  
@@ -12345,7 +12348,7 @@ index 26a2e61..9566584 100644
  
  static inline void cond_resched_rcu(void)
  {
-@@ -3017,6 +3214,26 @@ static inline void set_task_cpu(struct task_struct *p, unsigned int cpu)
+@@ -3011,6 +3208,26 @@ static inline void set_task_cpu(struct task_struct *p, unsigned int cpu)
  
  #endif /* CONFIG_SMP */
  
@@ -14113,6 +14116,69 @@ index 3f9c974..11dbe26 100644
  endchoice
  
  config PREEMPT_COUNT
+diff --git a/kernel/bpf/hashtab.c b/kernel/bpf/hashtab.c
+index 83c209d..972b76b 100644
+--- a/kernel/bpf/hashtab.c
++++ b/kernel/bpf/hashtab.c
+@@ -17,7 +17,7 @@
+ struct bpf_htab {
+ 	struct bpf_map map;
+ 	struct hlist_head *buckets;
+-	spinlock_t lock;
++	raw_spinlock_t lock;
+ 	u32 count;	/* number of elements in this hashtable */
+ 	u32 n_buckets;	/* number of hash buckets */
+ 	u32 elem_size;	/* size of each element in bytes */
+@@ -82,7 +82,7 @@ static struct bpf_map *htab_map_alloc(union bpf_attr *attr)
+ 	for (i = 0; i < htab->n_buckets; i++)
+ 		INIT_HLIST_HEAD(&htab->buckets[i]);
+ 
+-	spin_lock_init(&htab->lock);
++	raw_spin_lock_init(&htab->lock);
+ 	htab->count = 0;
+ 
+ 	htab->elem_size = sizeof(struct htab_elem) +
+@@ -230,7 +230,7 @@ static int htab_map_update_elem(struct bpf_map *map, void *key, void *value,
+ 	l_new->hash = htab_map_hash(l_new->key, key_size);
+ 
+ 	/* bpf_map_update_elem() can be called in_irq() */
+-	spin_lock_irqsave(&htab->lock, flags);
++	raw_spin_lock_irqsave(&htab->lock, flags);
+ 
+ 	head = select_bucket(htab, l_new->hash);
+ 
+@@ -266,11 +266,11 @@ static int htab_map_update_elem(struct bpf_map *map, void *key, void *value,
+ 	} else {
+ 		htab->count++;
+ 	}
+-	spin_unlock_irqrestore(&htab->lock, flags);
++	raw_spin_unlock_irqrestore(&htab->lock, flags);
+ 
+ 	return 0;
+ err:
+-	spin_unlock_irqrestore(&htab->lock, flags);
++	raw_spin_unlock_irqrestore(&htab->lock, flags);
+ 	kfree(l_new);
+ 	return ret;
+ }
+@@ -291,7 +291,7 @@ static int htab_map_delete_elem(struct bpf_map *map, void *key)
+ 
+ 	hash = htab_map_hash(key, key_size);
+ 
+-	spin_lock_irqsave(&htab->lock, flags);
++	raw_spin_lock_irqsave(&htab->lock, flags);
+ 
+ 	head = select_bucket(htab, hash);
+ 
+@@ -304,7 +304,7 @@ static int htab_map_delete_elem(struct bpf_map *map, void *key)
+ 		ret = 0;
+ 	}
+ 
+-	spin_unlock_irqrestore(&htab->lock, flags);
++	raw_spin_unlock_irqrestore(&htab->lock, flags);
+ 	return ret;
+ }
+ 
 diff --git a/kernel/cgroup.c b/kernel/cgroup.c
 index 4d65b66..21f5bdf 100644
 --- a/kernel/cgroup.c
@@ -16381,7 +16447,7 @@ index 0000000..c236efa
 +}
 +EXPORT_SYMBOL(atomic_dec_and_mutex_lock);
 diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
-index b025295..2822ace 100644
+index b025295..2026759 100644
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
 @@ -7,6 +7,11 @@
@@ -17373,6 +17439,15 @@ index b025295..2822ace 100644
  	/* We enforce deadlock detection for futexes */
  	ret = task_blocks_on_rt_mutex(lock, waiter, task,
  				      RT_MUTEX_FULL_CHAINWALK);
+@@ -1575,7 +2141,7 @@ int rt_mutex_start_proxy_lock(struct rt_mutex *lock,
+ 		ret = 0;
+ 	}
+ 
+-	if (unlikely(ret))
++	if (ret && rt_mutex_has_waiters(lock))
+ 		remove_waiter(lock, waiter);
+ 
+ 	raw_spin_unlock(&lock->wait_lock);
 @@ -1631,7 +2197,7 @@ int rt_mutex_finish_proxy_lock(struct rt_mutex *lock,
  	set_current_state(TASK_INTERRUPTIBLE);
  
@@ -18812,7 +18887,7 @@ index 8d0f35d..45ebcff 100644
  }
  EXPORT_SYMBOL(completion_done);
 diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 8476206..c7e28e6 100644
+index 4d870eb..d21091f 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
 @@ -282,7 +282,11 @@ late_initcall(sched_init_debug);
@@ -27628,19 +27703,6 @@ index f5203fb..be5fd9b 100644
  	}
  	/* should there be an ICMP stat for ignored echos? */
  	return true;
-diff --git a/net/ipv4/inet_connection_sock.c b/net/ipv4/inet_connection_sock.c
-index 65aca38..4d2bc8c 100644
---- a/net/ipv4/inet_connection_sock.c
-+++ b/net/ipv4/inet_connection_sock.c
-@@ -585,7 +585,7 @@ static bool reqsk_queue_unlink(struct request_sock_queue *queue,
- 		}
- 	}
- 	spin_unlock(&queue->syn_wait_lock);
--	if (del_timer_sync(&req->rsk_timer))
-+	if (timer_pending(&req->rsk_timer) && del_timer_sync(&req->rsk_timer))
- 		reqsk_put(req);
- 	return found;
- }
 diff --git a/net/ipv4/sysctl_net_ipv4.c b/net/ipv4/sysctl_net_ipv4.c
 index c3852a7..143f5f38 100644
 --- a/net/ipv4/sysctl_net_ipv4.c
@@ -27946,5 +28008,5 @@ index 8542298..7f843c4 100644
  			if (!kvm_vcpu_eligible_for_directed_yield(vcpu))
  				continue;
 -- 
-2.6.1
+2.6.2
 
