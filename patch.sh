@@ -138,10 +138,10 @@ ipipe () {
 	# Add the rest of xenomai to the kernel
 	OUTPATCH=$(mktemp "${DIR}/ignore/xenomai-patch.XXXXXXXXXX") || { echo "Failed to create temp file"; exit 1; }
 
-	cd ${DIR}/ignore/xenomai/
-	git reset HEAD --hard
-	patch -p1 < ${DIR}/patches/ipipe-3.14/fixes-prepare-kernel.diff
-	cd -
+#	cd ${DIR}/ignore/xenomai/
+#	git reset HEAD --hard
+#	patch -p1 < ${DIR}/patches/ipipe-3.14/fixes-prepare-kernel.diff
+#	cd -
 
 	# generate the xenomai patch
 	# doing it this way fixes the dangling symlinks problem under /usr/src/linux-headers-*
