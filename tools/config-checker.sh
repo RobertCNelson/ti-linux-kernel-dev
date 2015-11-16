@@ -150,8 +150,10 @@ config="CONFIG_DRM" ; config_enable
 #config="CONFIG_DRM_TILCDC" ; config_enable
 
 #needs to be a module for loading *.dtbo's...
+config="CONFIG_DRM_I2C_ADIHDMI" ; config_module
 config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_module
 config="CONFIG_DRM_TILCDC" ; config_module
+config="CONFIG_DRM_TILCDC_SLAVE_COMPAT" ; config_enable
 
 config="CONFIG_DRM_OMAP" ; config_enable
 config="CONFIG_DRM_OMAP_NUM_CRTCS" ; option="2" ; config_value
@@ -863,8 +865,7 @@ config="CONFIG_DRM_IMX" ; config_disable
 #
 # I2C encoder or helper chips
 #
-config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
-
+#config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
 #config="CONFIG_DRM_IMX_FB_HELPER" ; config_enable
 #config="CONFIG_DRM_IMX_PARALLEL_DISPLAY" ; config_enable
 #config="CONFIG_DRM_IMX_TVE" ; config_enable
@@ -1052,7 +1053,7 @@ config="CONFIG_USB_G_NOKIA" ; config_module
 config="CONFIG_USB_G_ACM_MS" ; config_module
 config="CONFIG_USB_G_MULTI" ; config_module
 config="CONFIG_USB_G_MULTI_RNDIS" ; config_enable
-config="CONFIG_USB_G_MULTI_CDC" ; config_enable
+config="CONFIG_USB_G_MULTI_CDC" ; config_disable
 config="CONFIG_USB_G_HID" ; config_module
 config="CONFIG_USB_G_DBGP" ; config_module
 config="CONFIG_USB_G_DBGP_PRINTK" ; config_disable
@@ -1330,4 +1331,15 @@ config="CONFIG_CRYPTO_SHA256_ARM" ; config_module
 config="CONFIG_CRYPTO_SHA512_ARM_NEON" ; config_module
 config="CONFIG_CRYPTO_AES_ARM" ; config_module
 config="CONFIG_CRYPTO_AES_ARM_BS" ; config_module
+
+#debian changes
+# * Disable CRAMFS; it was obsoleted by squashfs and initramfs
+config="CONFIG_CRAMFS" ; config_disable
+#* mm: Change ZBUD back to built-in, as it's not really useful as a module
+config="CONFIG_ZBUD" ; config_enable
+
+#user resquests
+config="CONFIG_I2C_MUX_PCA954x" ; config_enable
+config="CONFIG_SND_SEQUENCER_OSS" ; config_enable
+config="CONFIG_SND_DUMMY" ; config_module
 #
