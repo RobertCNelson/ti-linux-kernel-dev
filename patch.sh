@@ -240,7 +240,8 @@ pru_rpmsg () {
 	fi
 
 	${git} "${DIR}/patches/pru_rpmsg/0001-Fix-remoteproc-to-work-with-the-PRU-GNU-Binutils-por.patch"
-	${git} "${DIR}/patches/pru_rpmsg/0002-Add-rpmsg_pru-support.patch"
+#http://git.ti.com/gitweb/?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=c2e6cfbcf2aafc77e9c7c8f1a3d45b062bd21876
+#	${git} "${DIR}/patches/pru_rpmsg/0002-Add-rpmsg_pru-support.patch"
 	${git} "${DIR}/patches/pru_rpmsg/0003-ARM-samples-seccomp-no-m32.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
