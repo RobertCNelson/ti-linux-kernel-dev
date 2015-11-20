@@ -133,6 +133,61 @@ external_git () {
 	fi
 }
 
+aufs_fail () {
+	echo "aufs4 failed"
+	exit 2
+}
+
+aufs4 () {
+	echo "dir: aufs4"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wget -c https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-kbuild.patch
+		patch -p1 < aufs4-kbuild.patch || aufs_fail
+		rm -rf aufs4-kbuild.patch
+		git add .
+		git commit -a -m 'merge: aufs4-kbuild' -s
+
+		wget -c https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-base.patch
+		patch -p1 < aufs4-base.patch || aufs_fail
+		rm -rf aufs4-base.patch
+		git add .
+		git commit -a -m 'merge: aufs4-base' -s
+
+		wget -c https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-mmap.patch
+		patch -p1 < aufs4-mmap.patch || aufs_fail
+		rm -rf aufs4-mmap.patch
+		git add .
+		git commit -a -m 'merge: aufs4-mmap' -s
+
+		wget -c https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-standalone.patch
+		patch -p1 < aufs4-standalone.patch || aufs_fail
+		rm -rf aufs4-standalone.patch
+		git add .
+		git commit -a -m 'merge: aufs4-standalone' -s
+
+		git format-patch -4 -o ../patches/aufs4/
+		exit 2
+	fi
+
+	${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
+	${git} "${DIR}/patches/aufs4/0002-merge-aufs4-base.patch"
+	${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
+	${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/aufs4/0005-aufs-why-this-isnt-a-patch.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=5
+		cleanup
+	fi
+}
+
 rt_cleanup () {
 	echo "Fixing: drivers/gpio/gpio-omap.c"
 	sed -i -e 's/\<spin_lock_irqsave\>/raw_spin_lock_irqsave/g' drivers/gpio/gpio-omap.c
@@ -166,6 +221,7 @@ local_patch () {
 }
 
 external_git
+aufs4
 #rt
 #local_patch
 
