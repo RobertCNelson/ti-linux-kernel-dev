@@ -1,13 +1,16 @@
-From 95ff6f3a8585dd62126d8dacb1f4f5ef515cd5b5 Mon Sep 17 00:00:00 2001
+From 53eec1f51d8c9d1860b23d87ba20e65cb3772b39 Mon Sep 17 00:00:00 2001
 From: Pantelis Antoniou <pantelis.antoniou@konsulko.com>
 Date: Wed, 4 Dec 2013 19:32:00 +0200
-Subject: [PATCH 02/31] OF: DT-Overlay configfs interface (v5)
+Subject: [PATCH 02/39] OF: DT-Overlay configfs interface (v6)
 
 Add a runtime interface to using configfs for generic device tree overlay
 usage. With it its possible to use device tree overlays without having
 to use a per-platform overlay manager.
 
 Please see Documentation/devicetree/configfs-overlays.txt for more info.
+
+Changes since v5:
+- New style configfs.
 
 Changes since v4:
 - Loading fix for multiple overlays as found out by
@@ -25,12 +28,14 @@ Changes since v1:
 - of_resolve() -> of_resolve_phandles().
 
 Signed-off-by: Pantelis Antoniou <pantelis.antoniou@konsulko.com>
+
+cfs-of
 ---
  Documentation/devicetree/configfs-overlays.txt |  31 +++
- drivers/of/Kconfig                             |   8 +
+ drivers/of/Kconfig                             |   7 +
  drivers/of/Makefile                            |   1 +
- drivers/of/configfs.c                          | 333 +++++++++++++++++++++++++
- 4 files changed, 373 insertions(+)
+ drivers/of/configfs.c                          | 311 +++++++++++++++++++++++++
+ 4 files changed, 350 insertions(+)
  create mode 100644 Documentation/devicetree/configfs-overlays.txt
  create mode 100644 drivers/of/configfs.c
 
@@ -72,24 +77,23 @@ index 0000000..5fa43e0
 +intended to be used by hardware managers in the kernel, while the copy interface
 +make sense for developers (since it avoids problems with namespaces).
 diff --git a/drivers/of/Kconfig b/drivers/of/Kconfig
-index 07bb3c8..40f2dde 100644
+index e2a4841..59efeda 100644
 --- a/drivers/of/Kconfig
 +++ b/drivers/of/Kconfig
-@@ -97,4 +97,12 @@ config OF_OVERLAY
+@@ -112,4 +112,11 @@ config OF_OVERLAY
  	  While this option is selected automatically when needed, you can
  	  enable it manually to improve device tree unit test coverage.
  
 +config OF_CONFIGFS
 +	bool "Device Tree Overlay ConfigFS interface"
 +	select CONFIGFS_FS
-+	select OF_OVERLAY
-+	select OF_FLATTREE
++	depends on OF_OVERLAY
 +	help
 +	  Enable a simple user-space driven DT overlay interface.
 +
- endmenu # OF
+ endif # OF
 diff --git a/drivers/of/Makefile b/drivers/of/Makefile
-index fcacb18..b5df4a2 100644
+index 156c072..46c8f57 100644
 --- a/drivers/of/Makefile
 +++ b/drivers/of/Makefile
 @@ -1,4 +1,5 @@
@@ -100,10 +104,10 @@ index fcacb18..b5df4a2 100644
  obj-$(CONFIG_OF_EARLY_FLATTREE) += fdt_address.o
 diff --git a/drivers/of/configfs.c b/drivers/of/configfs.c
 new file mode 100644
-index 0000000..9fb1b35
+index 0000000..b68dea8
 --- /dev/null
 +++ b/drivers/of/configfs.c
-@@ -0,0 +1,333 @@
+@@ -0,0 +1,311 @@
 +/*
 + * Configfs entries for device-tree
 + *
@@ -188,31 +192,15 @@ index 0000000..9fb1b35
 +	return item ? container_of(item, struct cfs_overlay_item, item) : NULL;
 +}
 +
-+CONFIGFS_ATTR_STRUCT(cfs_overlay_item);
-+#define CFS_OVERLAY_ITEM_ATTR(_name, _mode, _show, _store)	\
-+struct cfs_overlay_item_attribute cfs_overlay_item_attr_##_name = \
-+	__CONFIGFS_ATTR(_name, _mode, _show, _store)
-+#define CFS_OVERLAY_ITEM_ATTR_RO(_name, _show)	\
-+struct cfs_overlay_item_attribute cfs_overlay_item_attr_##_name = \
-+	__CONFIGFS_ATTR_RO(_name, _show)
-+
-+CONFIGFS_BIN_ATTR_STRUCT(cfs_overlay_item);
-+#define CFS_OVERLAY_ITEM_BIN_ATTR(_name, _mode, _read, _write, _priv, _max) \
-+struct cfs_overlay_item_bin_attribute cfs_overlay_item_bin_attr_##_name = \
-+	__CONFIGFS_BIN_ATTR(_name, _mode, _read, _write, _priv, _max)
-+#define CFS_OVERLAY_ITEM_BIN_ATTR_RO(_name, _read, _priv, _max)	\
-+struct cfs_overlay_item_bin_attribute cfs_overlay_item_bin_attr_##_name = \
-+	__CONFIGFS_BIN_ATTR_RO(_name, _read, _priv, _max)
-+
-+static ssize_t cfs_overlay_item_path_show(struct cfs_overlay_item *overlay,
-+		char *page)
++static ssize_t cfs_overlay_item_path_show(struct config_item *item, char *page)
 +{
-+	return sprintf(page, "%s\n", overlay->path);
++	return sprintf(page, "%s\n", to_cfs_overlay_item(item)->path);
 +}
 +
-+static ssize_t cfs_overlay_item_path_store(struct cfs_overlay_item *overlay,
++static ssize_t cfs_overlay_item_path_store(struct config_item *item,
 +		const char *page, size_t count)
 +{
++	struct cfs_overlay_item *overlay = to_cfs_overlay_item(item);
 +	const char *p = page;
 +	char *s;
 +	int err;
@@ -251,26 +239,27 @@ index 0000000..9fb1b35
 +	return err;
 +}
 +
-+static ssize_t cfs_overlay_item_status_show(struct cfs_overlay_item *overlay,
++static ssize_t cfs_overlay_item_status_show(struct config_item *item,
 +		char *page)
 +{
-+	return sprintf(page, "%s\n",
-+			overlay->ov_id >= 0 ? "applied" : "unapplied");
++	return sprintf(page, "%s\n", to_cfs_overlay_item(item)->ov_id >= 0 ?
++					"applied" : "unapplied");
 +}
 +
-+CFS_OVERLAY_ITEM_ATTR(path, S_IRUGO | S_IWUSR,
-+		cfs_overlay_item_path_show, cfs_overlay_item_path_store);
-+CFS_OVERLAY_ITEM_ATTR_RO(status, cfs_overlay_item_status_show);
++CONFIGFS_ATTR(cfs_overlay_item_, path);
++CONFIGFS_ATTR_RO(cfs_overlay_item_, status);
 +
 +static struct configfs_attribute *cfs_overlay_attrs[] = {
-+	&cfs_overlay_item_attr_path.attr,
-+	&cfs_overlay_item_attr_status.attr,
++	&cfs_overlay_item_attr_path,
++	&cfs_overlay_item_attr_status,
 +	NULL,
 +};
 +
-+ssize_t cfs_overlay_item_dtbo_read(struct cfs_overlay_item *overlay,
-+		void *buf, size_t max_count)
++ssize_t cfs_overlay_item_dtbo_read(struct config_item *item, void *buf,
++		size_t max_count)
 +{
++	struct cfs_overlay_item *overlay = to_cfs_overlay_item(item);
++
 +	pr_debug("%s: buf=%p max_count=%u\n", __func__,
 +			buf, max_count);
 +
@@ -289,9 +278,10 @@ index 0000000..9fb1b35
 +	return overlay->dtbo_size;
 +}
 +
-+ssize_t cfs_overlay_item_dtbo_write(struct cfs_overlay_item *overlay,
-+		const void *buf, size_t count)
++ssize_t cfs_overlay_item_dtbo_write(struct config_item *item, const void *buf,
++		size_t count)
 +{
++	struct cfs_overlay_item *overlay = to_cfs_overlay_item(item);
 +	int err;
 +
 +	/* if it's set do not allow changes */
@@ -319,12 +309,10 @@ index 0000000..9fb1b35
 +	return err;
 +}
 +
-+CFS_OVERLAY_ITEM_BIN_ATTR(dtbo, S_IRUGO | S_IWUSR,
-+		cfs_overlay_item_dtbo_read, cfs_overlay_item_dtbo_write,
-+		NULL, SZ_1M);
++CONFIGFS_BIN_ATTR(cfs_overlay_item_, dtbo, NULL, SZ_1M);
 +
 +static struct configfs_bin_attribute *cfs_overlay_bin_attrs[] = {
-+	&cfs_overlay_item_bin_attr_dtbo.bin_attr,
++	&cfs_overlay_item_attr_dtbo,
 +	NULL,
 +};
 +
@@ -341,14 +329,8 @@ index 0000000..9fb1b35
 +	kfree(overlay);
 +}
 +
-+CONFIGFS_ATTR_OPS(cfs_overlay_item);
-+CONFIGFS_BIN_ATTR_OPS(cfs_overlay_item);
 +static struct configfs_item_operations cfs_overlay_item_ops = {
 +	.release		= cfs_overlay_release,
-+	.show_attribute		= cfs_overlay_item_attr_show,
-+	.store_attribute	= cfs_overlay_item_attr_store,
-+	.read_bin_attribute	= cfs_overlay_item_bin_attr_read,
-+	.write_bin_attribute	= cfs_overlay_item_bin_attr_write,
 +};
 +
 +static struct config_item_type cfs_overlay_type = {
@@ -438,5 +420,5 @@ index 0000000..9fb1b35
 +}
 +late_initcall(of_cfs_init);
 -- 
-2.5.1
+2.6.2
 

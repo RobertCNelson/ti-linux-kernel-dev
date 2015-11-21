@@ -70,67 +70,21 @@ pick () {
 }
 
 external_git () {
-	git_tag="ti-linux-4.1.y"
+	git_tag="ti-linux-4.4.y"
 	echo "pulling: ${git_tag}"
 	git pull ${git_opts} ${git_patchset} ${git_tag}
-	. ${DIR}/.CC
-	sed -i -e 's:linux-kernel:`pwd`/:g' ./ti_config_fragments/defconfig_merge.sh
-	./ti_config_fragments/defconfig_merge.sh -o /dev/null -f ti_config_fragments/defconfig_fragment -c ${CC}
-	git checkout -- ./ti_config_fragments/defconfig_merge.sh
+	#. ${DIR}/.CC
+	#sed -i -e 's:linux-kernel:`pwd`/:g' ./ti_config_fragments/defconfig_merge.sh
+	#./ti_config_fragments/defconfig_merge.sh -o /dev/null -f ti_config_fragments/defconfig_fragment -c ${CC}
+	#git checkout -- ./ti_config_fragments/defconfig_merge.sh
 
-	make ARCH=arm CROSS_COMPILE="${CC}" appended_omap2plus_defconfig
-	mv -v .config ../patches/ti_omap2plus_defconfig
+	#make ARCH=arm CROSS_COMPILE="${CC}" appended_omap2plus_defconfig
+	#mv -v .config ../patches/ti_omap2plus_defconfig
 
-	rm -f arch/arm/configs/appended_omap2plus_defconfig
-	rm -f ti_config_fragments/working_config/base_config
-	rm -f ti_config_fragments/working_config/final_config
-	rm -f ti_config_fragments/working_config/merged_omap2plus_defconfig
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pick_dir="ti/cpu_freq"
-		echo "dir: ${pick_dir}"
-		num="1"
-
-		SHA="8f5f2b72d19c1e62f85acfd84a286f08ca76e3ac" ; pick
-		SHA="b3e1038f558783b054ba24d018c887e679158fa7" ; pick
-		SHA="cbc7d0137388b8d1a8052816a1502d96c681522e" ; pick
-		SHA="13b96edc90e6fbe9becce8a6edbbed12c729d49a" ; pick
-		SHA="2a68c9fed90d632c1c15d1209ba9da73a2c9c849" ; pick
-		SHA="ad7ec1619ff14dfaf526d2b6502911736e23ad75" ; pick
-		SHA="fbc6d87ccdfcc3a347b719c5b6a4925f3dca6fd4" ; pick
-		SHA="8ab51f90b0e961ba2266a9af5a21af9195a749b6" ; pick
-		SHA="40a4d7af3dae2838654befa165f882053d32d470" ; pick
-		SHA="95a8ed125030375c173756f0fec150ff42d8d18e" ; pick
-		SHA="7cc36064bd172b6008e4f77c48128b9c7a714eed" ; pick
-		SHA="eb92a8ee969ac1b2128d8091ae9e1c4829e7dbca" ; pick
-		SHA="d307d86ee5e2acbd4fed76be9b02056426252ca4" ; pick
-		SHA="ddbb76e023395051205d97b038ddc8ffcfb0dedf" ; pick
-		SHA="94529783628418c311ffb30f0fc0435ad8df7491" ; pick
-		SHA="d3e2dd94ed47bdfbd1cce104b8e2d0f5584a35e8" ; pick
-		SHA="44ebfa6930c9914d139543909e5c33cd5a7ddacc" ; pick
-		SHA="9324834c18421e889a2286d6f3b88bdf31c07b17" ; pick
-		SHA="5cf0b55b7e92b291195c52b8ec0b0d3f9a51f61d" ; pick
-		SHA="cf7213e2d35f57d43fff6e360daf50eb837206f3" ; pick
-		SHA="752beab102668147fcfde9ee19d853e9fc603e81" ; pick
-		SHA="cbe7bf16320964a47b3a202e28e9c5f965eef830" ; pick
-		SHA="9b0e9d74d7aa29b637bf06bd9454b67eb6893284" ; pick
-		SHA="b24e79bb4db8b336985400478813d60c5ba5aec7" ; pick
-
-		unset num
-
-		pick_dir="ti/iodelay"
-		echo "dir: ${pick_dir}"
-		num="1"
-
-		SHA="03ccdced5235b91254382038708713795ce7d021" ; pick
-		SHA="ecc68390cd49a087634bb33c6192d73196e2e1a3" ; pick
-		SHA="832e1d482bb7234cb504b31601abeaace08a8309" ; pick
-
-		unset num
-
-		exit 2
-	fi
+	#rm -f arch/arm/configs/appended_omap2plus_defconfig
+	#rm -f ti_config_fragments/working_config/base_config
+	#rm -f ti_config_fragments/working_config/final_config
+	#rm -f ti_config_fragments/working_config/merged_omap2plus_defconfig
 }
 
 aufs_fail () {
@@ -221,7 +175,7 @@ local_patch () {
 }
 
 external_git
-aufs4
+#aufs4
 #rt
 #local_patch
 
@@ -240,22 +194,98 @@ reverts () {
 	fi
 }
 
-backports () {
-	echo "dir: backports"
-	echo "dir: backports/mediatek"
-
+ti () {
+	echo "dir: ti/cpu_freq/"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	#careful around: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/drivers/net/wireless/mediatek?id=30686bf7f5b3c30831761e188a6e3cb33580fa48
-	${git} "${DIR}/patches/backports/mediatek/0001-backport-mediatek-mt7601u-from-v4.2-rc3.patch"
-	${git} "${DIR}/patches/backports/0002-backport-drivers-staging-fbtft-v4.3.0.patch"
-	${git} "${DIR}/patches/backports/0003-backport-fbtft-v4.4-rc1.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0001-ARM-OMAP2-opp-Move-dt-check-from-omap_init_opp_table.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0002-ARM-OMAP2-opp-Add-helper-functions-for-variable-OPP-.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0003-ARM-OMAP2-AM33XX-Add-opp33xx_data-to-enable-higher-O.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0004-ARM-OMAP2-AM43XX-Add-opp43xx_data-to-enable-higher-O.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0005-ARM-OMAP2-DRA7XX-Add-opp7xx_data-to-enable-higher-OP.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0006-ARM-dts-am33xx-Drop-operating-points-table-from-cpu0.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0007-ARM-dts-am4372-Add-voltage-tolerance-to-cpu-node.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0008-ARM-dts-am43x-epos-evm-Hook-dcdc2-as-the-cpu0-supply.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0009-ARM-dts-am437x-gp-evm-Hook-dcdc2-as-the-cpu0-supply.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0010-ARM-dts-dra72x-add-clock-nodes-for-CPU.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0011-ARM-dts-dra72x-Add-basic-OPPs-for-MPU.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0012-ARM-dts-dra74x-Remove-non-common-cpu0-operating-poin.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0013-PM-Voltagedomain-Add-generic-clk-notifier-handler-fo.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0014-PM-Voltagedomain-introduce-voltage-domain-driver-sup.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0015-PM-Voltagedomain-introduce-basic-voltage-domain-supp.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0016-cpufreq-cpufreq-voltdm-Split-cpufreq-dt-to-use-clk-r.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0017-ARM-OMAP2-pm-Change-cpufreq-platform-device-to-cpufr.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0018-cpufreq-voltdm-use-the-right-device-node-for-resourc.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0019-cpufreq-voltdm-do-a-dummy-opp-setup-as-part-of-probe.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0020-ARM-dts-OMAP5-Add-voltage-domains.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0021-ARM-dts-omap5uevm-Add-vdd-regulators-for-voltage-dom.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0022-ARM-dts-dra7-add-voltage-domains.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0023-ARM-dts-dra7-evm-Add-vdd-regulators-for-voltage-doma.patch"
+	${git} "${DIR}/patches/ti/cpu_freq/0024-ARM-dts-dra72-evm-Add-mapping-of-voltage-domains-to-.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=24
+		cleanup
+	fi
+
+	echo "dir: ti/iodelay/"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/ti/iodelay/0001-ARM-dts-am57xx-beagle-x15-Map-regulators-to-voltage-.patch"
+	${git} "${DIR}/patches/ti/iodelay/0002-pinctrl-bindings-pinctrl-Add-support-for-TI-s-IODela.patch"
+	${git} "${DIR}/patches/ti/iodelay/0003-pinctrl-Introduce-TI-IOdelay-configuration-driver.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=3
+		cleanup
+	fi
+}
+
+dts () {
+	echo "dir: dts"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/dts/0001-ARM-dts-omap3-beagle-add-i2c2.patch"
+	${git} "${DIR}/patches/dts/0002-ARM-dts-omap3-beagle-xm-spidev.patch"
+	${git} "${DIR}/patches/dts/0003-ARM-DTS-omap3-beagle.dts-enable-twl4030-power-reset.patch"
+	${git} "${DIR}/patches/dts/0004-arm-dts-omap4-move-emif-so-panda-es-b3-now-boots.patch"
+	${git} "${DIR}/patches/dts/0005-first-pass-imx6q-ccimx6sbc.patch"
+	${git} "${DIR}/patches/dts/0006-imx6-wl1835-base-boards.patch"
+	${git} "${DIR}/patches/dts/0007-imx6q-sabresd-add-support-for-wilink8-wlan-and-bluet.patch"
+	${git} "${DIR}/patches/dts/0008-imx6sl-evk-add-support-for-wilink8-wlan-and-bluetoot.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=8
+		cleanup
+	fi
+}
+
+wand () {
+	echo "dir: wand"
+	${git} "${DIR}/patches/wand/0001-ARM-i.MX6-Wandboard-add-wifi-bt-rfkill-driver.patch"
+	${git} "${DIR}/patches/wand/0002-ARM-dts-wandboard-add-binding-for-wand-rfkill-driver.patch"
+}
+
+errata () {
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+	echo "dir: errata"
+
+	${git} "${DIR}/patches/errata/0001-hack-omap-clockk-dpll5-apply-sprz319e-2.1-erratum.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
 		cleanup
 	fi
 }
@@ -273,49 +303,15 @@ fixes () {
 	fi
 }
 
-pru_uio () {
-	echo "dir: pru_uio"
+pru () {
+	echo "dir: pru"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/pru_uio/0001-Making-the-uio-pruss-driver-work.patch"
-	${git} "${DIR}/patches/pru_uio/0002-Cleaned-up-error-reporting.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
-		cleanup
-	fi
-}
-
-pru_rpmsg () {
-	echo "dir: pru_rpmsg"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/pru_rpmsg/0001-Fix-remoteproc-to-work-with-the-PRU-GNU-Binutils-por.patch"
-#http://git.ti.com/gitweb/?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=c2e6cfbcf2aafc77e9c7c8f1a3d45b062bd21876
-#	${git} "${DIR}/patches/pru_rpmsg/0002-Add-rpmsg_pru-support.patch"
-	${git} "${DIR}/patches/pru_rpmsg/0003-ARM-samples-seccomp-no-m32.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
-		cleanup
-	fi
-}
-
-x15 () {
-	echo "dir: x15/dsp"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
-	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
+	${git} "${DIR}/patches/pru/0001-Making-the-uio-pruss-driver-work.patch"
+	${git} "${DIR}/patches/pru/0002-Cleaned-up-error-reporting.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=2
@@ -324,7 +320,7 @@ x15 () {
 }
 
 mainline () {
-	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/bbb_overlays/mainline/
+	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/${directory}/
 }
 
 bbb_overlays () {
@@ -362,42 +358,50 @@ bbb_overlays () {
 	fi
 
 	echo "dir: bbb_overlays/mainline"
-
-	${git} "${DIR}/patches/bbb_overlays/mainline/0001-regmap-Introduce-regmap_get_max_register.patch"
-	${git} "${DIR}/patches/bbb_overlays/mainline/0002-regmap-Introduce-regmap_get_reg_stride.patch"
-	${git} "${DIR}/patches/bbb_overlays/mainline/0003-ARM-dts-Beaglebone-i2c-definitions.patch"
-	${git} "${DIR}/patches/bbb_overlays/mainline/0004-i2c-Mark-instantiated-device-nodes-with-OF_POPULATE.patch"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		directory="bbb_overlays/mainline"
+		SHA="668abc729fcb9d034eccadf63166d2c76cd645d1" ; num="1" ; mainline
+		SHA="a2f776cbb8271d7149784207da0b0c51e8b1847c" ; num="2" ; mainline
+		SHA="5d1a2961adf906f965b00eb8059fd2e0585e0e09" ; num="3" ; mainline
+		SHA="4f001fd30145a6a8f72f9544c982cfd3dcb7c6df" ; num="4" ; mainline
+		exit 2
+	fi
 
 	echo "dir: bbb_overlays/nvmem"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		directory="bbb_overlays/nvmem"
+		SHA="eace75cfdcf7d9937d8c1fb226780123c64d72c4" ; num="1" ; mainline
+		SHA="69aba7948cbe53f2f1827e84e9dd0ae470a5072e" ; num="2" ; mainline
+		SHA="e2a5402ec7c6d0442cca370a0097e75750f81398" ; num="3" ; mainline
+		SHA="2af38ab572b031a4111f01153cc020b1038b427b" ; num="4" ; mainline
+		SHA="354ebb541dfa37a83395e5a9b7d68c34f80fffc0" ; num="5" ; mainline
+		SHA="4ab11996b489ad65092216315484824ed32018f8" ; num="6" ; mainline
+		SHA="b470d6d7a5dfe41112d55c39eac67ddc5afac80d" ; num="7" ; mainline
+		SHA="3d0b16a66c8a9d10294572c6f79df4f15a27825d" ; num="8" ; mainline
+		SHA="6230699469523337d65bb5e2f47279dfcf3eea17" ; num="9" ; mainline
+		SHA="22dbdb7cbf7214befd3a449ba7959c8cf4038e6c" ; num="10" ; mainline
+		SHA="5380a9a6acd990833f76c52c1327a289d09d88aa" ; num="11" ; mainline
+		SHA="3edba6b47e4265948db3a77a0137157c033d69e2" ; num="12" ; mainline
+		SHA="fb86de91c2a48e320bfa3767802d9a1fb204a230" ; num="13" ; mainline
+		SHA="c01e9a11ab6f3096a54574c3224d8732a374f135" ; num="14" ; mainline
+		SHA="faf25a9089fc9bdc277b30dbdef8ea7ad7c9083b" ; num="15" ; mainline
+		SHA="03a69568e07e1150e1cfdb862892798f88dafd17" ; num="16" ; mainline
+		SHA="7e532f7925f1758369c7963297baceac3cbaefc1" ; num="17" ; mainline
+		SHA="7c806883e143dc60439e6bdb3589700ebed1efaa" ; num="18" ; mainline
+		SHA="cbf854ab36870b931aeba4edd954015b7c3005a2" ; num="19" ; mainline
+		SHA="ace22170655f61d82fff95e57d673bf847a32a03" ; num="20" ; mainline
+		SHA="fb727077b04f768d0c79d9aa29e958262a9e3d9e" ; num="21" ; mainline
+		exit 2
+	fi
+
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0001-nvmem-Add-a-simple-NVMEM-framework-for-nvmem-provide.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0002-nvmem-Add-a-simple-NVMEM-framework-for-consumers.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0003-nvmem-Add-nvmem_device-based-consumer-apis.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0004-nvmem-Add-bindings-for-simple-nvmem-framework.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0005-Documentation-nvmem-add-nvmem-api-level-and-how-to-d.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0006-nvmem-qfprom-Add-Qualcomm-QFPROM-support.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0007-nvmem-qfprom-Add-bindings-for-qfprom.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0008-nvmem-sunxi-Move-the-SID-driver-to-the-nvmem-framewo.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0009-nvmem-Add-DT-binding-documentation-for-Vybrid-OCOTP-.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0010-nvmem-Add-Vybrid-OCOTP-support.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0011-nvmem-Add-i.MX6-OCOTP-device-tree-binding-documentat.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0012-nvmem-imx-ocotp-Add-i.MX6-OCOTP-driver.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0013-nvmem-add-binding-for-mxs-ocotp.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0014-nvmem-add-driver-for-ocotp-in-i.MX23-and-i.MX28.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0015-nvmem-rockchip-efuse-describe-the-usage-of-eFuse.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0016-nvmem-Adding-bindings-for-rockchip-efuse.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0017-nvmem-rockchip_efuse_regmap_config-can-be-static.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0018-nvmem-core-fix-the-out-of-range-leak-in-read-write.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0019-nvmem-core-Handle-shift-bits-in-place-if-cell-nbits-.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0020-nvmem-core-Fix-memory-leak-in-nvmem_cell_write.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0021-nvmem-sunxi-Check-for-memory-allocation-failure.patch"
-
-#email...
-
+	#email...
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0022-nvmem-make-default-user-binary-file-root-access-only.patch"
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0023-nvmem-set-the-size-for-the-nvmem-binary-file.patch"
 	${git} "${DIR}/patches/bbb_overlays/nvmem/0024-nvmem-add-permission-flags-in-nvmem_config.patch"
@@ -408,14 +412,40 @@ bbb_overlays () {
 		cleanup
 	fi
 
+	echo "dir: bbb_overlays/configfs"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		directory="bbb_overlays/configfs"
+		SHA="870823e629ea194e6cf8e82a9694ac62cad49512" ; num="1" ; mainline
+		SHA="45b6a73f62ebcf3ff067895fb8030e67f4c7b67f" ; num="2" ; mainline
+		SHA="76e0da34c7cec5a7dc94667326a948de2e9c8c8d" ; num="3" ; mainline
+		SHA="da4e527cd8850712bb705f4c41f0839705ab7c98" ; num="4" ; mainline
+		SHA="ea6bd6b14ec67eb22e3eb8b2a2b979b5ea800a3a" ; num="5" ; mainline
+		SHA="f9a63da33d3f86acadc14c5cb66e9ad06860892f" ; num="6" ; mainline
+		SHA="75ab2256a7d05128f8aa088cdde961d8029bcd55" ; num="7" ; mainline
+		SHA="3755a273db8f523f8be6c18df9e1506faa93c664" ; num="8" ; mainline
+		SHA="aa48a415270f7cf16ec0ef825d19b4f8bd1a875e" ; num="9" ; mainline
+		SHA="208e61ac7c0a2c3e4b23e74a66ddc2ea471d251e" ; num="10" ; mainline
+		SHA="4a90cb203836e4989cc50121b13ff0fb7f671fcb" ; num="11" ; mainline
+		SHA="c6f89f1cca1cfd81cc27307595ebddee29cc84d3" ; num="12" ; mainline
+		SHA="495702bcc12fb2c51997088befe37145a34e5e3a" ; num="13" ; mainline
+		SHA="3da5e4c10cbacf5f3da043498299ae631a6dfc9c" ; num="14" ; mainline
+		SHA="0736390bea65cac63bed9671a957031c068a60e7" ; num="15" ; mainline
+		SHA="0b4be4fa878780a15a953577499eb69839942956" ; num="16" ; mainline
+		SHA="9ae0f367df5d0d7be09fad1e2e5b080f6a45ca6b" ; num="17" ; mainline
+		SHA="2eafd72939fda6118e27d3ee859684987f43921b" ; num="18" ; mainline
+		SHA="517982229f78b2aebf00a8a337e84e8eeea70b8e" ; num="19" ; mainline
+		exit 2
+	fi
+
 	echo "dir: bbb_overlays"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/bbb_overlays/0001-configfs-Implement-binary-attributes-v4.patch"
-	${git} "${DIR}/patches/bbb_overlays/0002-OF-DT-Overlay-configfs-interface-v5.patch"
+	${git} "${DIR}/patches/bbb_overlays/0001-configfs-Implement-binary-attributes-v5.patch"
+	${git} "${DIR}/patches/bbb_overlays/0002-OF-DT-Overlay-configfs-interface-v6.patch"
 	${git} "${DIR}/patches/bbb_overlays/0003-gitignore-Ignore-DTB-files.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -430,31 +460,40 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/0010-of-Custom-printk-format-specifier-for-device-node.patch"
 	${git} "${DIR}/patches/bbb_overlays/0011-of-overlay-kobjectify-overlay-objects.patch"
 	${git} "${DIR}/patches/bbb_overlays/0012-of-overlay-global-sysfs-enable-attribute.patch"
-	${git} "${DIR}/patches/bbb_overlays/0013-of-overlay-add-per-overlay-sysfs-attributes.patch"
-	${git} "${DIR}/patches/bbb_overlays/0014-Documentation-ABI-sys-firmware-devicetree-overlays.patch"
-	${git} "${DIR}/patches/bbb_overlays/0015-i2c-nvmem-at24-Provide-an-EEPROM-framework-interface.patch"
-	${git} "${DIR}/patches/bbb_overlays/0016-misc-Beaglebone-capemanager.patch"
-	${git} "${DIR}/patches/bbb_overlays/0017-doc-misc-Beaglebone-capemanager-documentation.patch"
-	${git} "${DIR}/patches/bbb_overlays/0018-doc-dt-beaglebone-cape-manager-bindings.patch"
-	${git} "${DIR}/patches/bbb_overlays/0019-doc-ABI-bone_capemgr-sysfs-API.patch"
-	${git} "${DIR}/patches/bbb_overlays/0020-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
-	${git} "${DIR}/patches/bbb_overlays/0021-arm-dts-Enable-beaglebone-cape-manager.patch"
-	${git} "${DIR}/patches/bbb_overlays/0022-of-overlay-Implement-indirect-target-support.patch"
-	${git} "${DIR}/patches/bbb_overlays/0023-of-unittest-Add-indirect-overlay-target-test.patch"
-	${git} "${DIR}/patches/bbb_overlays/0024-doc-dt-Document-the-indirect-overlay-method.patch"
-	${git} "${DIR}/patches/bbb_overlays/0025-of-overlay-Introduce-target-root-capability.patch"
-	${git} "${DIR}/patches/bbb_overlays/0026-of-unittest-Unit-tests-for-target-root-overlays.patch"
-	${git} "${DIR}/patches/bbb_overlays/0027-doc-dt-Document-the-target-root-overlay-method.patch"
-	${git} "${DIR}/patches/bbb_overlays/0028-of-dynamic-Add-__of_node_dupv.patch"
-	${git} "${DIR}/patches/bbb_overlays/0029-of-changesets-Introduce-changeset-helper-methods.patch"
-	${git} "${DIR}/patches/bbb_overlays/0030-RFC-Device-overlay-manager-PCI-USB-DT.patch"
+	${git} "${DIR}/patches/bbb_overlays/0013-Documentation-ABI-overlays-global-attributes.patch"
+	${git} "${DIR}/patches/bbb_overlays/0014-Documentation-document-of_overlay_disable-parameter.patch"
+	${git} "${DIR}/patches/bbb_overlays/0015-of-overlay-add-per-overlay-sysfs-attributes.patch"
+	${git} "${DIR}/patches/bbb_overlays/0016-Documentation-ABI-overlays-per-overlay-docs.patch"
+	${git} "${DIR}/patches/bbb_overlays/0017-i2c-nvmem-at24-Provide-an-EEPROM-framework-interface.patch"
+	${git} "${DIR}/patches/bbb_overlays/0018-misc-Beaglebone-capemanager.patch"
+	${git} "${DIR}/patches/bbb_overlays/0019-doc-misc-Beaglebone-capemanager-documentation.patch"
+	${git} "${DIR}/patches/bbb_overlays/0020-doc-dt-beaglebone-cape-manager-bindings.patch"
+	${git} "${DIR}/patches/bbb_overlays/0021-doc-ABI-bone_capemgr-sysfs-API.patch"
+	${git} "${DIR}/patches/bbb_overlays/0022-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
+	${git} "${DIR}/patches/bbb_overlays/0023-arm-dts-Enable-beaglebone-cape-manager.patch"
+	${git} "${DIR}/patches/bbb_overlays/0024-of-overlay-Implement-indirect-target-support.patch"
+	${git} "${DIR}/patches/bbb_overlays/0025-of-unittest-Add-indirect-overlay-target-test.patch"
+	${git} "${DIR}/patches/bbb_overlays/0026-doc-dt-Document-the-indirect-overlay-method.patch"
+	${git} "${DIR}/patches/bbb_overlays/0027-of-overlay-Introduce-target-root-capability.patch"
+	${git} "${DIR}/patches/bbb_overlays/0028-of-unittest-Unit-tests-for-target-root-overlays.patch"
+	${git} "${DIR}/patches/bbb_overlays/0029-doc-dt-Document-the-target-root-overlay-method.patch"
+	${git} "${DIR}/patches/bbb_overlays/0030-of-dynamic-Add-__of_node_dupv.patch"
+	${git} "${DIR}/patches/bbb_overlays/0031-of-changesets-Introduce-changeset-helper-methods.patch"
+	${git} "${DIR}/patches/bbb_overlays/0032-RFC-Device-overlay-manager-PCI-USB-DT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-	${git} "${DIR}/patches/bbb_overlays/0031-boneblack-defconfig.patch"
+	${git} "${DIR}/patches/bbb_overlays/0033-boneblack-defconfig.patch"
+	${git} "${DIR}/patches/bbb_overlays/0034-connector-wip.patch"
 	fi
 
+	${git} "${DIR}/patches/bbb_overlays/0035-of-remove-bogus-return-in-of_core_init.patch"
+	${git} "${DIR}/patches/bbb_overlays/0036-of-Maintainer-fixes-for-dynamic.patch"
+	${git} "${DIR}/patches/bbb_overlays/0037-of-unittest-changeset-helpers.patch"
+	${git} "${DIR}/patches/bbb_overlays/0038-of-rename-_node_sysfs-to-_node_post.patch"
+	${git} "${DIR}/patches/bbb_overlays/0039-of-Support-hashtable-lookups-for-phandles.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=31
+		number=39
 		cleanup
 	fi
 }
@@ -474,15 +513,12 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0001-hack-bbb-enable-1ghz-operation.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0002-dts-am335x-bone-common-fixup-leds-to-match-3.8.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0003-arm-dts-am335x-bone-common-add-collision-and-carrier.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0004-add-am335x-bonegreen.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0005-add-overlay-dtb.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0006-am335x-bone-common-cpsw-no-longer-need-to-define-bot.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0007-am335x-bone-common-drop-0x1a0-from-mmc.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0008-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0009-spi-omap2-mcspi-ti-pio-mode.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0004-add-overlay-dtb.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0005-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0006-spi-omap2-mcspi-ti-pio-mode.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=9
+		number=6
 		cleanup
 	fi
 
@@ -547,13 +583,13 @@ beaglebone () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/beaglebone/abbbi/0001-drm-tilcdc-Remove-tilcdc-slave-support-for-tda998x-d.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0002-drm-tilcdc-Add-support-for-external-tda998x-encoder.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0003-drm-tilcdc-Add-DRM_TILCDC_SLAVE_COMPAT-for-ti-tilcdc.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0004-gpu-drm-i2c-add-alternative-adv7511-driver-with-audi.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0005-gpu-drm-i2c-adihdmi-componentize-driver-and-huge-ref.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0006-ARM-dts-am335x-boneblack-Use-new-binding-for-HDMI.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0007-ARM-dts-add-Arrow-BeagleBone-Black-Industrial-dts.patch"
+#	${git} "${DIR}/patches/beaglebone/abbbi/0001-drm-tilcdc-Remove-tilcdc-slave-support-for-tda998x-d.patch"
+#	${git} "${DIR}/patches/beaglebone/abbbi/0002-drm-tilcdc-Add-support-for-external-tda998x-encoder.patch"
+#	${git} "${DIR}/patches/beaglebone/abbbi/0003-drm-tilcdc-Add-DRM_TILCDC_SLAVE_COMPAT-for-ti-tilcdc.patch"
+#	${git} "${DIR}/patches/beaglebone/abbbi/0004-gpu-drm-i2c-add-alternative-adv7511-driver-with-audi.patch"
+#	${git} "${DIR}/patches/beaglebone/abbbi/0005-gpu-drm-i2c-adihdmi-componentize-driver-and-huge-ref.patch"
+#	${git} "${DIR}/patches/beaglebone/abbbi/0006-ARM-dts-am335x-boneblack-Use-new-binding-for-HDMI.patch"
+#	${git} "${DIR}/patches/beaglebone/abbbi/0007-ARM-dts-add-Arrow-BeagleBone-Black-Industrial-dts.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=7
@@ -577,9 +613,13 @@ beaglebone () {
 
 		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
 
+		device="am335x-bone-can0.dtb" ; dtb_makefile_append
+		device="am335x-bone-cape-bone-argus.dtb" ; dtb_makefile_append
+
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
-
+		device="am335x-boneblack-can0.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-cape-bone-argus.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-emmc-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-hdmi-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
@@ -589,8 +629,6 @@ beaglebone () {
 		device="am335x-boneblack-replicape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-spi0.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
-
-		device="am335x-bonegreen.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
@@ -637,7 +675,7 @@ beaglebone () {
 	#    
 	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
 
-	#cp -v bin/am* /opt/github/bb-kernel/KERNEL/firmware/
+	#cp -v bin/am* /opt/github/linux-dev/KERNEL/firmware/
 
 	#git add -f ./firmware/am*
 
@@ -658,23 +696,21 @@ quieter () {
 
 	#quiet some hide obvious things...
 	${git} "${DIR}/patches/quieter/0001-quiet-8250_omap.c-use-pr_info-over-pr_err.patch"
-	${git} "${DIR}/patches/quieter/0002-quiet-topology.c-use-pr_info-over-pr_err-missing-clo.patch"
-	${git} "${DIR}/patches/quieter/0003-quiet-vgaarb-use-pr_info-over-pr_err.patch"
-	${git} "${DIR}/patches/quieter/0004-quiet-arch-arm-mach-omap2-voltage.c-legacy-harmless.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=4
+		number=1
 		cleanup
 	fi
 }
 
 ###
 reverts
-backports
+ti
 #fixes
-x15
-pru_uio
-pru_rpmsg
+#x15
+#pru_uio
+#pru_rpmsg
+pru
 bbb_overlays
 beaglebone
 quieter

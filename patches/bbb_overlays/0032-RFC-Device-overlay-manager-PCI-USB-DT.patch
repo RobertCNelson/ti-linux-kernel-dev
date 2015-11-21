@@ -1,7 +1,7 @@
-From 0f5615d990582aa91a04dc87074845d9e4d23161 Mon Sep 17 00:00:00 2001
+From 3114e8d6313bae769bcacc29431e68ff321da2b0 Mon Sep 17 00:00:00 2001
 From: Pantelis Antoniou <pantelis.antoniou@konsulko.com>
 Date: Thu, 21 May 2015 12:08:54 +0300
-Subject: [PATCH 30/31] RFC: Device overlay manager (PCI/USB + DT)
+Subject: [PATCH 32/39] RFC: Device overlay manager (PCI/USB + DT)
 
 This probably misplaced (in drivers/misc) patch allows use
 of device tree overlays on the two kinds of probeable busses
@@ -20,15 +20,15 @@ Signed-off-by: Pantelis Antoniou <pantelis.antoniou@konsulko.com>
 ---
  drivers/misc/Kconfig    |    9 +
  drivers/misc/Makefile   |    1 +
- drivers/misc/devovmgr.c | 1305 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 1315 insertions(+)
+ drivers/misc/devovmgr.c | 1300 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 1310 insertions(+)
  create mode 100644 drivers/misc/devovmgr.c
 
 diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
-index a86c7cd..4686cf4 100644
+index 1178809..a3aa0565 100644
 --- a/drivers/misc/Kconfig
 +++ b/drivers/misc/Kconfig
-@@ -525,6 +525,15 @@ config BONE_CAPEMGR
+@@ -535,6 +535,15 @@ config BONE_CAPEMGR
  	  beaglebone capes. Select M to build as a module which
  	  will be named bone_capemgr.
  
@@ -45,7 +45,7 @@ index a86c7cd..4686cf4 100644
  source "drivers/misc/eeprom/Kconfig"
  source "drivers/misc/cb710/Kconfig"
 diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
-index 659b78b..7009f26 100644
+index dd885de..12a5135 100644
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
 @@ -57,3 +57,4 @@ obj-$(CONFIG_ECHO)		+= echo/
@@ -55,10 +55,10 @@ index 659b78b..7009f26 100644
 +obj-$(CONFIG_DEV_OVERLAYMGR)	+= devovmgr.o
 diff --git a/drivers/misc/devovmgr.c b/drivers/misc/devovmgr.c
 new file mode 100644
-index 0000000..82d2b07
+index 0000000..2cad4e6
 --- /dev/null
 +++ b/drivers/misc/devovmgr.c
-@@ -0,0 +1,1305 @@
+@@ -0,0 +1,1300 @@
 +/*
 + * Device overlay manager
 + *
@@ -489,22 +489,6 @@ index 0000000..82d2b07
 +}
 +
 +
-+CONFIGFS_ATTR_STRUCT(dovmgr_item);
-+#define DOVMGR_ITEM_ATTR(_name, _mode, _show, _store)	\
-+struct dovmgr_item_attribute dovmgr_item_attr_##_name = \
-+	__CONFIGFS_ATTR(_name, _mode, _show, _store)
-+#define DOVMGR_ITEM_ATTR_RO(_name, _show)	\
-+struct dovmgr_item_attribute dovmgr_item_attr_##_name = \
-+	__CONFIGFS_ATTR_RO(_name, _show)
-+
-+CONFIGFS_BIN_ATTR_STRUCT(dovmgr_item);
-+#define DOVMGR_ITEM_BIN_ATTR(_name, _mode, _read, _write, _priv, _max) \
-+struct dovmgr_item_bin_attribute dovmgr_item_bin_attr_##_name = \
-+	__CONFIGFS_BIN_ATTR(_name, _mode, _read, _write, _priv, _max)
-+#define DOVMGR_ITEM_BIN_ATTR_RO(_name, _read, _priv, _max)	\
-+struct dovmgr_item_bin_attribute dovmgr_item_bin_attr_##_name = \
-+	__CONFIGFS_BIN_ATTR_RO(_name, _read, _priv, _max)
-+
 +static ssize_t dovmgr_item_str_show(struct dovmgr_item *item,
 +		char *page, char **strp)
 +{
@@ -539,25 +523,29 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+static ssize_t dovmgr_item_path_show(struct dovmgr_item *item, char *page)
++static ssize_t dovmgr_item_path_show(struct config_item *citem, char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return dovmgr_item_str_show(item, page, &item->path);
 +}
 +
-+static ssize_t dovmgr_item_path_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_path_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return dovmgr_item_str_store(item, page, count, &item->path);
 +}
 +
-+static ssize_t dovmgr_item_enable_show(struct dovmgr_item *item, char *page)
++static ssize_t dovmgr_item_enable_show(struct config_item *citem, char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return snprintf(page, PAGE_SIZE, "%u\n", !!item->enable);
 +}
 +
-+static ssize_t dovmgr_item_enable_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_enable_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	int ret;
 +	unsigned int val;
 +
@@ -572,8 +560,9 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+static ssize_t dovmgr_item_overlay_show(struct dovmgr_item *item, char *page)
++static ssize_t dovmgr_item_overlay_show(struct config_item *citem, char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	ssize_t ret;
 +
 +	mutex_lock(&item->dev_item_mutex);
@@ -584,9 +573,10 @@ index 0000000..82d2b07
 +};
 +
 +
-+static ssize_t dovmgr_item_overlay_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_overlay_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	ssize_t ret;
 +
 +	mutex_lock(&item->dev_item_mutex);
@@ -600,8 +590,9 @@ index 0000000..82d2b07
 +	return ret;
 +}
 +
-+static ssize_t dovmgr_item_status_show(struct dovmgr_item *item, char *page)
++static ssize_t dovmgr_item_status_show(struct config_item *citem, char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	struct dovmgr_dev_item *ditem;
 +	char *p, *e;
 +	int len;
@@ -624,23 +615,23 @@ index 0000000..82d2b07
 +	return p - page;
 +}
 +
-+DOVMGR_ITEM_ATTR(path, S_IRUGO | S_IWUSR,
-+		dovmgr_item_path_show, dovmgr_item_path_store);
-+DOVMGR_ITEM_ATTR_RO(status, dovmgr_item_status_show);
-+DOVMGR_ITEM_ATTR(enable, S_IRUGO | S_IWUSR,
-+		dovmgr_item_enable_show, dovmgr_item_enable_store);
-+DOVMGR_ITEM_ATTR(overlay, S_IRUGO | S_IWUSR,
-+		dovmgr_item_overlay_show, dovmgr_item_overlay_store);
++CONFIGFS_ATTR(dovmgr_item_, path);
++CONFIGFS_ATTR_RO(dovmgr_item_, status);
++CONFIGFS_ATTR(dovmgr_item_, enable);
++CONFIGFS_ATTR(dovmgr_item_, overlay);
 +
 +#if IS_ENABLED(CONFIG_PCI)
-+static ssize_t dovmgr_item_pci_device_show(struct dovmgr_item *item, char *page)
++static ssize_t dovmgr_item_pci_device_show(struct config_item *citem,
++		char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return snprintf(page, PAGE_SIZE, "0x%04x\n", item->pci.device);
 +}
 +
-+static ssize_t dovmgr_item_pci_device_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_pci_device_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	int ret;
 +	unsigned int val;
 +
@@ -651,14 +642,17 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+static ssize_t dovmgr_item_pci_vendor_show(struct dovmgr_item *item, char *page)
++static ssize_t dovmgr_item_pci_vendor_show(struct config_item *citem,
++		char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return snprintf(page, PAGE_SIZE, "0x%04x\n", item->pci.vendor);
 +}
 +
-+static ssize_t dovmgr_item_pci_vendor_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_pci_vendor_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	int ret;
 +	unsigned int val;
 +
@@ -673,15 +667,17 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+static ssize_t dovmgr_item_pci_subdevice_show(struct dovmgr_item *item,
++static ssize_t dovmgr_item_pci_subdevice_show(struct config_item *citem,
 +		char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return snprintf(page, PAGE_SIZE, "0x%08x\n", item->pci.subdevice);
 +}
 +
-+static ssize_t dovmgr_item_pci_subdevice_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_pci_subdevice_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	int ret;
 +	unsigned int val;
 +
@@ -696,15 +692,17 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+static ssize_t dovmgr_item_pci_subvendor_show(struct dovmgr_item *item,
++static ssize_t dovmgr_item_pci_subvendor_show(struct config_item *citem,
 +		char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return snprintf(page, PAGE_SIZE, "0x%08x\n", item->pci.subvendor);
 +}
 +
-+static ssize_t dovmgr_item_pci_subvendor_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_pci_subvendor_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	int ret;
 +	unsigned int val;
 +
@@ -719,14 +717,16 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+static ssize_t dovmgr_item_pci_class_show(struct dovmgr_item *item, char *page)
++static ssize_t dovmgr_item_pci_class_show(struct config_item *citem, char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return snprintf(page, PAGE_SIZE, "0x%04x\n", item->pci.class);
 +}
 +
-+static ssize_t dovmgr_item_pci_class_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_pci_class_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	int ret;
 +	unsigned int val;
 +
@@ -741,15 +741,17 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+static ssize_t dovmgr_item_pci_class_mask_show(struct dovmgr_item *item,
++static ssize_t dovmgr_item_pci_class_mask_show(struct config_item *citem,
 +		char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return snprintf(page, PAGE_SIZE, "0x%04x\n", item->pci.class_mask);
 +}
 +
-+static ssize_t dovmgr_item_pci_class_mask_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_pci_class_mask_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	int ret;
 +	unsigned int val;
 +
@@ -764,31 +766,27 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+DOVMGR_ITEM_ATTR(device, S_IRUGO | S_IWUSR,
-+	dovmgr_item_pci_device_show, dovmgr_item_pci_device_store);
-+DOVMGR_ITEM_ATTR(vendor, S_IRUGO | S_IWUSR,
-+	dovmgr_item_pci_vendor_show, dovmgr_item_pci_vendor_store);
-+DOVMGR_ITEM_ATTR(subdevice, S_IRUGO | S_IWUSR,
-+	dovmgr_item_pci_subdevice_show, dovmgr_item_pci_subdevice_store);
-+DOVMGR_ITEM_ATTR(subvendor, S_IRUGO | S_IWUSR,
-+	dovmgr_item_pci_subvendor_show, dovmgr_item_pci_subvendor_store);
-+DOVMGR_ITEM_ATTR(class, S_IRUGO | S_IWUSR,
-+	dovmgr_item_pci_class_show, dovmgr_item_pci_class_store);
-+DOVMGR_ITEM_ATTR(class_mask, S_IRUGO | S_IWUSR,
-+	dovmgr_item_pci_class_mask_show, dovmgr_item_pci_class_mask_store);
++CONFIGFS_ATTR(dovmgr_item_pci_, device);
++CONFIGFS_ATTR(dovmgr_item_pci_, vendor);
++CONFIGFS_ATTR(dovmgr_item_pci_, subdevice);
++CONFIGFS_ATTR(dovmgr_item_pci_, subvendor);
++CONFIGFS_ATTR(dovmgr_item_pci_, class);
++CONFIGFS_ATTR(dovmgr_item_pci_, class_mask);
 +#endif
 +
 +#if IS_ENABLED(CONFIG_USB)
-+static ssize_t dovmgr_item_usb_idProduct_show(struct dovmgr_item *item,
++static ssize_t dovmgr_item_usb_idProduct_show(struct config_item *citem,
 +		char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return snprintf(page, PAGE_SIZE, "0x%04x\n",
 +			item->usb.idProduct);
 +}
 +
-+static ssize_t dovmgr_item_usb_idProduct_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_usb_idProduct_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	int ret;
 +	unsigned int val;
 +
@@ -803,16 +801,18 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+static ssize_t dovmgr_item_usb_idVendor_show(struct dovmgr_item *item,
++static ssize_t dovmgr_item_usb_idVendor_show(struct config_item *citem,
 +		char *page)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	return snprintf(page, PAGE_SIZE, "0x%04x\n",
 +			item->usb.idVendor);
 +}
 +
-+static ssize_t dovmgr_item_usb_idVendor_store(struct dovmgr_item *item,
++static ssize_t dovmgr_item_usb_idVendor_store(struct config_item *citem,
 +		const char *page, size_t count)
 +{
++	struct dovmgr_item *item = to_dovmgr_item(citem);
 +	int ret;
 +	unsigned int val;
 +
@@ -827,36 +827,34 @@ index 0000000..82d2b07
 +	return count;
 +}
 +
-+DOVMGR_ITEM_ATTR(idProduct, S_IRUGO | S_IWUSR,
-+	dovmgr_item_usb_idProduct_show, dovmgr_item_usb_idProduct_store);
-+DOVMGR_ITEM_ATTR(idVendor, S_IRUGO | S_IWUSR,
-+	dovmgr_item_usb_idVendor_show, dovmgr_item_usb_idVendor_store);
++CONFIGFS_ATTR(dovmgr_item_usb_, idProduct);
++CONFIGFS_ATTR(dovmgr_item_usb_, idVendor);
 +#endif
 +
 +#if IS_ENABLED(CONFIG_PCI)
 +static struct configfs_attribute *dovmgr_pci_attrs[] = {
-+	&dovmgr_item_attr_path.attr,
-+	&dovmgr_item_attr_status.attr,
-+	&dovmgr_item_attr_enable.attr,
-+	&dovmgr_item_attr_overlay.attr,
-+	&dovmgr_item_attr_device.attr,
-+	&dovmgr_item_attr_vendor.attr,
-+	&dovmgr_item_attr_subdevice.attr,
-+	&dovmgr_item_attr_subvendor.attr,
-+	&dovmgr_item_attr_class.attr,
-+	&dovmgr_item_attr_class_mask.attr,
++	&dovmgr_item_attr_path,
++	&dovmgr_item_attr_status,
++	&dovmgr_item_attr_enable,
++	&dovmgr_item_attr_overlay,
++	&dovmgr_item_pci_attr_device,
++	&dovmgr_item_pci_attr_vendor,
++	&dovmgr_item_pci_attr_subdevice,
++	&dovmgr_item_pci_attr_subvendor,
++	&dovmgr_item_pci_attr_class,
++	&dovmgr_item_pci_attr_class_mask,
 +	NULL,
 +};
 +#endif
 +
 +#if IS_ENABLED(CONFIG_USB)
 +static struct configfs_attribute *dovmgr_usb_attrs[] = {
-+	&dovmgr_item_attr_path.attr,
-+	&dovmgr_item_attr_enable.attr,
-+	&dovmgr_item_attr_status.attr,
-+	&dovmgr_item_attr_overlay.attr,
-+	&dovmgr_item_attr_idVendor.attr,
-+	&dovmgr_item_attr_idProduct.attr,
++	&dovmgr_item_attr_path,
++	&dovmgr_item_attr_enable,
++	&dovmgr_item_attr_status,
++	&dovmgr_item_attr_overlay,
++	&dovmgr_item_usb_attr_idVendor,
++	&dovmgr_item_usb_attr_idProduct,
 +	NULL,
 +};
 +#endif
@@ -872,11 +870,8 @@ index 0000000..82d2b07
 +	kfree(item);
 +}
 +
-+CONFIGFS_ATTR_OPS(dovmgr_item);
 +static struct configfs_item_operations dovmgr_item_ops = {
 +	.release		= dovmgr_release,
-+	.show_attribute		= dovmgr_item_attr_show,
-+	.store_attribute	= dovmgr_item_attr_store,
 +};
 +
 +#if IS_ENABLED(CONFIG_PCI)
@@ -1365,5 +1360,5 @@ index 0000000..82d2b07
 +}
 +late_initcall(dovmgr_init);
 -- 
-2.5.1
+2.6.2
 
