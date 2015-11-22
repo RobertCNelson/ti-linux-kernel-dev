@@ -247,49 +247,6 @@ ti () {
 	fi
 }
 
-dts () {
-	echo "dir: dts"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/dts/0001-ARM-dts-omap3-beagle-add-i2c2.patch"
-	${git} "${DIR}/patches/dts/0002-ARM-dts-omap3-beagle-xm-spidev.patch"
-	${git} "${DIR}/patches/dts/0003-ARM-DTS-omap3-beagle.dts-enable-twl4030-power-reset.patch"
-	${git} "${DIR}/patches/dts/0004-arm-dts-omap4-move-emif-so-panda-es-b3-now-boots.patch"
-	${git} "${DIR}/patches/dts/0005-first-pass-imx6q-ccimx6sbc.patch"
-	${git} "${DIR}/patches/dts/0006-imx6-wl1835-base-boards.patch"
-	${git} "${DIR}/patches/dts/0007-imx6q-sabresd-add-support-for-wilink8-wlan-and-bluet.patch"
-	${git} "${DIR}/patches/dts/0008-imx6sl-evk-add-support-for-wilink8-wlan-and-bluetoot.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=8
-		cleanup
-	fi
-}
-
-wand () {
-	echo "dir: wand"
-	${git} "${DIR}/patches/wand/0001-ARM-i.MX6-Wandboard-add-wifi-bt-rfkill-driver.patch"
-	${git} "${DIR}/patches/wand/0002-ARM-dts-wandboard-add-binding-for-wand-rfkill-driver.patch"
-}
-
-errata () {
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-	echo "dir: errata"
-
-	${git} "${DIR}/patches/errata/0001-hack-omap-clockk-dpll5-apply-sprz319e-2.1-erratum.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-}
-
 fixes () {
 	echo "dir: fixes"
 	#regenerate="enable"
@@ -303,15 +260,49 @@ fixes () {
 	fi
 }
 
-pru () {
-	echo "dir: pru"
+pru_uio () {
+	echo "dir: pru_uio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/pru/0001-Making-the-uio-pruss-driver-work.patch"
-	${git} "${DIR}/patches/pru/0002-Cleaned-up-error-reporting.patch"
+	${git} "${DIR}/patches/pru_uio/0001-Making-the-uio-pruss-driver-work.patch"
+	${git} "${DIR}/patches/pru_uio/0002-Cleaned-up-error-reporting.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+}
+
+pru_rpmsg () {
+	echo "dir: pru_rpmsg"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	#${git} "${DIR}/patches/pru_rpmsg/0001-Fix-remoteproc-to-work-with-the-PRU-GNU-Binutils-por.patch"
+#http://git.ti.com/gitweb/?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=c2e6cfbcf2aafc77e9c7c8f1a3d45b062bd21876
+#	${git} "${DIR}/patches/pru_rpmsg/0002-Add-rpmsg_pru-support.patch"
+	${git} "${DIR}/patches/pru_rpmsg/0003-ARM-samples-seccomp-no-m32.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=3
+		cleanup
+	fi
+}
+
+x15 () {
+	echo "dir: x15/dsp"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
+	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=2
@@ -702,11 +693,9 @@ quieter () {
 ###
 reverts
 ti
-#fixes
 #x15
-#pru_uio
-#pru_rpmsg
-pru
+pru_uio
+pru_rpmsg
 bbb_overlays
 beaglebone
 quieter
