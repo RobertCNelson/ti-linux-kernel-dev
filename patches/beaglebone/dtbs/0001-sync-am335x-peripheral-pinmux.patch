@@ -1,6 +1,6 @@
-From 820da8371f97fec9055cc638dcd9c3b35ed13430 Mon Sep 17 00:00:00 2001
+From 5b728ae37d07184702273acba00bd7afe8bc2204 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 19 Nov 2015 20:11:12 -0600
+Date: Wed, 25 Nov 2015 12:00:59 -0600
 Subject: [PATCH] sync: am335x-peripheral/pinmux
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -17,13 +17,14 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/am335x-bone-pinmux-ttyS5.dtsi    |  48 ++
  arch/arm/boot/dts/am335x-boneblack-bbb-exp-c.dts   |  44 ++
  arch/arm/boot/dts/am335x-boneblack-bbb-exp-r.dts   |  44 ++
- arch/arm/boot/dts/am335x-boneblack-bbbmini.dts     | 198 +++++++
+ arch/arm/boot/dts/am335x-boneblack-bbbmini.dts     | 195 +++++++
  .../arm/boot/dts/am335x-boneblack-emmc-overlay.dts |  38 ++
  .../arm/boot/dts/am335x-boneblack-hdmi-overlay.dts | 162 ++++++
  .../boot/dts/am335x-boneblack-nhdmi-overlay.dts    |  97 ++++
  arch/arm/boot/dts/am335x-boneblack-overlay.dts     |  18 +-
  arch/arm/boot/dts/am335x-boneblack-replicape.dts   |  12 +-
  arch/arm/boot/dts/am335x-boneblack-spi0.dts        | 188 +++++++
+ arch/arm/boot/dts/am335x-boneblack-ttyS2.dts       | 175 +++++++
  arch/arm/boot/dts/am335x-boneblack-wl1835mod.dts   |   7 +-
  arch/arm/boot/dts/am335x-bonegreen-overlay.dts     |  40 ++
  arch/arm/boot/dts/am335x-bonegreen.dts             |   8 +-
@@ -37,7 +38,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/am335x-peripheral-ttyS4.dtsi     |  13 +
  arch/arm/boot/dts/am335x-peripheral-ttyS5.dtsi     |  13 +
  include/dt-bindings/board/am335x-bbw-bbb-base.h    | 103 ++++
- 32 files changed, 2948 insertions(+), 19 deletions(-)
+ 33 files changed, 3120 insertions(+), 19 deletions(-)
  create mode 100644 arch/arm/boot/dts/am335x-arduino-tre.dts
  create mode 100644 arch/arm/boot/dts/am335x-bone-common-no-capemgr.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-emmc-in-reset.dtsi
@@ -55,6 +56,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 arch/arm/boot/dts/am335x-boneblack-hdmi-overlay.dts
  create mode 100644 arch/arm/boot/dts/am335x-boneblack-nhdmi-overlay.dts
  create mode 100644 arch/arm/boot/dts/am335x-boneblack-spi0.dts
+ create mode 100644 arch/arm/boot/dts/am335x-boneblack-ttyS2.dts
  create mode 100644 arch/arm/boot/dts/am335x-bonegreen-overlay.dts
  create mode 100644 arch/arm/boot/dts/am335x-cape-bbb-exp-c.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-cape-bbb-exp-r.dtsi
@@ -1667,10 +1669,10 @@ index 0000000..76a48c1
 +#include "am335x-cape-bbb-exp-r.dtsi"
 diff --git a/arch/arm/boot/dts/am335x-boneblack-bbbmini.dts b/arch/arm/boot/dts/am335x-boneblack-bbbmini.dts
 new file mode 100644
-index 0000000..1365785
+index 0000000..5d486fb
 --- /dev/null
 +++ b/arch/arm/boot/dts/am335x-boneblack-bbbmini.dts
-@@ -0,0 +1,198 @@
+@@ -0,0 +1,195 @@
 +/*
 + * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
 + *                    Modified by Mirko Denecke <mirkix@gmail.com>
@@ -1683,6 +1685,8 @@ index 0000000..1365785
 +
 +#include "am33xx.dtsi"
 +#include "am335x-bone-common.dtsi"
++#include <dt-bindings/board/am335x-bbw-bbb-base.h>
++#include <dt-bindings/pinctrl/am33xx.h>
 +
 +/ {
 +	model = "TI AM335x BeagleBone Black";
@@ -1706,9 +1710,6 @@ index 0000000..1365785
 +	bus-width = <8>;
 +	status = "okay";
 +};
-+
-+#include "am335x-peripheral-ttyS5.dtsi"
-+#include "am335x-bone-pinmux-ttyS5.dtsi"
 +
 +&am33xx_pinmux {
 +	dcan1_pins: pinmux_dcan1_pins {
@@ -1862,13 +1863,11 @@ index 0000000..1365785
 +	status = "okay";
 +};
 +
-+/*
 +&uart5 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&uart5_pins>;
 +	status = "okay";
 +};
-+*/
 diff --git a/arch/arm/boot/dts/am335x-boneblack-emmc-overlay.dts b/arch/arm/boot/dts/am335x-boneblack-emmc-overlay.dts
 new file mode 100644
 index 0000000..a515059
@@ -2413,6 +2412,187 @@ index 0000000..ba76575
 +		spi-max-frequency = <16000000>;
 +		reg = <1>;
 +	};
++};
++
++/ {
++	clk_mcasp0_fixed: clk_mcasp0_fixed {
++	      #clock-cells = <0>;
++	      compatible = "fixed-clock";
++	      clock-frequency = <24576000>;
++	};
++
++	clk_mcasp0: clk_mcasp0 {
++	      #clock-cells = <0>;
++	      compatible = "gpio-gate-clock";
++	      clocks = <&clk_mcasp0_fixed>;
++	      enable-gpios = <&gpio1 27 0>; /* BeagleBone Black Clk enable on GPIO1_27 */
++	};
++
++	hdmi_audio: hdmi_audio@0 {
++	       compatible = "linux,hdmi-audio";
++	       status = "okay";
++	};
++
++	sound {
++		compatible = "ti,beaglebone-black-audio";
++		ti,model = "TI BeagleBone Black";
++		ti,audio-codec = <&hdmi_audio>;
++		ti,mcasp-controller = <&mcasp0>;
++		ti,audio-routing =
++			"HDMI Out",	"TX";
++		clocks = <&clk_mcasp0>;
++		clock-names = "mclk";
++	};
++};
+diff --git a/arch/arm/boot/dts/am335x-boneblack-ttyS2.dts b/arch/arm/boot/dts/am335x-boneblack-ttyS2.dts
+new file mode 100644
+index 0000000..310d956
+--- /dev/null
++++ b/arch/arm/boot/dts/am335x-boneblack-ttyS2.dts
+@@ -0,0 +1,175 @@
++/*
++ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++/dts-v1/;
++
++#include "am33xx.dtsi"
++#include "am335x-bone-common.dtsi"
++#include <dt-bindings/board/am335x-bbw-bbb-base.h>
++#include <dt-bindings/pinctrl/am33xx.h>
++
++/ {
++	model = "TI AM335x BeagleBone Black";
++	compatible = "ti,am335x-bone-black", "ti,am335x-bone", "ti,am33xx";
++};
++
++&ldo3_reg {
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-always-on;
++};
++
++&mmc1 {
++	vmmc-supply = <&vmmcsd_fixed>;
++};
++
++&mmc2 {
++	vmmc-supply = <&vmmcsd_fixed>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&emmc_pins>;
++	bus-width = <8>;
++	status = "okay";
++};
++
++&sgx {
++	status = "okay";
++};
++
++&am33xx_pinmux {
++	nxp_hdmi_bonelt_pins: nxp_hdmi_bonelt_pins {
++		pinctrl-single,pins = <
++			0x1b0 0x03      /* xdma_event_intr0, OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT */
++			0xa0 0x08       /* lcd_data0.lcd_data0, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xa4 0x08       /* lcd_data1.lcd_data1, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xa8 0x08       /* lcd_data2.lcd_data2, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xac 0x08       /* lcd_data3.lcd_data3, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xb0 0x08       /* lcd_data4.lcd_data4, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xb4 0x08       /* lcd_data5.lcd_data5, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xb8 0x08       /* lcd_data6.lcd_data6, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xbc 0x08       /* lcd_data7.lcd_data7, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xc0 0x08       /* lcd_data8.lcd_data8, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xc4 0x08       /* lcd_data9.lcd_data9, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xc8 0x08       /* lcd_data10.lcd_data10, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xcc 0x08       /* lcd_data11.lcd_data11, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xd0 0x08       /* lcd_data12.lcd_data12, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xd4 0x08       /* lcd_data13.lcd_data13, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xd8 0x08       /* lcd_data14.lcd_data14, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xdc 0x08       /* lcd_data15.lcd_data15, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
++			0xe0 0x00       /* lcd_vsync.lcd_vsync, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT */
++			0xe4 0x00       /* lcd_hsync.lcd_hsync, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT */
++			0xe8 0x00       /* lcd_pclk.lcd_pclk, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT */
++			0xec 0x00       /* lcd_ac_bias_en.lcd_ac_bias_en, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT */
++		>;
++	};
++	nxp_hdmi_bonelt_off_pins: nxp_hdmi_bonelt_off_pins {
++		pinctrl-single,pins = <
++			0x1b0 0x03      /* xdma_event_intr0, OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT */
++		>;
++	};
++
++	mcasp0_pins: mcasp0_pins {
++		pinctrl-single,pins = <
++			0x1ac (PIN_INPUT_PULLUP | MUX_MODE0)	/* mcasp0_ahclkx.mcasp0_ahclkx */
++			0x19c (PIN_OUTPUT_PULLDOWN | MUX_MODE2) /* mcasp0_ahclkr.mcasp0_axr2 */
++			0x194 (PIN_OUTPUT_PULLUP | MUX_MODE0)	/* mcasp0_fsx.mcasp0_fsx */
++			0x190 (PIN_OUTPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_aclkx.mcasp0_aclkx */
++			0x06c (PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a11.GPIO1_27 */
++		>;
++	};
++
++	mcasp0_pins_sleep: mcasp0_pins_sleep {
++		pinctrl-single,pins = <
++			0x1ac (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_ahclkx.mcasp0_ahclkx */
++			0x19c (PIN_INPUT_PULLDOWN | MUX_MODE7) /* mcasp0_ahclkr.mcasp0_axr2 */
++			0x194 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_fsx.mcasp0_fsx */
++			0x190 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* mcasp0_aclkx.mcasp0_aclkx */
++			0x06c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a11.GPIO1_27 */
++		>;
++	};
++
++	bb_uart2_pins: pinmux_bb_uart2_pins {
++		pinctrl-single,pins = <
++			BONE_P9_21 (PIN_OUTPUT_PULLDOWN | MUX_MODE1) /* spi0_d0.uart2_txd */
++			BONE_P9_22 (PIN_INPUT_PULLUP | MUX_MODE1) /* spi0_sclk.uart2_rxd */
++		>;
++	};
++};
++
++&lcdc {
++	status = "okay";
++	port {
++		lcdc_0: endpoint@0 {
++			remote-endpoint = <&hdmi_0>;
++		};
++	};
++};
++
++&i2c0 {
++	tda19988 {
++		compatible = "nxp,tda998x";
++		reg = <0x70>;
++		pinctrl-names = "default", "off";
++		pinctrl-0 = <&nxp_hdmi_bonelt_pins>;
++		pinctrl-1 = <&nxp_hdmi_bonelt_off_pins>;
++		port {
++			hdmi_0: endpoint@0 {
++				remote-endpoint = <&lcdc_0>;
++			};
++		};
++	};
++};
++
++&mcasp0	{
++	pinctrl-names = "default", "sleep";
++	pinctrl-0 = <&mcasp0_pins>;
++	pinctrl-1 = <&mcasp0_pins_sleep>;
++	status = "okay";
++	op-mode = <0>;	/* MCASP_IIS_MODE */
++	tdm-slots = <2>;
++	serial-dir = <	/* 0: INACTIVE, 1: TX, 2: RX */
++			0 0 1 0
++		>;
++	tx-num-evt = <1>;
++	rx-num-evt = <1>;
++};
++
++&uart2 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&bb_uart2_pins>;
 +};
 +
 +/ {
