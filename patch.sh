@@ -568,6 +568,7 @@ beaglebone () {
 	fi
 
 	${git} "${DIR}/patches/beaglebone/am335x_olimex_som/0001-ARM-dts-Add-support-for-Olimex-AM3352-SOM.patch"
+	${git} "${DIR}/patches/beaglebone/am335x_olimex_som/0002-am335x-olimex-som-no-regulator-for-voltdm.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
