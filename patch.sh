@@ -315,7 +315,7 @@ x15 () {
 	fi
 
 	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
-	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
+	${git} "${DIR}/patches/x15/dsp/0002-Added-DT-bindings-for-DebugSS.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=2
@@ -677,9 +677,10 @@ quieter () {
 	${git} "${DIR}/patches/quieter/0002-quiet-topology.c-use-pr_info-over-pr_err-missing-clo.patch"
 	${git} "${DIR}/patches/quieter/0003-quiet-vgaarb-use-pr_info-over-pr_err.patch"
 	${git} "${DIR}/patches/quieter/0004-quiet-arch-arm-mach-omap2-voltage.c-legacy-harmless.patch"
+	${git} "${DIR}/patches/quieter/0005-HACK-remoteproc-Prevent-backtrace-for-RSC_INTMEM-dep.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=4
+		number=5
 		cleanup
 	fi
 }
