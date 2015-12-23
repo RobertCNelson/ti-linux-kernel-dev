@@ -341,7 +341,8 @@ config="CONFIG_CPUFREQ_VOLTDM" ; config_enable
 # I2C GPIO expanders
 CONFIG_GPIO_PCF857X=y
 
-config="CONFIG_GPIO_PCF857X" ; config_enable
+config="CONFIG_GPIO_PCA953X" ; config_enable
+config="CONFIG_GPIO_PCA953X_IRQ" ; config_enable
 
 #PCIe
 CONFIG_PCI=y
