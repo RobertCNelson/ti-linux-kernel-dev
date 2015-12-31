@@ -33,15 +33,17 @@ if [ -e ${DIR}/version.sh ]; then
 	. ${DIR}/version.sh
 
 	cd ${DIR}/KERNEL/
-	make ARCH=arm distclean
+	make ARCH=${KERNEL_ARCH} distclean
 
-	cp ${DIR}/patches/defconfig ${DIR}/KERNEL/arch/arm/configs/${example}_defconfig
-	git add arch/arm/configs/${example}_defconfig
+	cp ${DIR}/patches/defconfig ${DIR}/KERNEL/.config
+	make ARCH=${KERNEL_ARCH} savedefconfig
+	cp ${DIR}/KERNEL/defconfig ${DIR}/KERNEL/arch/${KERNEL_ARCH}/configs/${example}_defconfig
+	git add arch/${KERNEL_ARCH}/configs/${example}_defconfig
 
 	if [ "x${ti_git_old_release}" = "x${ti_git_post}" ] ; then
 		git commit -a -m "${KERNEL_TAG}-${BUILD} ${example}_defconfig" -s
 	else
-		git commit -a -m "${KERNEL_TAG}-${BUILD} ${example}_defconfig" -m "4.1 TI Delta: ${compare}/${ti_git_old_release}...${ti_git_post}" -s
+		git commit -a -m "${KERNEL_TAG}-${BUILD} ${example}_defconfig" -m "${KERNEL_REL} TI Delta: ${compare}/${ti_git_old_release}...${ti_git_post}" -s
 	fi
 
 	git tag -a "${KERNEL_TAG}-${BUILD}" -m "${KERNEL_TAG}-${BUILD}" -f
