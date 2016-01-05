@@ -169,6 +169,44 @@ git_kernel () {
 	cd "${DIR}/" || exit
 }
 
+git_xenomai () {
+	XENO_GIT="${DIR}/ignore/xenomai"
+
+	echo "-----------------------------"
+	echo "scripts/git: Xenomai 3 repository"
+
+	# Check/clone/update local xenomai repository
+	if [ ! -f "${XENO_GIT}/.git/config" ] ; then
+		rm -rf ${XENO_GIT} || true
+		echo "scripts/git: Cloning ${xenomai} into ${XENO_GIT}"
+		git clone ${xenomai} ${XENO_GIT}
+	fi
+
+	#Automaticly, just recover the git repo from a git crash
+	if [ -f "${XENO_GIT}/ignore/xenomai/.git/index.lock" ] ; then
+		rm -rf ${XENO_GIT}/ignore/xenomai/ || true
+		echo "scripts/git: xenomai repository ${XENO_GIT} wedged"
+		echo "Recloning..."
+		git clone ${xenomai} ${XENO_GIT}
+	fi
+
+	cd "${XENO_GIT}"
+	git am --abort || echo "git tree is clean..."
+	git add --all
+	git commit --allow-empty -a -m 'empty cleanup commit'
+
+	git reset --hard HEAD
+	git checkout master -f
+
+	git pull "${git_opts}" || true
+
+	if [ "x${xenomai_checkout}" = "x" ] ; then
+		git checkout master -f
+	else
+		git checkout ${xenomai_checkout} -f
+	fi
+}
+
 . "${DIR}/version.sh"
 . "${DIR}/system.sh"
 
@@ -200,5 +238,7 @@ fi
 
 torvalds_linux="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 linux_stable="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
+xenomai="https://github.com/rcn-ee/xenomai-3"
 
 git_kernel
+git_xenomai
