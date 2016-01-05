@@ -359,9 +359,9 @@ config="CONFIG_CRYPTO_USER_API_SKCIPHER" ; config_enable
 CONFIG_PREEMPT_VOLUNTARY=y
 
 #bb.org requests CONFIG_PREEMPT by default...
-#config="CONFIG_PREEMPT_NONE" ; config_disable
-#config="CONFIG_PREEMPT_VOLUNTARY" ; config_disable
-#config="CONFIG_PREEMPT" ; config_enable
+config="CONFIG_PREEMPT_NONE" ; config_disable
+config="CONFIG_PREEMPT_VOLUNTARY" ; config_disable
+config="CONFIG_PREEMPT" ; config_enable
 
 CONFIG_JUMP_LABEL=y
 CONFIG_DEBUG_FS=y
@@ -1677,12 +1677,5 @@ config="CONFIG_CRYPTO_SHA1_ARM" ; config_enable
 # Ciphers
 #
 config="CONFIG_CRYPTO_AES_ARM" ; config_enable
-
-#rt
-echo "rt defaults:"
-
-config="CONFIG_PREEMPT_NONE" ; config_disable
-config="CONFIG_PREEMPT_VOLUNTARY" ; config_disable
-config="CONFIG_PREEMPT_RTB" ; config_enable
 
 #
