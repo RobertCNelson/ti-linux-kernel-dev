@@ -154,7 +154,6 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
@@ -167,6 +166,8 @@ rt () {
 	fi
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
+	${git} "${DIR}/patches/rt/0002-kernel-sched-core.c-UP-fix-implicit-declaration-of-f.patch"
+	${git} "${DIR}/patches/rt/0003-kernel-time-timer.c-UP-fix-undefined-reference-to-de.patch"
 }
 
 local_patch () {
@@ -176,7 +177,7 @@ local_patch () {
 
 external_git
 #aufs4
-#rt
+rt
 #local_patch
 
 reverts () {

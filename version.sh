@@ -4,8 +4,8 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="ti"
-branch_prefix=""
+build_prefix="ti-rt"
+branch_prefix="rt-"
 
 #arm
 KERNEL_ARCH=arm
