@@ -192,14 +192,14 @@ aufs4 () {
 }
 
 rt_cleanup () {
-	echo "Fixing: drivers/gpio/gpio-omap.c"
-	sed -i -e 's/\<spin_lock_irqsave\>/raw_spin_lock_irqsave/g' drivers/gpio/gpio-omap.c
-	sed -i -e 's/\<spin_unlock_irqrestore\>/raw_spin_unlock_irqrestore/g' drivers/gpio/gpio-omap.c
-	rm -rf drivers/gpio/gpio-omap.c.rej
+	exit 2
 }
 
 rt () {
 	echo "dir: rt"
+
+	${git} "${DIR}/patches/rt/0001-gpio-omap-back-to-4.1.15.patch"
+
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -216,6 +216,7 @@ rt () {
 	fi
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
+	${git} "${DIR}/patches/rt/0002-gpio-after-rt.patch"
 }
 
 local_patch () {
@@ -680,10 +681,9 @@ quieter () {
 	${git} "${DIR}/patches/quieter/0002-quiet-topology.c-use-pr_info-over-pr_err-missing-clo.patch"
 	${git} "${DIR}/patches/quieter/0003-quiet-vgaarb-use-pr_info-over-pr_err.patch"
 	${git} "${DIR}/patches/quieter/0004-quiet-arch-arm-mach-omap2-voltage.c-legacy-harmless.patch"
-	${git} "${DIR}/patches/quieter/0005-HACK-remoteproc-Prevent-backtrace-for-RSC_INTMEM-dep.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
+		number=4
 		cleanup
 	fi
 }
