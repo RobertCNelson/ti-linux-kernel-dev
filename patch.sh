@@ -506,10 +506,9 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0003-arm-dts-am335x-bone-common-add-collision-and-carrier.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0004-add-overlay-dtb.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0005-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0006-spi-omap2-mcspi-ti-pio-mode.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=6
+		number=5
 		cleanup
 	fi
 
@@ -598,6 +597,8 @@ beaglebone () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 
+		device="am335x-abbbi.dtb" ; dtb_makefile_append
+
 		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
 
 		device="am335x-bone-can0.dtb" ; dtb_makefile_append
@@ -618,6 +619,8 @@ beaglebone () {
 		device="am335x-boneblack-ttyS2.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
+
+		device="am335x-olimex-som.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
