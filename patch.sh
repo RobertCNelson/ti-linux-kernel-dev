@@ -483,10 +483,9 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0006-am335x-bone-common-cpsw-no-longer-need-to-define-bot.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0007-am335x-bone-common-drop-0x1a0-from-mmc.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0008-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0009-spi-omap2-mcspi-ti-pio-mode.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=9
+		number=8
 		cleanup
 	fi
 
