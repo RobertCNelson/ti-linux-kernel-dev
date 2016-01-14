@@ -96,25 +96,25 @@ aufs4 () {
 	echo "dir: aufs4"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-kbuild.patch
+		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-kbuild.patch
 		patch -p1 < aufs4-kbuild.patch || aufs_fail
 		rm -rf aufs4-kbuild.patch
 		git add .
 		git commit -a -m 'merge: aufs4-kbuild' -s
 
-		wget -c https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-base.patch
+		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-base.patch
 		patch -p1 < aufs4-base.patch || aufs_fail
 		rm -rf aufs4-base.patch
 		git add .
 		git commit -a -m 'merge: aufs4-base' -s
 
-		wget -c https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-mmap.patch
+		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-mmap.patch
 		patch -p1 < aufs4-mmap.patch || aufs_fail
 		rm -rf aufs4-mmap.patch
 		git add .
 		git commit -a -m 'merge: aufs4-mmap' -s
 
-		wget -c https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-standalone.patch
+		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-standalone.patch
 		patch -p1 < aufs4-standalone.patch || aufs_fail
 		rm -rf aufs4-standalone.patch
 		git add .
@@ -133,6 +133,9 @@ aufs4 () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
+
+	#patch -p1 < "${DIR}/patches/aufs4/0005-aufs-why-this-isnt-a-patch.patch"
+	#exit 2
 
 	${git} "${DIR}/patches/aufs4/0005-aufs-why-this-isnt-a-patch.patch"
 
@@ -154,7 +157,6 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
@@ -180,6 +182,18 @@ external_git
 #aufs4
 rt
 #local_patch
+
+lts44_backports () {
+	echo "dir: lts44_backports"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		#echo "dir: backports/mediatek"
+		#directory="backports/mediatek"
+		#SHA="c869f77d6abb5d5f9f2f1a661d5c53862a9cad34" ; num="1" ; mainline
+
+		exit 2
+	fi
+}
 
 reverts () {
 	echo "dir: reverts"
@@ -245,19 +259,6 @@ ti () {
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=3
-		cleanup
-	fi
-}
-
-fixes () {
-	echo "dir: fixes"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
 		cleanup
 	fi
 }
@@ -428,8 +429,15 @@ bbb_overlays () {
 		SHA="9ae0f367df5d0d7be09fad1e2e5b080f6a45ca6b" ; num="17" ; mainline
 		SHA="2eafd72939fda6118e27d3ee859684987f43921b" ; num="18" ; mainline
 		SHA="517982229f78b2aebf00a8a337e84e8eeea70b8e" ; num="19" ; mainline
+
+		#${git} "${DIR}/patches/bbb_overlays/configfs/0020-configfs-implement-binary-attributes.patch"
+		#4.5.0-rc0
+		SHA="03607ace807b414eab46323c794b6fb8fcc2d48c" ; num="20" ; mainline
 		exit 2
 	fi
+
+	#(< 4.5.0-rc0)
+	${git} "${DIR}/patches/bbb_overlays/configfs/0020-configfs-implement-binary-attributes.patch"
 
 	echo "dir: bbb_overlays"
 	#regenerate="enable"
@@ -437,56 +445,59 @@ bbb_overlays () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/bbb_overlays/0001-configfs-Implement-binary-attributes-v5.patch"
-	${git} "${DIR}/patches/bbb_overlays/0002-OF-DT-Overlay-configfs-interface-v6.patch"
-	${git} "${DIR}/patches/bbb_overlays/0003-gitignore-Ignore-DTB-files.patch"
+	${git} "${DIR}/patches/bbb_overlays/0001-OF-DT-Overlay-configfs-interface-v6.patch"
+	${git} "${DIR}/patches/bbb_overlays/0002-gitignore-Ignore-DTB-files.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-	${git} "${DIR}/patches/bbb_overlays/0004-add-PM-firmware.patch"
-	${git} "${DIR}/patches/bbb_overlays/0005-ARM-CUSTOM-Build-a-uImage-with-dtb-already-appended.patch"
+	${git} "${DIR}/patches/bbb_overlays/0003-add-PM-firmware.patch"
+	${git} "${DIR}/patches/bbb_overlays/0004-ARM-CUSTOM-Build-a-uImage-with-dtb-already-appended.patch"
 	fi
 
-	${git} "${DIR}/patches/bbb_overlays/0006-arm-omap-Proper-cleanups-for-omap_device.patch"
-	${git} "${DIR}/patches/bbb_overlays/0007-serial-omap-Fix-port-line-number-without-aliases.patch"
-	${git} "${DIR}/patches/bbb_overlays/0008-tty-omap-serial-Fix-up-platform-data-alloc.patch"
-	${git} "${DIR}/patches/bbb_overlays/0009-ARM-DT-Enable-symbols-when-CONFIG_OF_OVERLAY-is-used.patch"
-	${git} "${DIR}/patches/bbb_overlays/0010-of-Custom-printk-format-specifier-for-device-node.patch"
-	${git} "${DIR}/patches/bbb_overlays/0011-of-overlay-kobjectify-overlay-objects.patch"
-	${git} "${DIR}/patches/bbb_overlays/0012-of-overlay-global-sysfs-enable-attribute.patch"
-	${git} "${DIR}/patches/bbb_overlays/0013-Documentation-ABI-overlays-global-attributes.patch"
-	${git} "${DIR}/patches/bbb_overlays/0014-Documentation-document-of_overlay_disable-parameter.patch"
-	${git} "${DIR}/patches/bbb_overlays/0015-of-overlay-add-per-overlay-sysfs-attributes.patch"
-	${git} "${DIR}/patches/bbb_overlays/0016-Documentation-ABI-overlays-per-overlay-docs.patch"
-	${git} "${DIR}/patches/bbb_overlays/0017-i2c-nvmem-at24-Provide-an-EEPROM-framework-interface.patch"
-	${git} "${DIR}/patches/bbb_overlays/0018-misc-Beaglebone-capemanager.patch"
-	${git} "${DIR}/patches/bbb_overlays/0019-doc-misc-Beaglebone-capemanager-documentation.patch"
-	${git} "${DIR}/patches/bbb_overlays/0020-doc-dt-beaglebone-cape-manager-bindings.patch"
-	${git} "${DIR}/patches/bbb_overlays/0021-doc-ABI-bone_capemgr-sysfs-API.patch"
-	${git} "${DIR}/patches/bbb_overlays/0022-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
-	${git} "${DIR}/patches/bbb_overlays/0023-arm-dts-Enable-beaglebone-cape-manager.patch"
-	${git} "${DIR}/patches/bbb_overlays/0024-of-overlay-Implement-indirect-target-support.patch"
-	${git} "${DIR}/patches/bbb_overlays/0025-of-unittest-Add-indirect-overlay-target-test.patch"
-	${git} "${DIR}/patches/bbb_overlays/0026-doc-dt-Document-the-indirect-overlay-method.patch"
-	${git} "${DIR}/patches/bbb_overlays/0027-of-overlay-Introduce-target-root-capability.patch"
-	${git} "${DIR}/patches/bbb_overlays/0028-of-unittest-Unit-tests-for-target-root-overlays.patch"
-	${git} "${DIR}/patches/bbb_overlays/0029-doc-dt-Document-the-target-root-overlay-method.patch"
-	${git} "${DIR}/patches/bbb_overlays/0030-of-dynamic-Add-__of_node_dupv.patch"
-	${git} "${DIR}/patches/bbb_overlays/0031-of-changesets-Introduce-changeset-helper-methods.patch"
-	${git} "${DIR}/patches/bbb_overlays/0032-RFC-Device-overlay-manager-PCI-USB-DT.patch"
+	${git} "${DIR}/patches/bbb_overlays/0005-arm-omap-Proper-cleanups-for-omap_device.patch"
+	${git} "${DIR}/patches/bbb_overlays/0006-serial-omap-Fix-port-line-number-without-aliases.patch"
+	${git} "${DIR}/patches/bbb_overlays/0007-tty-omap-serial-Fix-up-platform-data-alloc.patch"
+	${git} "${DIR}/patches/bbb_overlays/0008-ARM-DT-Enable-symbols-when-CONFIG_OF_OVERLAY-is-used.patch"
+
+	#v4.5.0-rc0 merge...
+	#https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=33caf82acf4dc420bf0f0136b886f7b27ecf90c5
+	${git} "${DIR}/patches/bbb_overlays/0009-of-Custom-printk-format-specifier-for-device-node.patch"
+
+	${git} "${DIR}/patches/bbb_overlays/0010-of-overlay-kobjectify-overlay-objects.patch"
+	${git} "${DIR}/patches/bbb_overlays/0011-of-overlay-global-sysfs-enable-attribute.patch"
+	${git} "${DIR}/patches/bbb_overlays/0012-Documentation-ABI-overlays-global-attributes.patch"
+	${git} "${DIR}/patches/bbb_overlays/0013-Documentation-document-of_overlay_disable-parameter.patch"
+	${git} "${DIR}/patches/bbb_overlays/0014-of-overlay-add-per-overlay-sysfs-attributes.patch"
+	${git} "${DIR}/patches/bbb_overlays/0015-Documentation-ABI-overlays-per-overlay-docs.patch"
+	${git} "${DIR}/patches/bbb_overlays/0016-i2c-nvmem-at24-Provide-an-EEPROM-framework-interface.patch"
+	${git} "${DIR}/patches/bbb_overlays/0017-misc-Beaglebone-capemanager.patch"
+	${git} "${DIR}/patches/bbb_overlays/0018-doc-misc-Beaglebone-capemanager-documentation.patch"
+	${git} "${DIR}/patches/bbb_overlays/0019-doc-dt-beaglebone-cape-manager-bindings.patch"
+	${git} "${DIR}/patches/bbb_overlays/0020-doc-ABI-bone_capemgr-sysfs-API.patch"
+	${git} "${DIR}/patches/bbb_overlays/0021-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
+	${git} "${DIR}/patches/bbb_overlays/0022-arm-dts-Enable-beaglebone-cape-manager.patch"
+	${git} "${DIR}/patches/bbb_overlays/0023-of-overlay-Implement-indirect-target-support.patch"
+	${git} "${DIR}/patches/bbb_overlays/0024-of-unittest-Add-indirect-overlay-target-test.patch"
+	${git} "${DIR}/patches/bbb_overlays/0025-doc-dt-Document-the-indirect-overlay-method.patch"
+	${git} "${DIR}/patches/bbb_overlays/0026-of-overlay-Introduce-target-root-capability.patch"
+	${git} "${DIR}/patches/bbb_overlays/0027-of-unittest-Unit-tests-for-target-root-overlays.patch"
+	${git} "${DIR}/patches/bbb_overlays/0028-doc-dt-Document-the-target-root-overlay-method.patch"
+	${git} "${DIR}/patches/bbb_overlays/0029-of-dynamic-Add-__of_node_dupv.patch"
+	${git} "${DIR}/patches/bbb_overlays/0030-of-changesets-Introduce-changeset-helper-methods.patch"
+	${git} "${DIR}/patches/bbb_overlays/0031-RFC-Device-overlay-manager-PCI-USB-DT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-	${git} "${DIR}/patches/bbb_overlays/0033-boneblack-defconfig.patch"
-	${git} "${DIR}/patches/bbb_overlays/0034-connector-wip.patch"
+	${git} "${DIR}/patches/bbb_overlays/0032-boneblack-defconfig.patch"
+	${git} "${DIR}/patches/bbb_overlays/0033-connector-wip.patch"
 	fi
 
-	${git} "${DIR}/patches/bbb_overlays/0035-of-remove-bogus-return-in-of_core_init.patch"
-	${git} "${DIR}/patches/bbb_overlays/0036-of-Maintainer-fixes-for-dynamic.patch"
-	${git} "${DIR}/patches/bbb_overlays/0037-of-unittest-changeset-helpers.patch"
-	${git} "${DIR}/patches/bbb_overlays/0038-of-rename-_node_sysfs-to-_node_post.patch"
-	${git} "${DIR}/patches/bbb_overlays/0039-of-Support-hashtable-lookups-for-phandles.patch"
+	${git} "${DIR}/patches/bbb_overlays/0034-of-remove-bogus-return-in-of_core_init.patch"
+	${git} "${DIR}/patches/bbb_overlays/0035-of-Maintainer-fixes-for-dynamic.patch"
+	${git} "${DIR}/patches/bbb_overlays/0036-of-unittest-changeset-helpers.patch"
+	${git} "${DIR}/patches/bbb_overlays/0037-of-rename-_node_sysfs-to-_node_post.patch"
+	${git} "${DIR}/patches/bbb_overlays/0038-of-Support-hashtable-lookups-for-phandles.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=39
+		number=38
 		cleanup
 	fi
 }
@@ -598,28 +609,25 @@ beaglebone () {
 	echo "dir: beaglebone/generated"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
 		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
 
-		device="am335x-bone-can0.dtb" ; dtb_makefile_append
 		device="am335x-bone-cape-bone-argus.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-can0.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-cape-bone-argus.dtb" ; dtb_makefile_append
+
 		device="am335x-boneblack-emmc-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-hdmi-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
 
-		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-replicape.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-spi0.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-ttyS2.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
 		device="am335x-olimex-som.dtb" ; dtb_makefile_append
@@ -697,6 +705,7 @@ quieter () {
 }
 
 ###
+lts44_backports
 reverts
 ti
 #x15
@@ -705,7 +714,6 @@ pru_rpmsg
 bbb_overlays
 beaglebone
 quieter
-
 
 packaging () {
 	echo "dir: packaging"
