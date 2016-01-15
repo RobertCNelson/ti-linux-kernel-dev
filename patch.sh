@@ -266,13 +266,17 @@ backports () {
 
 fixes () {
 	echo "dir: fixes"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
+	${git} "${DIR}/patches/fixes/0001-fix-sleep33xx.S-for-thumb2.patch"
+	${git} "${DIR}/patches/fixes/0002-fix-sleep43xx.S-for-thumb2.patch"
+	${git} "${DIR}/patches/fixes/0003-fix-ti-emif-sram-pm.S-for-thumb2.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
+		number=3
 		cleanup
 	fi
 }
@@ -690,7 +694,7 @@ quieter () {
 ###
 reverts
 backports
-#fixes
+fixes
 x15
 pru_uio
 pru_rpmsg
