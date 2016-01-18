@@ -600,6 +600,8 @@ config="CONFIG_BT_HCIBCM203X" ; config_module
 config="CONFIG_BT_HCIBPA10X" ; config_module
 config="CONFIG_BT_HCIBFUSB" ; config_module
 
+config="CONFIG_BT_WILINK" ; config_disable
+
 #
 # Generic Driver Options
 #
