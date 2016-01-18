@@ -582,6 +582,19 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/bbgw"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/bbgw/0001-add-beaglebone-green-wireless.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -614,6 +627,7 @@ beaglebone () {
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 
 		device="am335x-bonegreen.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
