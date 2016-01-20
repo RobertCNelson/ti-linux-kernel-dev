@@ -138,9 +138,10 @@ aufs4 () {
 	#exit 2
 
 	${git} "${DIR}/patches/aufs4/0005-aufs-why-this-isnt-a-patch.patch"
+	${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
+		number=6
 		cleanup
 	fi
 }
@@ -179,7 +180,7 @@ local_patch () {
 }
 
 external_git
-#aufs4
+aufs4
 rt
 #local_patch
 
