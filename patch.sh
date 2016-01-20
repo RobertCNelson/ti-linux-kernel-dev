@@ -377,7 +377,7 @@ bbb_overlays () {
 	fi
 
 	#(< 4.5.0-rc0)
-#	${git} "${DIR}/patches/bbb_overlays/configfs/0001-configfs-implement-binary-attributes.patch"
+	${git} "${DIR}/patches/bbb_overlays/configfs/0001-configfs-implement-binary-attributes.patch"
 
 
 	echo "dir: bbb_overlays/of"
