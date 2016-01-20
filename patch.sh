@@ -349,58 +349,19 @@ bbb_overlays () {
 		fi
 	fi
 
-	echo "dir: bbb_overlays/mainline"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		directory="bbb_overlays/mainline"
-		SHA="668abc729fcb9d034eccadf63166d2c76cd645d1" ; num="1" ; mainline
-		SHA="a2f776cbb8271d7149784207da0b0c51e8b1847c" ; num="2" ; mainline
-		SHA="5d1a2961adf906f965b00eb8059fd2e0585e0e09" ; num="3" ; mainline
-		SHA="4f001fd30145a6a8f72f9544c982cfd3dcb7c6df" ; num="4" ; mainline
-		exit 2
-	fi
-
 	echo "dir: bbb_overlays/nvmem"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		directory="bbb_overlays/nvmem"
-		SHA="eace75cfdcf7d9937d8c1fb226780123c64d72c4" ; num="1" ; mainline
-		SHA="69aba7948cbe53f2f1827e84e9dd0ae470a5072e" ; num="2" ; mainline
-		SHA="e2a5402ec7c6d0442cca370a0097e75750f81398" ; num="3" ; mainline
-		SHA="2af38ab572b031a4111f01153cc020b1038b427b" ; num="4" ; mainline
-		SHA="354ebb541dfa37a83395e5a9b7d68c34f80fffc0" ; num="5" ; mainline
-		SHA="4ab11996b489ad65092216315484824ed32018f8" ; num="6" ; mainline
-		SHA="b470d6d7a5dfe41112d55c39eac67ddc5afac80d" ; num="7" ; mainline
-		SHA="3d0b16a66c8a9d10294572c6f79df4f15a27825d" ; num="8" ; mainline
-		SHA="6230699469523337d65bb5e2f47279dfcf3eea17" ; num="9" ; mainline
-		SHA="22dbdb7cbf7214befd3a449ba7959c8cf4038e6c" ; num="10" ; mainline
-		SHA="5380a9a6acd990833f76c52c1327a289d09d88aa" ; num="11" ; mainline
-		SHA="3edba6b47e4265948db3a77a0137157c033d69e2" ; num="12" ; mainline
-		SHA="fb86de91c2a48e320bfa3767802d9a1fb204a230" ; num="13" ; mainline
-		SHA="c01e9a11ab6f3096a54574c3224d8732a374f135" ; num="14" ; mainline
-		SHA="faf25a9089fc9bdc277b30dbdef8ea7ad7c9083b" ; num="15" ; mainline
-		SHA="03a69568e07e1150e1cfdb862892798f88dafd17" ; num="16" ; mainline
-		SHA="7e532f7925f1758369c7963297baceac3cbaefc1" ; num="17" ; mainline
-		SHA="7c806883e143dc60439e6bdb3589700ebed1efaa" ; num="18" ; mainline
-		SHA="cbf854ab36870b931aeba4edd954015b7c3005a2" ; num="19" ; mainline
-		SHA="ace22170655f61d82fff95e57d673bf847a32a03" ; num="20" ; mainline
-		SHA="fb727077b04f768d0c79d9aa29e958262a9e3d9e" ; num="21" ; mainline
-		exit 2
-	fi
-
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	#email...
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0022-nvmem-make-default-user-binary-file-root-access-only.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0023-nvmem-set-the-size-for-the-nvmem-binary-file.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0024-nvmem-add-permission-flags-in-nvmem_config.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0025-nvmem-fix-permissions-of-readonly-nvmem-binattr.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0001-nvmem-make-default-user-binary-file-root-access-only.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0002-nvmem-set-the-size-for-the-nvmem-binary-file.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0003-nvmem-add-permission-flags-in-nvmem_config.patch"
+	${git} "${DIR}/patches/bbb_overlays/nvmem/0004-nvmem-fix-permissions-of-readonly-nvmem-binattr.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=25
+		number=4
 		cleanup
 	fi
 
@@ -408,34 +369,26 @@ bbb_overlays () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		directory="bbb_overlays/configfs"
-		SHA="870823e629ea194e6cf8e82a9694ac62cad49512" ; num="1" ; mainline
-		SHA="45b6a73f62ebcf3ff067895fb8030e67f4c7b67f" ; num="2" ; mainline
-		SHA="76e0da34c7cec5a7dc94667326a948de2e9c8c8d" ; num="3" ; mainline
-		SHA="da4e527cd8850712bb705f4c41f0839705ab7c98" ; num="4" ; mainline
-		SHA="ea6bd6b14ec67eb22e3eb8b2a2b979b5ea800a3a" ; num="5" ; mainline
-		SHA="f9a63da33d3f86acadc14c5cb66e9ad06860892f" ; num="6" ; mainline
-		SHA="75ab2256a7d05128f8aa088cdde961d8029bcd55" ; num="7" ; mainline
-		SHA="3755a273db8f523f8be6c18df9e1506faa93c664" ; num="8" ; mainline
-		SHA="aa48a415270f7cf16ec0ef825d19b4f8bd1a875e" ; num="9" ; mainline
-		SHA="208e61ac7c0a2c3e4b23e74a66ddc2ea471d251e" ; num="10" ; mainline
-		SHA="4a90cb203836e4989cc50121b13ff0fb7f671fcb" ; num="11" ; mainline
-		SHA="c6f89f1cca1cfd81cc27307595ebddee29cc84d3" ; num="12" ; mainline
-		SHA="495702bcc12fb2c51997088befe37145a34e5e3a" ; num="13" ; mainline
-		SHA="3da5e4c10cbacf5f3da043498299ae631a6dfc9c" ; num="14" ; mainline
-		SHA="0736390bea65cac63bed9671a957031c068a60e7" ; num="15" ; mainline
-		SHA="0b4be4fa878780a15a953577499eb69839942956" ; num="16" ; mainline
-		SHA="9ae0f367df5d0d7be09fad1e2e5b080f6a45ca6b" ; num="17" ; mainline
-		SHA="2eafd72939fda6118e27d3ee859684987f43921b" ; num="18" ; mainline
-		SHA="517982229f78b2aebf00a8a337e84e8eeea70b8e" ; num="19" ; mainline
-
-		#${git} "${DIR}/patches/bbb_overlays/configfs/0020-configfs-implement-binary-attributes.patch"
-		#4.5.0-rc0
-		SHA="03607ace807b414eab46323c794b6fb8fcc2d48c" ; num="20" ; mainline
+		#merged in 4.5.0-rc0
+		SHA="03607ace807b414eab46323c794b6fb8fcc2d48c" ; num="1" ; mainline
 		exit 2
 	fi
 
 	#(< 4.5.0-rc0)
-	${git} "${DIR}/patches/bbb_overlays/configfs/0020-configfs-implement-binary-attributes.patch"
+#	${git} "${DIR}/patches/bbb_overlays/configfs/0001-configfs-implement-binary-attributes.patch"
+
+
+	echo "dir: bbb_overlays/of"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		directory="bbb_overlays/of"
+		#merged in 4.5.0-rc0
+		SHA="183223770ae8625df8966ed15811d1b3ee8720aa" ; num="1" ; mainline
+		exit 2
+	fi
+
+	#(< 4.5.0-rc0)
+	${git} "${DIR}/patches/bbb_overlays/of/0001-drivers-of-Export-OF-changeset-functions.patch"
 
 	echo "dir: bbb_overlays"
 	#regenerate="enable"
@@ -460,11 +413,16 @@ bbb_overlays () {
 	#https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=33caf82acf4dc420bf0f0136b886f7b27ecf90c5
 	${git} "${DIR}/patches/bbb_overlays/0009-of-Custom-printk-format-specifier-for-device-node.patch"
 
+	#v4.5.0-rc0 (api change):183223770ae8625df8966ed15811d1b3ee8720aa
 	${git} "${DIR}/patches/bbb_overlays/0010-of-overlay-kobjectify-overlay-objects.patch"
+
 	${git} "${DIR}/patches/bbb_overlays/0011-of-overlay-global-sysfs-enable-attribute.patch"
 	${git} "${DIR}/patches/bbb_overlays/0012-Documentation-ABI-overlays-global-attributes.patch"
 	${git} "${DIR}/patches/bbb_overlays/0013-Documentation-document-of_overlay_disable-parameter.patch"
+
+	#v4.5.0-rc0 (api change):183223770ae8625df8966ed15811d1b3ee8720aa
 	${git} "${DIR}/patches/bbb_overlays/0014-of-overlay-add-per-overlay-sysfs-attributes.patch"
+
 	${git} "${DIR}/patches/bbb_overlays/0015-Documentation-ABI-overlays-per-overlay-docs.patch"
 	${git} "${DIR}/patches/bbb_overlays/0016-i2c-nvmem-at24-Provide-an-EEPROM-framework-interface.patch"
 	${git} "${DIR}/patches/bbb_overlays/0017-misc-Beaglebone-capemanager.patch"
@@ -480,7 +438,11 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/0027-of-unittest-Unit-tests-for-target-root-overlays.patch"
 	${git} "${DIR}/patches/bbb_overlays/0028-doc-dt-Document-the-target-root-overlay-method.patch"
 	${git} "${DIR}/patches/bbb_overlays/0029-of-dynamic-Add-__of_node_dupv.patch"
+
+	#v4.5.0-rc0 (api change):183223770ae8625df8966ed15811d1b3ee8720aa
 	${git} "${DIR}/patches/bbb_overlays/0030-of-changesets-Introduce-changeset-helper-methods.patch"
+
+	#v4.5.0-rc0 (api change):183223770ae8625df8966ed15811d1b3ee8720aa
 	${git} "${DIR}/patches/bbb_overlays/0031-RFC-Device-overlay-manager-PCI-USB-DT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -490,7 +452,10 @@ bbb_overlays () {
 
 	${git} "${DIR}/patches/bbb_overlays/0034-of-remove-bogus-return-in-of_core_init.patch"
 	${git} "${DIR}/patches/bbb_overlays/0035-of-Maintainer-fixes-for-dynamic.patch"
+
+	#v4.5.0-rc0 (api change):183223770ae8625df8966ed15811d1b3ee8720aa
 	${git} "${DIR}/patches/bbb_overlays/0036-of-unittest-changeset-helpers.patch"
+
 	${git} "${DIR}/patches/bbb_overlays/0037-of-rename-_node_sysfs-to-_node_post.patch"
 	${git} "${DIR}/patches/bbb_overlays/0038-of-Support-hashtable-lookups-for-phandles.patch"
 
@@ -587,6 +552,22 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/abbbi/0001-gpu-drm-i2c-add-alternative-adv7511-driver-with-audi.patch"
 	${git} "${DIR}/patches/beaglebone/abbbi/0002-gpu-drm-i2c-adihdmi-componentize-driver-and-huge-ref.patch"
 	${git} "${DIR}/patches/beaglebone/abbbi/0003-ARM-dts-add-Arrow-BeagleBone-Black-Industrial-dts.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=3
+		cleanup
+	fi
+
+	echo "dir: beaglebone/rs485"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	#[PATCH v7 0/3] tty: Introduce software RS485 direction control support
+	${git} "${DIR}/patches/beaglebone/rs485/0001-tty-Move-serial8250_stop_rx-in-front-of-serial8250_s.patch"
+	${git} "${DIR}/patches/beaglebone/rs485/0002-tty-Add-software-emulated-RS485-support-for-8250.patch"
+	${git} "${DIR}/patches/beaglebone/rs485/0003-tty-8250_omap-Use-software-emulated-RS485-direction-.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=3
