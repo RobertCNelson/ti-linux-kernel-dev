@@ -61,11 +61,11 @@ cleanup () {
 	exit 2
 }
 
-pick () {
-	if [ ! -d ../patches/${pick_dir} ] ; then
-		mkdir -p ../patches/${pick_dir}
+cherrypick () {
+	if [ ! -d ../patches/${cherrypick_dir} ] ; then
+		mkdir -p ../patches/${cherrypick_dir}
 	fi
-	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/${pick_dir}
+	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/${cherrypick_dir}
 	num=$(($num+1))
 }
 
@@ -185,12 +185,15 @@ lts44_backports () {
 	echo "dir: lts44_backports"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		#echo "dir: backports/mediatek"
-		#directory="backports/mediatek"
-		#SHA="c869f77d6abb5d5f9f2f1a661d5c53862a9cad34" ; num="1" ; mainline
+		echo "dir: lts44_backports/fixes"
+		cherrypick_dir="lts44_backports/fixes"
+		SHA="d20313b2c407a90fb60eca99d73c47a75bb42e08" ; num="1" ; cherrypick
 
 		exit 2
 	fi
+
+	#4.5.0-rc0
+	${git} "${DIR}/patches/lts44_backports/fixes/0001-dmaengine-edma-Fix-paRAM-slot-allocation-for-entry-c.patch"
 }
 
 reverts () {
@@ -311,10 +314,6 @@ x15 () {
 	fi
 }
 
-mainline () {
-	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/${directory}/
-}
-
 bbb_overlays () {
 	echo "dir: bbb_overlays/dtc"
 	#regenerate="enable"
@@ -368,9 +367,9 @@ bbb_overlays () {
 	echo "dir: bbb_overlays/configfs"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		directory="bbb_overlays/configfs"
+		cherrypick_dir="bbb_overlays/configfs"
 		#merged in 4.5.0-rc0
-		SHA="03607ace807b414eab46323c794b6fb8fcc2d48c" ; num="1" ; mainline
+		SHA="03607ace807b414eab46323c794b6fb8fcc2d48c" ; num="1" ; cherrypick
 		exit 2
 	fi
 
@@ -381,9 +380,9 @@ bbb_overlays () {
 	echo "dir: bbb_overlays/of"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		directory="bbb_overlays/of"
+		cherrypick_dir="bbb_overlays/of"
 		#merged in 4.5.0-rc0
-		SHA="183223770ae8625df8966ed15811d1b3ee8720aa" ; num="1" ; mainline
+		SHA="183223770ae8625df8966ed15811d1b3ee8720aa" ; num="1" ; cherrypick
 		exit 2
 	fi
 
