@@ -375,7 +375,7 @@ bbb_overlays () {
 	fi
 
 	#(< 4.5.0-rc0)
-#	${git} "${DIR}/patches/bbb_overlays/configfs/0001-configfs-implement-binary-attributes.patch"
+	${git} "${DIR}/patches/bbb_overlays/configfs/0001-configfs-implement-binary-attributes.patch"
 
 
 	echo "dir: bbb_overlays/of"
@@ -537,9 +537,10 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/eqep/0001-Provides-a-sysfs-interface-to-the-eQEP-hardware-on-t.patch"
 	${git} "${DIR}/patches/beaglebone/eqep/0002-tieqep.c-devres-remove-devm_request_and_ioremap.patch"
+	${git} "${DIR}/patches/beaglebone/eqep/0003-tieqep-cleanup.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=3
 		cleanup
 	fi
 
@@ -555,6 +556,34 @@ beaglebone () {
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=3
+		cleanup
+	fi
+
+	echo "dir: beaglebone/am335x_olimex_som"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/am335x_olimex_som/0001-ARM-dts-Add-support-for-Olimex-AM3352-SOM.patch"
+	${git} "${DIR}/patches/beaglebone/am335x_olimex_som/0002-am335x-olimex-som-no-regulator-for-voltdm.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
+		cleanup
+	fi
+
+	echo "dir: beaglebone/bbgw"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/bbgw/0001-update-am335x-bonegreen-wl1835.dtsi.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0002-add-beaglebone-green-wireless.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=2
 		cleanup
 	fi
 
@@ -581,7 +610,18 @@ beaglebone () {
 		patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
 		exit 2
 	fi
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
 	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
 
 	####
 	#dtb makefile
@@ -607,6 +647,7 @@ beaglebone () {
 		device="am335x-boneblack-replicape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 
+		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
 		device="am335x-olimex-som.dtb" ; dtb_makefile_append
