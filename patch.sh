@@ -61,11 +61,11 @@ cleanup () {
 	exit 2
 }
 
-pick () {
-	if [ ! -d ../patches/${pick_dir} ] ; then
-		mkdir -p ../patches/${pick_dir}
+cherrypick () {
+	if [ ! -d ../patches/${cherrypick_dir} ] ; then
+		mkdir -p ../patches/${cherrypick_dir}
 	fi
-	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/${pick_dir}
+	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/${cherrypick_dir}
 	num=$(($num+1))
 }
 
@@ -88,44 +88,44 @@ external_git () {
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		pick_dir="ti/cpu_freq"
-		echo "dir: ${pick_dir}"
+		cherrypick_dir="ti/cpu_freq"
+		echo "dir: ${cherrypick_dir}"
 		num="1"
 
-		SHA="8f5f2b72d19c1e62f85acfd84a286f08ca76e3ac" ; pick
-		SHA="b3e1038f558783b054ba24d018c887e679158fa7" ; pick
-		SHA="cbc7d0137388b8d1a8052816a1502d96c681522e" ; pick
-		SHA="13b96edc90e6fbe9becce8a6edbbed12c729d49a" ; pick
-		SHA="2a68c9fed90d632c1c15d1209ba9da73a2c9c849" ; pick
-		SHA="ad7ec1619ff14dfaf526d2b6502911736e23ad75" ; pick
-		SHA="fbc6d87ccdfcc3a347b719c5b6a4925f3dca6fd4" ; pick
-		SHA="8ab51f90b0e961ba2266a9af5a21af9195a749b6" ; pick
-		SHA="40a4d7af3dae2838654befa165f882053d32d470" ; pick
-		SHA="95a8ed125030375c173756f0fec150ff42d8d18e" ; pick
-		SHA="7cc36064bd172b6008e4f77c48128b9c7a714eed" ; pick
-		SHA="eb92a8ee969ac1b2128d8091ae9e1c4829e7dbca" ; pick
-		SHA="d307d86ee5e2acbd4fed76be9b02056426252ca4" ; pick
-		SHA="ddbb76e023395051205d97b038ddc8ffcfb0dedf" ; pick
-		SHA="94529783628418c311ffb30f0fc0435ad8df7491" ; pick
-		SHA="d3e2dd94ed47bdfbd1cce104b8e2d0f5584a35e8" ; pick
-		SHA="44ebfa6930c9914d139543909e5c33cd5a7ddacc" ; pick
-		SHA="9324834c18421e889a2286d6f3b88bdf31c07b17" ; pick
-		SHA="5cf0b55b7e92b291195c52b8ec0b0d3f9a51f61d" ; pick
-		SHA="cf7213e2d35f57d43fff6e360daf50eb837206f3" ; pick
-		SHA="752beab102668147fcfde9ee19d853e9fc603e81" ; pick
-		SHA="cbe7bf16320964a47b3a202e28e9c5f965eef830" ; pick
-		SHA="9b0e9d74d7aa29b637bf06bd9454b67eb6893284" ; pick
-		SHA="b24e79bb4db8b336985400478813d60c5ba5aec7" ; pick
+		SHA="8f5f2b72d19c1e62f85acfd84a286f08ca76e3ac" ; cherrypick
+		SHA="b3e1038f558783b054ba24d018c887e679158fa7" ; cherrypick
+		SHA="cbc7d0137388b8d1a8052816a1502d96c681522e" ; cherrypick
+		SHA="13b96edc90e6fbe9becce8a6edbbed12c729d49a" ; cherrypick
+		SHA="2a68c9fed90d632c1c15d1209ba9da73a2c9c849" ; cherrypick
+		SHA="ad7ec1619ff14dfaf526d2b6502911736e23ad75" ; cherrypick
+		SHA="fbc6d87ccdfcc3a347b719c5b6a4925f3dca6fd4" ; cherrypick
+		SHA="8ab51f90b0e961ba2266a9af5a21af9195a749b6" ; cherrypick
+		SHA="40a4d7af3dae2838654befa165f882053d32d470" ; cherrypick
+		SHA="95a8ed125030375c173756f0fec150ff42d8d18e" ; cherrypick
+		SHA="7cc36064bd172b6008e4f77c48128b9c7a714eed" ; cherrypick
+		SHA="eb92a8ee969ac1b2128d8091ae9e1c4829e7dbca" ; cherrypick
+		SHA="d307d86ee5e2acbd4fed76be9b02056426252ca4" ; cherrypick
+		SHA="ddbb76e023395051205d97b038ddc8ffcfb0dedf" ; cherrypick
+		SHA="94529783628418c311ffb30f0fc0435ad8df7491" ; cherrypick
+		SHA="d3e2dd94ed47bdfbd1cce104b8e2d0f5584a35e8" ; cherrypick
+		SHA="44ebfa6930c9914d139543909e5c33cd5a7ddacc" ; cherrypick
+		SHA="9324834c18421e889a2286d6f3b88bdf31c07b17" ; cherrypick
+		SHA="5cf0b55b7e92b291195c52b8ec0b0d3f9a51f61d" ; cherrypick
+		SHA="cf7213e2d35f57d43fff6e360daf50eb837206f3" ; cherrypick
+		SHA="752beab102668147fcfde9ee19d853e9fc603e81" ; cherrypick
+		SHA="cbe7bf16320964a47b3a202e28e9c5f965eef830" ; cherrypick
+		SHA="9b0e9d74d7aa29b637bf06bd9454b67eb6893284" ; cherrypick
+		SHA="b24e79bb4db8b336985400478813d60c5ba5aec7" ; cherrypick
 
 		unset num
 
-		pick_dir="ti/iodelay"
-		echo "dir: ${pick_dir}"
+		cherrypick_dir="ti/iodelay"
+		echo "dir: ${cherrypick_dir}"
 		num="1"
 
-		SHA="03ccdced5235b91254382038708713795ce7d021" ; pick
-		SHA="ecc68390cd49a087634bb33c6192d73196e2e1a3" ; pick
-		SHA="832e1d482bb7234cb504b31601abeaace08a8309" ; pick
+		SHA="03ccdced5235b91254382038708713795ce7d021" ; cherrypick
+		SHA="ecc68390cd49a087634bb33c6192d73196e2e1a3" ; cherrypick
+		SHA="832e1d482bb7234cb504b31601abeaace08a8309" ; cherrypick
 
 		unset num
 
@@ -203,7 +203,6 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
@@ -329,10 +328,6 @@ x15 () {
 		number=2
 		cleanup
 	fi
-}
-
-mainline () {
-	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/bbb_overlays/mainline/
 }
 
 bbb_overlays () {
