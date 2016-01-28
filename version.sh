@@ -4,8 +4,9 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="ti-rt"
-branch_prefix="rt-"
+build_prefix="ti-rt-r"
+branch_prefix="ti-linux-rt-"
+branch_postfix=".y"
 
 #arm
 KERNEL_ARCH=arm
@@ -24,7 +25,7 @@ toolchain="gcc_linaro_gnueabihf_4_8"
 #Kernel/Build
 KERNEL_REL=3.14
 KERNEL_TAG=${KERNEL_REL}.58
-BUILD=${build_prefix}-r78.4
+BUILD=${build_prefix}78.4
 kernel_rt=".57-rt58"
 
 #v4.X-rcX + upto SHA
@@ -32,7 +33,7 @@ kernel_rt=".57-rt58"
 #KERNEL_SHA=""
 
 #git branch
-BRANCH="ti-linux-${branch_prefix}3.14.y"
+BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=cross
 DEBARCH=armhf
