@@ -6,6 +6,7 @@ config="omap2plus_defconfig"
 
 build_prefix="ti-r"
 branch_prefix="ti-linux-"
+branch_postfix=".y"
 
 #arm
 KERNEL_ARCH=arm
@@ -32,7 +33,7 @@ kernel_rt=".15-rt17"
 #KERNEL_SHA=""
 
 #git branch
-BRANCH="${branch_prefix}${KERNEL_REL}.y"
+BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=cross
 DEBARCH=armhf
