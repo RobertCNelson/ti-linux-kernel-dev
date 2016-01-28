@@ -91,12 +91,6 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-	#	git revert --no-edit e211cb68dd3c951b104ff0b47dbaed2c8b8d2399 -s
-	#	git revert --no-edit d379e64ca4fc535334a02dc0314cba6e50f4b720 -s
-
-	#	mkdir -p ${DIR}/patches/rt/reverts/
-	#	git format-patch -2 -o ../patches/rt/reverts/
-
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
@@ -111,9 +105,6 @@ rt () {
 	#merge notes:
 	#drivers/usb/gadget/function/f_fs.c
 	#drivers/usb/gadget/legacy/inode.c
-
-	#${git} "${DIR}/patches/rt/reverts/0001-Revert-sched-preempt-Fix-cond_resched_lock-and-cond_.patch"
-	#${git} "${DIR}/patches/rt/reverts/0002-Revert-sched-preempt-Rename-PREEMPT_CHECK_OFFSET-to-.patch"
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
