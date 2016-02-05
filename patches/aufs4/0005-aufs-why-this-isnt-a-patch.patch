@@ -1,13 +1,13 @@
-From 4a59a3c0e43fac97cde8db864304796af45232f9 Mon Sep 17 00:00:00 2001
+From 6550f687fce240cf67fc51833ab1bc36e13967e7 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 5 Jan 2016 11:08:40 -0600
+Date: Thu, 4 Feb 2016 19:02:11 -0600
 Subject: [PATCH 5/5] aufs: why this isnt a patch...
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  Documentation/ABI/testing/debugfs-aufs             |   50 +
  Documentation/ABI/testing/sysfs-aufs               |   31 +
- Documentation/filesystems/aufs/README              |  383 ++++
+ Documentation/filesystems/aufs/README              |  390 ++++
  Documentation/filesystems/aufs/design/01intro.txt  |  170 ++
  Documentation/filesystems/aufs/design/02struct.txt |  258 +++
  .../filesystems/aufs/design/03atomic_open.txt      |   85 +
@@ -56,7 +56,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/aufs/i_op_del.c                                 |  510 ++++++
  fs/aufs/i_op_ren.c                                 | 1015 +++++++++++
  fs/aufs/iinfo.c                                    |  277 +++
- fs/aufs/inode.c                                    |  528 ++++++
+ fs/aufs/inode.c                                    |  527 ++++++
  fs/aufs/inode.h                                    |  685 ++++++++
  fs/aufs/ioctl.c                                    |  219 +++
  fs/aufs/loop.c                                     |  146 ++
@@ -90,9 +90,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/aufs/wkq.c                                      |  213 +++
  fs/aufs/wkq.h                                      |   91 +
  fs/aufs/xattr.c                                    |  344 ++++
- fs/aufs/xino.c                                     | 1296 ++++++++++++++
+ fs/aufs/xino.c                                     | 1318 ++++++++++++++
  include/uapi/linux/aufs_type.h                     |  419 +++++
- 87 files changed, 34140 insertions(+)
+ 87 files changed, 34168 insertions(+)
  create mode 100644 Documentation/ABI/testing/debugfs-aufs
  create mode 100644 Documentation/ABI/testing/sysfs-aufs
  create mode 100644 Documentation/filesystems/aufs/README
@@ -276,10 +276,10 @@ index 0000000..82f9518
 +		will be empty. About XINO files, see the aufs manual.
 diff --git a/Documentation/filesystems/aufs/README b/Documentation/filesystems/aufs/README
 new file mode 100644
-index 0000000..2915102
+index 0000000..e827ebf
 --- /dev/null
 +++ b/Documentation/filesystems/aufs/README
-@@ -0,0 +1,383 @@
+@@ -0,0 +1,390 @@
 +
 +Aufs4 -- advanced multi layered unification filesystem version 4.x
 +http://aufs.sf.net
@@ -388,7 +388,7 @@ index 0000000..2915102
 +And you cannot select CONFIG_AUFS_FS=m for this version, eg. you cannot
 +build aufs4 as an external kernel module.
 +Several extra patches are not included in this tree. Only
-+aufs4-standalone tree contains them. They are describe in the later
++aufs4-standalone tree contains them. They are described in the later
 +section "Configuration and Compilation."
 +
 +On the other hand, the aufs4-standalone tree has only aufs source files
@@ -544,6 +544,13 @@ index 0000000..2915102
 +  duplication of inode number, which is important for backup tools and
 +  other utilities. When you find aufs XINO files for tmpfs branch
 +  growing too much, try this patch.
++- lockdep-debug.patch
++  Because aufs is not only an ordinary filesystem (callee of VFS), but
++  also a caller of VFS functions for branch filesystems, subclassing of
++  the internal locks for LOCKDEP is necessary. LOCKDEP is a debugging
++  feature of linux kernel. If you enable CONFIG_LOCKDEP, then you will
++  need to apply this debug patch to expand several constant values.
++  If don't know what LOCKDEP, then you don't have apply this patch.
 +
 +
 +4. Usage
@@ -19262,10 +19269,10 @@ index 0000000..b2e46aa
 +}
 diff --git a/fs/aufs/inode.c b/fs/aufs/inode.c
 new file mode 100644
-index 0000000..da1a603
+index 0000000..31f887d
 --- /dev/null
 +++ b/fs/aufs/inode.c
-@@ -0,0 +1,528 @@
+@@ -0,0 +1,527 @@
 +/*
 + * Copyright (C) 2005-2015 Junjiro R. Okajima
 + *
@@ -19554,8 +19561,7 @@ index 0000000..da1a603
 +static int reval_inode(struct inode *inode, struct dentry *dentry)
 +{
 +	int err;
-+	unsigned int gen;
-+	struct au_iigen iigen;
++	unsigned int gen, igflags;
 +	aufs_bindex_t bindex, bend;
 +	struct inode *h_inode, *h_dinode;
 +	struct dentry *h_dentry;
@@ -19580,9 +19586,9 @@ index 0000000..da1a603
 +			continue;
 +
 +		err = 0;
-+		gen = au_iigen(inode, &iigen);
++		gen = au_iigen(inode, &igflags);
 +		if (gen == au_digen(dentry)
-+		    && !au_ig_ftest(iigen.ig_flags, HALF_REFRESHED))
++		    && !au_ig_ftest(igflags, HALF_REFRESHED))
 +			break;
 +
 +		/* fully refresh inode using dentry */
@@ -19796,7 +19802,7 @@ index 0000000..da1a603
 +}
 diff --git a/fs/aufs/inode.h b/fs/aufs/inode.h
 new file mode 100644
-index 0000000..34aebba
+index 0000000..2c2276c
 --- /dev/null
 +++ b/fs/aufs/inode.h
 @@ -0,0 +1,685 @@
@@ -20224,7 +20230,7 @@ index 0000000..34aebba
 +#endif
 +}
 +
-+static inline unsigned int au_iigen(struct inode *inode, struct au_iigen *iigen_arg)
++static inline unsigned int au_iigen(struct inode *inode, unsigned int *igflags)
 +{
 +	unsigned int gen;
 +	struct au_iinfo *iinfo;
@@ -20233,8 +20239,8 @@ index 0000000..34aebba
 +	iinfo = au_ii(inode);
 +	iigen = &iinfo->ii_generation;
 +	spin_lock(&iigen->ig_spin);
-+	if (iigen_arg)
-+		*iigen_arg = *iigen;
++	if (igflags)
++		*igflags = iigen->ig_flags;
 +	gen = iigen->ig_generation;
 +	spin_unlock(&iigen->ig_spin);
 +
@@ -33118,10 +33124,10 @@ index 0000000..b7e13ca
 +#endif
 diff --git a/fs/aufs/xino.c b/fs/aufs/xino.c
 new file mode 100644
-index 0000000..44bbede
+index 0000000..e3cab07
 --- /dev/null
 +++ b/fs/aufs/xino.c
-@@ -0,0 +1,1296 @@
+@@ -0,0 +1,1318 @@
 +/*
 + * Copyright (C) 2005-2015 Junjiro R. Okajima
 + *
@@ -33177,6 +33183,9 @@ index 0000000..44bbede
 +
 +/* ---------------------------------------------------------------------- */
 +
++static ssize_t xino_fwrite_wkq(vfs_writef_t func, struct file *file, void *buf,
++			       size_t size, loff_t *pos);
++
 +static ssize_t do_xino_fwrite(vfs_writef_t func, struct file *file, void *kbuf,
 +			      size_t size, loff_t *pos)
 +{
@@ -33186,14 +33195,26 @@ index 0000000..44bbede
 +		void *k;
 +		const char __user *u;
 +	} buf;
++	int i;
++	const int prevent_endless = 10;
 +
++	i = 0;
 +	buf.k = kbuf;
 +	oldfs = get_fs();
 +	set_fs(KERNEL_DS);
 +	do {
-+		/* todo: signal_pending? */
 +		err = func(file, buf.u, size, pos);
-+	} while (err == -EAGAIN || err == -EINTR);
++		if (err == -EINTR
++		    && !au_wkq_test()
++		    && fatal_signal_pending(current)) {
++			set_fs(oldfs);
++			err = xino_fwrite_wkq(func, file, kbuf, size, pos);
++			BUG_ON(err == -EINTR);
++			oldfs = get_fs();
++			set_fs(KERNEL_DS);
++		}
++	} while (i++ < prevent_endless
++		 && (err == -EAGAIN || err == -EINTR));
 +	set_fs(oldfs);
 +
 +#if 0 /* reserved for future use */
@@ -33219,35 +33240,42 @@ index 0000000..44bbede
 +	*a->errp = do_xino_fwrite(a->func, a->file, a->buf, a->size, a->pos);
 +}
 +
++static ssize_t xino_fwrite_wkq(vfs_writef_t func, struct file *file, void *buf,
++			       size_t size, loff_t *pos)
++{
++	ssize_t err;
++	int wkq_err;
++	struct do_xino_fwrite_args args = {
++		.errp	= &err,
++		.func	= func,
++		.file	= file,
++		.buf	= buf,
++		.size	= size,
++		.pos	= pos
++	};
++
++	/*
++	 * it breaks RLIMIT_FSIZE and normal user's limit,
++	 * users should care about quota and real 'filesystem full.'
++	 */
++	wkq_err = au_wkq_wait(call_do_xino_fwrite, &args);
++	if (unlikely(wkq_err))
++		err = wkq_err;
++
++	return err;
++}
++
 +ssize_t xino_fwrite(vfs_writef_t func, struct file *file, void *buf,
 +		    size_t size, loff_t *pos)
 +{
 +	ssize_t err;
 +
-+	/* todo: signal block and no wkq? */
 +	if (rlimit(RLIMIT_FSIZE) == RLIM_INFINITY) {
 +		lockdep_off();
 +		err = do_xino_fwrite(func, file, buf, size, pos);
 +		lockdep_on();
-+	} else {
-+		/*
-+		 * it breaks RLIMIT_FSIZE and normal user's limit,
-+		 * users should care about quota and real 'filesystem full.'
-+		 */
-+		int wkq_err;
-+		struct do_xino_fwrite_args args = {
-+			.errp	= &err,
-+			.func	= func,
-+			.file	= file,
-+			.buf	= buf,
-+			.size	= size,
-+			.pos	= pos
-+		};
-+
-+		wkq_err = au_wkq_wait(call_do_xino_fwrite, &args);
-+		if (unlikely(wkq_err))
-+			err = wkq_err;
-+	}
++	} else
++		err = xino_fwrite_wkq(func, file, buf, size, pos);
 +
 +	return err;
 +}
@@ -34420,7 +34448,7 @@ index 0000000..44bbede
 +}
 diff --git a/include/uapi/linux/aufs_type.h b/include/uapi/linux/aufs_type.h
 new file mode 100644
-index 0000000..e1a361b
+index 0000000..a138015
 --- /dev/null
 +++ b/include/uapi/linux/aufs_type.h
 @@ -0,0 +1,419 @@
@@ -34465,7 +34493,7 @@ index 0000000..e1a361b
 +
 +#include <linux/limits.h>
 +
-+#define AUFS_VERSION	"4.1-20151221"
++#define AUFS_VERSION	"4.1.13+-20160118"
 +
 +/* todo? move this to linux-2.6.19/include/magic.h */
 +#define AUFS_SUPER_MAGIC	('a' << 24 | 'u' << 16 | 'f' << 8 | 's')
@@ -34844,5 +34872,5 @@ index 0000000..e1a361b
 +
 +#endif /* __AUFS_TYPE_H__ */
 -- 
-2.6.4
+2.7.0
 

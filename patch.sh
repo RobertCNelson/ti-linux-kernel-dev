@@ -142,6 +142,7 @@ aufs4 () {
 	echo "dir: aufs4"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		KERNEL_REL="4.1.13+"
 		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-kbuild.patch
 		patch -p1 < aufs4-kbuild.patch || aufs_fail
 		rm -rf aufs4-kbuild.patch
@@ -167,6 +168,7 @@ aufs4 () {
 		git commit -a -m 'merge: aufs4-standalone' -s
 
 		git format-patch -4 -o ../patches/aufs4/
+		KERNEL_REL="4.1"
 		exit 2
 	fi
 
