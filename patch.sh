@@ -203,6 +203,10 @@ rt () {
 
 	${git} "${DIR}/patches/rt/0001-gpio-omap-back-to-4.1.15.patch"
 
+	git revert --no-edit 8a4ebc74857af2377d9b3f756714ded686e01b66 -s
+	git revert --no-edit e70aade221a271f91e2d71901b2d602df2faee15 -s
+	git revert --no-edit bc24ac15b0746172a8f603171352aa54abcf7c78 -s
+
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
