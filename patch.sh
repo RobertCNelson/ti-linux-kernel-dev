@@ -697,9 +697,10 @@ quieter () {
 	${git} "${DIR}/patches/quieter/0003-quiet-vgaarb-use-pr_info-over-pr_err.patch"
 	${git} "${DIR}/patches/quieter/0004-quiet-arch-arm-mach-omap2-voltage.c-legacy-harmless.patch"
 	${git} "${DIR}/patches/quieter/0005-quiet-drivers-gpu-drm-tilcdc-tilcdc_crtc.c-dev_info-.patch"
+	${git} "${DIR}/patches/quieter/0006-quiet-drivers-net-wireless-ti-wl18xx-main.c.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
+		number=6
 		cleanup
 	fi
 }
