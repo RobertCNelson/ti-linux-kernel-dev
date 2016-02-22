@@ -44,6 +44,261 @@ config_value () {
 
 cd ${DIR}/KERNEL/
 
+#
+# General setup
+#
+config="CONFIG_KERNEL_LZO" ; config_enable
+
+#
+# RCU Subsystem
+#
+config="CONFIG_IKCONFIG" ; config_enable
+config="CONFIG_IKCONFIG_PROC" ; config_enable
+config="CONFIG_LOG_BUF_SHIFT" ; option="18" ; config_value
+config="CONFIG_MEMCG_SWAP_ENABLED" ; config_enable
+config="CONFIG_MEMCG_KMEM" ; config_enable
+config="CONFIG_RT_GROUP_SCHED" ; config_enable
+config="CONFIG_SYSFS_SYSCALL" ; config_enable
+config="CONFIG_SYSCTL_SYSCALL" ; config_enable
+config="CONFIG_KALLSYMS_ALL" ; config_enable
+config="CONFIG_EMBEDDED" ; config_enable
+
+#
+# Kernel Performance Events And Counters
+#
+config="CONFIG_SECCOMP_FILTER" ; config_enable
+
+#
+# CPU Core family selection
+#
+config="CONFIG_ARCH_VIRT" ; config_disable
+config="CONFIG_ARCH_MVEBU" ; config_disable
+config="CONFIG_ARCH_BCM" ; config_disable
+config="CONFIG_ARCH_HIGHBANK" ; config_disable
+config="CONFIG_ARCH_MXC" ; config_disable
+
+#
+# OMAP Feature Selections
+#
+config="CONFIG_OMAP_MUX_DEBUG" ; config_enable
+
+#
+# TI OMAP/AM/DM/DRA Family
+#
+config="CONFIG_ARCH_OMAP3" ; config_disable
+config="CONFIG_ARCH_OMAP4" ; config_disable
+config="CONFIG_SOC_AM43XX" ; config_enable
+
+#
+# OMAP Legacy Platform Data Board Type
+#
+config="CONFIG_ARCH_ROCKCHIP" ; config_disable
+config="CONFIG_ARCH_SOCFPGA" ; config_disable
+config="CONFIG_ARCH_EXYNOS" ; config_disable
+config="CONFIG_ARCH_SUNXI" ; config_disable
+config="CONFIG_ARCH_TEGRA" ; config_disable
+config="CONFIG_ARCH_VEXPRESS" ; config_disable
+config="CONFIG_ARCH_WM8850" ; config_disable
+
+#
+# Processor Features
+#
+config="CONFIG_PL310_ERRATA_753970" ; config_disable
+config="CONFIG_PL310_ERRATA_769419" ; config_disable
+config="CONFIG_ARM_ERRATA_430973" ; config_disable
+config="CONFIG_ARM_ERRATA_643719" ; config_disable
+config="CONFIG_ARM_ERRATA_754327" ; config_disable
+config="CONFIG_ARM_ERRATA_764369" ; config_disable
+config="CONFIG_ARM_ERRATA_773022" ; config_disable
+
+#
+# Bus support
+#
+config="CONFIG_PCI" ; config_disable #FIXME: when dra7xx_pci
+config="CONFIG_PCI_MSI" ; config_disable #FIXME: when dra7xx_pci
+
+#
+# PCI host controller drivers
+#
+config="CONFIG_PCIEPORTBUS" ; config_disable #FIXME: when dra7xx_pci
+
+#first check..
+#exit
+
+#
+# Kernel Features
+#
+config="CONFIG_NR_CPUS" ; option="2" ; config_value
+config="CONFIG_PREEMPT" ; config_enable
+config="CONFIG_THUMB2_KERNEL" ; config_enable
+config="CONFIG_CMA" ; config_enable
+config="CONFIG_CMA_DEBUG" ; config_disable
+config="CONFIG_SECCOMP" ; config_enable
+config="CONFIG_XEN" ; config_disable
+
+#
+# Boot options
+#
+config="CONFIG_ARM_APPENDED_DTB" ; config_disable
+
+#
+# CPU Frequency scaling
+#
+config="CONFIG_CPU_FREQ_STAT" ; config_enable
+config="CONFIG_CPU_FREQ_STAT_DETAILS" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_POWERSAVE" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_USERSPACE" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_ONDEMAND" ; config_enable
+config="CONFIG_CPU_FREQ_GOV_CONSERVATIVE" ; config_enable
+
+#
+# CPU frequency scaling drivers
+#
+config="CONFIG_CPUFREQ_DT" ; config_enable
+config="CONFIG_ARM_OMAP2PLUS_CPUFREQ" ; config_disable
+
+#
+# CPU Idle
+#
+config="CONFIG_CPU_IDLE" ; config_enable
+
+#
+# ARM CPU Idle Drivers
+#
+config="CONFIG_ARM_CPUIDLE" ; config_enable
+
+#
+# At least one emulation must be selected
+#
+config="CONFIG_KERNEL_MODE_NEON" ; config_enable
+
+#
+# Power management options
+#
+config="CONFIG_PM_AUTOSLEEP" ; config_enable
+config="CONFIG_PM_WAKELOCKS" ; config_enable
+config="CONFIG_PM_WAKELOCKS_GC" ; config_enable
+
+#
+# Networking options
+#
+config="CONFIG_IP_PNP" ; config_enable
+config="CONFIG_IP_PNP_DHCP" ; config_enable
+config="CONFIG_IP_PNP_BOOTP" ; config_enable
+config="CONFIG_IP_PNP_RARP" ; config_enable
+config="CONFIG_NETLABEL" ; config_enable
+
+#
+# DCCP Kernel Hacking
+#
+config="CONFIG_MAC802154" ; config_module
+
+#
+# CAN Device Drivers
+#
+config="CONFIG_CAN_C_CAN" ; config_module
+config="CONFIG_CAN_C_CAN_PLATFORM" ; config_module
+
+#
+# CAN SPI interfaces
+#
+config="CONFIG_CAN_MCP251X" ; config_module
+
+#
+# Bluetooth device drivers
+#
+config="CONFIG_BT_HCIUART" ; config_module
+config="CONFIG_BT_HCIUART_H4" ; config_enable
+config="CONFIG_BT_HCIUART_BCSP" ; config_enable
+config="CONFIG_BT_HCIUART_ATH3K" ; config_enable
+config="CONFIG_BT_HCIUART_LL" ; config_enable
+config="CONFIG_BT_HCIUART_3WIRE" ; config_enable
+config="CONFIG_BT_HCIUART_BCM" ; config_enable
+config="CONFIG_BT_HCIUART_QCA" ; config_enable
+config="CONFIG_BT_HCIBCM203X" ; config_module
+config="CONFIG_BT_HCIBPA10X" ; config_module
+config="CONFIG_BT_HCIBFUSB" ; config_module
+config="CONFIG_NFC_NCI" ; config_module
+config="CONFIG_NFC_NCI_SPI" ; config_module
+config="CONFIG_NFC_HCI" ; config_module
+config="CONFIG_NFC_SHDLC" ; config_enable
+
+#
+# Near Field Communication (NFC) devices
+#
+config="CONFIG_NFC_WILINK" ; config_module
+config="CONFIG_NFC_PN544" ; config_module
+config="CONFIG_NFC_PN544_I2C" ; config_module
+config="CONFIG_NFC_MICROREAD" ; config_module
+config="CONFIG_NFC_MICROREAD_I2C" ; config_module
+
+#
+# Generic Driver Options
+#
+config="CONFIG_DEVTMPFS_MOUNT" ; config_enable
+
+config="CONFIG_FIRMWARE_IN_KERNEL" ; config_enable
+config="CONFIG_EXTRA_FIRMWARE" ; option="am335x-pm-firmware.elf am335x-bone-scale-data.bin am335x-evm-scale-data.bin am43x-evm-scale-data.bin" ; config_string
+config="CONFIG_EXTRA_FIRMWARE_DIR" ; option="firmware" ; config_string
+
+config="CONFIG_DMA_CMA" ; config_enable
+config="CONFIG_CMA_SIZE_MBYTES" ; option=24 ; config_value
+
+#
+# Bus devices
+#
+config="CONFIG_OMAP_OCP2SCP" ; config_enable
+
+#
+# Device Tree and Open Firmware support
+#
+config="CONFIG_OF_CONFIGFS" ; config_enable
+config="CONFIG_PARPORT" ; config_disable
+
+#
+# Misc devices
+#
+config="CONFIG_BONE_CAPEMGR" ; config_enable
+config="CONFIG_TIEQEP" ; config_module
+
+#
+# EEPROM support
+#
+config="CONFIG_EEPROM_AT24" ; config_enable
+config="CONFIG_EEPROM_AT25" ; config_enable
+config="CONFIG_EEPROM_93XX46" ; config_module
+
+#
+# Texas Instruments shared transport line discipline
+#
+config="CONFIG_SENSORS_LIS3_SPI" ; config_module
+
+#
+# Argus cape driver for beaglebone black
+#
+config="CONFIG_CAPE_BONE_ARGUS" ; config_enable
+config="CONFIG_BEAGLEBONE_PINMUX_HELPER" ; config_enable
+
+#
+# SCSI device support
+#
+config="CONFIG_SCSI_MOD" ; config_enable
+config="CONFIG_SCSI" ; config_enable
+config="CONFIG_SCSI_PROC_FS" ; config_enable
+
+#
+# SCSI support type (disk, tape, CD-ROM)
+#
+config="CONFIG_BLK_DEV_SD" ; config_enable
+
+#
+# SCSI Transports
+#
+config="CONFIG_ATA" ; config_enable
+
+exit
+
+
 echo "Basic Defaults:"
 
 #start with: cp patches/debian-armmp KERNEL/.config
