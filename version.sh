@@ -38,7 +38,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=cross
 DEBARCH=armhf
 
-ti_git_old_release="828f540311fe43d7331d54b81e1a77b53bcc8e84"
-        ti_git_pre="a6b66a92cbc3d8b3580a13bce70881e11e24e700"
-       ti_git_post="e33f57a327a671a44f7664ab1a2f0a43a0ee8580"
+ti_git_old_release="e33f57a327a671a44f7664ab1a2f0a43a0ee8580"
+        ti_git_pre="e33f57a327a671a44f7664ab1a2f0a43a0ee8580"
+       ti_git_post="be5bc855fcfd0bdf7bbefc115b321f8bf77da761"
 #
