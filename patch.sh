@@ -598,6 +598,24 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/CTAG"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/CTAG/0001-Added-driver-and-device-tree-for-CTAG-face2-4-Audio-.patch"
+	${git} "${DIR}/patches/beaglebone/CTAG/0002-Added-support-for-higher-sampling-rates-in-AD193X-dr.patch"
+	${git} "${DIR}/patches/beaglebone/CTAG/0003-Added-support-for-AD193X-and-CTAG-face2-4-Audio-Card.patch"
+	${git} "${DIR}/patches/beaglebone/CTAG/0004-Modified-ASOC-platform-driver-for-McASP-to-use-async.patch"
+	${git} "${DIR}/patches/beaglebone/CTAG/0005-Changed-descriptions-in-files-belonging-to-CTAG-face.patch"
+	${git} "${DIR}/patches/beaglebone/CTAG/0006-add-black-version-of-ctag-face-pass-uboot-cape-ctag-.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=6
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -632,6 +650,9 @@ beaglebone () {
 		device="am335x-bonegreen.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
