@@ -629,6 +629,19 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/jtag"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/jtag/0001-add-jtag-clock-pinmux.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
