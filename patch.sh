@@ -593,6 +593,19 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/sancloud"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/sancloud/0001-add-sancloud-beaglebone-enhanced.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
 	echo "dir: beaglebone/CTAG"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -645,6 +658,8 @@ beaglebone () {
 		device="am335x-bonegreen.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
+
+		device="am335x-boneenhanced.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
