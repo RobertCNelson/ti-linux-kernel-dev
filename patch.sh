@@ -592,9 +592,10 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/bbgw/0001-update-am335x-bonegreen-wl1835.dtsi.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0002-add-beaglebone-green-wireless.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0003-bbgw-switch-from-gpio-hog-back-to-regulator-gpio-for.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=3
 		cleanup
 	fi
 
