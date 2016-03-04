@@ -589,9 +589,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/bbgw/0002-add-beaglebone-green-wireless.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0003-bbgw-switch-from-gpio-hog-back-to-regulator-gpio-for.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0004-bbgw-mmc3-edma-change-in-ti-v4.1.x.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0005-Update-am335x-bonegreen-wireless.dts.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=4
+		number=5
 		cleanup
 	fi
 
