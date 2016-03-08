@@ -24,9 +24,9 @@ toolchain="gcc_linaro_gnueabihf_5"
 
 #Kernel/Build
 KERNEL_REL=4.4
-KERNEL_TAG=${KERNEL_REL}.3
-BUILD=${build_prefix}9
-kernel_rt=".3-rt9"
+KERNEL_TAG=${KERNEL_REL}.4
+BUILD=${build_prefix}9.1
+#kernel_rt=".3-rt9"
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -38,7 +38,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=cross
 DEBARCH=armhf
 
-ti_git_old_release="45aef3176f7116129eb2076dbcdfc84483400164"
-        ti_git_pre="c180c1dc31e7375b3bd6d0c08ff15f4097b06b0c"
-       ti_git_post="8936b8ade3d20154268898cc099507b993c2a800"
+ti_git_old_release="f20ff63b71ad8f6161295f4f40ecb5aa0cb9ee0a"
+        ti_git_pre="f20ff63b71ad8f6161295f4f40ecb5aa0cb9ee0a"
+       ti_git_post="f20ff63b71ad8f6161295f4f40ecb5aa0cb9ee0a"
 #

@@ -70,7 +70,7 @@ cherrypick () {
 }
 
 external_git () {
-	git_tag="ti-linux-4.4.y"
+	git_tag="ti-rt-linux-4.4.y"
 	echo "pulling: ${git_tag}"
 	git pull ${git_opts} ${git_patchset} ${git_tag}
 	#. ${DIR}/.CC
@@ -138,28 +138,25 @@ aufs4 () {
 	#exit 2
 
 	${git} "${DIR}/patches/aufs4/0005-aufs-why-this-isnt-a-patch.patch"
+	${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
+		number=6
 		cleanup
 	fi
 }
 
 rt_cleanup () {
-	echo "Fixing: drivers/gpio/gpio-omap.c"
-	sed -i -e 's/\<spin_lock_irqsave\>/raw_spin_lock_irqsave/g' drivers/gpio/gpio-omap.c
-	sed -i -e 's/\<spin_unlock_irqrestore\>/raw_spin_unlock_irqrestore/g' drivers/gpio/gpio-omap.c
-	rm -rf drivers/gpio/gpio-omap.c.rej
+	echo "rt: needs fixup"
+	exit 2
 }
 
 rt () {
 	echo "dir: rt"
+
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
-		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
-		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
 		git add .
 		git commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
@@ -178,7 +175,7 @@ local_patch () {
 
 external_git
 aufs4
-#rt
+rt
 #local_patch
 
 lts44_backports () {
