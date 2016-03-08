@@ -70,7 +70,7 @@ cherrypick () {
 }
 
 external_git () {
-	git_tag="ti-linux-4.1.y"
+	git_tag="ti-rt-linux-4.1.y"
 	echo "pulling: ${git_tag}"
 	git pull ${git_opts} ${git_patchset} ${git_tag}
 	. ${DIR}/.CC
@@ -201,18 +201,9 @@ rt_cleanup () {
 rt () {
 	echo "dir: rt"
 
-	${git} "${DIR}/patches/rt/0001-gpio-omap-back-to-4.1.15.patch"
-
-	git revert --no-edit 8a4ebc74857af2377d9b3f756714ded686e01b66 -s
-	git revert --no-edit e70aade221a271f91e2d71901b2d602df2faee15 -s
-	git revert --no-edit bc24ac15b0746172a8f603171352aa54abcf7c78 -s
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
-		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
-		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
 		git add .
 		git commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
@@ -222,7 +213,6 @@ rt () {
 	fi
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
-	${git} "${DIR}/patches/rt/0002-gpio-after-rt.patch"
 }
 
 local_patch () {
