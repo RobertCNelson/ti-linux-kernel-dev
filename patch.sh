@@ -599,9 +599,10 @@ beaglebone () {
 	fi
 
 	${git} "${DIR}/patches/beaglebone/sancloud/0001-add-sancloud-beaglebone-enhanced.patch"
+	${git} "${DIR}/patches/beaglebone/sancloud/0002-sancloud-rename-as-am335x-sancloud-bbe.dts.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
+		number=2
 		cleanup
 	fi
 
@@ -672,6 +673,7 @@ beaglebone () {
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
 		device="am335x-boneenhanced.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
