@@ -495,9 +495,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
 	${git} "${DIR}/patches/beaglebone/capes/0002-Added-support-for-Replicape.patch"
 	${git} "${DIR}/patches/beaglebone/capes/0003-ARM-dts-am335x-boneblack-enable-wl1835mod-cape-suppo.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0004-bb-audio-cape.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=4
 		cleanup
 	fi
 
@@ -667,6 +668,8 @@ beaglebone () {
 		device="am335x-boneblack-spi0.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-ttyS2.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
 
 		device="am335x-bonegreen.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
