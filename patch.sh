@@ -227,9 +227,10 @@ fixes () {
 	${git} "${DIR}/patches/fixes/0001-fix-sleep33xx.S-for-thumb2.patch"
 	${git} "${DIR}/patches/fixes/0002-fix-sleep43xx.S-for-thumb2.patch"
 	${git} "${DIR}/patches/fixes/0003-fix-ti-emif-sram-pm.S-for-thumb2.patch"
+	${git} "${DIR}/patches/fixes/0004-net-wireless-SanCloud-wifi-issue-when-associating-wi.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=4
 		cleanup
 	fi
 }
@@ -598,6 +599,37 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/sancloud"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/sancloud/0001-add-am335x-sancloud-bbe.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
+	#echo "dir: beaglebone/CTAG"
+	#regenerate="enable"
+	#if [ "x${regenerate}" = "xenable" ] ; then
+	#	start_cleanup
+	#fi
+
+	#${git} "${DIR}/patches/beaglebone/CTAG/0001-Added-driver-and-device-tree-for-CTAG-face2-4-Audio-.patch"
+	#${git} "${DIR}/patches/beaglebone/CTAG/0002-Added-support-for-higher-sampling-rates-in-AD193X-dr.patch"
+	#${git} "${DIR}/patches/beaglebone/CTAG/0003-Added-support-for-AD193X-and-CTAG-face2-4-Audio-Card.patch"
+	#${git} "${DIR}/patches/beaglebone/CTAG/0004-Modified-ASOC-platform-driver-for-McASP-to-use-async.patch"
+	#${git} "${DIR}/patches/beaglebone/CTAG/0005-Changed-descriptions-in-files-belonging-to-CTAG-face.patch"
+	#${git} "${DIR}/patches/beaglebone/CTAG/0006-add-black-version-of-ctag-face-pass-uboot-cape-ctag-.patch"
+
+	#if [ "x${regenerate}" = "xenable" ] ; then
+	#	number=6
+	#	cleanup
+	#fi
+
 	echo "dir: beaglebone/capes"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -608,11 +640,12 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/capes/0002-ARM-dts-am335x-boneblack-enable-wl1835mod-cape-suppo.patch"
 	${git} "${DIR}/patches/beaglebone/capes/0003-add-am335x-boneblack-bbbmini.dts.patch"
 	${git} "${DIR}/patches/beaglebone/capes/0004-add-lcd-am335x-boneblack-bbb-exp-c.dtb-am335x-bonebl.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0005-bb-audio-cape.patch"
 
 	#Replicape use am335x-boneblack-overlay.dtb???
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=4
+		number=5
 		cleanup
 	fi
 
@@ -629,6 +662,19 @@ beaglebone () {
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=3
+		cleanup
+	fi
+
+	echo "dir: beaglebone/jtag"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/jtag/0001-add-jtag-clock-pinmux.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
 		cleanup
 	fi
 
@@ -678,6 +724,12 @@ beaglebone () {
 		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
+
+		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
+
+		#device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
+		#device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
