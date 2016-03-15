@@ -259,6 +259,26 @@ backports () {
 		number=3
 		cleanup
 	fi
+
+	echo "dir: backports/vitesse"
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	#v4.4.x+
+	#https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/drivers/net/phy/vitesse.c?id=7729b053814ac91af340f5055970afc87d7fee21
+	${git} "${DIR}/patches/backports/vitesse/0001-net-phy-vitesse-add-support-for-VSC8601.patch"
+
+	#v4.5.x+
+	#careful around:
+	#https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/drivers/net/phy/vitesse.c?id=be01da72b1b832b89fbdf59ae6f1b60e53ca2987
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
 }
 
 fixes () {
