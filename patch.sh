@@ -195,6 +195,7 @@ aufs4 () {
 }
 
 rt_cleanup () {
+	echo "rt: needs fixup"
 	exit 2
 }
 
