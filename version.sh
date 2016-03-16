@@ -4,7 +4,7 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="ti-rt-r"
+build_prefix="-ti-rt-r"
 branch_prefix="ti-linux-rt-"
 branch_postfix=".y"
 
