@@ -89,23 +89,6 @@ rt_cleanup () {
 rt () {
 	echo "dir: rt"
 
-	#3.14.63
-	git revert --no-edit df7a5f94f075e5ee962d7009ce2c9c15f207e63f -s
-	git revert --no-edit 88bec78f852374545641a5a23049dc6ead58d570 -s
-	#fs/dcache.c
-	git revert --no-edit 4d57edcd044c0a5e0ae5241ec51962f5219caee2 -s
-	git revert --no-edit 001869c34bdefa35f021f2633ed37122cfd3aa2d -s
-	git revert --no-edit b004c3a7f5ee27001a39892874c733d23b7ecbc6 -s
-	git revert --no-edit 6179fe3753519bb624d767c02f9b685642cc63df -s
-	git revert --no-edit 286adf77d94e8b57a620e6cdbdcc72d99d8609b3 -s
-	git revert --no-edit d2cac5b667889e625290f6fc758133baded7aa7b -s
-	git revert --no-edit c233eac2740e5234480ac2a33f753f46fa81512a -s
-	git revert --no-edit f718ea386c2f2a077e29a0f338507cfcd75e55cd -s
-
-	#3.14.62
-	git revert --no-edit 09cf075951ef32f2fb48e4935eb1e845282deee0 -s
-	git revert --no-edit ec6392c6567bdf3534399df9a2f31ba0c0c0c97a -s
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then

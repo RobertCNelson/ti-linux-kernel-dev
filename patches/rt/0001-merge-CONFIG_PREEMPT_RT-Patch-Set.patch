@@ -1,6 +1,6 @@
-From 4ee3a40da707aa7bdc98b67327c5ed15240936a3 Mon Sep 17 00:00:00 2001
+From c7424906d4ae9f115156ac444c9ffa3ae42a51ec Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 10 Mar 2016 09:35:13 -0600
+Date: Thu, 17 Mar 2016 08:50:05 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -210,7 +210,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/btrfs/ctree.c                                   |    4 +-
  fs/btrfs/extent-tree.c                             |    8 -
  fs/buffer.c                                        |   21 +-
- fs/dcache.c                                        |    5 +-
+ fs/dcache.c                                        |    4 +-
  fs/eventpoll.c                                     |    4 +-
  fs/exec.c                                          |    2 +
  fs/f2fs/f2fs.h                                     |    4 +-
@@ -350,7 +350,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/res_counter.c                               |    8 +-
  kernel/sched/Makefile                              |    2 +-
  kernel/sched/completion.c                          |   34 +-
- kernel/sched/core.c                                |  596 +++++++--
+ kernel/sched/core.c                                |  594 +++++++--
  kernel/sched/cputime.c                             |   62 +-
  kernel/sched/debug.c                               |    7 +
  kernel/sched/fair.c                                |   16 +-
@@ -387,7 +387,6 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  lib/Kconfig                                        |    1 +
  lib/Kconfig.debug                                  |    2 +-
  lib/debugobjects.c                                 |    5 +-
- lib/dump_stack.c                                   |    4 +-
  lib/idr.c                                          |   37 +-
  lib/locking-selftest.c                             |   50 +
  lib/percpu_ida.c                                   |   20 +-
@@ -421,7 +420,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  scripts/mkcompile_h                                |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 416 files changed, 12322 insertions(+), 2273 deletions(-)
+ 415 files changed, 12319 insertions(+), 2269 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 arch/x86/include/asm/irq_work.h
@@ -4008,10 +4007,10 @@ index 6456734..ac573a1 100644
  
  /*
 diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
-index 1777f89..d386e0f 100644
+index 8db6642..4f41d96 100644
 --- a/arch/x86/kvm/x86.c
 +++ b/arch/x86/kvm/x86.c
-@@ -5562,6 +5562,13 @@ int kvm_arch_init(void *opaque)
+@@ -5557,6 +5557,13 @@ int kvm_arch_init(void *opaque)
  		goto out;
  	}
  
@@ -8290,7 +8289,7 @@ index eef21c6..8a33054 100644
  		__this_cpu_inc(bh_accounting.nr);
  		recalc_bh_state();
 diff --git a/fs/dcache.c b/fs/dcache.c
-index e285b6b..e0526b6 100644
+index e072fd7..c417040 100644
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
 @@ -19,6 +19,7 @@
@@ -8301,16 +8300,15 @@ index e285b6b..e0526b6 100644
  #include <linux/slab.h>
  #include <linux/init.h>
  #include <linux/hash.h>
-@@ -464,7 +465,7 @@ dentry_kill(struct dentry *dentry, int unlock_on_failure)
- relock:
- 		if (unlock_on_failure) {
- 			spin_unlock(&dentry->d_lock);
--			cpu_relax();
-+			cpu_chill();
- 		}
- 		return dentry; /* try again with same dentry */
- 	}
-@@ -2267,7 +2268,7 @@ again:
+@@ -443,6 +444,7 @@ static void __dentry_kill(struct dentry *dentry)
+ {
+ 	struct dentry *parent = NULL;
+ 	bool can_free = true;
++
+ 	if (!IS_ROOT(dentry))
+ 		parent = dentry->d_parent;
+ 
+@@ -2330,7 +2332,7 @@ again:
  	if (dentry->d_lockref.count == 1) {
  		if (!spin_trylock(&inode->i_lock)) {
  			spin_unlock(&dentry->d_lock);
@@ -13586,7 +13584,7 @@ index 1394fb3..ce0e9e5 100644
  	p->lockdep_depth = 0; /* no locks held yet */
  	p->curr_chain_key = 0;
 diff --git a/kernel/futex.c b/kernel/futex.c
-index ad92742..b0b832b 100644
+index b125c38..7f6f6de 100644
 --- a/kernel/futex.c
 +++ b/kernel/futex.c
 @@ -712,7 +712,9 @@ void exit_pi_state_list(struct task_struct *curr)
@@ -14235,7 +14233,7 @@ index ad92742..b0b832b 100644
  
  	/* Check if the requeue code acquired the second futex for us. */
  	if (!q.rt_waiter) {
-@@ -2646,9 +2654,10 @@ static int futex_wait_requeue_pi(u32 __user *uaddr, unsigned int flags,
+@@ -2646,14 +2654,15 @@ static int futex_wait_requeue_pi(u32 __user *uaddr, unsigned int flags,
  		 * did a lock-steal - fix up the PI-state in that case.
  		 */
  		if (q.pi_state && (q.pi_state->owner != current)) {
@@ -14243,12 +14241,17 @@ index ad92742..b0b832b 100644
 +			spin_lock(&hb2->lock);
 +			BUG_ON(&hb2->lock != q.lock_ptr);
  			ret = fixup_pi_state_owner(uaddr2, &q, current);
+ 			/*
+ 			 * Drop the reference to the pi state which
+ 			 * the requeue_pi() code acquired for us.
+ 			 */
+ 			free_pi_state(q.pi_state);
 -			spin_unlock(q.lock_ptr);
 +			spin_unlock(&hb2->lock);
  		}
  	} else {
  		/*
-@@ -2658,10 +2667,11 @@ static int futex_wait_requeue_pi(u32 __user *uaddr, unsigned int flags,
+@@ -2663,10 +2672,11 @@ static int futex_wait_requeue_pi(u32 __user *uaddr, unsigned int flags,
  		 */
  		WARN_ON(!q.pi_state);
  		pi_mutex = &q.pi_state->pi_mutex;
@@ -19616,7 +19619,7 @@ index a63f4dc..e529e5f 100644
  }
  EXPORT_SYMBOL(completion_done);
 diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 459cc86..ed7b54d 100644
+index 46afc8c..fa1aa51 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
 @@ -272,7 +272,11 @@ late_initcall(sched_init_debug);
@@ -19853,13 +19856,7 @@ index 459cc86..ed7b54d 100644
   * wake_up_process - Wake up a specific process
   * @p: The process to be woken up.
   *
-@@ -1696,11 +1743,23 @@ out:
-  */
- int wake_up_process(struct task_struct *p)
- {
--	WARN_ON(task_is_stopped_or_traced(p));
-+	WARN_ON(__task_is_stopped_or_traced(p));
- 	return try_to_wake_up(p, TASK_NORMAL, 0);
+@@ -1700,6 +1747,18 @@ int wake_up_process(struct task_struct *p)
  }
  EXPORT_SYMBOL(wake_up_process);
  
@@ -19878,7 +19875,7 @@ index 459cc86..ed7b54d 100644
  int wake_up_state(struct task_struct *p, unsigned int state)
  {
  	return try_to_wake_up(p, state, 0);
-@@ -1878,6 +1937,9 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
+@@ -1877,6 +1936,9 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
  	p->on_cpu = 0;
  #endif
  	init_task_preempt_count(p);
@@ -19888,7 +19885,7 @@ index 459cc86..ed7b54d 100644
  #ifdef CONFIG_SMP
  	plist_node_init(&p->pushable_tasks, MAX_PRIO);
  	RB_CLEAR_NODE(&p->pushable_dl_tasks);
-@@ -2029,7 +2091,7 @@ void wake_up_new_task(struct task_struct *p)
+@@ -2028,7 +2090,7 @@ void wake_up_new_task(struct task_struct *p)
  	rq = __task_rq_lock(p);
  	activate_task(rq, p, 0);
  	p->on_rq = 1;
@@ -19897,7 +19894,7 @@ index 459cc86..ed7b54d 100644
  	check_preempt_curr(rq, p, WF_FORK);
  #ifdef CONFIG_SMP
  	if (p->sched_class->task_woken)
-@@ -2161,11 +2223,13 @@ static void finish_task_switch(struct rq *rq, struct task_struct *prev)
+@@ -2160,11 +2222,13 @@ static void finish_task_switch(struct rq *rq, struct task_struct *prev)
  	finish_arch_post_lock_switch();
  
  	fire_sched_in_preempt_notifiers(current);
@@ -19914,7 +19911,7 @@ index 459cc86..ed7b54d 100644
  		if (prev->sched_class->task_dead)
  			prev->sched_class->task_dead(prev);
  
-@@ -2507,16 +2571,6 @@ u64 scheduler_tick_max_deferment(void)
+@@ -2506,16 +2570,6 @@ u64 scheduler_tick_max_deferment(void)
  }
  #endif
  
@@ -19931,7 +19928,7 @@ index 459cc86..ed7b54d 100644
  #if defined(CONFIG_PREEMPT) && (defined(CONFIG_DEBUG_PREEMPT) || \
  				defined(CONFIG_PREEMPT_TRACER))
  
-@@ -2537,8 +2591,13 @@ void __kprobes preempt_count_add(int val)
+@@ -2536,8 +2590,13 @@ void __kprobes preempt_count_add(int val)
  	DEBUG_LOCKS_WARN_ON((preempt_count() & PREEMPT_MASK) >=
  				PREEMPT_MASK - 10);
  #endif
@@ -19947,7 +19944,7 @@ index 459cc86..ed7b54d 100644
  }
  EXPORT_SYMBOL(preempt_count_add);
  
-@@ -2559,7 +2618,7 @@ void __kprobes preempt_count_sub(int val)
+@@ -2558,7 +2617,7 @@ void __kprobes preempt_count_sub(int val)
  #endif
  
  	if (preempt_count() == val)
@@ -19956,7 +19953,7 @@ index 459cc86..ed7b54d 100644
  	__preempt_count_sub(val);
  }
  EXPORT_SYMBOL(preempt_count_sub);
-@@ -2581,6 +2640,13 @@ static noinline void __schedule_bug(struct task_struct *prev)
+@@ -2580,6 +2639,13 @@ static noinline void __schedule_bug(struct task_struct *prev)
  	print_modules();
  	if (irqs_disabled())
  		print_irqtrace_events(prev);
@@ -19970,7 +19967,7 @@ index 459cc86..ed7b54d 100644
  	dump_stack();
  	add_taint(TAINT_WARN, LOCKDEP_STILL_OK);
  }
-@@ -2604,6 +2670,133 @@ static inline void schedule_debug(struct task_struct *prev)
+@@ -2603,6 +2669,133 @@ static inline void schedule_debug(struct task_struct *prev)
  	schedstat_inc(this_rq(), sched_count);
  }
  
@@ -20104,7 +20101,7 @@ index 459cc86..ed7b54d 100644
  static void put_prev_task(struct rq *rq, struct task_struct *prev)
  {
  	if (prev->on_rq || rq->skip_clock_update < 0)
-@@ -2703,6 +2896,8 @@ need_resched:
+@@ -2702,6 +2895,8 @@ need_resched:
  	smp_mb__before_spinlock();
  	raw_spin_lock_irq(&rq->lock);
  
@@ -20113,7 +20110,7 @@ index 459cc86..ed7b54d 100644
  	switch_count = &prev->nivcsw;
  	if (prev->state && !(preempt_count() & PREEMPT_ACTIVE)) {
  		if (unlikely(signal_pending_state(prev->state, prev))) {
-@@ -2710,19 +2905,6 @@ need_resched:
+@@ -2709,19 +2904,6 @@ need_resched:
  		} else {
  			deactivate_task(rq, prev, DEQUEUE_SLEEP);
  			prev->on_rq = 0;
@@ -20133,7 +20130,7 @@ index 459cc86..ed7b54d 100644
  		}
  		switch_count = &prev->nvcsw;
  	}
-@@ -2735,6 +2917,7 @@ need_resched:
+@@ -2734,6 +2916,7 @@ need_resched:
  	put_prev_task(rq, prev);
  	next = pick_next_task(rq);
  	clear_tsk_need_resched(prev);
@@ -20141,7 +20138,7 @@ index 459cc86..ed7b54d 100644
  	clear_preempt_need_resched();
  	rq->skip_clock_update = 0;
  
-@@ -2764,8 +2947,19 @@ need_resched:
+@@ -2763,8 +2946,19 @@ need_resched:
  
  static inline void sched_submit_work(struct task_struct *tsk)
  {
@@ -20162,7 +20159,7 @@ index 459cc86..ed7b54d 100644
  	/*
  	 * If we are going to sleep and we have plugged IO queued,
  	 * make sure to submit it to avoid deadlocks.
-@@ -2774,12 +2968,19 @@ static inline void sched_submit_work(struct task_struct *tsk)
+@@ -2773,12 +2967,19 @@ static inline void sched_submit_work(struct task_struct *tsk)
  		blk_schedule_flush_plug(tsk);
  }
  
@@ -20182,7 +20179,7 @@ index 459cc86..ed7b54d 100644
  }
  EXPORT_SYMBOL(schedule);
  
-@@ -2810,6 +3011,30 @@ void __sched schedule_preempt_disabled(void)
+@@ -2809,6 +3010,30 @@ void __sched schedule_preempt_disabled(void)
  	preempt_disable();
  }
  
@@ -20213,7 +20210,7 @@ index 459cc86..ed7b54d 100644
  #ifdef CONFIG_PREEMPT
  /*
   * this is the entry point to schedule() from in-kernel preemption
-@@ -2824,10 +3049,21 @@ asmlinkage void __sched notrace preempt_schedule(void)
+@@ -2823,10 +3048,21 @@ asmlinkage void __sched notrace preempt_schedule(void)
  	 */
  	if (likely(!preemptible()))
  		return;
@@ -20235,7 +20232,7 @@ index 459cc86..ed7b54d 100644
  		__preempt_count_sub(PREEMPT_ACTIVE);
  
  		/*
-@@ -2935,7 +3171,8 @@ EXPORT_SYMBOL(sleep_on_timeout);
+@@ -2934,7 +3170,8 @@ EXPORT_SYMBOL(sleep_on_timeout);
   * This function changes the 'effective' priority of a task. It does
   * not touch ->normal_prio like __setscheduler().
   *
@@ -20245,7 +20242,7 @@ index 459cc86..ed7b54d 100644
   */
  void rt_mutex_setprio(struct task_struct *p, int prio)
  {
-@@ -3222,9 +3459,8 @@ __setparam_dl(struct task_struct *p, const struct sched_attr *attr)
+@@ -3221,9 +3458,8 @@ __setparam_dl(struct task_struct *p, const struct sched_attr *attr)
  	dl_se->dl_new = 1;
  }
  
@@ -20257,7 +20254,7 @@ index 459cc86..ed7b54d 100644
  {
  	int policy = attr->sched_policy;
  
-@@ -3244,9 +3480,21 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
+@@ -3243,9 +3479,21 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
  	 * getparam()/getattr() don't report silly values for !rt tasks.
  	 */
  	p->rt_priority = attr->sched_priority;
@@ -20281,7 +20278,7 @@ index 459cc86..ed7b54d 100644
  
  	if (dl_prio(p->prio))
  		p->sched_class = &dl_sched_class;
-@@ -3254,8 +3502,6 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
+@@ -3253,8 +3501,6 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
  		p->sched_class = &rt_sched_class;
  	else
  		p->sched_class = &fair_sched_class;
@@ -20290,7 +20287,7 @@ index 459cc86..ed7b54d 100644
  }
  
  static void
-@@ -3331,6 +3577,8 @@ static int __sched_setscheduler(struct task_struct *p,
+@@ -3330,6 +3576,8 @@ static int __sched_setscheduler(struct task_struct *p,
  				const struct sched_attr *attr,
  				bool user)
  {
@@ -20299,7 +20296,7 @@ index 459cc86..ed7b54d 100644
  	int retval, oldprio, oldpolicy = -1, on_rq, running;
  	int policy = attr->sched_policy;
  	unsigned long flags;
-@@ -3455,6 +3703,7 @@ recheck:
+@@ -3454,6 +3702,7 @@ recheck:
  		if (dl_policy(policy))
  			goto change;
  
@@ -20307,7 +20304,7 @@ index 459cc86..ed7b54d 100644
  		task_rq_unlock(rq, p, &flags);
  		return 0;
  	}
-@@ -3508,6 +3757,24 @@ change:
+@@ -3507,6 +3756,24 @@ change:
  		return -EBUSY;
  	}
  
@@ -20332,7 +20329,7 @@ index 459cc86..ed7b54d 100644
  	on_rq = p->on_rq;
  	running = task_current(rq, p);
  	if (on_rq)
-@@ -3515,16 +3782,18 @@ change:
+@@ -3514,16 +3781,18 @@ change:
  	if (running)
  		p->sched_class->put_prev_task(rq, p);
  
@@ -20356,7 +20353,7 @@ index 459cc86..ed7b54d 100644
  
  	check_class_changed(rq, p, prev_class, oldprio);
  	preempt_disable(); /* avoid rq from going away on us */
-@@ -4140,9 +4409,16 @@ SYSCALL_DEFINE0(sched_yield)
+@@ -4139,9 +4408,16 @@ SYSCALL_DEFINE0(sched_yield)
  
  static void __cond_resched(void)
  {
@@ -20376,7 +20373,7 @@ index 459cc86..ed7b54d 100644
  }
  
  int __sched _cond_resched(void)
-@@ -4183,6 +4459,7 @@ int __cond_resched_lock(spinlock_t *lock)
+@@ -4182,6 +4458,7 @@ int __cond_resched_lock(spinlock_t *lock)
  }
  EXPORT_SYMBOL(__cond_resched_lock);
  
@@ -20384,7 +20381,7 @@ index 459cc86..ed7b54d 100644
  int __sched __cond_resched_softirq(void)
  {
  	BUG_ON(!in_softirq());
-@@ -4196,6 +4473,7 @@ int __sched __cond_resched_softirq(void)
+@@ -4195,6 +4472,7 @@ int __sched __cond_resched_softirq(void)
  	return 0;
  }
  EXPORT_SYMBOL(__cond_resched_softirq);
@@ -20392,7 +20389,7 @@ index 459cc86..ed7b54d 100644
  
  /**
   * yield - yield the current processor to other threads.
-@@ -4549,6 +4827,7 @@ void init_idle(struct task_struct *idle, int cpu)
+@@ -4548,6 +4826,7 @@ void init_idle(struct task_struct *idle, int cpu)
  	rcu_read_unlock();
  
  	rq->curr = rq->idle = idle;
@@ -20400,7 +20397,7 @@ index 459cc86..ed7b54d 100644
  #if defined(CONFIG_SMP)
  	idle->on_cpu = 1;
  #endif
-@@ -4556,7 +4835,9 @@ void init_idle(struct task_struct *idle, int cpu)
+@@ -4555,7 +4834,9 @@ void init_idle(struct task_struct *idle, int cpu)
  
  	/* Set the preempt count _outside_ the spinlocks! */
  	init_idle_preempt_count(idle, cpu);
@@ -20411,7 +20408,7 @@ index 459cc86..ed7b54d 100644
  	/*
  	 * The idle tasks have their own, simple scheduling class:
  	 */
-@@ -4571,11 +4852,90 @@ void init_idle(struct task_struct *idle, int cpu)
+@@ -4570,11 +4851,90 @@ void init_idle(struct task_struct *idle, int cpu)
  #ifdef CONFIG_SMP
  void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
  {
@@ -20506,7 +20503,7 @@ index 459cc86..ed7b54d 100644
  }
  
  /*
-@@ -4621,7 +4981,7 @@ int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask)
+@@ -4620,7 +4980,7 @@ int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask)
  	do_set_cpus_allowed(p, new_mask);
  
  	/* Can the task run on the task's current CPU? If so, we're done */
@@ -20515,7 +20512,7 @@ index 459cc86..ed7b54d 100644
  		goto out;
  
  	dest_cpu = cpumask_any_and(cpu_active_mask, new_mask);
-@@ -4758,6 +5118,8 @@ static int migration_cpu_stop(void *data)
+@@ -4757,6 +5117,8 @@ static int migration_cpu_stop(void *data)
  
  #ifdef CONFIG_HOTPLUG_CPU
  
@@ -20524,7 +20521,7 @@ index 459cc86..ed7b54d 100644
  /*
   * Ensures that the idle task is using init_mm right before its cpu goes
   * offline.
-@@ -4770,7 +5132,12 @@ void idle_task_exit(void)
+@@ -4769,7 +5131,12 @@ void idle_task_exit(void)
  
  	if (mm != &init_mm)
  		switch_mm(mm, &init_mm, current);
@@ -20538,7 +20535,7 @@ index 459cc86..ed7b54d 100644
  }
  
  /*
-@@ -5094,6 +5461,10 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
+@@ -5093,6 +5460,10 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
  
  	case CPU_DEAD:
  		calc_load_migrate(rq);
@@ -20549,7 +20546,7 @@ index 459cc86..ed7b54d 100644
  		break;
  #endif
  	}
-@@ -7002,7 +7373,8 @@ void __init sched_init(void)
+@@ -7001,7 +7372,8 @@ void __init sched_init(void)
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  static inline int preempt_count_equals(int preempt_offset)
  {
@@ -20559,7 +20556,7 @@ index 459cc86..ed7b54d 100644
  
  	return (nested == preempt_offset);
  }
-@@ -7012,7 +7384,8 @@ void __might_sleep(const char *file, int line, int preempt_offset)
+@@ -7011,7 +7383,8 @@ void __might_sleep(const char *file, int line, int preempt_offset)
  	static unsigned long prev_jiffy;	/* ratelimiting */
  
  	rcu_sleep_check(); /* WARN_ON_ONCE() by default, no rate limit reqd. */
@@ -20569,7 +20566,7 @@ index 459cc86..ed7b54d 100644
  	    system_state != SYSTEM_RUNNING || oops_in_progress)
  		return;
  	if (time_before(jiffies, prev_jiffy + HZ) && prev_jiffy)
-@@ -7030,6 +7403,13 @@ void __might_sleep(const char *file, int line, int preempt_offset)
+@@ -7029,6 +7402,13 @@ void __might_sleep(const char *file, int line, int preempt_offset)
  	debug_show_held_locks(current);
  	if (irqs_disabled())
  		print_irqtrace_events(current);
@@ -25617,28 +25614,6 @@ index e0731c3..33aaebd 100644
  
  	db = get_bucket((unsigned long) addr);
  
-diff --git a/lib/dump_stack.c b/lib/dump_stack.c
-index f23b63f..b39c60b 100644
---- a/lib/dump_stack.c
-+++ b/lib/dump_stack.c
-@@ -33,7 +33,7 @@ asmlinkage void dump_stack(void)
- 	 * Permit this cpu to perform nested stack dumps while serialising
- 	 * against other CPUs
- 	 */
--	preempt_disable();
-+	migrate_disable();
- 
- retry:
- 	cpu = smp_processor_id();
-@@ -52,7 +52,7 @@ retry:
- 	if (!was_locked)
- 		atomic_set(&dump_lock, -1);
- 
--	preempt_enable();
-+	migrate_enable();
- }
- #else
- asmlinkage void dump_stack(void)
 diff --git a/lib/idr.c b/lib/idr.c
 index 674c30b..c9a8dbc 100644
 --- a/lib/idr.c
