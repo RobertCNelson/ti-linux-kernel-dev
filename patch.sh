@@ -659,6 +659,19 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/wl18xx"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/wl18xx/0001-wl18xx-R8.6_SP1.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -771,7 +784,7 @@ quieter () {
 	${git} "${DIR}/patches/quieter/0003-quiet-vgaarb-use-pr_info-over-pr_err.patch"
 	${git} "${DIR}/patches/quieter/0004-quiet-arch-arm-mach-omap2-voltage.c-legacy-harmless.patch"
 	${git} "${DIR}/patches/quieter/0005-quiet-drivers-gpu-drm-tilcdc-tilcdc_crtc.c-dev_info-.patch"
-	${git} "${DIR}/patches/quieter/0006-quiet-drivers-net-wireless-ti-wl18xx-main.c.patch"
+#	${git} "${DIR}/patches/quieter/0006-quiet-drivers-net-wireless-ti-wl18xx-main.c.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=6
