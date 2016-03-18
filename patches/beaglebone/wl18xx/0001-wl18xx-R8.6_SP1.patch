@@ -1,0 +1,1154 @@
+From 3f28a846d4ef922b673c425fc978e75077964706 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Fri, 18 Mar 2016 10:20:33 -0500
+Subject: [PATCH] wl18xx-R8.6_SP1
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/net/wireless/ti/wl18xx/debugfs.c  | 123 ++++++++++++++++++++++++++
+ drivers/net/wireless/ti/wl18xx/event.c    |   6 +-
+ drivers/net/wireless/ti/wl18xx/event.h    |   1 +
+ drivers/net/wireless/ti/wl18xx/main.c     |  75 +++++++++++-----
+ drivers/net/wireless/ti/wlcore/cmd.h      |   2 +-
+ drivers/net/wireless/ti/wlcore/debugfs.c  |  96 ++++++++++++++++++++
+ drivers/net/wireless/ti/wlcore/event.c    |  82 +++++++++++++++++
+ drivers/net/wireless/ti/wlcore/event.h    |   9 ++
+ drivers/net/wireless/ti/wlcore/init.c     |   6 ++
+ drivers/net/wireless/ti/wlcore/io.c       |  11 +--
+ drivers/net/wireless/ti/wlcore/io.h       |   4 +-
+ drivers/net/wireless/ti/wlcore/main.c     | 141 +++++++++++-------------------
+ drivers/net/wireless/ti/wlcore/rx.c       |  13 ++-
+ drivers/net/wireless/ti/wlcore/sdio.c     |   3 +
+ drivers/net/wireless/ti/wlcore/spi.c      |  10 +--
+ drivers/net/wireless/ti/wlcore/sysfs.c    |  26 ------
+ drivers/net/wireless/ti/wlcore/wlcore.h   |  12 ++-
+ drivers/net/wireless/ti/wlcore/wlcore_i.h |   4 +
+ 18 files changed, 468 insertions(+), 156 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wl18xx/debugfs.c b/drivers/net/wireless/ti/wl18xx/debugfs.c
+index 911ae9a..432192d 100644
+--- a/drivers/net/wireless/ti/wl18xx/debugfs.c
++++ b/drivers/net/wireless/ti/wl18xx/debugfs.c
+@@ -296,6 +296,127 @@ static const struct file_operations radar_detection_ops = {
+ 	.llseek = default_llseek,
+ };
+ 
++static ssize_t radar_debug_mode_write(struct file *file,
++				      const char __user *user_buf,
++				      size_t count, loff_t *ppos)
++{
++	struct wl1271 *wl = file->private_data;
++	struct wl12xx_vif *wlvif;
++	unsigned long value;
++	int ret;
++
++	ret = kstrtoul_from_user(user_buf, count, 10, &value);
++	if (ret < 0) {
++		wl1271_warning("illegal value in radar_debug_mode!");
++		return -EINVAL;
++	}
++
++	/* valid values: 0/1 */
++	if (!(value == 0 || value == 1)) {
++		wl1271_warning("value is not in valid!");
++		return -EINVAL;
++	}
++
++	mutex_lock(&wl->mutex);
++
++	wl->radar_debug_mode = value;
++
++	if (unlikely(wl->state != WLCORE_STATE_ON))
++		goto out;
++
++	ret = wl1271_ps_elp_wakeup(wl);
++	if (ret < 0)
++		goto out;
++
++	wl12xx_for_each_wlvif_ap(wl, wlvif) {
++		wlcore_cmd_generic_cfg(wl, wlvif,
++				       WLCORE_CFG_FEATURE_RADAR_DEBUG,
++				       wl->radar_debug_mode, 0);
++	}
++
++	wl1271_ps_elp_sleep(wl);
++out:
++	mutex_unlock(&wl->mutex);
++	return count;
++}
++
++static ssize_t radar_debug_mode_read(struct file *file,
++				     char __user *userbuf,
++				     size_t count, loff_t *ppos)
++{
++	struct wl1271 *wl = file->private_data;
++	return wl1271_format_buffer(userbuf, count, ppos,
++				    "%d\n", wl->radar_debug_mode);
++}
++
++static const struct file_operations radar_debug_mode_ops = {
++	.write = radar_debug_mode_write,
++	.read = radar_debug_mode_read,
++	.open = simple_open,
++	.llseek = default_llseek,
++};
++
++static ssize_t diversity_mode_write(struct file *file,
++				    const char __user *user_buf,
++				    size_t count, loff_t *ppos)
++{
++	struct wl1271 *wl = file->private_data;
++	struct wl12xx_vif *wlvif;
++	unsigned long value;
++	int ret;
++
++	ret = kstrtoul_from_user(user_buf, count, 10, &value);
++	if (ret < 0) {
++		wl1271_warning("illegal value in diversity mode!");
++		return -EINVAL;
++	}
++
++	/* valid values: 0/1 */
++	if (!(value == 0 || value == 1)) {
++		wl1271_warning("value is not in valid!");
++		return -EINVAL;
++	}
++
++	mutex_lock(&wl->mutex);
++
++	wl->diversity_mode = value;
++
++	if (unlikely(wl->state != WLCORE_STATE_ON))
++		goto out;
++
++	ret = wl1271_ps_elp_wakeup(wl);
++	if (ret < 0)
++		goto out;
++
++	wl12xx_for_each_wlvif(wl, wlvif) {
++		wlcore_cmd_generic_cfg(wl, wlvif,
++				       WLCORE_CFG_FEATURE_DIVERSITY_MODE,
++				       wl->diversity_mode, 0);
++	}
++
++	wl1271_ps_elp_sleep(wl);
++out:
++	mutex_unlock(&wl->mutex);
++	return count;
++}
++
++static ssize_t diversity_mode_read(struct file *file,
++				   char __user *userbuf,
++				   size_t count, loff_t *ppos)
++{
++	struct wl1271 *wl = file->private_data;
++
++	return wl1271_format_buffer(userbuf, count, ppos,
++					"%d\n", wl->diversity_mode);
++}
++
++static const struct file_operations diversity_mode_ops = {
++	.write = diversity_mode_write,
++	.read = diversity_mode_read,
++	.open = simple_open,
++	.llseek = default_llseek,
++};
++
+ static ssize_t dynamic_fw_traces_write(struct file *file,
+ 					const char __user *user_buf,
+ 					size_t count, loff_t *ppos)
+@@ -511,7 +632,9 @@ int wl18xx_debugfs_add_files(struct wl1271 *wl,
+ 
+ 	DEBUGFS_ADD(conf, moddir);
+ 	DEBUGFS_ADD(radar_detection, moddir);
++	DEBUGFS_ADD(radar_debug_mode, moddir);
+ 	DEBUGFS_ADD(dynamic_fw_traces, moddir);
++	DEBUGFS_ADD(diversity_mode, moddir);
+ 
+ 	return 0;
+ 
+diff --git a/drivers/net/wireless/ti/wl18xx/event.c b/drivers/net/wireless/ti/wl18xx/event.c
+index e0bc8a2..04d65c5 100644
+--- a/drivers/net/wireless/ti/wl18xx/event.c
++++ b/drivers/net/wireless/ti/wl18xx/event.c
+@@ -146,7 +146,8 @@ int wl18xx_process_mailbox_events(struct wl1271 *wl)
+ 			    mbox->radar_channel,
+ 			    wl18xx_radar_type_decode(mbox->radar_type));
+ 
+-		ieee80211_radar_detected(wl->hw);
++		if (!wl->radar_debug_mode)
++			ieee80211_radar_detected(wl->hw);
+ 	}
+ 
+ 	if (vector & PERIODIC_SCAN_REPORT_EVENT_ID) {
+@@ -264,6 +265,9 @@ int wl18xx_process_mailbox_events(struct wl1271 *wl)
+ 				wl->links[link_id].addr),
+ 			win_size);
+ 	}
++	if (vector & FW_LOGGER_INDICATION)
++		wlcore_event_fw_logger(wl);
++
+ 
+ out_event:
+ 
+diff --git a/drivers/net/wireless/ti/wl18xx/event.h b/drivers/net/wireless/ti/wl18xx/event.h
+index 9495fad..d6bfd53 100644
+--- a/drivers/net/wireless/ti/wl18xx/event.h
++++ b/drivers/net/wireless/ti/wl18xx/event.h
+@@ -42,6 +42,7 @@ enum {
+ 	SMART_CONFIG_SYNC_EVENT_ID               = BIT(22),
+ 	SMART_CONFIG_DECODE_EVENT_ID             = BIT(23),
+ 	TIME_SYNC_EVENT_ID                       = BIT(24),
++	FW_LOGGER_INDICATION			 = BIT(25),
+ };
+ 
+ enum wl18xx_radar_types {
+diff --git a/drivers/net/wireless/ti/wl18xx/main.c b/drivers/net/wireless/ti/wl18xx/main.c
+index 3d55a5e..2e7b330 100644
+--- a/drivers/net/wireless/ti/wl18xx/main.c
++++ b/drivers/net/wireless/ti/wl18xx/main.c
+@@ -461,7 +461,7 @@ static struct wlcore_conf wl18xx_conf = {
+ 	},
+ 	.fwlog = {
+ 		.mode                         = WL12XX_FWLOG_CONTINUOUS,
+-		.mem_blocks                   = 2,
++		.mem_blocks                   = 0,
+ 		.severity                     = 0,
+ 		.timestamp                    = WL12XX_FWLOG_TIMESTAMP_DISABLED,
+ 		.output                       = WL12XX_FWLOG_OUTPUT_DBG_PINS,
+@@ -584,7 +584,7 @@ static const struct wlcore_partition_set wl18xx_ptable[PART_TABLE_LEN] = {
+ 		.mem  = { .start = 0x00A00000, .size  = 0x00012000 },
+ 		.reg  = { .start = 0x00807000, .size  = 0x00005000 },
+ 		.mem2 = { .start = 0x00800000, .size  = 0x0000B000 },
+-		.mem3 = { .start = 0x00000000, .size  = 0x00000000 },
++		.mem3 = { .start = 0x00401594, .size  = 0x00001020 },
+ 	},
+ 	[PART_DOWN] = {
+ 		.mem  = { .start = 0x00000000, .size  = 0x00014000 },
+@@ -602,7 +602,7 @@ static const struct wlcore_partition_set wl18xx_ptable[PART_TABLE_LEN] = {
+ 		.mem  = { .start = 0x00800000, .size  = 0x000050FC },
+ 		.reg  = { .start = 0x00B00404, .size  = 0x00001000 },
+ 		.mem2 = { .start = 0x00C00000, .size  = 0x00000400 },
+-		.mem3 = { .start = 0x00000000, .size  = 0x00000000 },
++		.mem3 = { .start = 0x00401594, .size  = 0x00001020 },
+ 	},
+ 	[PART_PHY_INIT] = {
+ 		.mem  = { .start = WL18XX_PHY_INIT_MEM_ADDR,
+@@ -1030,7 +1030,8 @@ static int wl18xx_boot(struct wl1271 *wl)
+ 		SMART_CONFIG_SYNC_EVENT_ID |
+ 		SMART_CONFIG_DECODE_EVENT_ID |
+ 		RX_BA_WIN_SIZE_CHANGE_EVENT_ID |
+-		TIME_SYNC_EVENT_ID;
++		TIME_SYNC_EVENT_ID |
++		FW_LOGGER_INDICATION;
+ 
+ 	wl->ap_event_mask = MAX_TX_FAILURE_EVENT_ID;
+ 
+@@ -1176,6 +1177,13 @@ static int wl18xx_hw_init(struct wl1271 *wl)
+ 	return ret;
+ }
+ 
++static int wl18xx_init_vif(struct wl1271 *wl, struct wl12xx_vif *wlvif)
++{
++	return wlcore_cmd_generic_cfg(wl, wlvif,
++				      WLCORE_CFG_FEATURE_DIVERSITY_MODE,
++				      wl->diversity_mode, 0);
++}
++
+ static void wl18xx_convert_fw_status(struct wl1271 *wl, void *raw_fw_status,
+ 				     struct wl_fw_status *fw_status)
+ {
+@@ -1384,24 +1392,24 @@ out:
+ 
+ #define WL18XX_CONF_FILE_NAME "ti-connectivity/wl18xx-conf.bin"
+ 
+-static int wl18xx_load_conf_file(struct device *dev, struct wlcore_conf *conf,
+-				 struct wl18xx_priv_conf *priv_conf)
++static struct wlcore_conf_file *
++wl18xx_load_conf_file(struct device *dev, const struct firmware **_fw)
+ {
+ 	struct wlcore_conf_file *conf_file;
+ 	const struct firmware *fw;
+ 	int ret;
+ 
+-	ret = request_firmware(&fw, WL18XX_CONF_FILE_NAME, dev);
++	ret = request_firmware(_fw, WL18XX_CONF_FILE_NAME, dev);
+ 	if (ret < 0) {
+-		wl1271_error("could not get configuration binary %s: %d",
++		wl1271_info("could not get configuration binary %s: %d",
+ 			     WL18XX_CONF_FILE_NAME, ret);
+-		return ret;
++		return NULL;
+ 	}
+ 
++	fw = *_fw;
+ 	if (fw->size != WL18XX_CONF_SIZE) {
+-		wl1271_error("configuration binary file size is wrong, expected %zu got %zu",
++		wl1271_info("configuration binary file size is wrong, expected %zu got %zu",
+ 			     WL18XX_CONF_SIZE, fw->size);
+-		ret = -EINVAL;
+ 		goto out_release;
+ 	}
+ 
+@@ -1411,7 +1419,6 @@ static int wl18xx_load_conf_file(struct device *dev, struct wlcore_conf *conf,
+ 		wl1271_error("configuration binary file magic number mismatch, "
+ 			     "expected 0x%0x got 0x%0x", WL18XX_CONF_MAGIC,
+ 			     conf_file->header.magic);
+-		ret = -EINVAL;
+ 		goto out_release;
+ 	}
+ 
+@@ -1419,27 +1426,32 @@ static int wl18xx_load_conf_file(struct device *dev, struct wlcore_conf *conf,
+ 		wl1271_error("configuration binary file version not supported, "
+ 			     "expected 0x%08x got 0x%08x",
+ 			     WL18XX_CONF_VERSION, conf_file->header.version);
+-		ret = -EINVAL;
+ 		goto out_release;
+ 	}
+ 
+-	memcpy(conf, &conf_file->core, sizeof(*conf));
+-	memcpy(priv_conf, &conf_file->priv, sizeof(*priv_conf));
++	return conf_file;
+ 
+ out_release:
+ 	release_firmware(fw);
+-	return ret;
++	return NULL;
+ }
+ 
+ static int wl18xx_conf_init(struct wl1271 *wl, struct device *dev)
+ {
+ 	struct wl18xx_priv *priv = wl->priv;
++	struct wlcore_conf_file *conf_file;
++	const struct firmware *fw;
+ 
+-	if (wl18xx_load_conf_file(dev, &wl->conf, &priv->conf) < 0) {
++	conf_file = wl18xx_load_conf_file(dev, &fw);
++	if (conf_file) {
++		memcpy(&wl->conf, &conf_file->core, sizeof(wl18xx_conf));
++		memcpy(&priv->conf, &conf_file->priv, sizeof(priv->conf));
++		release_firmware(fw);
++	} else {
+ 		wl1271_warning("falling back to default config");
+ 
+ 		/* apply driver default configuration */
+-		memcpy(&wl->conf, &wl18xx_conf, sizeof(wl->conf));
++		memcpy(&wl->conf, &wl18xx_conf, sizeof(wl18xx_conf));
+ 		/* apply default private configuration */
+ 		memcpy(&priv->conf, &wl18xx_default_priv_conf,
+ 		       sizeof(priv->conf));
+@@ -1713,6 +1725,7 @@ static struct wlcore_ops wl18xx_ops = {
+ 	.tx_immediate_compl = wl18xx_tx_immediate_completion,
+ 	.tx_delayed_compl = NULL,
+ 	.hw_init	= wl18xx_hw_init,
++	.init_vif	= wl18xx_init_vif,
+ 	.convert_fw_status = wl18xx_convert_fw_status,
+ 	.set_tx_desc_csum = wl18xx_set_tx_desc_csum,
+ 	.get_pg_ver	= wl18xx_get_pg_ver,
+@@ -1886,6 +1899,28 @@ wl18xx_iface_combinations[] = {
+ 					BIT(NL80211_CHAN_HT20) |
+ 					BIT(NL80211_CHAN_HT40MINUS) |
+ 					BIT(NL80211_CHAN_HT40PLUS),
++	},
++	{
++		.max_interfaces = 3,
++		.limits = wl18xx_iface_ap_cl_limits,
++		.n_limits = ARRAY_SIZE(wl18xx_iface_ap_cl_limits),
++		.num_different_channels = 2,
++	},
++	{
++		.max_interfaces = 3,
++		.limits = wl18xx_iface_ap_cl_limits,
++		.n_limits = ARRAY_SIZE(wl18xx_iface_ap_cl_limits),
++		.num_different_channels = 1,
++		.radar_detect_widths =  BIT(NL80211_CHAN_NO_HT) |
++					BIT(NL80211_CHAN_HT20) |
++					BIT(NL80211_CHAN_HT40MINUS) |
++					BIT(NL80211_CHAN_HT40PLUS),
++	},
++	{
++		.max_interfaces = 3,
++		.limits = wl18xx_iface_ap_go_limits,
++		.n_limits = ARRAY_SIZE(wl18xx_iface_ap_go_limits),
++		.num_different_channels = 1,
+ 	}
+ };
+ 
+@@ -2005,10 +2040,8 @@ static int wl18xx_setup(struct wl1271 *wl)
+ 				  &wl18xx_siso20_ht_cap);
+ 	}
+ 
+-	if (!checksum_param) {
++	if (!checksum_param)
+ 		wl18xx_ops.set_rx_csum = NULL;
+-		wl18xx_ops.init_vif = NULL;
+-	}
+ 
+ 	/* Enable 11a Band only if we have 5G antennas */
+ 	wl->enable_11a = (priv->conf.phy.number_of_assembled_ant5 != 0);
+diff --git a/drivers/net/wireless/ti/wlcore/cmd.h b/drivers/net/wireless/ti/wlcore/cmd.h
+index 8dc46c0..deb8475 100644
+--- a/drivers/net/wireless/ti/wlcore/cmd.h
++++ b/drivers/net/wireless/ti/wlcore/cmd.h
+@@ -626,7 +626,6 @@ struct wl12xx_cmd_remove_peer {
+  */
+ enum wl12xx_fwlogger_log_mode {
+ 	WL12XX_FWLOG_CONTINUOUS,
+-	WL12XX_FWLOG_ON_DEMAND
+ };
+ 
+ /* Include/exclude timestamps from the log messages */
+@@ -655,6 +654,7 @@ struct wl12xx_cmd_regdomain_dfs_config {
+ } __packed;
+ 
+ enum wlcore_generic_cfg_feature {
++	WLCORE_CFG_FEATURE_DIVERSITY_MODE = 1,
+ 	WLCORE_CFG_FEATURE_RADAR_DEBUG = 2,
+ };
+ 
+diff --git a/drivers/net/wireless/ti/wlcore/debugfs.c b/drivers/net/wireless/ti/wlcore/debugfs.c
+index eb43f94..cbf1eb0 100644
+--- a/drivers/net/wireless/ti/wlcore/debugfs.c
++++ b/drivers/net/wireless/ti/wlcore/debugfs.c
+@@ -26,6 +26,7 @@
+ #include <linux/skbuff.h>
+ #include <linux/slab.h>
+ #include <linux/module.h>
++#include <linux/interrupt.h>
+ 
+ #include "wlcore.h"
+ #include "debug.h"
+@@ -1234,6 +1235,99 @@ static const struct file_operations dev_mem_ops = {
+ 	.llseek = dev_mem_seek,
+ };
+ 
++static ssize_t irq_type_read(struct file *file, char __user *user_buf,
++			     size_t count, loff_t *ppos)
++{
++	struct wl1271 *wl = file->private_data;
++	const char *wlcore_irq_type;
++
++	switch (wl->irq_flags & IRQF_TRIGGER_MASK) {
++	case IRQF_TRIGGER_RISING:
++		wlcore_irq_type = "RISING EDGE";
++		break;
++	case IRQF_TRIGGER_FALLING:
++		wlcore_irq_type = "FALLING EDGE";
++		break;
++	case IRQF_TRIGGER_HIGH:
++		wlcore_irq_type = "LEVEL HIGH";
++		break;
++	case IRQF_TRIGGER_LOW:
++		wlcore_irq_type = "LEVEL LOW";
++		break;
++	default:
++		wlcore_irq_type = "NONE";
++	}
++
++	return wl1271_format_buffer(user_buf, count,
++				ppos, "%s\n",
++				wlcore_irq_type);
++}
++
++static const struct file_operations irq_type_ops = {
++	.read = irq_type_read,
++	.open = simple_open,
++	.llseek = default_llseek,
++};
++
++static ssize_t fw_logger_read(struct file *file, char __user *user_buf,
++			      size_t count, loff_t *ppos)
++{
++	struct wl1271 *wl = file->private_data;
++
++	return wl1271_format_buffer(user_buf, count,
++					ppos, "%d\n",
++					wl->conf.fwlog.output);
++}
++
++static ssize_t fw_logger_write(struct file *file,
++			       const char __user *user_buf,
++			       size_t count, loff_t *ppos)
++{
++	struct wl1271 *wl = file->private_data;
++	unsigned long value;
++	int ret;
++
++	ret = kstrtoul_from_user(user_buf, count, 0, &value);
++	if (ret < 0) {
++		wl1271_warning("illegal value in fw_logger");
++		return -EINVAL;
++	}
++
++	if ((value > 2) || (value == 0)) {
++		wl1271_warning("fw_logger value must be 1-UART 2-SDIO");
++		return -ERANGE;
++	}
++
++	if (wl->conf.fwlog.output == 0) {
++		wl1271_warning("iligal opperation - fw logger disabled by default, please change mode via wlconf");
++		return -EINVAL;
++	}
++
++	mutex_lock(&wl->mutex);
++	ret = wl1271_ps_elp_wakeup(wl);
++	if (ret < 0) {
++		count = ret;
++		goto out;
++	}
++
++	wl->conf.fwlog.output = value;
++
++	ret = wl12xx_cmd_config_fwlog(wl);
++
++	wl1271_ps_elp_sleep(wl);
++
++out:
++	mutex_unlock(&wl->mutex);
++	return count;
++}
++
++static const struct file_operations fw_logger_ops = {
++	.open = simple_open,
++	.read = fw_logger_read,
++	.write = fw_logger_write,
++	.llseek = default_llseek,
++};
++
+ static int wl1271_debugfs_add_files(struct wl1271 *wl,
+ 				    struct dentry *rootdir)
+ {
+@@ -1260,6 +1354,8 @@ static int wl1271_debugfs_add_files(struct wl1271 *wl,
+ 	DEBUGFS_ADD(irq_timeout, rootdir);
+ 	DEBUGFS_ADD(fw_stats_raw, rootdir);
+ 	DEBUGFS_ADD(sleep_auth, rootdir);
++	DEBUGFS_ADD(irq_type, rootdir);
++	DEBUGFS_ADD(fw_logger, rootdir);
+ 
+ 	streaming = debugfs_create_dir("rx_streaming", rootdir);
+ 	if (!streaming || IS_ERR(streaming))
+diff --git a/drivers/net/wireless/ti/wlcore/event.c b/drivers/net/wireless/ti/wlcore/event.c
+index c42e789..a613feb 100644
+--- a/drivers/net/wireless/ti/wlcore/event.c
++++ b/drivers/net/wireless/ti/wlcore/event.c
+@@ -28,6 +28,88 @@
+ #include "ps.h"
+ #include "scan.h"
+ #include "wl12xx_80211.h"
++#include "hw_ops.h"
++
++#define WL18XX_LOGGER_SDIO_BUFF_MAX	(0x1020)
++#define WL18XX_DATA_RAM_BASE_ADDRESS	(0x20000000)
++#define WL18XX_LOGGER_SDIO_BUFF_ADDR	(0x40159c)
++#define WL18XX_LOGGER_BUFF_OFFSET	(sizeof(struct fw_logger_information))
++#define WL18XX_LOGGER_READ_POINT_OFFSET		(12)
++
++int wlcore_event_fw_logger(struct wl1271 *wl)
++{
++	u32 ret;
++	struct fw_logger_information fw_log;
++	u8  *buffer;
++	u32 internal_fw_addrbase = WL18XX_DATA_RAM_BASE_ADDRESS;
++	u32 addr = WL18XX_LOGGER_SDIO_BUFF_ADDR;
++	u32 end_buff_addr = WL18XX_LOGGER_SDIO_BUFF_ADDR +
++				WL18XX_LOGGER_BUFF_OFFSET;
++	u32 available_len;
++	u32 actual_len;
++	u32 clear_addr;
++	size_t len;
++	u32 start_loc;
++
++	buffer = kzalloc(WL18XX_LOGGER_SDIO_BUFF_MAX, GFP_KERNEL);
++	if (!buffer) {
++		wl1271_error("Fail to allocate fw logger memory");
++		fw_log.actual_buff_size = cpu_to_le32(0);
++		goto out;
++	}
++
++	ret = wlcore_read(wl, addr, buffer, WL18XX_LOGGER_SDIO_BUFF_MAX,
++			  false);
++	if (ret < 0) {
++		wl1271_error("Fail to read logger buffer, error_id = %d",
++			     ret);
++		fw_log.actual_buff_size = cpu_to_le32(0);
++		goto free_out;
++	}
++
++	memcpy(&fw_log, buffer, sizeof(fw_log));
++
++	if (le32_to_cpu(fw_log.actual_buff_size) == 0)
++		goto free_out;
++
++	actual_len = le32_to_cpu(fw_log.actual_buff_size);
++	start_loc = (le32_to_cpu(fw_log.buff_read_ptr) - internal_fw_addrbase) -
++				addr;
++	end_buff_addr += le32_to_cpu(fw_log.max_buff_size);
++	available_len = end_buff_addr -
++			(le32_to_cpu(fw_log.buff_read_ptr) -
++			 internal_fw_addrbase);
++	actual_len = min(actual_len, available_len);
++	len = actual_len;
++
++	wl12xx_copy_fwlog(wl, &buffer[start_loc], len);
++	clear_addr = addr + start_loc + le32_to_cpu(fw_log.actual_buff_size) +
++			internal_fw_addrbase;
++
++	len = le32_to_cpu(fw_log.actual_buff_size) - len;
++	if (len) {
++		wl12xx_copy_fwlog(wl,
++				  &buffer[WL18XX_LOGGER_BUFF_OFFSET],
++				  len);
++		clear_addr = addr + WL18XX_LOGGER_BUFF_OFFSET + len +
++				internal_fw_addrbase;
++	}
++
++	/* double check that clear address and write pointer are the same */
++	if (clear_addr != le32_to_cpu(fw_log.buff_write_ptr)) {
++		wl1271_error("Calculate of clear addr Clear = %x, write = %x",
++			     clear_addr, le32_to_cpu(fw_log.buff_write_ptr));
++	}
++
++	/* indicate FW about Clear buffer */
++	ret = wlcore_write32(wl, addr + WL18XX_LOGGER_READ_POINT_OFFSET,
++			     fw_log.buff_write_ptr);
++free_out:
++	kfree(buffer);
++out:
++	return le32_to_cpu(fw_log.actual_buff_size);
++}
++EXPORT_SYMBOL_GPL(wlcore_event_fw_logger);
+ 
+ void wlcore_event_rssi_trigger(struct wl1271 *wl, s8 *metric_arr)
+ {
+diff --git a/drivers/net/wireless/ti/wlcore/event.h b/drivers/net/wireless/ti/wlcore/event.h
+index acc7a59..75e8e98 100644
+--- a/drivers/net/wireless/ti/wlcore/event.h
++++ b/drivers/net/wireless/ti/wlcore/event.h
+@@ -64,6 +64,14 @@ enum {
+ 
+ #define NUM_OF_RSSI_SNR_TRIGGERS 8
+ 
++struct fw_logger_information {
++	__le32 max_buff_size;
++	__le32 actual_buff_size;
++	__le32 num_trace_drop;
++	__le32 buff_read_ptr;
++	__le32 buff_write_ptr;
++} __packed;
++
+ struct wl1271;
+ 
+ int wl1271_event_unmask(struct wl1271 *wl);
+@@ -84,4 +92,5 @@ void wlcore_event_max_tx_failure(struct wl1271 *wl, unsigned long sta_bitmap);
+ void wlcore_event_inactive_sta(struct wl1271 *wl, unsigned long sta_bitmap);
+ void wlcore_event_roc_complete(struct wl1271 *wl);
+ void wlcore_event_rssi_trigger(struct wl1271 *wl, s8 *metric_arr);
++int  wlcore_event_fw_logger(struct wl1271 *wl);
+ #endif
+diff --git a/drivers/net/wireless/ti/wlcore/init.c b/drivers/net/wireless/ti/wlcore/init.c
+index e92f263..2307671 100644
+--- a/drivers/net/wireless/ti/wlcore/init.c
++++ b/drivers/net/wireless/ti/wlcore/init.c
+@@ -558,6 +558,12 @@ static int wl12xx_init_ap_role(struct wl1271 *wl, struct wl12xx_vif *wlvif)
+ 	if (ret < 0)
+ 		return ret;
+ 
++
++	if (wl->radar_debug_mode)
++		wlcore_cmd_generic_cfg(wl, wlvif,
++				       WLCORE_CFG_FEATURE_RADAR_DEBUG,
++				       wl->radar_debug_mode, 0);
++
+ 	return 0;
+ }
+ 
+diff --git a/drivers/net/wireless/ti/wlcore/io.c b/drivers/net/wireless/ti/wlcore/io.c
+index 68e74ee..9ac118e 100644
+--- a/drivers/net/wireless/ti/wlcore/io.c
++++ b/drivers/net/wireless/ti/wlcore/io.c
+@@ -175,12 +175,13 @@ int wlcore_set_partition(struct wl1271 *wl,
+ 	if (ret < 0)
+ 		goto out;
+ 
+-	/*
+-	 * We don't need the size of the last partition, as it is
+-	 * automatically calculated based on the total memory size and
+-	 * the sizes of the previous partitions.
+-	 */
+ 	ret = wlcore_raw_write32(wl, HW_PART3_START_ADDR, p->mem3.start);
++	if (ret < 0)
++		goto out;
++
++	ret = wlcore_raw_write32(wl, HW_PART3_SIZE_ADDR, p->mem3.size);
++	if (ret < 0)
++		goto out;
+ 
+ out:
+ 	return ret;
+diff --git a/drivers/net/wireless/ti/wlcore/io.h b/drivers/net/wireless/ti/wlcore/io.h
+index 10cf374..6c257b5 100644
+--- a/drivers/net/wireless/ti/wlcore/io.h
++++ b/drivers/net/wireless/ti/wlcore/io.h
+@@ -36,8 +36,8 @@
+ #define HW_PART1_START_ADDR             (HW_PARTITION_REGISTERS_ADDR + 12)
+ #define HW_PART2_SIZE_ADDR              (HW_PARTITION_REGISTERS_ADDR + 16)
+ #define HW_PART2_START_ADDR             (HW_PARTITION_REGISTERS_ADDR + 20)
+-#define HW_PART3_START_ADDR             (HW_PARTITION_REGISTERS_ADDR + 24)
+-
++#define HW_PART3_SIZE_ADDR              (HW_PARTITION_REGISTERS_ADDR + 24)
++#define HW_PART3_START_ADDR             (HW_PARTITION_REGISTERS_ADDR + 28)
+ #define HW_ACCESS_REGISTER_SIZE         4
+ 
+ #define HW_ACCESS_PRAM_MAX_RANGE	0x3c000
+diff --git a/drivers/net/wireless/ti/wlcore/main.c b/drivers/net/wireless/ti/wlcore/main.c
+index 012a903..25d4200 100644
+--- a/drivers/net/wireless/ti/wlcore/main.c
++++ b/drivers/net/wireless/ti/wlcore/main.c
+@@ -1,4 +1,3 @@
+-
+ /*
+  * This file is part of wlcore
+  *
+@@ -303,25 +302,11 @@ out:
+ 
+ static void wlcore_adjust_conf(struct wl1271 *wl)
+ {
+-	/* Adjust settings according to optional module parameters */
+-
+-	/* Firmware Logger params */
+-	if (fwlog_mem_blocks != -1) {
+-		if (fwlog_mem_blocks >= CONF_FWLOG_MIN_MEM_BLOCKS &&
+-		    fwlog_mem_blocks <= CONF_FWLOG_MAX_MEM_BLOCKS) {
+-			wl->conf.fwlog.mem_blocks = fwlog_mem_blocks;
+-		} else {
+-			wl1271_error(
+-				"Illegal fwlog_mem_blocks=%d using default %d",
+-				fwlog_mem_blocks, wl->conf.fwlog.mem_blocks);
+-		}
+-	}
+ 
+ 	if (fwlog_param) {
+ 		if (!strcmp(fwlog_param, "continuous")) {
+ 			wl->conf.fwlog.mode = WL12XX_FWLOG_CONTINUOUS;
+-		} else if (!strcmp(fwlog_param, "ondemand")) {
+-			wl->conf.fwlog.mode = WL12XX_FWLOG_ON_DEMAND;
++			wl->conf.fwlog.output = WL12XX_FWLOG_OUTPUT_HOST;
+ 		} else if (!strcmp(fwlog_param, "dbgpins")) {
+ 			wl->conf.fwlog.mode = WL12XX_FWLOG_CONTINUOUS;
+ 			wl->conf.fwlog.output = WL12XX_FWLOG_OUTPUT_DBG_PINS;
+@@ -674,6 +659,10 @@ static irqreturn_t wlcore_irq(int irq, void *cookie)
+ 		wl1271_debug(DEBUG_IRQ, "should not enqueue work");
+ 		disable_irq_nosync(wl->irq);
+ 		pm_wakeup_event(wl->dev, 0);
++#ifdef CONFIG_HAS_WAKELOCK
++		if (!test_and_set_bit(WL1271_FLAG_WAKE_LOCK, &wl->flags))
++			wake_lock(&wl->wake_lock);
++#endif
+ 		spin_unlock_irqrestore(&wl->wl_lock, flags);
+ 		return IRQ_HANDLED;
+ 	}
+@@ -695,6 +684,11 @@ static irqreturn_t wlcore_irq(int irq, void *cookie)
+ 	if (!test_bit(WL1271_FLAG_FW_TX_BUSY, &wl->flags) &&
+ 	    wl1271_tx_total_queue_count(wl) > 0)
+ 		ieee80211_queue_work(wl->hw, &wl->tx_work);
++
++#ifdef CONFIG_HAS_WAKELOCK
++	if (test_and_clear_bit(WL1271_FLAG_WAKE_LOCK, &wl->flags))
++		wake_unlock(&wl->wake_lock);
++#endif
+ 	spin_unlock_irqrestore(&wl->wl_lock, flags);
+ 
+ 	mutex_unlock(&wl->mutex);
+@@ -805,6 +799,10 @@ void wl12xx_queue_recovery_work(struct wl1271 *wl)
+ 		set_bit(WL1271_FLAG_RECOVERY_IN_PROGRESS, &wl->flags);
+ 		wl1271_ps_elp_wakeup(wl);
+ 		wlcore_disable_interrupts_nosync(wl);
++#ifdef CONFIG_HAS_WAKELOCK
++		/* give us a grace period for recovery */
++		wake_lock_timeout(&wl->recovery_wake, 5 * HZ);
++#endif
+ 		ieee80211_queue_work(wl->hw, &wl->recovery_work);
+ 	}
+ }
+@@ -825,91 +823,32 @@ size_t wl12xx_copy_fwlog(struct wl1271 *wl, u8 *memblock, size_t maxlen)
+ 
+ static void wl12xx_read_fwlog_panic(struct wl1271 *wl)
+ {
+-	struct wlcore_partition_set part, old_part;
+-	u32 addr;
+-	u32 offset;
+-	u32 end_of_log;
+-	u8 *block;
+-	int ret;
++	u32 end_of_log = 0;
+ 
+-	if ((wl->quirks & WLCORE_QUIRK_FWLOG_NOT_IMPLEMENTED) ||
+-	    (wl->conf.fwlog.mem_blocks == 0))
++	if (wl->quirks & WLCORE_QUIRK_FWLOG_NOT_IMPLEMENTED)
+ 		return;
+ 
+ 	wl1271_info("Reading FW panic log");
+ 
+-	block = kmalloc(wl->fw_mem_block_size, GFP_KERNEL);
+-	if (!block)
+-		return;
+-
+ 	/*
+ 	 * Make sure the chip is awake and the logger isn't active.
+ 	 * Do not send a stop fwlog command if the fw is hanged or if
+ 	 * dbgpins are used (due to some fw bug).
+ 	 */
+ 	if (wl1271_ps_elp_wakeup(wl))
+-		goto out;
++		return;
+ 	if (!wl->watchdog_recovery &&
+ 	    wl->conf.fwlog.output != WL12XX_FWLOG_OUTPUT_DBG_PINS)
+ 		wl12xx_cmd_stop_fwlog(wl);
+ 
+-	/* Read the first memory block address */
+-	ret = wlcore_fw_status(wl, wl->fw_status);
+-	if (ret < 0)
+-		goto out;
+-
+-	addr = wl->fw_status->log_start_addr;
+-	if (!addr)
+-		goto out;
+-
+-	if (wl->conf.fwlog.mode == WL12XX_FWLOG_CONTINUOUS) {
+-		offset = sizeof(addr) + sizeof(struct wl1271_rx_descriptor);
+-		end_of_log = wl->fwlog_end;
+-	} else {
+-		offset = sizeof(addr);
+-		end_of_log = addr;
+-	}
+-
+-	old_part = wl->curr_part;
+-	memset(&part, 0, sizeof(part));
+-
+ 	/* Traverse the memory blocks linked list */
+ 	do {
+-		part.mem.start = wlcore_hw_convert_hwaddr(wl, addr);
+-		part.mem.size  = PAGE_SIZE;
+-
+-		ret = wlcore_set_partition(wl, &part);
+-		if (ret < 0) {
+-			wl1271_error("%s: set_partition start=0x%X size=%d",
+-				__func__, part.mem.start, part.mem.size);
+-			goto out;
++		end_of_log = wlcore_event_fw_logger(wl);
++		if (end_of_log == 0) {
++			msleep(100);
++			end_of_log = wlcore_event_fw_logger(wl);
+ 		}
+-
+-		memset(block, 0, wl->fw_mem_block_size);
+-		ret = wlcore_read_hwaddr(wl, addr, block,
+-					wl->fw_mem_block_size, false);
+-
+-		if (ret < 0)
+-			goto out;
+-
+-		/*
+-		 * Memory blocks are linked to one another. The first 4 bytes
+-		 * of each memory block hold the hardware address of the next
+-		 * one. The last memory block points to the first one in
+-		 * on demand mode and is equal to 0x2000000 in continuous mode.
+-		 */
+-		addr = le32_to_cpup((__le32 *)block);
+-
+-		if (!wl12xx_copy_fwlog(wl, block + offset,
+-					wl->fw_mem_block_size - offset))
+-			break;
+-	} while (addr && (addr != end_of_log));
+-
+-	wake_up_interruptible(&wl->fwlog_waitq);
+-
+-out:
+-	kfree(block);
+-	wlcore_set_partition(wl, &old_part);
++	} while (end_of_log != 0);
+ }
+ 
+ static void wlcore_save_freed_pkts(struct wl1271 *wl, struct wl12xx_vif *wlvif,
+@@ -1777,6 +1716,10 @@ static int wl1271_op_suspend(struct ieee80211_hw *hw,
+ 	/* we want to perform the recovery before suspending */
+ 	if (test_bit(WL1271_FLAG_RECOVERY_IN_PROGRESS, &wl->flags)) {
+ 		wl1271_warning("postponing suspend to perform recovery");
++#ifdef CONFIG_HAS_WAKELOCK
++		/* give us a grace period for recovery */
++		wake_lock_timeout(&wl->recovery_wake, 5 * HZ);
++#endif
+ 		return -EBUSY;
+ 	}
+ 
+@@ -1923,6 +1866,12 @@ out_sleep:
+ 	wl1271_ps_elp_sleep(wl);
+ 
+ out:
++#ifdef CONFIG_HAS_WAKELOCK
++	spin_lock_irqsave(&wl->wl_lock, flags);
++	if (test_and_clear_bit(WL1271_FLAG_WAKE_LOCK, &wl->flags))
++		wake_unlock(&wl->wake_lock);
++	spin_unlock_irqrestore(&wl->wl_lock, flags);
++#endif
+ 	wl->wow_enabled = false;
+ 
+ 	/*
+@@ -5631,9 +5580,10 @@ static int wlcore_op_remain_on_channel(struct ieee80211_hw *hw,
+ 		goto out;
+ 
+ 	/* return EBUSY if we can't ROC right now */
+-	if (WARN_ON(wl->roc_vif ||
+-		    find_first_bit(wl->roc_map,
+-				   WL12XX_MAX_ROLES) < WL12XX_MAX_ROLES)) {
++	if (wl->roc_vif ||
++	    find_first_bit(wl->roc_map, WL12XX_MAX_ROLES) < WL12XX_MAX_ROLES) {
++		wl1271_warning("active roc on role %d",
++			       find_first_bit(wl->roc_map, WL12XX_MAX_ROLES));
+ 		ret = -EBUSY;
+ 		goto out;
+ 	}
+@@ -6341,7 +6291,6 @@ struct ieee80211_hw *wlcore_alloc_hw(size_t priv_size, u32 aggr_buf_size,
+ 	wl->active_sta_count = 0;
+ 	wl->active_link_count = 0;
+ 	wl->fwlog_size = 0;
+-	init_waitqueue_head(&wl->fwlog_waitq);
+ 
+ 	/* The system link is always allocated */
+ 	__set_bit(WL12XX_SYSTEM_HLID, wl->links_map);
+@@ -6351,6 +6300,11 @@ struct ieee80211_hw *wlcore_alloc_hw(size_t priv_size, u32 aggr_buf_size,
+ 		wl->tx_frames[i] = NULL;
+ 
+ 	spin_lock_init(&wl->wl_lock);
++#ifdef CONFIG_HAS_WAKELOCK
++	wake_lock_init(&wl->wake_lock, WAKE_LOCK_SUSPEND, "wl1271_wake");
++	wake_lock_init(&wl->rx_wake, WAKE_LOCK_SUSPEND, "rx_wake");
++	wake_lock_init(&wl->recovery_wake, WAKE_LOCK_SUSPEND, "recovery_wake");
++#endif
+ 
+ 	wl->state = WLCORE_STATE_OFF;
+ 	wl->fw_type = WL12XX_FW_TYPE_NONE;
+@@ -6407,6 +6361,11 @@ err_aggr:
+ 	free_pages((unsigned long)wl->aggr_buf, order);
+ 
+ err_wq:
++#ifdef CONFIG_HAS_WAKELOCK
++	wake_lock_destroy(&wl->wake_lock);
++	wake_lock_destroy(&wl->rx_wake);
++	wake_lock_destroy(&wl->recovery_wake);
++#endif
+ 	destroy_workqueue(wl->freezable_wq);
+ 
+ err_hw:
+@@ -6424,10 +6383,14 @@ EXPORT_SYMBOL_GPL(wlcore_alloc_hw);
+ 
+ int wlcore_free_hw(struct wl1271 *wl)
+ {
++#ifdef CONFIG_HAS_WAKELOCK
++	wake_lock_destroy(&wl->wake_lock);
++	wake_lock_destroy(&wl->rx_wake);
++	wake_lock_destroy(&wl->recovery_wake);
++#endif
+ 	/* Unblock any fwlog readers */
+ 	mutex_lock(&wl->mutex);
+ 	wl->fwlog_size = -1;
+-	wake_up_interruptible_all(&wl->fwlog_waitq);
+ 	mutex_unlock(&wl->mutex);
+ 
+ 	wlcore_sysfs_free(wl);
+@@ -6634,7 +6597,7 @@ MODULE_PARM_DESC(debug_level, "wl12xx debugging level");
+ 
+ module_param_named(fwlog, fwlog_param, charp, 0);
+ MODULE_PARM_DESC(fwlog,
+-		 "FW logger options: continuous, ondemand, dbgpins or disable");
++		 "FW logger options: continuous, dbgpins or disable");
+ 
+ module_param(fwlog_mem_blocks, int, S_IRUSR | S_IWUSR);
+ MODULE_PARM_DESC(fwlog_mem_blocks, "fwlog mem_blocks");
+diff --git a/drivers/net/wireless/ti/wlcore/rx.c b/drivers/net/wireless/ti/wlcore/rx.c
+index 7df672a..20ae63b 100644
+--- a/drivers/net/wireless/ti/wlcore/rx.c
++++ b/drivers/net/wireless/ti/wlcore/rx.c
+@@ -74,6 +74,13 @@ static void wl1271_rx_status(struct wl1271 *wl,
+ 	if (desc->rate <= wl->hw_min_ht_rate)
+ 		status->flag |= RX_FLAG_HT;
+ 
++	/*
++	 * Read the signal level and antenna diversity indication.
++	 * The msb in the signal level is always set as it is a
++	 * negative number.
++	 * The antenna indication is the msb of the rssi.
++	 */
++
+ 	status->signal = ((desc->rssi & RSSI_LEVEL_BITMASK) | BIT(7));
+ 	status->antenna = ((desc->rssi & ANT_DIVERSITY_BITMASK) >> 7);
+ 
+@@ -143,7 +150,6 @@ static int wl1271_rx_handle_data(struct wl1271 *wl, u8 *data, u32 length,
+ 	if (desc->packet_class == WL12XX_RX_CLASS_LOGGER) {
+ 		size_t len = length - sizeof(*desc);
+ 		wl12xx_copy_fwlog(wl, data + sizeof(*desc), len);
+-		wake_up_interruptible(&wl->fwlog_waitq);
+ 		return 0;
+ 	}
+ 
+@@ -201,6 +207,11 @@ static int wl1271_rx_handle_data(struct wl1271 *wl, u8 *data, u32 length,
+ 	skb_queue_tail(&wl->deferred_rx_queue, skb);
+ 	queue_work(wl->freezable_wq, &wl->netstack_work);
+ 
++#ifdef CONFIG_HAS_WAKELOCK
++	/* let the frame some time to propagate to user-space */
++	wake_lock_timeout(&wl->rx_wake, HZ);
++#endif
++
+ 	return is_data;
+ }
+ 
+diff --git a/drivers/net/wireless/ti/wlcore/sdio.c b/drivers/net/wireless/ti/wlcore/sdio.c
+index f50e466..8cbde7b 100644
+--- a/drivers/net/wireless/ti/wlcore/sdio.c
++++ b/drivers/net/wireless/ti/wlcore/sdio.c
+@@ -235,6 +235,9 @@ static int wlcore_probe_of(struct device *dev, int *irq,
+ {
+ 	struct device_node *np = dev->of_node;
+ 
++	if (!np)
++		np = of_find_matching_node(NULL, wlcore_sdio_of_match_table);
++
+ 	if (!np || !of_match_node(wlcore_sdio_of_match_table, np))
+ 		return -ENODATA;
+ 
+diff --git a/drivers/net/wireless/ti/wlcore/spi.c b/drivers/net/wireless/ti/wlcore/spi.c
+index 720e4e4..f1ac283 100644
+--- a/drivers/net/wireless/ti/wlcore/spi.c
++++ b/drivers/net/wireless/ti/wlcore/spi.c
+@@ -73,10 +73,7 @@
+  */
+ #define SPI_AGGR_BUFFER_SIZE (4 * PAGE_SIZE)
+ 
+-/* Maximum number of SPI write chunks */
+-#define WSPI_MAX_NUM_OF_CHUNKS \
+-	((SPI_AGGR_BUFFER_SIZE / WSPI_MAX_CHUNK_SIZE) + 1)
+-
++#define WSPI_MAX_NUM_OF_CHUNKS (SPI_AGGR_BUFFER_SIZE / WSPI_MAX_CHUNK_SIZE)
+ 
+ struct wl12xx_spi_glue {
+ 	struct device *dev;
+@@ -271,10 +268,9 @@ static int __must_check wl12xx_spi_raw_write(struct device *child, int addr,
+ 					     void *buf, size_t len, bool fixed)
+ {
+ 	struct wl12xx_spi_glue *glue = dev_get_drvdata(child->parent);
+-	/* SPI write buffers - 2 for each chunk */
+-	struct spi_transfer t[2 * WSPI_MAX_NUM_OF_CHUNKS];
++	struct spi_transfer t[2 * (WSPI_MAX_NUM_OF_CHUNKS + 1)];
+ 	struct spi_message m;
+-	u32 commands[WSPI_MAX_NUM_OF_CHUNKS]; /* 1 command per chunk */
++	u32 commands[WSPI_MAX_NUM_OF_CHUNKS];
+ 	u32 *cmd;
+ 	u32 chunk_len;
+ 	int i;
+diff --git a/drivers/net/wireless/ti/wlcore/sysfs.c b/drivers/net/wireless/ti/wlcore/sysfs.c
+index 24dd288..a9218e5 100644
+--- a/drivers/net/wireless/ti/wlcore/sysfs.c
++++ b/drivers/net/wireless/ti/wlcore/sysfs.c
+@@ -119,32 +119,6 @@ static ssize_t wl1271_sysfs_read_fwlog(struct file *filp, struct kobject *kobj,
+ 	if (ret < 0)
+ 		return -ERESTARTSYS;
+ 
+-	/* Let only one thread read the log at a time, blocking others */
+-	while (wl->fwlog_size == 0) {
+-		DEFINE_WAIT(wait);
+-
+-		prepare_to_wait_exclusive(&wl->fwlog_waitq,
+-					  &wait,
+-					  TASK_INTERRUPTIBLE);
+-
+-		if (wl->fwlog_size != 0) {
+-			finish_wait(&wl->fwlog_waitq, &wait);
+-			break;
+-		}
+-
+-		mutex_unlock(&wl->mutex);
+-
+-		schedule();
+-		finish_wait(&wl->fwlog_waitq, &wait);
+-
+-		if (signal_pending(current))
+-			return -ERESTARTSYS;
+-
+-		ret = mutex_lock_interruptible(&wl->mutex);
+-		if (ret < 0)
+-			return -ERESTARTSYS;
+-	}
+-
+ 	/* Check if the fwlog is still valid */
+ 	if (wl->fwlog_size < 0) {
+ 		mutex_unlock(&wl->mutex);
+diff --git a/drivers/net/wireless/ti/wlcore/wlcore.h b/drivers/net/wireless/ti/wlcore/wlcore.h
+index a1b6040..aa61f35 100644
+--- a/drivers/net/wireless/ti/wlcore/wlcore.h
++++ b/drivers/net/wireless/ti/wlcore/wlcore.h
+@@ -310,9 +310,6 @@ struct wl1271 {
+ 	/* FW memory block size */
+ 	u32 fw_mem_block_size;
+ 
+-	/* Sysfs FW log entry readers wait queue */
+-	wait_queue_head_t fwlog_waitq;
+-
+ 	/* Hardware recovery work */
+ 	struct work_struct recovery_work;
+ 	bool watchdog_recovery;
+@@ -353,6 +350,11 @@ struct wl1271 {
+ 	/* in dBm */
+ 	int power_level;
+ 
++#ifdef CONFIG_HAS_WAKELOCK
++	struct wake_lock wake_lock;
++	struct wake_lock rx_wake;
++	struct wake_lock recovery_wake;
++#endif
+ 	struct wl1271_stats stats;
+ 
+ 	__le32 *buffer_32;
+@@ -466,6 +468,7 @@ struct wl1271 {
+ 
+ 	/* the current dfs region */
+ 	enum nl80211_dfs_regions dfs_region;
++	bool radar_debug_mode;
+ 
+ 	/* size of the private FW status data */
+ 	size_t fw_status_len;
+@@ -503,6 +506,9 @@ struct wl1271 {
+ 
+ 	/* dynamic fw traces */
+ 	u32 dynamic_fw_traces;
++
++	/* antenna diversity shut down */
++	u8 diversity_mode;
+ };
+ 
+ int wlcore_probe(struct wl1271 *wl, struct platform_device *pdev);
+diff --git a/drivers/net/wireless/ti/wlcore/wlcore_i.h b/drivers/net/wireless/ti/wlcore/wlcore_i.h
+index f5374ee..d910a1b 100644
+--- a/drivers/net/wireless/ti/wlcore/wlcore_i.h
++++ b/drivers/net/wireless/ti/wlcore/wlcore_i.h
+@@ -31,6 +31,9 @@
+ #include <linux/list.h>
+ #include <linux/bitops.h>
+ #include <net/mac80211.h>
++#ifdef CONFIG_HAS_WAKELOCK
++#include <linux/wakelock.h>
++#endif
+ 
+ #include "conf.h"
+ #include "ini.h"
+@@ -228,6 +231,7 @@ enum wl12xx_flags {
+ 	WL1271_FLAG_TX_PENDING,
+ 	WL1271_FLAG_IN_ELP,
+ 	WL1271_FLAG_ELP_REQUESTED,
++	WL1271_FLAG_WAKE_LOCK,
+ 	WL1271_FLAG_IRQ_RUNNING,
+ 	WL1271_FLAG_FW_TX_BUSY,
+ 	WL1271_FLAG_DUMMY_PACKET_PENDING,
+-- 
+2.7.0
+
