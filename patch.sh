@@ -236,19 +236,35 @@ fixes () {
 }
 
 ti () {
-	echo "dir: ti/iodelay/"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
+		echo "dir: ti/iodelay"
+		cherrypick_dir="ti/iodelay"
+		SHA="d3fecebe6b63c6b49a890b6f70866e2ce6024ae3" ; num="1" ; cherrypick
+		SHA="52a607e7c45e44e09f50233384cc352417556966" ; cherrypick
+		SHA="7735321423eead6bffce89c8f635b6c66a3052a1" ; cherrypick
+
+		exit 2
 	fi
 
-	${git} "${DIR}/patches/ti/iodelay/0001-pinctrl-bindings-pinctrl-Add-support-for-TI-s-IODela.patch"
-	${git} "${DIR}/patches/ti/iodelay/0002-pinctrl-Introduce-TI-IOdelay-configuration-driver.patch"
+	#is_mainline="enable"
+	if [ "x${is_mainline}" = "xenable" ] ; then
+		echo "dir: ti/iodelay/"
+		#regenerate="enable"
+		if [ "x${regenerate}" = "xenable" ] ; then
+			start_cleanup
+		fi
 
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
-		cleanup
+		${git} "${DIR}/patches/ti/iodelay/0001-pinctrl-bindings-pinctrl-Add-support-for-TI-s-IODela.patch"
+		${git} "${DIR}/patches/ti/iodelay/0002-pinctrl-Introduce-TI-IOdelay-configuration-driver.patch"
+		${git} "${DIR}/patches/ti/iodelay/0003-ARM-dts-dra7-Add-iodelay-module.patch"
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			number=3
+			cleanup
+		fi
 	fi
+	unset is_mainline
 }
 
 pru_uio () {
