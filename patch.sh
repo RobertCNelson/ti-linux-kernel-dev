@@ -179,6 +179,49 @@ rt
 #local_patch
 
 lts44_backports () {
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: backport tty/serial"
+
+#		cd ~/linux-src/
+#		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+#		git checkout v4.6-rc1 -b tmp
+#		cd -
+
+		rm -rf drivers/tty/serial/nwpserial.c
+		rm -rf drivers/tty/serial/of_serial.c
+
+		cp -v ~/linux-src/drivers/of/fdt.c ./drivers/of/fdt.c
+		cp -v ~/linux-src/drivers/of/fdt_address.c ./drivers/of/fdt_address.c
+		cp -v ~/linux-src/drivers/tty/serial/8250/8250.h ./drivers/tty/serial/8250/
+		cp -v ~/linux-src/drivers/tty/serial/8250/8250_*.c ./drivers/tty/serial/8250/
+		cp -v ~/linux-src/drivers/tty/serial/8250/Kconfig ./drivers/tty/serial/8250/
+		cp -v ~/linux-src/drivers/tty/serial/8250/Makefile ./drivers/tty/serial/8250/
+		cp -v ~/linux-src/drivers/tty/serial/8250/serial_cs.c ./drivers/tty/serial/8250/
+		cp -v ~/linux-src/drivers/tty/serial/Kconfig ./drivers/tty/serial/
+		cp -v ~/linux-src/drivers/tty/serial/Makefile ./drivers/tty/serial/
+		cp -v ~/linux-src/drivers/tty/serial/earlycon.c ./drivers/tty/serial/
+		cp -v ~/linux-src/include/asm-generic/vmlinux.lds.h ./include/asm-generic/
+		cp -v ~/linux-src/include/linux/of_fdt.h ./include/linux/
+		cp -v ~/linux-src/include/linux/serial_8250.h ./include/linux/
+		cp -v ~/linux-src/include/linux/serial_core.h ./include/linux/
+		cp -v ~/linux-src/include/uapi/linux/serial.h ./include/uapi/linux/
+
+#		cd ~/linux-src/
+#		git checkout master -f ; git branch -D tmp
+#		cd -
+
+		git add .
+		git commit -a -m 'merge: tty/serial Patch Set' -s
+		git format-patch -1 -o ../patches/tty/
+
+		exit 2
+	fi
+
+	echo "dir: backport tty/serial"
+	${git} "${DIR}/patches/tty/0001-merge-tty-serial-Patch-Set.patch"
+	${git} "${DIR}/patches/tty/rt-serial-warn-fix.patch"
+
 	echo "dir: lts44_backports"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -665,19 +708,37 @@ beaglebone () {
 		cleanup
 	fi
 
-	echo "dir: beaglebone/rs485"
+#	echo "dir: beaglebone/rs485"
+#	#regenerate="enable"
+#	if [ "x${regenerate}" = "xenable" ] ; then
+#		start_cleanup
+#	fi
+
+#	#[PATCH v8 0/3] tty: Introduce software RS485 direction control support
+#	${git} "${DIR}/patches/beaglebone/rs485/0001-tty-Move-serial8250_stop_rx-in-front-of-serial8250_s.patch"
+#	${git} "${DIR}/patches/beaglebone/rs485/0002-tty-Add-software-emulated-RS485-support-for-8250.patch"
+#	${git} "${DIR}/patches/beaglebone/rs485/0003-tty-8250_omap-Use-software-emulated-RS485-direction-.patch"
+
+#	if [ "x${regenerate}" = "xenable" ] ; then
+#		number=3
+#		cleanup
+#	fi
+
+	echo "dir: beaglebone/mctrl_gpio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	#[PATCH v8 0/3] tty: Introduce software RS485 direction control support
-	${git} "${DIR}/patches/beaglebone/rs485/0001-tty-Move-serial8250_stop_rx-in-front-of-serial8250_s.patch"
-	${git} "${DIR}/patches/beaglebone/rs485/0002-tty-Add-software-emulated-RS485-support-for-8250.patch"
-	${git} "${DIR}/patches/beaglebone/rs485/0003-tty-8250_omap-Use-software-emulated-RS485-direction-.patch"
+		#[RFC v2 0/5] tty/serial/8250: add MCTRL_GPIO support
+		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0001-tty-serial-8250-fix-RS485-half-duplex-RX.patch"
+		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0002-tty-serial-8250-make-UART_MCR-register-access-consis.patch"
+		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0003-serial-mctrl_gpio-add-modem-control-read-routine.patch"
+		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0004-serial-mctrl_gpio-add-IRQ-locking.patch"
+		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0005-tty-serial-8250-use-mctrl_gpio-helpers.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=5
 		cleanup
 	fi
 
