@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/sh -e
 #
-# Copyright (c) 2009-2015 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -185,12 +185,12 @@ rt
 lts44_backports () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: backport tty/serial"
+		echo "dir: backports/tty"
 
-#		cd ~/linux-src/
-#		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+		cd ~/linux-src/
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
 #		git checkout v4.6-rc1 -b tmp
-#		cd -
+		cd -
 
 		rm -rf drivers/tty/serial/nwpserial.c
 		rm -rf drivers/tty/serial/of_serial.c
@@ -216,15 +216,42 @@ lts44_backports () {
 #		cd -
 
 		git add .
-		git commit -a -m 'merge: tty/serial Patch Set' -s
-		git format-patch -1 -o ../patches/tty/
+		git commit -a -m 'backports: tty' -s
+		git format-patch -1 -o ../patches/backports/tty/
 
 		exit 2
 	fi
 
 	echo "dir: backport tty/serial"
-	${git} "${DIR}/patches/tty/0001-merge-tty-serial-Patch-Set.patch"
-	${git} "${DIR}/patches/tty/rt-serial-warn-fix.patch"
+	${git} "${DIR}/patches/backports/tty/0001-backports-tty.patch"
+	${git} "${DIR}/patches/backports/tty/rt-serial-warn-fix.patch"
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: backports/fbtft"
+
+		cd ~/linux-src/
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+#		git checkout v4.6-rc1 -b tmp
+		cd -
+
+		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
+		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
+		git status
+
+#		cd ~/linux-src/
+#		git checkout master -f ; git branch -D tmp
+#		cd -
+
+		git add .
+		git commit -a -m 'backports: fbtft' -s
+		git format-patch -1 -o ../patches/backports/fbtft/
+
+		exit 2
+	fi
+
+	echo "dir: backports/fbtft"
+	${git} "${DIR}/patches/backports/fbtft/0001-backports-fbtft.patch"
 
 	echo "dir: lts44_backports"
 	#regenerate="enable"
