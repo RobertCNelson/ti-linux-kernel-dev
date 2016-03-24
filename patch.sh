@@ -45,6 +45,11 @@ fi
 
 echo "Starting patch.sh"
 
+merged_in_4_5="enable"
+#unset merged_in_4_5
+merged_in_4_6="enable"
+#unset merged_in_4_6
+
 git_add () {
 	git add .
 	git commit -a -m 'testing patchset'
@@ -153,7 +158,6 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -230,19 +234,27 @@ lts44_backports () {
 		SHA="6604c6556db9e41c85f2839f66bd9d617bcf9f87" ; num="1" ; cherrypick
 		SHA="074726402b82f14ca377da0b4a4767674c3d1ff8" ; cherrypick
 		SHA="20437f79f6627a31752f422688a6047c25cefcf1" ; cherrypick
-
+		SHA="f8caa792261c0edded20eba2b8fcc899a1b91819" ; cherrypick
+		SHA="cd378881426379a62a7fe67f34b8cbe738302022" ; cherrypick
+		SHA="7b0883f33809ff0aeca9848193c31629a752bb77" ; cherrypick
+		SHA="922201d129c8f9d0c3207dca90ea6ffd8e2242f0" ; cherrypick
 		exit 2
 	fi
 
-	is_44="enable"
-	if [ "x${is_44}" = "xenable" ] ; then
-		echo "dir: lts44_backports/dmtimer"
+	echo "dir: lts44_backports/dmtimer"
+	if [ "x${merged_in_4_5}" = "xenable" ] ; then
 		#4.5.0-rc0
 		${git} "${DIR}/patches/lts44_backports/dmtimer/0001-pwm-Add-PWM-driver-for-OMAP-using-dual-mode-timers.patch"
 		${git} "${DIR}/patches/lts44_backports/dmtimer/0002-pwm-omap-dmtimer-Potential-NULL-dereference-on-error.patch"
 		${git} "${DIR}/patches/lts44_backports/dmtimer/0003-ARM-OMAP-Add-PWM-dmtimer-platform-data-quirks.patch"
 	fi
-	unset is_44
+	if [ "x${merged_in_4_6}" = "xenable" ] ; then
+		#4.6.0-rc0
+		${git} "${DIR}/patches/lts44_backports/dmtimer/0004-pwm-omap-dmtimer-Fix-inaccurate-period-and-duty-cycl.patch"
+		${git} "${DIR}/patches/lts44_backports/dmtimer/0005-pwm-omap-dmtimer-Add-sanity-checking-for-load-and-ma.patch"
+		${git} "${DIR}/patches/lts44_backports/dmtimer/0006-pwm-omap-dmtimer-Round-load-and-match-values-rather-.patch"
+		${git} "${DIR}/patches/lts44_backports/dmtimer/0007-pwm-omap-dmtimer-Add-debug-message-for-effective-per.patch"
+	fi
 }
 
 reverts () {
@@ -371,7 +383,7 @@ bbb_overlays () {
 		fi
 		git clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
 		cd dtc
-		git pull --no-edit https://github.com/pantoniou/dtc dt-overlays5
+		git pull --no-edit https://github.com/RobertCNelson/dtc bb.org-4.1-dt-overlays5-dtc-b06e55c88b9b
 
 		cd ../KERNEL/
 		sed -i -e 's:git commit:#git commit:g' ./scripts/dtc/update-dtc-source.sh
@@ -386,6 +398,7 @@ bbb_overlays () {
 			start_cleanup
 		fi
 
+		#4.6.0-rc: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=91feabc2e2240ee80dc8ac08103cb83f497e4d12
 		${git} "${DIR}/patches/bbb_overlays/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
 
 		if [ "x${regenerate}" = "xenable" ] ; then
@@ -397,21 +410,37 @@ bbb_overlays () {
 	echo "dir: bbb_overlays/nvmem"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
+		cherrypick_dir="bbb_overlays/nvmem"
+		#merged in 4.6.0-rc0
+		SHA="092462c2b52259edba80a6748acb3305f7f70423" ; num="1" ; cherrypick
+		SHA="cb54ad6cddb606add2481b82901d69670b480d1b" ; cherrypick
+		SHA="c074abe02e5e3479b2dfd109fa2620d22d351c34" ; cherrypick
+		SHA="e1379b56e9e88653fcb58cbaa71cd6b1cc304918" ; cherrypick
+		SHA="3ca9b1ac28398c6fe0bed335d2d71a35e1c5f7c9" ; cherrypick
+		SHA="811b0d6538b9f26f3eb0f90fe4e6118f2480ec6f" ; cherrypick
+		SHA="b6c217ab9be6895384cf0b284ace84ad79e5c53b" ; cherrypick
+		SHA="57d155506dd5e8f8242d0310d3822c486f70dea7" ; cherrypick
+		SHA="3ccea0e1fdf896645f8cccddcfcf60cb289fdf76" ; cherrypick
+		SHA="5a99f570dab9f626d3b0b87a4ddf5de8c648aae8" ; cherrypick
+		SHA="1c4b6e2c7534b9b193f440f77dd47e420a150288" ; cherrypick
+		SHA="bec3c11bad0e7ac05fb90f204d0ab6f79945822b" ; cherrypick
+		exit 2
 	fi
 
-	#[PATCHv6 0/7] Convert exiting EEPROM drivers to NVMEM
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0001-nvmem-Add-flag-to-export-NVMEM-to-root-only.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0002-nvmem-Add-backwards-compatibility-support-for-older-.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0003-eeprom-at24-extend-driver-to-plug-into-the-NVMEM-fra.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0004-eeprom-at25-Remove-in-kernel-API-for-accessing-the-E.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0005-eeprom-at25-extend-driver-to-plug-into-the-NVMEM-fra.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0006-eeprom-93xx46-extend-driver-to-plug-into-the-NVMEM-f.patch"
-	${git} "${DIR}/patches/bbb_overlays/nvmem/0007-misc-at24-replace-memory_accessor-with-nvmem_device_.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=7
-		cleanup
+	if [ "x${merged_in_4_6}" = "xenable" ] ; then
+		#merged in 4.6.0-rc0
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0001-misc-eeprom-use-kobj_to_dev.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0002-misc-eeprom_93xx46-Fix-16-bit-read-and-write-accesse.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0003-misc-eeprom_93xx46-Implement-eeprom_93xx46-DT-bindin.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0004-misc-eeprom_93xx46-Add-quirks-to-support-Atmel-AT93C.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0005-misc-eeprom_93xx46-Add-support-for-a-GPIO-select-lin.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0006-nvmem-Add-flag-to-export-NVMEM-to-root-only.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0007-nvmem-Add-backwards-compatibility-support-for-older-.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0008-eeprom-at24-extend-driver-to-plug-into-the-NVMEM-fra.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0009-eeprom-at25-Remove-in-kernel-API-for-accessing-the-E.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0010-eeprom-at25-extend-driver-to-plug-into-the-NVMEM-fra.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0011-eeprom-93xx46-extend-driver-to-plug-into-the-NVMEM-f.patch"
+		${git} "${DIR}/patches/bbb_overlays/nvmem/0012-misc-at24-replace-memory_accessor-with-nvmem_device_.patch"
 	fi
 
 	echo "dir: bbb_overlays/configfs"
@@ -423,13 +452,10 @@ bbb_overlays () {
 		exit 2
 	fi
 
-	is_44="enable"
-	if [ "x${is_44}" = "xenable" ] ; then
-		#(< 4.5.0-rc0)
+	if [ "x${merged_in_4_5}" = "xenable" ] ; then
+		#merged in 4.5.0-rc0
 		${git} "${DIR}/patches/bbb_overlays/configfs/0001-configfs-implement-binary-attributes.patch"
 	fi
-	unset is_44
-
 
 	echo "dir: bbb_overlays/of"
 	#regenerate="enable"
@@ -440,12 +466,24 @@ bbb_overlays () {
 		exit 2
 	fi
 
-	is_44="enable"
-	if [ "x${is_44}" = "xenable" ] ; then
-		#(< 4.5.0-rc0)
+	if [ "x${merged_in_4_5}" = "xenable" ] ; then
+		#merged in 4.5.0-rc0
 		${git} "${DIR}/patches/bbb_overlays/of/0001-drivers-of-Export-OF-changeset-functions.patch"
 	fi
-	unset is_44
+
+	echo "dir: bbb_overlays/omap"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cherrypick_dir="bbb_overlays/omap"
+		#merged in 4.5.0-rc6?
+		SHA="cf26f1137333251f3515dea31f95775b99df0fd5" ; num="1" ; cherrypick
+		exit 2
+	fi
+
+	if [ "x${merged_in_4_5}" = "xenable" ] ; then
+		#merged in 4.5.0-rc6?
+		${git} "${DIR}/patches/bbb_overlays/omap/0001-ARM-OMAP2-Fix-omap_device-for-module-reload-on-PM-ru.patch"
+	fi
 
 	echo "dir: bbb_overlays"
 	#regenerate="enable"
@@ -461,7 +499,9 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/0004-ARM-CUSTOM-Build-a-uImage-with-dtb-already-appended.patch"
 	fi
 
-	${git} "${DIR}/patches/bbb_overlays/0005-arm-omap-Proper-cleanups-for-omap_device.patch"
+	#depends on: cf26f1137333251f3515dea31f95775b99df0fd5
+	${git} "${DIR}/patches/bbb_overlays/0005-omap-Fix-crash-when-omap-device-is-disabled.patch"
+
 	${git} "${DIR}/patches/bbb_overlays/0006-serial-omap-Fix-port-line-number-without-aliases.patch"
 	${git} "${DIR}/patches/bbb_overlays/0007-tty-omap-serial-Fix-up-platform-data-alloc.patch"
 	${git} "${DIR}/patches/bbb_overlays/0008-ARM-DT-Enable-symbols-when-CONFIG_OF_OVERLAY-is-used.patch"
@@ -605,12 +645,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/abbbi/0001-gpu-drm-i2c-add-alternative-adv7511-driver-with-audi.patch"
 	${git} "${DIR}/patches/beaglebone/abbbi/0002-gpu-drm-i2c-adihdmi-componentize-driver-and-huge-ref.patch"
 
-	#is_45="enable"
-	if [ "x${is_45}" = "xenable" ] ; then
+	if [ "x${merged_in_4_6}" = "xenable" ] ; then
 		${git} "${DIR}/patches/beaglebone/abbbi/0003-drm-adihdmi-Drop-dummy-save-restore-hooks.patch"
 		${git} "${DIR}/patches/beaglebone/abbbi/0004-drm-adihdmi-Pass-name-to-drm_encoder_init.patch"
 	fi
-	unset is_45
 
 	${git} "${DIR}/patches/beaglebone/abbbi/0005-ARM-dts-add-Arrow-BeagleBone-Black-Industrial-dts.patch"
 
@@ -645,19 +683,6 @@ beaglebone () {
 		cleanup
 	fi
 
-	echo "dir: beaglebone/tre"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/tre/0001-add-am335x-arduino-tre.dts.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
 	echo "dir: beaglebone/sancloud"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -665,6 +690,19 @@ beaglebone () {
 	fi
 
 	${git} "${DIR}/patches/beaglebone/sancloud/0001-add-am335x-sancloud-bbe.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
+	echo "dir: beaglebone/tre"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/tre/0001-add-am335x-arduino-tre.dts.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
@@ -729,7 +767,6 @@ beaglebone () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
-
 		#[RFC v2 0/5] tty/serial/8250: add MCTRL_GPIO support
 		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0001-tty-serial-8250-fix-RS485-half-duplex-RX.patch"
 		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0002-tty-serial-8250-make-UART_MCR-register-access-consis.patch"
