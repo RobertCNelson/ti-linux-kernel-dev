@@ -136,13 +136,37 @@ aufs4 () {
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: aufs4"
+
+		cd ../
+		if [ ! -f ./aufs4-standalone ] ; then
+			git clone https://github.com/sfjro/aufs4-standalone
+			cd ./aufs4-standalone
+			git checkout origin/aufs4.4 -b tmp
+			cd ../
+		fi
+		cd ./KERNEL/
+
+		cp -v ../aufs4-standalone/Documentation/ABI/testing/*aufs ./Documentation/ABI/testing/
+		mkdir -p ./Documentation/filesystems/aufs/
+		cp -rv ../aufs4-standalone/Documentation/filesystems/aufs/* ./Documentation/filesystems/aufs/
+		mkdir -p ./fs/aufs/
+		cp -v ../aufs4-standalone/fs/aufs/* ./fs/aufs/
+		cp -v ../aufs4-standalone/include/uapi/linux/aufs_type.h ./include/uapi/linux/
+
+		git add .
+		git commit -a -m 'merge: aufs4' -s
+		git format-patch -5 -o ../patches/aufs4/
+
+		exit 2
+	fi
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	#patch -p1 < "${DIR}/patches/aufs4/0005-aufs-why-this-isnt-a-patch.patch"
-	#exit 2
-
-	${git} "${DIR}/patches/aufs4/0005-aufs-why-this-isnt-a-patch.patch"
+	${git} "${DIR}/patches/aufs4/0005-merge-aufs4.patch"
 	${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
