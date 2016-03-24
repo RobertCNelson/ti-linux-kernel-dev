@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/sh -e
 #
-# Copyright (c) 2009-2015 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -201,7 +201,6 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -252,11 +251,9 @@ backports () {
 
 	#careful around: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/drivers/net/wireless/mediatek?id=30686bf7f5b3c30831761e188a6e3cb33580fa48
 	${git} "${DIR}/patches/backports/mediatek/0001-backport-mediatek-mt7601u-from-v4.2-rc3.patch"
-	${git} "${DIR}/patches/backports/0002-backport-drivers-staging-fbtft-v4.3.0.patch"
-	${git} "${DIR}/patches/backports/0003-backport-fbtft-v4.4-rc1.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=1
 		cleanup
 	fi
 
@@ -279,6 +276,36 @@ backports () {
 		number=1
 		cleanup
 	fi
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: backports/fbtft"
+
+		cd ~/linux-src/
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+#		git checkout v4.6-rc1 -b tmp
+		cd -
+
+		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
+		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
+		git status
+		#https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=4b6dc179dcf8e6fa023fb38a0b4fc456b90186f5
+		sed -i -e 's:screen_buffer:screen_base:g' ./drivers/staging/fbtft/*.c
+		sed -i -e 's:info->screen_base = vmem:info->screen_base = (u8 __force __iomem *)vmem:g' ./drivers/staging/fbtft/fbtft-core.c
+
+#		cd ~/linux-src/
+#		git checkout master -f ; git branch -D tmp
+#		cd -
+
+		git add .
+		git commit -a -m 'backports: fbtft' -s
+		git format-patch -1 -o ../patches/backports/fbtft/
+
+		exit 2
+	fi
+
+	echo "dir: backports/fbtft"
+	${git} "${DIR}/patches/backports/fbtft/0001-backports-fbtft.patch"
 }
 
 fixes () {
