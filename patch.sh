@@ -333,6 +333,18 @@ backports () {
 
 	echo "dir: backports/fbtft"
 	${git} "${DIR}/patches/backports/fbtft/0001-backports-fbtft.patch"
+
+	echo "dir: backports/iio"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+	${git} "${DIR}/patches/backports/iio/0001-inv_mpu9250-added.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
 }
 
 fixes () {
