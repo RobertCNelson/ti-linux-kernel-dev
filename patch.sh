@@ -185,7 +185,9 @@ aufs4 () {
 		if [ ! -f ./aufs4-standalone ] ; then
 			git clone https://github.com/sfjro/aufs4-standalone
 			cd ./aufs4-standalone
-			git checkout origin/aufs4.1.13+ -b tmp
+			KERNEL_REL="4.1.13+"
+			git checkout origin/aufs${KERNEL_REL} -b tmp
+			KERNEL_REL="4.1"
 			cd ../
 		fi
 		cd ./KERNEL/
@@ -307,7 +309,8 @@ backports () {
 
 		cd ~/linux-src/
 		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
-#		git checkout v4.6-rc1 -b tmp
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+		git checkout v4.6-rc1 -b tmp
 		cd -
 
 		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
@@ -317,9 +320,9 @@ backports () {
 		sed -i -e 's:screen_buffer:screen_base:g' ./drivers/staging/fbtft/*.c
 		sed -i -e 's:info->screen_base = vmem:info->screen_base = (u8 __force __iomem *)vmem:g' ./drivers/staging/fbtft/fbtft-core.c
 
-#		cd ~/linux-src/
-#		git checkout master -f ; git branch -D tmp
-#		cd -
+		cd ~/linux-src/
+		git checkout master -f ; git branch -D tmp
+		cd -
 
 		git add .
 		git commit -a -m 'backports: fbtft' -s
