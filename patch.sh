@@ -142,7 +142,7 @@ aufs4 () {
 		if [ ! -f ./aufs4-standalone ] ; then
 			git clone https://github.com/sfjro/aufs4-standalone
 			cd ./aufs4-standalone
-			git checkout origin/aufs4.4 -b tmp
+			git checkout origin/aufs${KERNEL_REL} -b tmp
 			cd ../
 		fi
 		cd ./KERNEL/
@@ -213,6 +213,7 @@ lts44_backports () {
 
 		cd ~/linux-src/
 		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 #		git checkout v4.6-rc1 -b tmp
 		cd -
 
@@ -256,6 +257,7 @@ lts44_backports () {
 
 		cd ~/linux-src/
 		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 #		git checkout v4.6-rc1 -b tmp
 		cd -
 
