@@ -214,7 +214,9 @@ lts44_backports () {
 		cd ~/linux-src/
 		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
 		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
-#		git checkout v4.6-rc1 -b tmp
+		git checkout v4.6-rc1 -b tmp
+		git revert --no-edit be7635e7287e0e8013af3c89a6354a9e0182594c
+		git revert --no-edit c74ba8b3480da6ddaea17df2263ec09b869ac496
 		cd -
 
 		rm -rf drivers/tty/serial/nwpserial.c
@@ -236,9 +238,9 @@ lts44_backports () {
 		cp -v ~/linux-src/include/linux/serial_core.h ./include/linux/
 		cp -v ~/linux-src/include/uapi/linux/serial.h ./include/uapi/linux/
 
-#		cd ~/linux-src/
-#		git checkout master -f ; git branch -D tmp
-#		cd -
+		cd ~/linux-src/
+		git checkout master -f ; git branch -D tmp
+		cd -
 
 		git add .
 		git commit -a -m 'backports: tty' -s
@@ -258,16 +260,16 @@ lts44_backports () {
 		cd ~/linux-src/
 		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
 		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
-#		git checkout v4.6-rc1 -b tmp
+		git checkout v4.6-rc1 -b tmp
 		cd -
 
 		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
 		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
 		git status
 
-#		cd ~/linux-src/
-#		git checkout master -f ; git branch -D tmp
-#		cd -
+		cd ~/linux-src/
+		git checkout master -f ; git branch -D tmp
+		cd -
 
 		git add .
 		git commit -a -m 'backports: fbtft' -s
@@ -278,6 +280,38 @@ lts44_backports () {
 
 	echo "dir: backports/fbtft"
 	${git} "${DIR}/patches/backports/fbtft/0001-backports-fbtft.patch"
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: backports/iio"
+
+		cd ~/linux-src/
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+		git checkout v4.6-rc1 -b tmp
+		cd -
+
+		cp -vr ~/linux-src/drivers/iio/* ./drivers/iio/
+		cp -vr ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
+		cp -vr ~/linux-src/include/linux/iio/* ./include/linux/iio/
+		cp -v  ~/linux-src/include/linux/mfd/palmas.h ./include/linux/mfd/
+		cp -v  ~/linux-src/include/linux/platform_data/ad5761.h ./include/linux/platform_data/
+		cp -v  ~/linux-src/include/uapi/linux/iio/types.h ./include/uapi/linux/iio/types.h
+		git status
+
+		cd ~/linux-src/
+		git checkout master -f ; git branch -D tmp
+		cd -
+
+		git add .
+		git commit -a -m 'backports: iio' -s
+		git format-patch -1 -o ../patches/backports/iio/
+
+		exit 2
+	fi
+
+	echo "dir: backports/iio"
+	${git} "${DIR}/patches/backports/iio/0001-backports-iio.patch"
 
 	echo "dir: lts44_backports"
 	#regenerate="enable"
