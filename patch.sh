@@ -345,6 +345,34 @@ backports () {
 		number=1
 		cleanup
 	fi
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: backports/edt-ft5x06"
+
+		cd ~/linux-src/
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+		git checkout v4.6-rc1 -b tmp
+		cd -
+
+		cp -v ~/linux-src/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/edt-ft5x06.c
+		git status
+
+		cd ~/linux-src/
+		git checkout master -f ; git branch -D tmp
+		cd -
+
+		git add .
+		git commit -a -m 'backports: edt-ft5x06' -s
+		git format-patch -1 -o ../patches/backports/edt-ft5x06/
+
+		exit 2
+	fi
+
+	echo "dir: backports/edt-ft5x06"
+	${git} "${DIR}/patches/backports/edt-ft5x06/0001-backports-edt-ft5x06.patch"
+	${git} "${DIR}/patches/backports/edt-ft5x06/0001-of-add-helper-function-to-retrive-match-data.patch"
 }
 
 fixes () {
