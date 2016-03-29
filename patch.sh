@@ -206,18 +206,66 @@ aufs4
 rt
 #local_patch
 
-lts44_backports () {
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: backports/tty"
+pre_backports () {
+	echo "dir: backports/${subsystem}"
 
-		cd ~/linux-src/
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
-		git checkout v4.6-rc1 -b tmp
+	cd ~/linux-src/
+	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		git checkout ${backport_tag} -b tmp
+	fi
+	cd -
+}
+
+pre_backports_tty () {
+	echo "dir: backports/${subsystem}"
+
+	cd ~/linux-src/
+	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		git checkout ${backport_tag} -b tmp
 		git revert --no-edit be7635e7287e0e8013af3c89a6354a9e0182594c
 		git revert --no-edit c74ba8b3480da6ddaea17df2263ec09b869ac496
+	fi
+	cd -
+}
+
+post_backports () {
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		cd ~/linux-src/
+		git checkout master -f ; git branch -D tmp
 		cd -
+	fi
+
+	git add .
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		git commit -a -m "backports: ${subsystem}: from: ${backport_tag}" -s
+	else
+		git commit -a -m "backports: ${subsystem}" -s
+	fi
+	git format-patch -1 -o ../patches/backports/${subsystem}/
+
+	exit 2
+}
+
+patch_backports (){
+	echo "dir: backports/${subsystem}"
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-${backport_tag}.patch"
+	else
+		${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}.patch"
+	fi
+}
+
+lts44_backports () {
+	backport_tag="v4.6-rc1"
+
+	subsystem="tty"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports_tty
 
 		rm -rf drivers/tty/serial/nwpserial.c
 		rm -rf drivers/tty/serial/of_serial.c
@@ -238,58 +286,27 @@ lts44_backports () {
 		cp -v ~/linux-src/include/linux/serial_core.h ./include/linux/
 		cp -v ~/linux-src/include/uapi/linux/serial.h ./include/uapi/linux/
 
-		cd ~/linux-src/
-		git checkout master -f ; git branch -D tmp
-		cd -
-
-		git add .
-		git commit -a -m 'backports: tty' -s
-		git format-patch -1 -o ../patches/backports/tty/
-
-		exit 2
+		post_backports
 	fi
-
-	echo "dir: backport tty/serial"
-	${git} "${DIR}/patches/backports/tty/0001-backports-tty.patch"
+	patch_backports
 	${git} "${DIR}/patches/backports/tty/rt-serial-warn-fix.patch"
 
+	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: backports/fbtft"
-
-		cd ~/linux-src/
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
-		git checkout v4.6-rc1 -b tmp
-		cd -
+		pre_backports
 
 		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
 		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
-		git status
 
-		cd ~/linux-src/
-		git checkout master -f ; git branch -D tmp
-		cd -
-
-		git add .
-		git commit -a -m 'backports: fbtft' -s
-		git format-patch -1 -o ../patches/backports/fbtft/
-
-		exit 2
+		post_backports
 	fi
+	patch_backports
 
-	echo "dir: backports/fbtft"
-	${git} "${DIR}/patches/backports/fbtft/0001-backports-fbtft.patch"
-
+	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: backports/iio"
-
-		cd ~/linux-src/
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
-		git checkout v4.6-rc1 -b tmp
-		cd -
+		pre_backports
 
 		cp -vr ~/linux-src/drivers/iio/* ./drivers/iio/
 		cp -vr ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
@@ -297,21 +314,21 @@ lts44_backports () {
 		cp -v  ~/linux-src/include/linux/mfd/palmas.h ./include/linux/mfd/
 		cp -v  ~/linux-src/include/linux/platform_data/ad5761.h ./include/linux/platform_data/
 		cp -v  ~/linux-src/include/uapi/linux/iio/types.h ./include/uapi/linux/iio/types.h
-		git status
 
-		cd ~/linux-src/
-		git checkout master -f ; git branch -D tmp
-		cd -
-
-		git add .
-		git commit -a -m 'backports: iio' -s
-		git format-patch -1 -o ../patches/backports/iio/
-
-		exit 2
+		post_backports
 	fi
+	patch_backports
 
-	echo "dir: backports/iio"
-	${git} "${DIR}/patches/backports/iio/0001-backports-iio.patch"
+	subsystem="edt-ft5x06"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/edt-ft5x06.c
+
+		post_backports
+	fi
+	patch_backports
 
 	echo "dir: lts44_backports"
 	#regenerate="enable"
