@@ -266,6 +266,45 @@ reverts () {
 	fi
 }
 
+pre_backports () {
+	echo "dir: backports/${subsystem}"
+
+	cd ~/linux-src/
+	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		git checkout ${backport_tag} -b tmp
+	fi
+	cd -
+}
+
+post_backports () {
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		cd ~/linux-src/
+		git checkout master -f ; git branch -D tmp
+		cd -
+	fi
+
+	git add .
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		git commit -a -m "backports: ${subsystem}: from: ${backport_tag}" -s
+	else
+		git commit -a -m "backports: ${subsystem}" -s
+	fi
+	git format-patch -1 -o ../patches/backports/${subsystem}/
+
+	exit 2
+}
+
+patch_backports (){
+	echo "dir: backports/${subsystem}"
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-${backport_tag}.patch"
+	else
+		${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}.patch"
+	fi
+}
+
 backports () {
 	echo "dir: backports"
 	echo "dir: backports/mediatek"
@@ -303,75 +342,49 @@ backports () {
 		cleanup
 	fi
 
+	backport_tag="v4.6-rc1"
+
+	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: backports/fbtft"
-
-		cd ~/linux-src/
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
-		git checkout v4.6-rc1 -b tmp
-		cd -
+		pre_backports
 
 		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
 		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
-		git status
 		#https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=4b6dc179dcf8e6fa023fb38a0b4fc456b90186f5
 		sed -i -e 's:screen_buffer:screen_base:g' ./drivers/staging/fbtft/*.c
 		sed -i -e 's:info->screen_base = vmem:info->screen_base = (u8 __force __iomem *)vmem:g' ./drivers/staging/fbtft/fbtft-core.c
 
-		cd ~/linux-src/
-		git checkout master -f ; git branch -D tmp
-		cd -
-
-		git add .
-		git commit -a -m 'backports: fbtft' -s
-		git format-patch -1 -o ../patches/backports/fbtft/
-
-		exit 2
+		post_backports
 	fi
+	patch_backports
 
-	echo "dir: backports/fbtft"
-	${git} "${DIR}/patches/backports/fbtft/0001-backports-fbtft.patch"
-
-	echo "dir: backports/iio"
+	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-	${git} "${DIR}/patches/backports/iio/0001-inv_mpu9250-added.patch"
+		pre_backports
 
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
+		cp -vr ~/linux-src/drivers/iio/* ./drivers/iio/
+		cp -vr ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
+		cp -vr ~/linux-src/include/linux/iio/* ./include/linux/iio/
+		cp -v  ~/linux-src/include/linux/platform_data/ad5761.h ./include/linux/platform_data/
+		cp -v  ~/linux-src/include/uapi/linux/iio/types.h ./include/uapi/linux/iio/types.h
 
+		post_backports
+	fi
+	patch_backports
+	${git} "${DIR}/patches/backports/iio/0001-backports-iio-broken.patch"
+
+	subsystem="edt-ft5x06"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: backports/edt-ft5x06"
-
-		cd ~/linux-src/
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
-		git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
-		git checkout v4.6-rc1 -b tmp
-		cd -
+		pre_backports
 
 		cp -v ~/linux-src/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/edt-ft5x06.c
-		git status
 
-		cd ~/linux-src/
-		git checkout master -f ; git branch -D tmp
-		cd -
-
-		git add .
-		git commit -a -m 'backports: edt-ft5x06' -s
-		git format-patch -1 -o ../patches/backports/edt-ft5x06/
-
-		exit 2
+		post_backports
 	fi
-
-	echo "dir: backports/edt-ft5x06"
-	${git} "${DIR}/patches/backports/edt-ft5x06/0001-backports-edt-ft5x06.patch"
+	patch_backports
 	${git} "${DIR}/patches/backports/edt-ft5x06/0001-of-add-helper-function-to-retrive-match-data.patch"
 }
 
