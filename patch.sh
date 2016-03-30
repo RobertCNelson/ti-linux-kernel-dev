@@ -748,9 +748,10 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/sancloud/0001-add-sancloud-beaglebone-enhanced.patch"
 	${git} "${DIR}/patches/beaglebone/sancloud/0002-sancloud-rename-as-am335x-sancloud-bbe.dts.patch"
+	${git} "${DIR}/patches/beaglebone/sancloud/0003-am335x-sancloud-bbe-update-lps331ap-mpu6050-irq-pins.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=3
 		cleanup
 	fi
 
