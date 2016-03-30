@@ -278,6 +278,23 @@ pre_backports () {
 	cd -
 }
 
+pre_backports_iio () {
+	echo "dir: backports/${subsystem}"
+
+	cd ~/linux-src/
+	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		git checkout ${backport_tag} -b tmp
+		#dht11
+		git revert --no-edit 17a2f46c3d8877fe2a0b6ff391d1df30e67892a6
+		git revert --no-edit 155a57593d38cf7153c01cc037373462aa1e1cc1
+		git revert --no-edit 22acc120a141ce0a3b6e98799d15970ef687bc70
+		git revert --no-edit 081d974031bafb204d64de3e82f398daf1d0b899
+	fi
+	cd -
+}
+
 post_backports () {
 	if [ ! "x${backport_tag}" = "x" ] ; then
 		cd ~/linux-src/
@@ -362,7 +379,7 @@ backports () {
 	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
+		pre_backports_iio
 
 		cp -vr ~/linux-src/drivers/iio/* ./drivers/iio/
 		cp -vr ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
