@@ -329,6 +329,7 @@ lts44_backports () {
 		post_backports
 	fi
 	patch_backports
+	${git} "${DIR}/patches/backports/edt-ft5x06/0002-edt-ft5x06-add-invert_x-invert_y-swap_xy.patch"
 
 	echo "dir: lts44_backports"
 	#regenerate="enable"
