@@ -370,9 +370,11 @@ reverts () {
 	fi
 
 	${git} "${DIR}/patches/reverts/0001-Revert-spi-spidev-Warn-loudly-if-instantiated-from-D.patch"
+	#needed for cmem, till ti patches it...
+	${git} "${DIR}/patches/reverts/0002-Revert-ARM-reduce-visibility-of-dmac_-functions.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
+		number=2
 		cleanup
 	fi
 }
