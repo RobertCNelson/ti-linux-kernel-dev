@@ -417,10 +417,9 @@ fixes () {
 	${git} "${DIR}/patches/fixes/0002-fix-sleep43xx.S-for-thumb2.patch"
 	${git} "${DIR}/patches/fixes/0003-fix-ti-emif-sram-pm.S-for-thumb2.patch"
 	${git} "${DIR}/patches/fixes/0004-net-wireless-SanCloud-wifi-issue-when-associating-wi.patch"
-	${git} "${DIR}/patches/fixes/0005-Bug-Fix-TTY-buffer-overrun.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
+		number=4
 		cleanup
 	fi
 }
@@ -734,9 +733,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/bbgw/0003-bbgw-switch-from-gpio-hog-back-to-regulator-gpio-for.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0004-bbgw-mmc3-edma-change-in-ti-v4.1.x.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0005-Update-am335x-bonegreen-wireless.dts.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0006-am335x-bonegreen-wl1835-bluetooth-audio.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
+		number=6
 		cleanup
 	fi
 
@@ -793,9 +793,10 @@ beaglebone () {
 	fi
 
 	${git} "${DIR}/patches/beaglebone/wl18xx/0001-wl18xx-R8.6_SP1.patch"
+	${git} "${DIR}/patches/beaglebone/wl18xx/0002-add-wilink8-bt.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
+		number=2
 		cleanup
 	fi
 
