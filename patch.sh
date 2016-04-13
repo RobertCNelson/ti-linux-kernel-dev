@@ -88,7 +88,6 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then

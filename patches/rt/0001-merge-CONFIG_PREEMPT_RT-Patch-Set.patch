@@ -1,6 +1,6 @@
-From 5dd9e4e486e8bc9200dcc5474c60c1f14638ee19 Mon Sep 17 00:00:00 2001
+From a0b1c8b7c6ee42c360facca881638a8743d924a3 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 4 Apr 2016 09:49:22 -0500
+Date: Wed, 13 Apr 2016 10:17:09 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -197,7 +197,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/scsi/qla2xxx/qla_inline.h                  |    4 +-
  drivers/staging/rtl8821ae/Kconfig                  |    1 +
  drivers/thermal/x86_pkg_temp_thermal.c             |   50 +-
- drivers/tty/serial/8250/8250_core.c                |   14 +-
+ drivers/tty/serial/8250/8250_core.c                |   32 +-
  drivers/tty/serial/amba-pl011.c                    |   15 +-
  drivers/tty/serial/omap-serial.c                   |   12 +-
  drivers/usb/core/hcd.c                             |    4 +-
@@ -420,7 +420,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  scripts/mkcompile_h                                |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 415 files changed, 12319 insertions(+), 2269 deletions(-)
+ 415 files changed, 12331 insertions(+), 2275 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 arch/x86/include/asm/irq_work.h
@@ -5731,7 +5731,7 @@ index e400591..c4b9e57 100644
  
  delay_and_out:
 diff --git a/drivers/md/raid5.c b/drivers/md/raid5.c
-index 1c829a0..7697450 100644
+index 4938676..c62ef55 100644
 --- a/drivers/md/raid5.c
 +++ b/drivers/md/raid5.c
 @@ -1630,8 +1630,9 @@ static void raid_run_ops(struct stripe_head *sh, unsigned long ops_request)
@@ -7586,7 +7586,7 @@ index 2ead877..e273a83 100644
  	/* build tx descriptor */
  	BDX_ASSERT(f->m.wptr >= f->m.memsz);	/* started with valid wptr */
 diff --git a/drivers/net/rionet.c b/drivers/net/rionet.c
-index 6d1f6ed..aa9800e 100644
+index d93bac1..48be12a 100644
 --- a/drivers/net/rionet.c
 +++ b/drivers/net/rionet.c
 @@ -174,11 +174,7 @@ static int rionet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
@@ -7894,7 +7894,7 @@ index 081fd7e..f297ddd 100644
  		cancel_delayed_work_sync(
  			&per_cpu(pkg_temp_thermal_threshold_work, i));
 diff --git a/drivers/tty/serial/8250/8250_core.c b/drivers/tty/serial/8250/8250_core.c
-index e72f167..0521806 100644
+index f298e7f..0521806 100644
 --- a/drivers/tty/serial/8250/8250_core.c
 +++ b/drivers/tty/serial/8250/8250_core.c
 @@ -37,6 +37,7 @@
@@ -7923,7 +7923,36 @@ index e72f167..0521806 100644
  
  #define BOTH_EMPTY 	(UART_LSR_TEMT | UART_LSR_THRE)
  
-@@ -3163,7 +3173,7 @@ serial8250_console_write(struct console *co, const char *s, unsigned int count)
+@@ -739,16 +749,22 @@ static int size_fifo(struct uart_8250_port *up)
+  */
+ static unsigned int autoconfig_read_divisor_id(struct uart_8250_port *p)
+ {
+-	unsigned char old_lcr;
+-	unsigned int id, old_dl;
++	unsigned char old_dll, old_dlm, old_lcr;
++	unsigned int id;
+ 
+ 	old_lcr = serial_in(p, UART_LCR);
+ 	serial_out(p, UART_LCR, UART_LCR_CONF_MODE_A);
+-	old_dl = serial_dl_read(p);
+-	serial_dl_write(p, 0);
+-	id = serial_dl_read(p);
+-	serial_dl_write(p, old_dl);
+ 
++	old_dll = serial_in(p, UART_DLL);
++	old_dlm = serial_in(p, UART_DLM);
++
++	serial_out(p, UART_DLL, 0);
++	serial_out(p, UART_DLM, 0);
++
++	id = serial_in(p, UART_DLL) | serial_in(p, UART_DLM) << 8;
++
++	serial_out(p, UART_DLL, old_dll);
++	serial_out(p, UART_DLM, old_dlm);
+ 	serial_out(p, UART_LCR, old_lcr);
+ 
+ 	return id;
+@@ -3157,7 +3173,7 @@ serial8250_console_write(struct console *co, const char *s, unsigned int count)
  
  	serial8250_rpm_get(up);
  
@@ -9349,7 +9378,7 @@ index 290db12..d9ae75e 100644
  static inline int kdb_register(char *cmd, kdb_func_t func, char *usage,
  			       char *help, short minlen) { return 0; }
 diff --git a/include/linux/kernel.h b/include/linux/kernel.h
-index 196d1ea..7042256 100644
+index 129438a..322426d 100644
 --- a/include/linux/kernel.h
 +++ b/include/linux/kernel.h
 @@ -454,6 +454,7 @@ extern enum system_states {
@@ -19619,7 +19648,7 @@ index a63f4dc..e529e5f 100644
  }
  EXPORT_SYMBOL(completion_done);
 diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 46afc8c..fa1aa51 100644
+index 1ad2f18..d07a89f 100644
 --- a/kernel/sched/core.c
 +++ b/kernel/sched/core.c
 @@ -272,7 +272,11 @@ late_initcall(sched_init_debug);
@@ -20535,7 +20564,7 @@ index 46afc8c..fa1aa51 100644
  }
  
  /*
-@@ -5093,6 +5460,10 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
+@@ -5094,6 +5461,10 @@ migration_call(struct notifier_block *nfb, unsigned long action, void *hcpu)
  
  	case CPU_DEAD:
  		calc_load_migrate(rq);
@@ -20546,7 +20575,7 @@ index 46afc8c..fa1aa51 100644
  		break;
  #endif
  	}
-@@ -7001,7 +7372,8 @@ void __init sched_init(void)
+@@ -7002,7 +7373,8 @@ void __init sched_init(void)
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
  static inline int preempt_count_equals(int preempt_offset)
  {
@@ -20556,7 +20585,7 @@ index 46afc8c..fa1aa51 100644
  
  	return (nested == preempt_offset);
  }
-@@ -7011,7 +7383,8 @@ void __might_sleep(const char *file, int line, int preempt_offset)
+@@ -7012,7 +7384,8 @@ void __might_sleep(const char *file, int line, int preempt_offset)
  	static unsigned long prev_jiffy;	/* ratelimiting */
  
  	rcu_sleep_check(); /* WARN_ON_ONCE() by default, no rate limit reqd. */
@@ -20566,7 +20595,7 @@ index 46afc8c..fa1aa51 100644
  	    system_state != SYSTEM_RUNNING || oops_in_progress)
  		return;
  	if (time_before(jiffies, prev_jiffy + HZ) && prev_jiffy)
-@@ -7029,6 +7402,13 @@ void __might_sleep(const char *file, int line, int preempt_offset)
+@@ -7030,6 +7403,13 @@ void __might_sleep(const char *file, int line, int preempt_offset)
  	debug_show_held_locks(current);
  	if (irqs_disabled())
  		print_irqtrace_events(current);
@@ -20874,7 +20903,7 @@ index 0fb72ae..56ccaff 100644
  }
  
 diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
-index 675e147..f13b10e 100644
+index 3ecc6ce..c32639e 100644
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
 @@ -1064,6 +1064,7 @@ static inline void finish_lock_switch(struct rq *rq, struct task_struct *prev)
@@ -24618,7 +24647,7 @@ index c798ed2..ac2155c 100644
  		cpu_buffer->nr_pages_to_update = 0;
  		put_online_cpus();
 diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
-index a2d62b3..a106d35 100644
+index 6ea1b94..ef77e52 100644
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
 @@ -1554,6 +1554,7 @@ tracing_generic_entry_update(struct trace_entry *entry, unsigned long flags,
@@ -24726,7 +24755,7 @@ index bb1ac9c..dadd1a6 100644
  	return ret;
  }
 diff --git a/kernel/trace/trace_irqsoff.c b/kernel/trace/trace_irqsoff.c
-index 2aefbee..77bdfa5 100644
+index 56e083e..44686b5 100644
 --- a/kernel/trace/trace_irqsoff.c
 +++ b/kernel/trace/trace_irqsoff.c
 @@ -17,6 +17,7 @@
@@ -24737,7 +24766,7 @@ index 2aefbee..77bdfa5 100644
  
  static struct trace_array		*irqsoff_trace __read_mostly;
  static int				tracer_enabled __read_mostly;
-@@ -439,11 +440,13 @@ void start_critical_timings(void)
+@@ -443,11 +444,13 @@ void start_critical_timings(void)
  {
  	if (preempt_trace() || irq_trace())
  		start_critical_timing(CALLER_ADDR0, CALLER_ADDR1);
@@ -24751,7 +24780,7 @@ index 2aefbee..77bdfa5 100644
  	if (preempt_trace() || irq_trace())
  		stop_critical_timing(CALLER_ADDR0, CALLER_ADDR1);
  }
-@@ -453,6 +456,7 @@ EXPORT_SYMBOL_GPL(stop_critical_timings);
+@@ -457,6 +460,7 @@ EXPORT_SYMBOL_GPL(stop_critical_timings);
  #ifdef CONFIG_PROVE_LOCKING
  void time_hardirqs_on(unsigned long a0, unsigned long a1)
  {
@@ -24759,7 +24788,7 @@ index 2aefbee..77bdfa5 100644
  	if (!preempt_trace() && irq_trace())
  		stop_critical_timing(a0, a1);
  }
-@@ -461,6 +465,7 @@ void time_hardirqs_off(unsigned long a0, unsigned long a1)
+@@ -465,6 +469,7 @@ void time_hardirqs_off(unsigned long a0, unsigned long a1)
  {
  	if (!preempt_trace() && irq_trace())
  		start_critical_timing(a0, a1);
@@ -24767,7 +24796,7 @@ index 2aefbee..77bdfa5 100644
  }
  
  #else /* !CONFIG_PROVE_LOCKING */
-@@ -486,6 +491,7 @@ inline void print_irqtrace_events(struct task_struct *curr)
+@@ -490,6 +495,7 @@ inline void print_irqtrace_events(struct task_struct *curr)
   */
  void trace_hardirqs_on(void)
  {
@@ -24775,7 +24804,7 @@ index 2aefbee..77bdfa5 100644
  	if (!preempt_trace() && irq_trace())
  		stop_critical_timing(CALLER_ADDR0, CALLER_ADDR1);
  }
-@@ -495,11 +501,13 @@ void trace_hardirqs_off(void)
+@@ -499,11 +505,13 @@ void trace_hardirqs_off(void)
  {
  	if (!preempt_trace() && irq_trace())
  		start_critical_timing(CALLER_ADDR0, CALLER_ADDR1);
@@ -24789,7 +24818,7 @@ index 2aefbee..77bdfa5 100644
  	if (!preempt_trace() && irq_trace())
  		stop_critical_timing(CALLER_ADDR0, caller_addr);
  }
-@@ -509,6 +517,7 @@ void trace_hardirqs_off_caller(unsigned long caller_addr)
+@@ -513,6 +521,7 @@ void trace_hardirqs_off_caller(unsigned long caller_addr)
  {
  	if (!preempt_trace() && irq_trace())
  		start_critical_timing(CALLER_ADDR0, caller_addr);
@@ -24797,7 +24826,7 @@ index 2aefbee..77bdfa5 100644
  }
  EXPORT_SYMBOL(trace_hardirqs_off_caller);
  
-@@ -518,12 +527,14 @@ EXPORT_SYMBOL(trace_hardirqs_off_caller);
+@@ -522,12 +531,14 @@ EXPORT_SYMBOL(trace_hardirqs_off_caller);
  #ifdef CONFIG_PREEMPT_TRACER
  void trace_preempt_on(unsigned long a0, unsigned long a1)
  {
@@ -27932,7 +27961,7 @@ index 9190950..ef5be96b 100644
  	mmput(mm);
  	kvm_put_kvm(vcpu->kvm);
 diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
-index d7d950f..d2e601c 100644
+index 9e5cd21..2c1051f 100644
 --- a/virt/kvm/kvm_main.c
 +++ b/virt/kvm/kvm_main.c
 @@ -219,7 +219,7 @@ int kvm_vcpu_init(struct kvm_vcpu *vcpu, struct kvm *kvm, unsigned id)
@@ -27944,7 +27973,7 @@ index d7d950f..d2e601c 100644
  	kvm_async_pf_vcpu_init(vcpu);
  
  	page = alloc_page(GFP_KERNEL | __GFP_ZERO);
-@@ -1675,10 +1675,10 @@ EXPORT_SYMBOL_GPL(mark_page_dirty);
+@@ -1676,10 +1676,10 @@ EXPORT_SYMBOL_GPL(mark_page_dirty);
   */
  void kvm_vcpu_block(struct kvm_vcpu *vcpu)
  {
@@ -27957,7 +27986,7 @@ index d7d950f..d2e601c 100644
  
  		if (kvm_arch_vcpu_runnable(vcpu)) {
  			kvm_make_request(KVM_REQ_UNHALT, vcpu);
-@@ -1692,7 +1692,7 @@ void kvm_vcpu_block(struct kvm_vcpu *vcpu)
+@@ -1693,7 +1693,7 @@ void kvm_vcpu_block(struct kvm_vcpu *vcpu)
  		schedule();
  	}
  
@@ -27966,7 +27995,7 @@ index d7d950f..d2e601c 100644
  }
  EXPORT_SYMBOL_GPL(kvm_vcpu_block);
  
-@@ -1704,11 +1704,11 @@ void kvm_vcpu_kick(struct kvm_vcpu *vcpu)
+@@ -1705,11 +1705,11 @@ void kvm_vcpu_kick(struct kvm_vcpu *vcpu)
  {
  	int me;
  	int cpu = vcpu->cpu;
@@ -27981,7 +28010,7 @@ index d7d950f..d2e601c 100644
  		++vcpu->stat.halt_wakeup;
  	}
  
-@@ -1814,7 +1814,7 @@ void kvm_vcpu_on_spin(struct kvm_vcpu *me)
+@@ -1815,7 +1815,7 @@ void kvm_vcpu_on_spin(struct kvm_vcpu *me)
  				continue;
  			if (vcpu == me)
  				continue;
