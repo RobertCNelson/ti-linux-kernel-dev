@@ -1043,5 +1043,20 @@ packaging () {
 	fi
 }
 
+travis () {
+	echo "dir: travis"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cp -v "${DIR}/3rdparty/travis/.travis.yml" "${DIR}/KERNEL/.travis.yml"
+		git add -f .travis.yml
+		git commit -a -m 'enable: travis: https://travis-ci.org/beagleboard/linux' -s
+		git format-patch -1 -o "${DIR}/patches/travis"
+		exit 2
+	else
+		${git} "${DIR}/patches/travis/0001-enable-travis-https-travis-ci.org-beagleboard-linux.patch"
+	fi
+}
+
 packaging
+travis
 echo "patch.sh ran successfully"
