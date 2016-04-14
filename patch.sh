@@ -755,6 +755,19 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/bbbw"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/bbbw/0001-add-am335x-boneblack-wireless.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
 	echo "dir: beaglebone/CTAG"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -843,6 +856,7 @@ beaglebone () {
 		device="am335x-boneblack-spi0.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-ttyS2.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
 
