@@ -289,7 +289,19 @@ lts44_backports () {
 		post_backports
 	fi
 	patch_backports
-	${git} "${DIR}/patches/backports/tty/rt-serial-warn-fix.patch"
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/backports/tty/0002-rt-Improve-the-serial-console-PASS_LIMIT.patch"
+	${git} "${DIR}/patches/backports/tty/0003-tty-serial-8250-don-t-take-the-trylock-during-oops.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=3
+		cleanup
+	fi
 
 	subsystem="fbtft"
 	#regenerate="enable"
@@ -463,19 +475,32 @@ pru_rpmsg () {
 }
 
 x15 () {
-	echo "dir: x15/dsp"
+	echo "dir: x15/fixes"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
-	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
+	${git} "${DIR}/patches/x15/fixes/0001-dts-am57xx-beagle-x15-disable-a-few-sd-uhs-modes-fro.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=1
 		cleanup
 	fi
+
+#	echo "dir: x15/dsp"
+#	#regenerate="enable"
+#	if [ "x${regenerate}" = "xenable" ] ; then
+#		start_cleanup
+#	fi
+
+#	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
+#	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
+
+#	if [ "x${regenerate}" = "xenable" ] ; then
+#		number=2
+#		cleanup
+#	fi
 }
 
 bbb_overlays () {
@@ -1023,7 +1048,7 @@ lts44_backports
 reverts
 fixes
 ti
-#x15
+x15
 pru_uio
 pru_rpmsg
 bbb_overlays
