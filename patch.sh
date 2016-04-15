@@ -296,10 +296,9 @@ lts44_backports () {
 	fi
 
 	${git} "${DIR}/patches/backports/tty/0002-rt-Improve-the-serial-console-PASS_LIMIT.patch"
-	${git} "${DIR}/patches/backports/tty/0003-tty-serial-8250-don-t-take-the-trylock-during-oops.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=2
 		cleanup
 	fi
 
