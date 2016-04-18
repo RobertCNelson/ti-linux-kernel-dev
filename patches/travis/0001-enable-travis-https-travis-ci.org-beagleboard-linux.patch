@@ -1,19 +1,19 @@
-From 14cc8ef46db2c3d5faf7c80e31c4fb739c6eef16 Mon Sep 17 00:00:00 2001
+From 065f4c5e9f6a8b361e4dc983ab67917794ca0445 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 14 Apr 2016 11:44:51 -0500
+Date: Mon, 18 Apr 2016 10:46:01 -0500
 Subject: [PATCH] enable: travis: https://travis-ci.org/beagleboard/linux
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- .travis.yml                | 17 +++++++++++++++
- build_deb_in_arm_chroot.sh | 54 ++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 71 insertions(+)
+ .travis.yml                | 17 ++++++++++
+ build_deb_in_arm_chroot.sh | 79 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 96 insertions(+)
  create mode 100644 .travis.yml
  create mode 100644 build_deb_in_arm_chroot.sh
 
 diff --git a/.travis.yml b/.travis.yml
 new file mode 100644
-index 0000000..acbf30b
+index 0000000..8f4e8f6
 --- /dev/null
 +++ b/.travis.yml
 @@ -0,0 +1,17 @@
@@ -36,10 +36,10 @@ index 0000000..acbf30b
 +  - bash -ex build_deb_in_arm_chroot.sh
 diff --git a/build_deb_in_arm_chroot.sh b/build_deb_in_arm_chroot.sh
 new file mode 100644
-index 0000000..4b1ac37
+index 0000000..05a79ea
 --- /dev/null
 +++ b/build_deb_in_arm_chroot.sh
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,79 @@
 +#!/bin/bash
 +CHROOT_DIR=/tmp/arm-chroot
 +VERSION=jessie
@@ -51,14 +51,39 @@ index 0000000..4b1ac37
 +function run_build {
 +	cd ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}
 +	make bb.org_defconfig
-+	make -s -j4 CROSS_COMPILE="ccache arm-linux-gnueabihf-"
++	make -s -j4 CROSS_COMPILE=arm-linux-gnueabihf-
 +}
 +
 +function run_package {
++if [ ! true ] ; then
 +	make KBUILD_DEBARCH=armhf KDEB_SOURCENAME=linux KDEB_CHANGELOG_DIST=unstable
++else
++	echo "Not running this time"
++fi
 +}
 +
 +function setup_arm_chroot {
++	pushd /tmp
++	wget https://beagleboard.org/static/arm-debian-jessie.rootfs.tgz
++	popd
++
++	sudo mkdir ${CHROOT_DIR}
++	sudo tar xzf /tmp/arm-debian-jessie.rootfs.tgz -C ${CHROOT_DIR}
++
++	echo "export ARCH=${ARCH}" > envvars.sh
++	echo "export TRAVIS_BUILD_DIR=${TRAVIS_BUILD_DIR}" >> envvars.sh
++	chmod a+x envvars.sh
++
++	sudo chroot ${CHROOT_DIR} apt-get update
++	sudo chroot ${CHROOT_DIR} apt-get --allow-unauthenticated install \
++		-qq -y ${GUEST_DEPENDENCIES}
++	sudo mkdir -p ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}
++	sudo rsync -a ${TRAVIS_BUILD_DIR}/ ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}/
++
++	sudo touch ${CHROOT_DIR}/.chroot_is_done
++}
++
++function setup_arm_chroot_orig {
 +	wget -c https://rcn-ee.net/mirror/debootstrap/debootstrap_${DEBOOT}_all.deb
 +	if [ -f debootstrap_${DEBOOT}_all.deb ] ; then
 +		sudo dpkg -i debootstrap_${DEBOOT}_all.deb

@@ -215,8 +215,8 @@ aufs4 () {
 	${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=6
-		cleanup
+		git format-patch -6 -o ../patches/aufs4/
+		exit 2
 	fi
 }
 
@@ -359,7 +359,7 @@ backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.6-rc3"
+	backport_tag="v4.6-rc4"
 
 	subsystem="fbtft"
 	#regenerate="enable"

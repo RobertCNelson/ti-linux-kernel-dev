@@ -9,14 +9,39 @@ DEBOOT="1.0.80"
 function run_build {
 	cd ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}
 	make bb.org_defconfig
-	make -s -j4 CROSS_COMPILE="ccache arm-linux-gnueabihf-"
+	make -s -j4 CROSS_COMPILE=arm-linux-gnueabihf-
 }
 
 function run_package {
+if [ ! true ] ; then
 	make KBUILD_DEBARCH=armhf KDEB_SOURCENAME=linux KDEB_CHANGELOG_DIST=unstable
+else
+	echo "Not running this time"
+fi
 }
 
 function setup_arm_chroot {
+	pushd /tmp
+	wget https://beagleboard.org/static/arm-debian-jessie.rootfs.tgz
+	popd
+
+	sudo mkdir ${CHROOT_DIR}
+	sudo tar xzf /tmp/arm-debian-jessie.rootfs.tgz -C ${CHROOT_DIR}
+
+	echo "export ARCH=${ARCH}" > envvars.sh
+	echo "export TRAVIS_BUILD_DIR=${TRAVIS_BUILD_DIR}" >> envvars.sh
+	chmod a+x envvars.sh
+
+	sudo chroot ${CHROOT_DIR} apt-get update
+	sudo chroot ${CHROOT_DIR} apt-get --allow-unauthenticated install \
+		-qq -y ${GUEST_DEPENDENCIES}
+	sudo mkdir -p ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}
+	sudo rsync -a ${TRAVIS_BUILD_DIR}/ ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}/
+
+	sudo touch ${CHROOT_DIR}/.chroot_is_done
+}
+
+function setup_arm_chroot_orig {
 	wget -c https://rcn-ee.net/mirror/debootstrap/debootstrap_${DEBOOT}_all.deb
 	if [ -f debootstrap_${DEBOOT}_all.deb ] ; then
 		sudo dpkg -i debootstrap_${DEBOOT}_all.deb
