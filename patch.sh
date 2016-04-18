@@ -170,8 +170,8 @@ aufs4 () {
 	${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=6
-		cleanup
+		git format-patch -6 -o ../patches/aufs4/
+		exit 2
 	fi
 }
 
@@ -260,7 +260,7 @@ patch_backports (){
 }
 
 lts44_backports () {
-	backport_tag="v4.6-rc3"
+	backport_tag="v4.6-rc4"
 
 	subsystem="tty"
 	#regenerate="enable"
@@ -298,8 +298,8 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/tty/0002-rt-Improve-the-serial-console-PASS_LIMIT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
-		cleanup
+		git format-patch -2 -o ../patches/backports/tty/
+		exit 2
 	fi
 
 	subsystem="fbtft"
@@ -1073,6 +1073,8 @@ travis () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/travis/.travis.yml" "${DIR}/KERNEL/.travis.yml"
 		git add -f .travis.yml
+		cp -v "${DIR}/3rdparty/travis/build_deb_in_arm_chroot.sh" "${DIR}/KERNEL/"
+		git add  -f build_deb_in_arm_chroot.sh
 		git commit -a -m 'enable: travis: https://travis-ci.org/beagleboard/linux' -s
 		git format-patch -1 -o "${DIR}/patches/travis"
 		exit 2
