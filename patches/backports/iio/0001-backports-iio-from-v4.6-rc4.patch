@@ -1,6 +1,6 @@
-From 493a98e748d71bab4402af74f0c67e24a0c45a31 Mon Sep 17 00:00:00 2001
+From c1e7ab545da7803df95cb75faa4b97e4bffb267e Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 18 Apr 2016 10:41:34 -0500
+Date: Wed, 20 Apr 2016 13:22:57 -0500
 Subject: [PATCH] backports: iio: from: v4.6-rc4
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -113,7 +113,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/dac/ad7303.c                           |    8 +-
  drivers/iio/dac/m62332.c                           |  272 +++
  drivers/iio/dac/max5821.c                          |    2 +-
- drivers/iio/dac/mcp4725.c                          |   88 +-
+ drivers/iio/dac/mcp4725.c                          |   87 +-
  drivers/iio/dac/mcp4922.c                          |    1 -
  drivers/iio/dac/stx104.c                           |  152 ++
  drivers/iio/dac/vf610_dac.c                        |  298 ++++
@@ -158,7 +158,6 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/humidity/si7020.c                      |   17 +-
  drivers/iio/imu/adis16400_core.c                   |   51 +-
  drivers/iio/imu/adis16480.c                        |    5 +-
- drivers/iio/imu/adis_buffer.c                      |    2 +-
  drivers/iio/imu/inv_mpu6050/Kconfig                |   23 +-
  drivers/iio/imu/inv_mpu6050/Makefile               |    8 +-
  drivers/iio/imu/inv_mpu6050/inv_mpu_acpi.c         |   24 +-
@@ -228,7 +227,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/pressure/Kconfig                       |   60 +-
  drivers/iio/pressure/Makefile                      |    3 +
  drivers/iio/pressure/hid-sensor-press.c            |   14 +-
- drivers/iio/pressure/mpl115.c                      |   68 +-
+ drivers/iio/pressure/mpl115.c                      |   66 +-
  drivers/iio/pressure/mpl115.h                      |   24 +
  drivers/iio/pressure/mpl115_i2c.c                  |   67 +
  drivers/iio/pressure/mpl115_spi.c                  |  106 ++
@@ -330,7 +329,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/iio/types.h                          |    2 +
  include/linux/platform_data/ad5761.h               |   44 +
  include/uapi/linux/iio/types.h                     |    7 +
- 325 files changed, 40352 insertions(+), 2778 deletions(-)
+ 324 files changed, 40349 insertions(+), 2776 deletions(-)
  create mode 100644 drivers/iio/accel/bmc150-accel-core.c
  create mode 100644 drivers/iio/accel/bmc150-accel-i2c.c
  create mode 100644 drivers/iio/accel/bmc150-accel-spi.c
@@ -22822,7 +22821,7 @@ index 6e91449..86e9e11 100644
  	.probe		= max5821_probe,
  	.remove		= max5821_remove,
 diff --git a/drivers/iio/dac/mcp4725.c b/drivers/iio/dac/mcp4725.c
-index 43d1458..cca935c 100644
+index b4dde83..cca935c 100644
 --- a/drivers/iio/dac/mcp4725.c
 +++ b/drivers/iio/dac/mcp4725.c
 @@ -1,5 +1,5 @@
@@ -22932,18 +22931,16 @@ index 43d1458..cca935c 100644
  };
  
  static int mcp4725_set_value(struct iio_dev *indio_dev, int val)
-@@ -300,8 +346,9 @@ static int mcp4725_probe(struct i2c_client *client,
- 	data->client = client;
- 
+@@ -302,7 +348,7 @@ static int mcp4725_probe(struct i2c_client *client,
  	indio_dev->dev.parent = &client->dev;
-+	indio_dev->name = id->name;
+ 	indio_dev->name = id->name;
  	indio_dev->info = &mcp4725_info;
 -	indio_dev->channels = &mcp4725_channel;
 +	indio_dev->channels = &mcp472x_channel[id->driver_data];
  	indio_dev->num_channels = 1;
  	indio_dev->modes = INDIO_DIRECT_MODE;
  
-@@ -315,7 +362,7 @@ static int mcp4725_probe(struct i2c_client *client,
+@@ -316,7 +362,7 @@ static int mcp4725_probe(struct i2c_client *client,
  	}
  	pd = (inbuf[0] >> 1) & 0x3;
  	data->powerdown = pd > 0 ? true : false;
@@ -22952,7 +22949,7 @@ index 43d1458..cca935c 100644
  	data->dac_value = (inbuf[1] << 4) | (inbuf[2] >> 4);
  
  	return iio_device_register(indio_dev);
-@@ -328,7 +375,8 @@ static int mcp4725_remove(struct i2c_client *client)
+@@ -329,7 +375,8 @@ static int mcp4725_remove(struct i2c_client *client)
  }
  
  static const struct i2c_device_id mcp4725_id[] = {
@@ -22962,7 +22959,7 @@ index 43d1458..cca935c 100644
  	{ }
  };
  MODULE_DEVICE_TABLE(i2c, mcp4725_id);
-@@ -345,5 +393,5 @@ static struct i2c_driver mcp4725_driver = {
+@@ -346,5 +393,5 @@ static struct i2c_driver mcp4725_driver = {
  module_i2c_driver(mcp4725_driver);
  
  MODULE_AUTHOR("Peter Meerwald <pmeerw@pmeerw.net>");
@@ -23141,7 +23138,7 @@ index 0000000..174f4b7
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/iio/dac/vf610_dac.c b/drivers/iio/dac/vf610_dac.c
 new file mode 100644
-index 0000000..c4ec7779
+index 0000000..c4ec777
 --- /dev/null
 +++ b/drivers/iio/dac/vf610_dac.c
 @@ -0,0 +1,298 @@
@@ -30272,19 +30269,6 @@ index b94bfd3..8cf84d3 100644
  	},
  	.id_table = adis16480_ids,
  	.probe = adis16480_probe,
-diff --git a/drivers/iio/imu/adis_buffer.c b/drivers/iio/imu/adis_buffer.c
-index cb32b59..36607d5 100644
---- a/drivers/iio/imu/adis_buffer.c
-+++ b/drivers/iio/imu/adis_buffer.c
-@@ -43,7 +43,7 @@ int adis_update_scan_mode(struct iio_dev *indio_dev,
- 		return -ENOMEM;
- 
- 	rx = adis->buffer;
--	tx = rx + indio_dev->scan_bytes;
-+	tx = rx + scan_count;
- 
- 	spi_message_init(&adis->msg);
- 
 diff --git a/drivers/iio/imu/inv_mpu6050/Kconfig b/drivers/iio/imu/inv_mpu6050/Kconfig
 index 48fbc0b..847455a 100644
 --- a/drivers/iio/imu/inv_mpu6050/Kconfig
@@ -45098,7 +45082,7 @@ index 3cf0bd6..6848d8c 100644
  		/* Format: HID-SENSOR-usage_id_in_hex_lowercase */
  		.name = "HID-SENSOR-200031",
 diff --git a/drivers/iio/pressure/mpl115.c b/drivers/iio/pressure/mpl115.c
-index f5ecd6e..73f2f0c 100644
+index a0d7dee..73f2f0c 100644
 --- a/drivers/iio/pressure/mpl115.c
 +++ b/drivers/iio/pressure/mpl115.c
 @@ -1,5 +1,5 @@
@@ -45173,15 +45157,6 @@ index f5ecd6e..73f2f0c 100644
  done:
  	mutex_unlock(&data->lock);
  	return ret;
-@@ -117,7 +118,7 @@ static int mpl115_read_raw(struct iio_dev *indio_dev,
- 		*val = ret >> 6;
- 		return IIO_VAL_INT;
- 	case IIO_CHAN_INFO_OFFSET:
--		*val = 605;
-+		*val = -605;
- 		*val2 = 750000;
- 		return IIO_VAL_INT_PLUS_MICRO;
- 	case IIO_CHAN_INFO_SCALE:
 @@ -145,66 +146,53 @@ static const struct iio_info mpl115_info = {
  	.driver_module = THIS_MODULE,
  };
