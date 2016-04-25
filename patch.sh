@@ -812,9 +812,11 @@ beaglebone () {
 	fi
 
 	${git} "${DIR}/patches/beaglebone/bbgw/0001-add-beaglebone-green-wireless.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0002-am335x-bonegreen-wl1835-bluetooth-audio.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
+		wdir="beaglebone/bbgw"
+		number=2
 		cleanup
 	fi
 
@@ -922,6 +924,20 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/jtag/0001-add-jtag-clock-pinmux.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
+	echo "dir: beaglebone/wl18xx"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/wl18xx/0001-add-wilink8-bt.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="beaglebone/wl18xx"
 		number=1
 		cleanup
 	fi
