@@ -935,10 +935,11 @@ beaglebone () {
 	fi
 
 	${git} "${DIR}/patches/beaglebone/wl18xx/0001-add-wilink8-bt.patch"
+	${git} "${DIR}/patches/beaglebone/wl18xx/0002-wl18xx-forward-port-from-v4.1.x-ti.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/wl18xx"
-		number=1
+		number=2
 		cleanup
 	fi
 
