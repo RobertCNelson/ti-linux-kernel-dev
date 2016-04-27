@@ -833,6 +833,19 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/bbbw"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/bbbw/0001-add-bbbw.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
 	echo "dir: beaglebone/tre"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -986,6 +999,7 @@ beaglebone () {
 		device="am335x-bone-cape-bone-argus.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-cape-bone-argus.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
