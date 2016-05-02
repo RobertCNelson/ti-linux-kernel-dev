@@ -484,13 +484,11 @@ pru_rpmsg () {
 }
 
 x15 () {
-	echo "dir: x15/fixes"
+	#echo "dir: x15/fixes"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
-
-	${git} "${DIR}/patches/x15/fixes/0001-dts-am57xx-beagle-x15-disable-a-few-sd-uhs-modes-fro.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
@@ -1086,7 +1084,7 @@ lts44_backports
 reverts
 fixes
 ti
-x15
+#x15
 pru_uio
 pru_rpmsg
 bbb_overlays
