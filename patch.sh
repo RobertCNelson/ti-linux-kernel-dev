@@ -1079,6 +1079,21 @@ quieter () {
 	fi
 }
 
+hack () {
+	echo "dir: quieter"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/hacks/0001-hack-pruss.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+}
+
 ###
 lts44_backports
 reverts
@@ -1090,6 +1105,7 @@ pru_rpmsg
 bbb_overlays
 beaglebone
 quieter
+hack
 
 packaging () {
 	echo "dir: packaging"
