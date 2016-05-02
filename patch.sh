@@ -265,7 +265,7 @@ patch_backports (){
 }
 
 lts44_backports () {
-	backport_tag="v4.6-rc5"
+	backport_tag="v4.6-rc6"
 
 	#https://github.com/RobertCNelson/ti-linux-kernel/commit/621eb27d4284fcd71287d2cee94f6156510600fb
 	git format-patch -1 621eb27d4284fcd71287d2cee94f6156510600fb -o ../patches/backports/tty/
