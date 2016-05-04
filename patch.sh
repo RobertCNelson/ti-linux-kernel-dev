@@ -267,9 +267,6 @@ patch_backports (){
 lts44_backports () {
 	backport_tag="v4.6-rc6"
 
-	#https://github.com/RobertCNelson/ti-linux-kernel/commit/621eb27d4284fcd71287d2cee94f6156510600fb
-	git format-patch -1 621eb27d4284fcd71287d2cee94f6156510600fb -o ../patches/backports/tty/
-
 	subsystem="tty"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -293,8 +290,6 @@ lts44_backports () {
 		cp -v ~/linux-src/include/linux/serial_8250.h ./include/linux/
 		cp -v ~/linux-src/include/linux/serial_core.h ./include/linux/
 		cp -v ~/linux-src/include/uapi/linux/serial.h ./include/uapi/linux/
-
-		patch -p1 < "${DIR}/patches/backports/tty/0001-tty-serial-8250-omap-Switch-to-the-new-dmaengine_ter.patch"
 
 		post_backports
 	fi
