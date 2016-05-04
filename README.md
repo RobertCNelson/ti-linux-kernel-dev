@@ -1,5 +1,7 @@
-WARNING: Do NOT use this repo if you are not use to re-basing git branches.
+*WARNING, due to the setup of this repo, all "tag's" are un-reproducible.*
 
-As the "base" git tree for this patchset is also under-development.
+To build an older tag's, use this repo:
 
-Any emails of support in which you missed this "re-base" issue, will require a case of beer for the bb.org community.
+```
+https://github.com/RobertCNelson/yakbuild
+```
