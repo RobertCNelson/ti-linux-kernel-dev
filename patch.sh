@@ -257,7 +257,7 @@ patch_backports (){
 }
 
 lts44_backports () {
-	backport_tag="v4.6-rc6"
+	backport_tag="v4.6-rc7"
 
 	subsystem="tty"
 	#regenerate="enable"
