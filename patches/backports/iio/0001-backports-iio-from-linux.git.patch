@@ -1,7 +1,7 @@
-From 8baa6510399c0cb89823680a833122e0b87ecb08 Mon Sep 17 00:00:00 2001
+From 17ca70a6cfbf0e1be8f1ace69e82266170d2155b Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 2 May 2016 10:28:53 -0500
-Subject: [PATCH] backports: iio: from: v4.6-rc6
+Date: Mon, 9 May 2016 13:38:58 -0500
+Subject: [PATCH] backports: iio: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
@@ -44,7 +44,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/ad7887.c                           |    1 -
  drivers/iio/adc/ad7923.c                           |    1 -
  drivers/iio/adc/ad799x.c                           |    1 -
- drivers/iio/adc/at91-sama5d2_adc.c                 |  508 ++++++
+ drivers/iio/adc/at91-sama5d2_adc.c                 |  510 ++++++
  drivers/iio/adc/at91_adc.c                         |    2 +-
  drivers/iio/adc/axp288_adc.c                       |    4 +-
  drivers/iio/adc/berlin2-adc.c                      |  381 +++++
@@ -162,10 +162,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/imu/inv_mpu6050/Makefile               |    8 +-
  drivers/iio/imu/inv_mpu6050/inv_mpu_acpi.c         |   24 +-
  drivers/iio/imu/inv_mpu6050/inv_mpu_core.c         |  465 +++--
- drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c          |  208 +++
+ drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c          |  232 +++
  drivers/iio/imu/inv_mpu6050/inv_mpu_iio.h          |   37 +-
  drivers/iio/imu/inv_mpu6050/inv_mpu_ring.c         |   54 +-
- drivers/iio/imu/inv_mpu6050/inv_mpu_spi.c          |   98 ++
+ drivers/iio/imu/inv_mpu6050/inv_mpu_spi.c          |   99 ++
  drivers/iio/imu/inv_mpu6050/inv_mpu_trigger.c      |   32 +-
  drivers/iio/imu/kmx61.c                            |   60 +-
  drivers/iio/industrialio-buffer.c                  |  523 ++++--
@@ -205,7 +205,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/light/vcnl4000.c                       |    1 -
  drivers/iio/magnetometer/Kconfig                   |   66 +-
  drivers/iio/magnetometer/Makefile                  |    6 +
- drivers/iio/magnetometer/ak8975.c                  |    4 +-
+ drivers/iio/magnetometer/ak8975.c                  |   10 +-
  drivers/iio/magnetometer/bmc150_magn.c             | 1083 ++++++++++++
  drivers/iio/magnetometer/hid-sensor-magn-3d.c      |    2 +-
  drivers/iio/magnetometer/hmc5843.h                 |   65 +
@@ -329,7 +329,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/iio/types.h                          |    2 +
  include/linux/platform_data/ad5761.h               |   44 +
  include/uapi/linux/iio/types.h                     |    7 +
- 324 files changed, 40349 insertions(+), 2776 deletions(-)
+ 324 files changed, 40379 insertions(+), 2779 deletions(-)
  create mode 100644 drivers/iio/accel/bmc150-accel-core.c
  create mode 100644 drivers/iio/accel/bmc150-accel-i2c.c
  create mode 100644 drivers/iio/accel/bmc150-accel-spi.c
@@ -8494,10 +8494,10 @@ index b99de00..01d7158 100644
  static const struct iio_info ad7991_info = {
 diff --git a/drivers/iio/adc/at91-sama5d2_adc.c b/drivers/iio/adc/at91-sama5d2_adc.c
 new file mode 100644
-index 0000000..dbee13a
+index 0000000..2e154cb
 --- /dev/null
 +++ b/drivers/iio/adc/at91-sama5d2_adc.c
-@@ -0,0 +1,508 @@
+@@ -0,0 +1,510 @@
 +/*
 + * Atmel ADC driver for SAMA5D2 devices and compatible.
 + *
@@ -8950,6 +8950,8 @@ index 0000000..dbee13a
 +	ret = clk_prepare_enable(st->per_clk);
 +	if (ret)
 +		goto vref_disable;
++
++	platform_set_drvdata(pdev, indio_dev);
 +
 +	ret = iio_device_register(indio_dev);
 +	if (ret < 0)
@@ -31268,10 +31270,10 @@ index 65ce868..d192953 100644
  MODULE_DESCRIPTION("Invensense device MPU6050 driver");
 diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c
 new file mode 100644
-index 0000000..f581256
+index 0000000..5ee4e0d
 --- /dev/null
 +++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c
-@@ -0,0 +1,208 @@
+@@ -0,0 +1,232 @@
 +/*
 +* Copyright (C) 2012 Invensense, Inc.
 +*
@@ -31378,6 +31380,19 @@ index 0000000..f581256
 +	return 0;
 +}
 +
++static const char *inv_mpu_match_acpi_device(struct device *dev, int *chip_id)
++{
++	const struct acpi_device_id *id;
++
++	id = acpi_match_device(dev->driver->acpi_match_table, dev);
++	if (!id)
++		return NULL;
++
++	*chip_id = (int)id->driver_data;
++
++	return dev_name(dev);
++}
++
 +/**
 + *  inv_mpu_probe() - probe function.
 + *  @client:          i2c client.
@@ -31389,13 +31404,24 @@ index 0000000..f581256
 +			 const struct i2c_device_id *id)
 +{
 +	struct inv_mpu6050_state *st;
-+	int result;
-+	const char *name = id ? id->name : NULL;
++	int result, chip_type;
 +	struct regmap *regmap;
++	const char *name;
 +
 +	if (!i2c_check_functionality(client->adapter,
 +				     I2C_FUNC_SMBUS_I2C_BLOCK))
 +		return -EOPNOTSUPP;
++
++	if (id) {
++		chip_type = (int)id->driver_data;
++		name = id->name;
++	} else if (ACPI_HANDLE(&client->dev)) {
++		name = inv_mpu_match_acpi_device(&client->dev, &chip_type);
++		if (!name)
++			return -ENODEV;
++	} else {
++		return -ENOSYS;
++	}
 +
 +	regmap = devm_regmap_init_i2c(client, &inv_mpu_regmap_config);
 +	if (IS_ERR(regmap)) {
@@ -31405,7 +31431,7 @@ index 0000000..f581256
 +	}
 +
 +	result = inv_mpu_core_probe(regmap, client->irq, name,
-+				    NULL, id->driver_data);
++				    NULL, chip_type);
 +	if (result < 0)
 +		return result;
 +
@@ -31738,10 +31764,10 @@ index ba27e27..d070062 100644
  		fifo_count -= bytes_per_datum;
 diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_spi.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_spi.c
 new file mode 100644
-index 0000000..dea6c43
+index 0000000..7bcb8d8
 --- /dev/null
 +++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_spi.c
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,99 @@
 +/*
 +* Copyright (C) 2015 Intel Corporation Inc.
 +*
@@ -31790,6 +31816,7 @@ index 0000000..dea6c43
 +	struct regmap *regmap;
 +	const struct spi_device_id *id = spi_get_device_id(spi);
 +	const char *name = id ? id->name : NULL;
++	const int chip_type = id ? id->driver_data : 0;
 +
 +	regmap = devm_regmap_init_spi(spi, &inv_mpu_regmap_config);
 +	if (IS_ERR(regmap)) {
@@ -31799,7 +31826,7 @@ index 0000000..dea6c43
 +	}
 +
 +	return inv_mpu_core_probe(regmap, spi->irq, name,
-+				  inv_mpu_i2c_disable, id->driver_data);
++				  inv_mpu_i2c_disable, chip_type);
 +}
 +
 +static int inv_mpu_remove(struct spi_device *spi)
@@ -41249,7 +41276,7 @@ index 0f5d3c9..dd03fe5 100644
 +obj-$(CONFIG_SENSORS_HMC5843_I2C)	+= hmc5843_i2c.o
 +obj-$(CONFIG_SENSORS_HMC5843_SPI)	+= hmc5843_spi.o
 diff --git a/drivers/iio/magnetometer/ak8975.c b/drivers/iio/magnetometer/ak8975.c
-index b13936d..9c5c9ef 100644
+index b13936d..0e931a9 100644
 --- a/drivers/iio/magnetometer/ak8975.c
 +++ b/drivers/iio/magnetometer/ak8975.c
 @@ -252,7 +252,7 @@ struct ak_def {
@@ -41270,6 +41297,33 @@ index b13936d..9c5c9ef 100644
  	struct attribute_group	attrs;
  	struct mutex		lock;
  	u8			asa[3];
+@@ -462,6 +462,8 @@ static int ak8975_setup_irq(struct ak8975_data *data)
+ 	int rc;
+ 	int irq;
+ 
++	init_waitqueue_head(&data->data_ready_queue);
++	clear_bit(0, &data->flags);
+ 	if (client->irq)
+ 		irq = client->irq;
+ 	else
+@@ -477,8 +479,6 @@ static int ak8975_setup_irq(struct ak8975_data *data)
+ 		return rc;
+ 	}
+ 
+-	init_waitqueue_head(&data->data_ready_queue);
+-	clear_bit(0, &data->flags);
+ 	data->eoc_irq = irq;
+ 
+ 	return rc;
+@@ -732,7 +732,7 @@ static int ak8975_probe(struct i2c_client *client,
+ 	int eoc_gpio;
+ 	int err;
+ 	const char *name = NULL;
+-	enum asahi_compass_chipset chipset;
++	enum asahi_compass_chipset chipset = AK_MAX_TYPE;
+ 
+ 	/* Grab and set up the supplied GPIO. */
+ 	if (client->dev.platform_data)
 diff --git a/drivers/iio/magnetometer/bmc150_magn.c b/drivers/iio/magnetometer/bmc150_magn.c
 new file mode 100644
 index 0000000..ffcb75e
