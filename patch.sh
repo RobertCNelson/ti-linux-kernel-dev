@@ -308,11 +308,7 @@ post_backports () {
 	fi
 
 	git add .
-	if [ ! "x${backport_tag}" = "x" ] ; then
-		git commit -a -m "backports: ${subsystem}: from: ${backport_tag}" -s
-	else
-		git commit -a -m "backports: ${subsystem}" -s
-	fi
+	git commit -a -m "backports: ${subsystem}: from: linux.git" -s
 	git format-patch -1 -o ../patches/backports/${subsystem}/
 
 	exit 2
@@ -320,11 +316,7 @@ post_backports () {
 
 patch_backports (){
 	echo "dir: backports/${subsystem}"
-	if [ ! "x${backport_tag}" = "x" ] ; then
-		${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-${backport_tag}.patch"
-	else
-		${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}.patch"
-	fi
+	${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-linux.git.patch"
 }
 
 backports () {
@@ -364,7 +356,7 @@ backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.6-rc6"
+	backport_tag="v4.6-rc7"
 
 	subsystem="fbtft"
 	#regenerate="enable"
