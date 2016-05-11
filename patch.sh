@@ -870,14 +870,14 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
 	${git} "${DIR}/patches/beaglebone/capes/0002-ARM-dts-am335x-boneblack-enable-wl1835mod-cape-suppo.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0003-add-am335x-boneblack-bbbmini.dts.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0004-add-lcd-am335x-boneblack-bbb-exp-c.dtb-am335x-bonebl.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0005-bb-audio-cape.patch"
-
-	#Replicape use am335x-boneblack-overlay.dtb???
+	${git} "${DIR}/patches/beaglebone/capes/0003-am335x-boneblack-wl1835mod-fix-bluetooth.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0004-add-am335x-boneblack-bbbmini.dts.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0005-add-lcd-am335x-boneblack-bbb-exp-c.dtb-am335x-bonebl.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0006-bb-audio-cape.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
+		wdir="beaglebone/capes"
+		number=6
 		cleanup
 	fi
 
