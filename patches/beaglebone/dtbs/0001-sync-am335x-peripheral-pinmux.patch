@@ -1,13 +1,13 @@
-From f1f9f4f1350688ef92634851fbb87a96535ac895 Mon Sep 17 00:00:00 2001
+From d056c2b9ee80f36a87f69635c55b0f0fb31324d4 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 17 May 2016 15:48:05 -0500
+Date: Mon, 23 May 2016 11:45:11 -0500
 Subject: [PATCH] sync: am335x-peripheral/pinmux
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm/boot/dts/am335x-abbbi.dts                 | 29 ++++---
  arch/arm/boot/dts/am335x-arduino-tre.dts           | 15 ++++
- .../boot/dts/am335x-bone-common-no-capemgr.dtsi    | 13 ++--
+ .../boot/dts/am335x-bone-common-no-capemgr.dtsi    | 29 ++++---
  arch/arm/boot/dts/am335x-bone-common.dtsi          | 10 +--
  arch/arm/boot/dts/am335x-bone-emmc-in-reset.dtsi   | 18 +++++
  arch/arm/boot/dts/am335x-bone-pinmux-can1.dtsi     | 45 +++++++++++
@@ -35,7 +35,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/am335x-peripheral-i2c2.dtsi      | 13 ++++
  arch/arm/boot/dts/am335x-peripheral-ttyS5.dtsi     | 13 ++++
  arch/arm/boot/dts/am335x-sancloud-bbe.dts          | 71 +++++++++--------
- 30 files changed, 567 insertions(+), 119 deletions(-)
+ 30 files changed, 580 insertions(+), 122 deletions(-)
  create mode 100644 arch/arm/boot/dts/am335x-bone-emmc-in-reset.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-pinmux-can1.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-pinmux-emmc.dtsi
@@ -132,10 +132,47 @@ index 9e27df0..f23965f 100644
 +	status = "okay";
 +};
 diff --git a/arch/arm/boot/dts/am335x-bone-common-no-capemgr.dtsi b/arch/arm/boot/dts/am335x-bone-common-no-capemgr.dtsi
-index c9e5d86..b08660d 100644
+index c9e5d86..3f13abc 100644
 --- a/arch/arm/boot/dts/am335x-bone-common-no-capemgr.dtsi
 +++ b/arch/arm/boot/dts/am335x-bone-common-no-capemgr.dtsi
-@@ -267,7 +267,7 @@
+@@ -19,8 +19,9 @@
+ 	};
+ 
+ 	leds {
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&user_leds_s0>;
++		pinctrl-names = "default", "sleep";
++		pinctrl-0 = <&user_leds_default>;
++		pinctrl-1 = <&user_leds_sleep>;
+ 
+ 		compatible = "gpio-leds";
+ 
+@@ -62,7 +63,7 @@
+ };
+ 
+ &am33xx_pinmux {
+-	user_leds_s0: user_leds_s0 {
++	user_leds_default: user_leds_default {
+ 		pinctrl-single,pins = <
+ 			AM33XX_IOPAD(0x854, PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a5.gpio1_21 */
+ 			AM33XX_IOPAD(0x858, PIN_OUTPUT_PULLUP | MUX_MODE7)	/* gpmc_a6.gpio1_22 */
+@@ -71,6 +72,15 @@
+ 		>;
+ 	};
+ 
++	user_leds_sleep: user_leds_sleep {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x854, PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a5.gpio1_21 */
++			AM33XX_IOPAD(0x858, PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a6.gpio1_22 */
++			AM33XX_IOPAD(0x85c, PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a7.gpio1_23 */
++			AM33XX_IOPAD(0x860, PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a8.gpio1_24 */
++		>;
++	};
++
+ 	i2c0_pins: pinmux_i2c0_pins {
+ 		pinctrl-single,pins = <
+ 			AM33XX_IOPAD(0x988, PIN_INPUT_PULLUP | MUX_MODE0)	/* i2c0_sda.i2c0_sda */
+@@ -267,7 +277,7 @@
  			/* VDD_MPU voltage limits 0.95V - 1.26V with +/-4% tolerance */
  			regulator-name = "vdd_mpu";
  			regulator-min-microvolt = <925000>;
@@ -144,7 +181,7 @@ index c9e5d86..b08660d 100644
  			regulator-boot-on;
  			regulator-always-on;
  		};
-@@ -308,15 +308,11 @@
+@@ -308,15 +318,11 @@
  	phy-mode = "mii";
  };
  
@@ -161,7 +198,7 @@ index c9e5d86..b08660d 100644
  	status = "okay";
  };
  
-@@ -350,3 +346,8 @@
+@@ -350,3 +356,8 @@
  &rtc {
  	system-power-controller;
  };
@@ -171,10 +208,10 @@ index c9e5d86..b08660d 100644
 +};
 +
 diff --git a/arch/arm/boot/dts/am335x-bone-common.dtsi b/arch/arm/boot/dts/am335x-bone-common.dtsi
-index 859f270..1e43989 100644
+index d8b3ee4..ae57837 100644
 --- a/arch/arm/boot/dts/am335x-bone-common.dtsi
 +++ b/arch/arm/boot/dts/am335x-bone-common.dtsi
-@@ -357,15 +357,11 @@
+@@ -367,15 +367,11 @@
  	phy-mode = "mii";
  };
  
@@ -191,7 +228,7 @@ index 859f270..1e43989 100644
  	status = "okay";
  };
  
-@@ -400,6 +396,10 @@
+@@ -410,6 +406,10 @@
  	system-power-controller;
  };
  
