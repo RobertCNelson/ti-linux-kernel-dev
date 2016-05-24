@@ -1,6 +1,6 @@
-From 72626171ace27dfbd442d07cc44e90a6a7c82d40 Mon Sep 17 00:00:00 2001
+From f13767d4b2338c838a9aba6707ef9883a3dcb4ab Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 12 May 2016 12:21:14 -0500
+Date: Tue, 24 May 2016 09:31:49 -0500
 Subject: [PATCH 3/6] merge: aufs4-mmap
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -16,10 +16,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  mm/Makefile              |  2 +-
  mm/filemap.c             |  2 +-
  mm/memory.c              |  2 +-
- mm/mmap.c                | 17 +++++-----
+ mm/mmap.c                | 33 ++++++++++++++-----
  mm/nommu.c               | 10 +++---
  mm/prfile.c              | 86 ++++++++++++++++++++++++++++++++++++++++++++++++
- 14 files changed, 142 insertions(+), 24 deletions(-)
+ 14 files changed, 159 insertions(+), 23 deletions(-)
  create mode 100644 mm/prfile.c
 
 diff --git a/fs/buffer.c b/fs/buffer.c
@@ -211,7 +211,7 @@ index 3456e24..bc4ab7d 100644
  
  	return VM_FAULT_WRITE;
 diff --git a/mm/mmap.c b/mm/mmap.c
-index d30b8f8..d4384b1 100644
+index d30b8f8..34e9bea 100644
 --- a/mm/mmap.c
 +++ b/mm/mmap.c
 @@ -274,7 +274,7 @@ static struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
@@ -260,28 +260,45 @@ index d30b8f8..d4384b1 100644
  	unlink_anon_vmas(new);
   out_free_mpol:
  	mpol_put(vma_policy(new));
-@@ -2630,7 +2630,6 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+@@ -2630,7 +2630,7 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
  	struct vm_area_struct *vma;
  	unsigned long populate = 0;
  	unsigned long ret = -EINVAL;
 -	struct file *file;
++	struct file *file, *prfile;
  
  	pr_warn_once("%s (%d) uses deprecated remap_file_pages() syscall. "
  			"See Documentation/vm/remap_file_pages.txt.\n",
-@@ -2698,10 +2697,10 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+@@ -2698,10 +2698,27 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
  		}
  	}
  
 -	file = get_file(vma->vm_file);
 +	vma_get_file(vma);
++	file = vma->vm_file;
++	prfile = vma->vm_prfile;
  	ret = do_mmap_pgoff(vma->vm_file, start, size,
  			prot, flags, pgoff, &populate);
--	fput(file);
-+	vma_fput(vma);
++	if (!IS_ERR_VALUE(ret) && file && prfile) {
++		struct vm_area_struct *new_vma;
++
++		new_vma = find_vma(mm, ret);
++		if (!new_vma->vm_prfile)
++			new_vma->vm_prfile = prfile;
++		if (new_vma != vma)
++			get_file(prfile);
++	}
++	/*
++	 * two fput()s instead of vma_fput(vma),
++	 * coz vma may not be available anymore.
++	 */
+ 	fput(file);
++	if (prfile)
++		fput(prfile);
  out:
  	up_write(&mm->mmap_sem);
  	if (populate)
-@@ -2968,7 +2967,7 @@ struct vm_area_struct *copy_vma(struct vm_area_struct **vmap,
+@@ -2968,7 +2985,7 @@ struct vm_area_struct *copy_vma(struct vm_area_struct **vmap,
  			if (anon_vma_clone(new_vma, vma))
  				goto out_free_mempol;
  			if (new_vma->vm_file)

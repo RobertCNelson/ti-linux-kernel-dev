@@ -356,7 +356,7 @@ backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.6-rc7"
+	backport_tag="v4.6"
 
 	subsystem="fbtft"
 	#regenerate="enable"
