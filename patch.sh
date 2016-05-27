@@ -299,6 +299,7 @@ lts44_backports () {
 		exit 2
 	fi
 
+	backport_tag="dc03c0f9d12d85286d5e3623aa96d5c2a271b8e6"
 	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -306,6 +307,19 @@ lts44_backports () {
 
 		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
 		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
+
+		post_backports
+	fi
+	patch_backports
+
+	subsystem="i2c"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -vr ~/linux-src/drivers/i2c/* ./drivers/i2c/
+		cp -v  ~/linux-src/include/linux/i2c-mux.h ./include/linux/
+		cp -v  ~/linux-src/include/linux/i2c.h ./include/linux/
 
 		post_backports
 	fi
@@ -321,6 +335,7 @@ lts44_backports () {
 		cp -vr ~/linux-src/include/linux/iio/* ./include/linux/iio/
 		cp -v  ~/linux-src/include/linux/mfd/palmas.h ./include/linux/mfd/
 		cp -v  ~/linux-src/include/linux/platform_data/ad5761.h ./include/linux/platform_data/
+		cp -v  ~/linux-src/include/linux/platform_data/st_sensors_pdata.h ./include/linux/platform_data/
 		cp -v  ~/linux-src/include/uapi/linux/iio/types.h ./include/uapi/linux/iio/types.h
 
 		post_backports
