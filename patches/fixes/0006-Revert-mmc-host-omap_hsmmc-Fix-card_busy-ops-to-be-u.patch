@@ -1,0 +1,66 @@
+From 65525c6690972f9ee1d0ada263f891e368b949f5 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Fri, 27 May 2016 12:45:42 -0500
+Subject: [PATCH 6/7] Revert "mmc: host: omap_hsmmc: Fix card_busy ops to be
+ used outside of voltage switching"
+
+This reverts commit 5fdb9d95a7724656543cb3b58a554bd8fedd9cf6.
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/mmc/host/omap_hsmmc.c | 11 -----------
+ 1 file changed, 11 deletions(-)
+
+diff --git a/drivers/mmc/host/omap_hsmmc.c b/drivers/mmc/host/omap_hsmmc.c
+index 93019c9..d770680 100644
+--- a/drivers/mmc/host/omap_hsmmc.c
++++ b/drivers/mmc/host/omap_hsmmc.c
+@@ -45,7 +45,6 @@
+ #include <linux/pm_runtime.h>
+ #include <linux/pm_wakeirq.h>
+ #include <linux/platform_data/hsmmc-omap.h>
+-#include <linux/mmc/sd.h>
+ 
+ /* OMAP HSMMC Host Controller Registers */
+ #define OMAP_HSMMC_SYSSTATUS	0x0014
+@@ -183,7 +182,6 @@
+ #define CON_PADEN		(1 << 15)
+ #define PSTATE_CLEV		(1 << 24)
+ #define PSTATE_DLEV		(0xF << 20)
+-#define PSTATE_DLEV_DAT0	(0x1 << 20)
+ 
+ #define MMC_BLOCK_TRANSFER_TIME_NS(blksz, bus_width, freq)		\
+ 				   ((unsigned long long)		\
+@@ -216,7 +214,6 @@ struct omap_hsmmc_host {
+ 	struct	mmc_host	*mmc;
+ 	struct	mmc_request	*mrq;
+ 	struct	mmc_command	*cmd;
+-	u32			last_cmd;
+ 	struct	mmc_data	*data;
+ 	struct	clk		*fclk;
+ 	struct	clk		*dbclk;
+@@ -1020,7 +1017,6 @@ omap_hsmmc_start_command(struct omap_hsmmc_host *host, struct mmc_command *cmd,
+ 		cmdreg |= DMAE;
+ 
+ 	host->req_in_progress = 1;
+-	host->last_cmd = cmd->opcode;
+ 
+ 	OMAP_HSMMC_WRITE(host->base, ARG, cmd->arg);
+ 	OMAP_HSMMC_WRITE(host->base, CMD, cmdreg);
+@@ -2118,13 +2114,6 @@ static int omap_hsmmc_card_busy(struct mmc_host *mmc)
+ 
+ 	host  = mmc_priv(mmc);
+ 
+-	if (host->last_cmd != SD_SWITCH_VOLTAGE) {
+-		val = OMAP_HSMMC_READ(host->base, PSTATE);
+-		if (val & PSTATE_DLEV_DAT0)
+-			return true;
+-		return false;
+-	}
+-
+ 	val = OMAP_HSMMC_READ(host->base, AC12);
+ 	if (val & AC12_V1V8_SIGEN)
+ 		ret = omap_hsmmc_card_busy_high(host);
+-- 
+2.8.1
+
