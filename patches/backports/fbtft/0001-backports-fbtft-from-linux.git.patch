@@ -1,13 +1,13 @@
-From 5b454010640abbef3761ab66b26842b4f1e49180 Mon Sep 17 00:00:00 2001
+From edae1d228965299fbcfd8782736faa01666cd6c3 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 26 May 2016 12:13:21 -0500
+Date: Fri, 27 May 2016 13:59:20 -0500
 Subject: [PATCH] backports: fbtft: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/staging/fbtft/Kconfig          |  12 ++
  drivers/staging/fbtft/Makefile         |   2 +
- drivers/staging/fbtft/fb_agm1264k-fl.c |   4 +-
+ drivers/staging/fbtft/fb_agm1264k-fl.c |   6 +-
  drivers/staging/fbtft/fb_hx8340bn.c    | 144 ++++++++++++----------
  drivers/staging/fbtft/fb_hx8347d.c     |   9 +-
  drivers/staging/fbtft/fb_hx8353d.c     |  52 ++++----
@@ -30,9 +30,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/fbtft/fb_uc1701.c      |  27 +----
  drivers/staging/fbtft/fbtft-bus.c      |   8 +-
  drivers/staging/fbtft/fbtft-core.c     |  36 +++---
+ drivers/staging/fbtft/fbtft-io.c       |   8 +-
  drivers/staging/fbtft/fbtft.h          |   8 --
- drivers/staging/fbtft/fbtft_device.c   |  75 ++++++++----
- 27 files changed, 988 insertions(+), 590 deletions(-)
+ drivers/staging/fbtft/fbtft_device.c   |  81 ++++++++-----
+ include/video/mipi_display.h           |   8 ++
+ 29 files changed, 1004 insertions(+), 598 deletions(-)
  create mode 100644 drivers/staging/fbtft/fb_ssd1305.c
  create mode 100644 drivers/staging/fbtft/fb_ssd1325.c
 
@@ -80,7 +82,7 @@ index 4f9071d..2725ea9 100644
  obj-$(CONFIG_FB_TFT_SSD1351)     += fb_ssd1351.o
  obj-$(CONFIG_FB_TFT_ST7735R)     += fb_st7735r.o
 diff --git a/drivers/staging/fbtft/fb_agm1264k-fl.c b/drivers/staging/fbtft/fb_agm1264k-fl.c
-index 2a50cf9..ba9fc44 100644
+index 2a50cf9..82b46cd 100644
 --- a/drivers/staging/fbtft/fb_agm1264k-fl.c
 +++ b/drivers/staging/fbtft/fb_agm1264k-fl.c
 @@ -272,8 +272,8 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
@@ -94,6 +96,15 @@ index 2a50cf9..ba9fc44 100644
  
  	if (!convert_buf)
  		return -ENOMEM;
+@@ -414,7 +414,7 @@ static int write(struct fbtft_par *par, void *buf, size_t len)
+ 	while (len--) {
+ 		u8 i, data;
+ 
+-		data = *(u8 *) buf++;
++		data = *(u8 *)buf++;
+ 
+ 		/* set data bus */
+ 		for (i = 0; i < 8; ++i)
 diff --git a/drivers/staging/fbtft/fb_hx8340bn.c b/drivers/staging/fbtft/fb_hx8340bn.c
 index e1ed177..9970ed7 100644
 --- a/drivers/staging/fbtft/fb_hx8340bn.c
@@ -2499,6 +2510,46 @@ index b1e4516..0c1a77c 100644
  	if (par->fbtftops.unregister_backlight)
  		par->fbtftops.unregister_backlight(par);
  	fbtft_sysfs_exit(par);
+diff --git a/drivers/staging/fbtft/fbtft-io.c b/drivers/staging/fbtft/fbtft-io.c
+index a6f091f..4dcea2e 100644
+--- a/drivers/staging/fbtft/fbtft-io.c
++++ b/drivers/staging/fbtft/fbtft-io.c
+@@ -141,7 +141,7 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
+ 		"%s(len=%d): ", __func__, len);
+ 
+ 	while (len--) {
+-		data = *(u8 *) buf;
++		data = *(u8 *)buf;
+ 
+ 		/* Start writing by pulling down /WR */
+ 		gpio_set_value(par->gpio.wr, 0);
+@@ -170,7 +170,7 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
+ 		gpio_set_value(par->gpio.wr, 1);
+ 
+ #ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+-		prev_data = *(u8 *) buf;
++		prev_data = *(u8 *)buf;
+ #endif
+ 		buf++;
+ 	}
+@@ -191,7 +191,7 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
+ 		"%s(len=%d): ", __func__, len);
+ 
+ 	while (len) {
+-		data = *(u16 *) buf;
++		data = *(u16 *)buf;
+ 
+ 		/* Start writing by pulling down /WR */
+ 		gpio_set_value(par->gpio.wr, 0);
+@@ -220,7 +220,7 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
+ 		gpio_set_value(par->gpio.wr, 1);
+ 
+ #ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+-		prev_data = *(u16 *) buf;
++		prev_data = *(u16 *)buf;
+ #endif
+ 		buf += 2;
+ 		len -= 2;
 diff --git a/drivers/staging/fbtft/fbtft.h b/drivers/staging/fbtft/fbtft.h
 index 3ccdec9..d3bc394 100644
 --- a/drivers/staging/fbtft/fbtft.h
@@ -2519,7 +2570,7 @@ index 3ccdec9..d3bc394 100644
  
  #define FBTFT_GPIO_NO_MATCH		0xFFFF
 diff --git a/drivers/staging/fbtft/fbtft_device.c b/drivers/staging/fbtft/fbtft_device.c
-index 071f79b..241d7c6 100644
+index 071f79b..e4a355a 100644
 --- a/drivers/staging/fbtft/fbtft_device.c
 +++ b/drivers/staging/fbtft/fbtft_device.c
 @@ -212,38 +212,63 @@ static int hy28b_init_sequence[] = {
@@ -2609,6 +2660,24 @@ index 071f79b..241d7c6 100644
  
  /* Supported displays in alphabetical order */
  static struct fbtft_device_display displays[] = {
+@@ -1229,7 +1254,7 @@ static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len)
+ 		"%s(len=%d): ", __func__, len);
+ 
+ 	while (len) {
+-		data = *(u16 *) buf;
++		data = *(u16 *)buf;
+ 
+ 		/* Start writing by pulling down /WR */
+ 		gpio_set_value(par->gpio.wr, 0);
+@@ -1258,7 +1283,7 @@ static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len)
+ 		gpio_set_value(par->gpio.wr, 1);
+ 
+ #ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+-		prev_data = *(u16 *) buf;
++		prev_data = *(u16 *)buf;
+ #endif
+ 		buf += 2;
+ 		len -= 2;
 @@ -1287,7 +1312,7 @@ Device 'xxx' does not have a release() function, it is broken and must be fixed
  
  static int spi_device_found(struct device *dev, void *data)
@@ -2627,6 +2696,34 @@ index 071f79b..241d7c6 100644
  
  	if (strstr(pdev->name, "fb"))
  		dev_info(dev, "%s id=%d pdata? %s\n", pdev->name, pdev->id,
+@@ -1411,7 +1436,7 @@ static int __init fbtft_device_init(void)
+ 		}
+ 		strncpy(fbtft_device_param_gpios[i].name, p_name,
+ 			FBTFT_GPIO_NAME_SIZE - 1);
+-		fbtft_device_param_gpios[i++].gpio = (int) val;
++		fbtft_device_param_gpios[i++].gpio = (int)val;
+ 		if (i == MAX_GPIOS) {
+ 			pr_err("gpios parameter: exceeded max array size: %d\n",
+ 			       MAX_GPIOS);
+diff --git a/include/video/mipi_display.h b/include/video/mipi_display.h
+index ddcc8ca..19aa65a 100644
+--- a/include/video/mipi_display.h
++++ b/include/video/mipi_display.h
+@@ -115,6 +115,14 @@ enum {
+ 	MIPI_DCS_READ_MEMORY_CONTINUE	= 0x3E,
+ 	MIPI_DCS_SET_TEAR_SCANLINE	= 0x44,
+ 	MIPI_DCS_GET_SCANLINE		= 0x45,
++	MIPI_DCS_SET_DISPLAY_BRIGHTNESS = 0x51,		/* MIPI DCS 1.3 */
++	MIPI_DCS_GET_DISPLAY_BRIGHTNESS = 0x52,		/* MIPI DCS 1.3 */
++	MIPI_DCS_WRITE_CONTROL_DISPLAY  = 0x53,		/* MIPI DCS 1.3 */
++	MIPI_DCS_GET_CONTROL_DISPLAY	= 0x54,		/* MIPI DCS 1.3 */
++	MIPI_DCS_WRITE_POWER_SAVE	= 0x55,		/* MIPI DCS 1.3 */
++	MIPI_DCS_GET_POWER_SAVE		= 0x56,		/* MIPI DCS 1.3 */
++	MIPI_DCS_SET_CABC_MIN_BRIGHTNESS = 0x5E,	/* MIPI DCS 1.3 */
++	MIPI_DCS_GET_CABC_MIN_BRIGHTNESS = 0x5F,	/* MIPI DCS 1.3 */
+ 	MIPI_DCS_READ_DDB_START		= 0xA1,
+ 	MIPI_DCS_READ_DDB_CONTINUE	= 0xA8,
+ };
 -- 
 2.8.1
 
