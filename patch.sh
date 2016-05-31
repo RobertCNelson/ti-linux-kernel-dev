@@ -299,7 +299,7 @@ lts44_backports () {
 		exit 2
 	fi
 
-	backport_tag="dc03c0f9d12d85286d5e3623aa96d5c2a271b8e6"
+	backport_tag="v4.7-rc1"
 	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
