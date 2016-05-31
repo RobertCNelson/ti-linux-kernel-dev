@@ -413,16 +413,9 @@ fixes () {
 	${git} "${DIR}/patches/fixes/0003-fix-ti-emif-sram-pm.S-for-thumb2.patch"
 	${git} "${DIR}/patches/fixes/0004-net-wireless-SanCloud-wifi-issue-when-associating-wi.patch"
 
-	#bbgw: fixes this...
-	#[   11.952501] mmc2: error -16 whilst initialising SDIO card
-
-	${git} "${DIR}/patches/fixes/0005-Revert-mmc-host-omap_hsmmc-use-generic_cmd6_time-to-.patch"
-	${git} "${DIR}/patches/fixes/0006-Revert-mmc-host-omap_hsmmc-Fix-card_busy-ops-to-be-u.patch"
-	${git} "${DIR}/patches/fixes/0007-Revert-mmc-host-omap_hsmmc-Fix-workaround-for-errata.patch"
-
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="fixes"
-		number=7
+		number=4
 		cleanup
 	fi
 }
