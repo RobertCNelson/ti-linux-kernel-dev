@@ -1,13 +1,13 @@
-From 2f74c09e089a9d7845c4a00ee3a29acdc82c600f Mon Sep 17 00:00:00 2001
+From 348252050f922edb7ed5dabe259b02f982308c5a Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 27 May 2016 14:40:27 -0500
+Date: Tue, 31 May 2016 10:02:48 -0500
 Subject: [PATCH] backports: i2c: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/i2c/algos/i2c-algo-bit.c             |    6 +
- drivers/i2c/busses/Kconfig                   |   25 +-
- drivers/i2c/busses/i2c-at91.c                |   53 +-
+ drivers/i2c/busses/Kconfig                   |   26 +-
+ drivers/i2c/busses/i2c-at91.c                |   55 +-
  drivers/i2c/busses/i2c-bcm-iproc.c           |  179 ++--
  drivers/i2c/busses/i2c-bcm-kona.c            |    5 +-
  drivers/i2c/busses/i2c-bcm2835.c             |   10 +
@@ -54,7 +54,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/i2c/busses/i2c-xlr.c                 |  250 +++++-
  drivers/i2c/i2c-boardinfo.c                  |    6 +-
  drivers/i2c/i2c-core.c                       |  177 ++--
- drivers/i2c/i2c-dev.c                        |   14 +-
+ drivers/i2c/i2c-dev.c                        |   39 +-
  drivers/i2c/i2c-mux.c                        |  308 +++++--
  drivers/i2c/i2c-smbus.c                      |    8 +-
  drivers/i2c/i2c-stub.c                       |    8 +-
@@ -69,7 +69,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/i2c/muxes/i2c-mux-reg.c              |   69 +-
  include/linux/i2c-mux.h                      |   55 +-
  include/linux/i2c.h                          |   97 +-
- 64 files changed, 4861 insertions(+), 1589 deletions(-)
+ 64 files changed, 4881 insertions(+), 1597 deletions(-)
  create mode 100644 drivers/i2c/muxes/i2c-demux-pinctrl.c
 
 diff --git a/drivers/i2c/algos/i2c-algo-bit.c b/drivers/i2c/algos/i2c-algo-bit.c
@@ -97,7 +97,7 @@ index 899bede..a8e89df 100644
  	ret = add_adapter(adap);
  	if (ret < 0)
 diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
-index 7b0aa82..2dd40dd 100644
+index 7b0aa82..f167021 100644
 --- a/drivers/i2c/busses/Kconfig
 +++ b/drivers/i2c/busses/Kconfig
 @@ -516,7 +516,7 @@ config I2C_EFM32
@@ -162,14 +162,14 @@ index 7b0aa82..2dd40dd 100644
  	help
  	  If you say yes to this option, support will be included for
  	  the UniPhier FIFO-builtin I2C interface embedded in PH1-Pro4,
-@@ -963,28 +964,28 @@ config I2C_XILINX
+@@ -963,28 +964,29 @@ config I2C_XILINX
  	  will be called xilinx_i2c.
  
  config I2C_XLR
 -	tristate "XLR I2C support"
 -	depends on CPU_XLR
 +	tristate "Netlogic XLR and Sigma Designs I2C support"
-+	depends on CPU_XLR || ARCH_TANGOX
++	depends on CPU_XLR || ARCH_TANGO
  	help
  	  This driver enables support for the on-chip I2C interface of
 -	  the Netlogic XLR/XLS MIPS processors.
@@ -193,12 +193,13 @@ index 7b0aa82..2dd40dd 100644
  config I2C_RCAR
  	tristate "Renesas R-Car I2C Controller"
 -	depends on ARCH_SHMOBILE || COMPILE_TEST
++	depends on HAS_DMA
 +	depends on ARCH_RENESAS || COMPILE_TEST
  	select I2C_SLAVE
  	help
  	  If you say yes to this option, support will be included for the
 diff --git a/drivers/i2c/busses/i2c-at91.c b/drivers/i2c/busses/i2c-at91.c
-index 10835d1..921d32b 100644
+index 10835d1..f233726 100644
 --- a/drivers/i2c/busses/i2c-at91.c
 +++ b/drivers/i2c/busses/i2c-at91.c
 @@ -64,6 +64,8 @@
@@ -341,6 +342,15 @@ index 10835d1..921d32b 100644
  		.compatible = "atmel,sama5d2-i2c",
  		.data = &sama5d2_config,
  	}, {
+@@ -966,7 +1013,7 @@ static int at91_twi_configure_dma(struct at91_twi_dev *dev, u32 phy_addr)
+ 
+ error:
+ 	if (ret != -EPROBE_DEFER)
+-		dev_info(dev->dev, "can't use DMA, error %d\n", ret);
++		dev_info(dev->dev, "can't get DMA channel, continue without DMA support\n");
+ 	if (dma->chan_rx)
+ 		dma_release_channel(dma->chan_rx);
+ 	if (dma->chan_tx)
 diff --git a/drivers/i2c/busses/i2c-bcm-iproc.c b/drivers/i2c/busses/i2c-bcm-iproc.c
 index 0419f52..19c8438 100644
 --- a/drivers/i2c/busses/i2c-bcm-iproc.c
@@ -6089,7 +6099,7 @@ index fdcbdab..cc6439a 100644
  	qup_i2c_disable_clocks(qup);
  	i2c_del_adapter(&qup->adap);
 diff --git a/drivers/i2c/busses/i2c-rcar.c b/drivers/i2c/busses/i2c-rcar.c
-index 599c0d7..9aca1b4 100644
+index 599c0d7..52407f3 100644
 --- a/drivers/i2c/busses/i2c-rcar.c
 +++ b/drivers/i2c/busses/i2c-rcar.c
 @@ -1,7 +1,8 @@
@@ -6659,7 +6669,7 @@ index 599c0d7..9aca1b4 100644
 +	char *chan_name = dir == DMA_MEM_TO_DEV ? "tx" : "rx";
 +	int ret;
 +
-+	chan = dma_request_slave_channel_reason(dev, chan_name);
++	chan = dma_request_chan(dev, chan_name);
 +	if (IS_ERR(chan)) {
 +		ret = PTR_ERR(chan);
 +		dev_dbg(dev, "request_channel failed for %s (%d)\n",
@@ -9201,15 +9211,16 @@ index ba8eb08..af11b65 100644
  		if (res != -EOPNOTSUPP || !adapter->algo->master_xfer)
  			goto trace;
 diff --git a/drivers/i2c/i2c-dev.c b/drivers/i2c/i2c-dev.c
-index 2413ec9..0b1108d 100644
+index 2413ec9..6ecfd76 100644
 --- a/drivers/i2c/i2c-dev.c
 +++ b/drivers/i2c/i2c-dev.c
-@@ -22,17 +22,17 @@
+@@ -22,17 +22,18 @@
  
  /* The I2C_RDWR ioctl code is written by Kolja Waschk <waschk@telos.de> */
  
 -#include <linux/kernel.h>
 -#include <linux/module.h>
++#include <linux/cdev.h>
  #include <linux/device.h>
 -#include <linux/notifier.h>
  #include <linux/fs.h>
@@ -9229,6 +9240,88 @@ index 2413ec9..0b1108d 100644
  #include <linux/uaccess.h>
  
  /*
+@@ -47,9 +48,10 @@ struct i2c_dev {
+ 	struct list_head list;
+ 	struct i2c_adapter *adap;
+ 	struct device *dev;
++	struct cdev cdev;
+ };
+ 
+-#define I2C_MINORS	256
++#define I2C_MINORS	MINORMASK
+ static LIST_HEAD(i2c_dev_list);
+ static DEFINE_SPINLOCK(i2c_dev_list_lock);
+ 
+@@ -89,7 +91,7 @@ static struct i2c_dev *get_free_i2c_dev(struct i2c_adapter *adap)
+ 	return i2c_dev;
+ }
+ 
+-static void return_i2c_dev(struct i2c_dev *i2c_dev)
++static void put_i2c_dev(struct i2c_dev *i2c_dev)
+ {
+ 	spin_lock(&i2c_dev_list_lock);
+ 	list_del(&i2c_dev->list);
+@@ -552,6 +554,12 @@ static int i2cdev_attach_adapter(struct device *dev, void *dummy)
+ 	if (IS_ERR(i2c_dev))
+ 		return PTR_ERR(i2c_dev);
+ 
++	cdev_init(&i2c_dev->cdev, &i2cdev_fops);
++	i2c_dev->cdev.owner = THIS_MODULE;
++	res = cdev_add(&i2c_dev->cdev, MKDEV(I2C_MAJOR, adap->nr), 1);
++	if (res)
++		goto error_cdev;
++
+ 	/* register this i2c device with the driver core */
+ 	i2c_dev->dev = device_create(i2c_dev_class, &adap->dev,
+ 				     MKDEV(I2C_MAJOR, adap->nr), NULL,
+@@ -565,7 +573,9 @@ static int i2cdev_attach_adapter(struct device *dev, void *dummy)
+ 		 adap->name, adap->nr);
+ 	return 0;
+ error:
+-	return_i2c_dev(i2c_dev);
++	cdev_del(&i2c_dev->cdev);
++error_cdev:
++	put_i2c_dev(i2c_dev);
+ 	return res;
+ }
+ 
+@@ -582,7 +592,8 @@ static int i2cdev_detach_adapter(struct device *dev, void *dummy)
+ 	if (!i2c_dev) /* attach_adapter must have failed */
+ 		return 0;
+ 
+-	return_i2c_dev(i2c_dev);
++	cdev_del(&i2c_dev->cdev);
++	put_i2c_dev(i2c_dev);
+ 	device_destroy(i2c_dev_class, MKDEV(I2C_MAJOR, adap->nr));
+ 
+ 	pr_debug("i2c-dev: adapter [%s] unregistered\n", adap->name);
+@@ -620,7 +631,7 @@ static int __init i2c_dev_init(void)
+ 
+ 	printk(KERN_INFO "i2c /dev entries driver\n");
+ 
+-	res = register_chrdev(I2C_MAJOR, "i2c", &i2cdev_fops);
++	res = register_chrdev_region(MKDEV(I2C_MAJOR, 0), I2C_MINORS, "i2c");
+ 	if (res)
+ 		goto out;
+ 
+@@ -644,7 +655,7 @@ static int __init i2c_dev_init(void)
+ out_unreg_class:
+ 	class_destroy(i2c_dev_class);
+ out_unreg_chrdev:
+-	unregister_chrdev(I2C_MAJOR, "i2c");
++	unregister_chrdev_region(MKDEV(I2C_MAJOR, 0), I2C_MINORS);
+ out:
+ 	printk(KERN_ERR "%s: Driver Initialisation failed\n", __FILE__);
+ 	return res;
+@@ -655,7 +666,7 @@ static void __exit i2c_dev_exit(void)
+ 	bus_unregister_notifier(&i2c_bus_type, &i2cdev_notifier);
+ 	i2c_for_each_dev(NULL, i2cdev_detach_adapter);
+ 	class_destroy(i2c_dev_class);
+-	unregister_chrdev(I2C_MAJOR, "i2c");
++	unregister_chrdev_region(MKDEV(I2C_MAJOR, 0), I2C_MINORS);
+ }
+ 
+ MODULE_AUTHOR("Frodo Looijaard <frodol@dds.nl> and "
 diff --git a/drivers/i2c/i2c-mux.c b/drivers/i2c/i2c-mux.c
 index 00fc5b1..8eee986 100644
 --- a/drivers/i2c/i2c-mux.c
