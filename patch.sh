@@ -275,8 +275,8 @@ pre_backports () {
 	echo "dir: backports/${subsystem}"
 
 	cd ~/linux-src/
-	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
-	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master
+	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
 		git checkout ${backport_tag} -b tmp
 	fi
@@ -287,8 +287,8 @@ pre_backports_iio () {
 	echo "dir: backports/${subsystem}"
 
 	cd ~/linux-src/
-	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
-	git pull --no-edit git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master
+	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
 		git checkout ${backport_tag} -b tmp
 		#dht11
@@ -356,7 +356,7 @@ backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.6"
+	backport_tag="v4.6.1"
 
 	subsystem="fbtft"
 	#regenerate="enable"
