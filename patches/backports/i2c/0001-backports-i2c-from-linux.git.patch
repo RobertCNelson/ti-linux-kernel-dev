@@ -1,6 +1,6 @@
-From aba4d95b3912319dbfa3041e44b1ee20e11d01d6 Mon Sep 17 00:00:00 2001
+From 8f327d30471f83a74702cf7e9724146f061ee487 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 8 Jun 2016 10:06:56 -0500
+Date: Mon, 13 Jun 2016 09:53:15 -0500
 Subject: [PATCH] backports: i2c: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -23,7 +23,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/i2c/busses/i2c-eg20t.c               |    1 +
  drivers/i2c/busses/i2c-emev2.c               |  112 ++-
  drivers/i2c/busses/i2c-exynos5.c             |   10 +-
- drivers/i2c/busses/i2c-i801.c                |   60 +-
+ drivers/i2c/busses/i2c-i801.c                |  159 +++-
  drivers/i2c/busses/i2c-ibm_iic.c             |    6 +-
  drivers/i2c/busses/i2c-img-scb.c             |   96 +-
  drivers/i2c/busses/i2c-imx.c                 |  119 ++-
@@ -35,7 +35,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/i2c/busses/i2c-mv64xxx.c             |   45 +-
  drivers/i2c/busses/i2c-nforce2.c             |    2 +-
  drivers/i2c/busses/i2c-ocores.c              |    5 +-
- drivers/i2c/busses/i2c-octeon.c              | 1217 +++++++++++++++++++-------
+ drivers/i2c/busses/i2c-octeon.c              | 1220 +++++++++++++++++++-------
  drivers/i2c/busses/i2c-omap.c                |   11 +-
  drivers/i2c/busses/i2c-piix4.c               |  226 ++++-
  drivers/i2c/busses/i2c-powermac.c            |    4 +-
@@ -66,10 +66,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/i2c/muxes/i2c-mux-pca9541.c          |   58 +-
  drivers/i2c/muxes/i2c-mux-pca954x.c          |   61 +-
  drivers/i2c/muxes/i2c-mux-pinctrl.c          |  135 +--
- drivers/i2c/muxes/i2c-mux-reg.c              |   69 +-
+ drivers/i2c/muxes/i2c-mux-reg.c              |   70 +-
  include/linux/i2c-mux.h                      |   55 +-
  include/linux/i2c.h                          |   97 +-
- 64 files changed, 4881 insertions(+), 1597 deletions(-)
+ 64 files changed, 4981 insertions(+), 1600 deletions(-)
  create mode 100644 drivers/i2c/muxes/i2c-demux-pinctrl.c
 
 diff --git a/drivers/i2c/algos/i2c-algo-bit.c b/drivers/i2c/algos/i2c-algo-bit.c
@@ -1740,7 +1740,7 @@ index f54ece8..c0e3ada 100644
  
  static struct platform_driver exynos5_i2c_driver = {
 diff --git a/drivers/i2c/busses/i2c-i801.c b/drivers/i2c/busses/i2c-i801.c
-index 27fa0cb..64b1208b 100644
+index 27fa0cb..4a60ad2 100644
 --- a/drivers/i2c/busses/i2c-i801.c
 +++ b/drivers/i2c/busses/i2c-i801.c
 @@ -94,6 +94,7 @@
@@ -1784,7 +1784,21 @@ index 27fa0cb..64b1208b 100644
  #define PCI_DEVICE_ID_INTEL_LEWISBURG_SMBUS		0xa1a3
  #define PCI_DEVICE_ID_INTEL_LEWISBURG_SSKU_SMBUS	0xa223
  
-@@ -714,9 +715,11 @@ static s32 i801_access(struct i2c_adapter *adap, u16 addr,
+@@ -244,6 +245,13 @@ struct i801_priv {
+ 	struct platform_device *mux_pdev;
+ #endif
+ 	struct platform_device *tco_pdev;
++
++	/*
++	 * If set to true the host controller registers are reserved for
++	 * ACPI AML use. Protected by acpi_lock.
++	 */
++	bool acpi_reserved;
++	struct mutex acpi_lock;
+ };
+ 
+ #define FEATURE_SMBUS_PEC	(1 << 0)
+@@ -714,9 +722,17 @@ static s32 i801_access(struct i2c_adapter *adap, u16 addr,
  {
  	int hwpec;
  	int block = 0;
@@ -1792,12 +1806,18 @@ index 27fa0cb..64b1208b 100644
 +	int ret = 0, xact = 0;
  	struct i801_priv *priv = i2c_get_adapdata(adap);
  
++	mutex_lock(&priv->acpi_lock);
++	if (priv->acpi_reserved) {
++		mutex_unlock(&priv->acpi_lock);
++		return -EBUSY;
++	}
++
 +	pm_runtime_get_sync(&priv->pci_dev->dev);
 +
  	hwpec = (priv->features & FEATURE_SMBUS_PEC) && (flags & I2C_CLIENT_PEC)
  		&& size != I2C_SMBUS_QUICK
  		&& size != I2C_SMBUS_I2C_BLOCK_DATA;
-@@ -773,7 +776,8 @@ static s32 i801_access(struct i2c_adapter *adap, u16 addr,
+@@ -773,7 +789,8 @@ static s32 i801_access(struct i2c_adapter *adap, u16 addr,
  	default:
  		dev_err(&priv->pci_dev->dev, "Unsupported transaction %d\n",
  			size);
@@ -1807,7 +1827,7 @@ index 27fa0cb..64b1208b 100644
  	}
  
  	if (hwpec)	/* enable/disable hardware PEC */
-@@ -796,11 +800,11 @@ static s32 i801_access(struct i2c_adapter *adap, u16 addr,
+@@ -796,11 +813,11 @@ static s32 i801_access(struct i2c_adapter *adap, u16 addr,
  		       ~(SMBAUXCTL_CRC | SMBAUXCTL_E32B), SMBAUXCTL(priv));
  
  	if (block)
@@ -1822,7 +1842,7 @@ index 27fa0cb..64b1208b 100644
  
  	switch (xact & 0x7f) {
  	case I801_BYTE:	/* Result put in SMBHSTDAT0 */
-@@ -812,7 +816,11 @@ static s32 i801_access(struct i2c_adapter *adap, u16 addr,
+@@ -812,7 +829,12 @@ static s32 i801_access(struct i2c_adapter *adap, u16 addr,
  			     (inb_p(SMBHSTDAT1(priv)) << 8);
  		break;
  	}
@@ -1831,11 +1851,132 @@ index 27fa0cb..64b1208b 100644
 +out:
 +	pm_runtime_mark_last_busy(&priv->pci_dev->dev);
 +	pm_runtime_put_autosuspend(&priv->pci_dev->dev);
++	mutex_unlock(&priv->acpi_lock);
 +	return ret;
  }
  
  
-@@ -1413,6 +1421,11 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
+@@ -1249,6 +1271,83 @@ static void i801_add_tco(struct i801_priv *priv)
+ 	priv->tco_pdev = pdev;
+ }
+ 
++#ifdef CONFIG_ACPI
++static acpi_status
++i801_acpi_io_handler(u32 function, acpi_physical_address address, u32 bits,
++		     u64 *value, void *handler_context, void *region_context)
++{
++	struct i801_priv *priv = handler_context;
++	struct pci_dev *pdev = priv->pci_dev;
++	acpi_status status;
++
++	/*
++	 * Once BIOS AML code touches the OpRegion we warn and inhibit any
++	 * further access from the driver itself. This device is now owned
++	 * by the system firmware.
++	 */
++	mutex_lock(&priv->acpi_lock);
++
++	if (!priv->acpi_reserved) {
++		priv->acpi_reserved = true;
++
++		dev_warn(&pdev->dev, "BIOS is accessing SMBus registers\n");
++		dev_warn(&pdev->dev, "Driver SMBus register access inhibited\n");
++
++		/*
++		 * BIOS is accessing the host controller so prevent it from
++		 * suspending automatically from now on.
++		 */
++		pm_runtime_get_sync(&pdev->dev);
++	}
++
++	if ((function & ACPI_IO_MASK) == ACPI_READ)
++		status = acpi_os_read_port(address, (u32 *)value, bits);
++	else
++		status = acpi_os_write_port(address, (u32)*value, bits);
++
++	mutex_unlock(&priv->acpi_lock);
++
++	return status;
++}
++
++static int i801_acpi_probe(struct i801_priv *priv)
++{
++	struct acpi_device *adev;
++	acpi_status status;
++
++	adev = ACPI_COMPANION(&priv->pci_dev->dev);
++	if (adev) {
++		status = acpi_install_address_space_handler(adev->handle,
++				ACPI_ADR_SPACE_SYSTEM_IO, i801_acpi_io_handler,
++				NULL, priv);
++		if (ACPI_SUCCESS(status))
++			return 0;
++	}
++
++	return acpi_check_resource_conflict(&priv->pci_dev->resource[SMBBAR]);
++}
++
++static void i801_acpi_remove(struct i801_priv *priv)
++{
++	struct acpi_device *adev;
++
++	adev = ACPI_COMPANION(&priv->pci_dev->dev);
++	if (!adev)
++		return;
++
++	acpi_remove_address_space_handler(adev->handle,
++		ACPI_ADR_SPACE_SYSTEM_IO, i801_acpi_io_handler);
++
++	mutex_lock(&priv->acpi_lock);
++	if (priv->acpi_reserved)
++		pm_runtime_put(&priv->pci_dev->dev);
++	mutex_unlock(&priv->acpi_lock);
++}
++#else
++static inline int i801_acpi_probe(struct i801_priv *priv) { return 0; }
++static inline void i801_acpi_remove(struct i801_priv *priv) { }
++#endif
++
+ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ {
+ 	unsigned char temp;
+@@ -1266,6 +1365,7 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ 	priv->adapter.dev.parent = &dev->dev;
+ 	ACPI_COMPANION_SET(&priv->adapter.dev, ACPI_COMPANION(&dev->dev));
+ 	priv->adapter.retries = 3;
++	mutex_init(&priv->acpi_lock);
+ 
+ 	priv->pci_dev = dev;
+ 	switch (dev->device) {
+@@ -1328,10 +1428,8 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ 		return -ENODEV;
+ 	}
+ 
+-	err = acpi_check_resource_conflict(&dev->resource[SMBBAR]);
+-	if (err) {
++	if (i801_acpi_probe(priv))
+ 		return -ENODEV;
+-	}
+ 
+ 	err = pcim_iomap_regions(dev, 1 << SMBBAR,
+ 				 dev_driver_string(&dev->dev));
+@@ -1340,6 +1438,7 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ 			"Failed to request SMBus region 0x%lx-0x%Lx\n",
+ 			priv->smba,
+ 			(unsigned long long)pci_resource_end(dev, SMBBAR));
++		i801_acpi_remove(priv);
+ 		return err;
+ 	}
+ 
+@@ -1404,6 +1503,7 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ 	err = i2c_add_adapter(&priv->adapter);
+ 	if (err) {
+ 		dev_err(&dev->dev, "Failed to add SMBus adapter\n");
++		i801_acpi_remove(priv);
+ 		return err;
+ 	}
+ 
+@@ -1413,6 +1513,11 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
  
  	pci_set_drvdata(dev, priv);
  
@@ -1847,7 +1988,7 @@ index 27fa0cb..64b1208b 100644
  	return 0;
  }
  
-@@ -1420,6 +1433,9 @@ static void i801_remove(struct pci_dev *dev)
+@@ -1420,8 +1525,12 @@ static void i801_remove(struct pci_dev *dev)
  {
  	struct i801_priv *priv = pci_get_drvdata(dev);
  
@@ -1856,8 +1997,11 @@ index 27fa0cb..64b1208b 100644
 +
  	i801_del_mux(priv);
  	i2c_del_adapter(&priv->adapter);
++	i801_acpi_remove(priv);
  	pci_write_config_byte(dev, SMBHSTCFG, priv->original_hstcfg);
-@@ -1433,34 +1449,32 @@ static void i801_remove(struct pci_dev *dev)
+ 
+ 	platform_device_unregister(priv->tco_pdev);
+@@ -1433,34 +1542,32 @@ static void i801_remove(struct pci_dev *dev)
  }
  
  #ifdef CONFIG_PM
@@ -2891,7 +3035,7 @@ index 11b7b87..dfa7a4b 100644
  				i2c->state = STATE_START;
  
 diff --git a/drivers/i2c/busses/i2c-octeon.c b/drivers/i2c/busses/i2c-octeon.c
-index 32914ab..aa5f01e 100644
+index 32914ab..30ae351 100644
 --- a/drivers/i2c/busses/i2c-octeon.c
 +++ b/drivers/i2c/busses/i2c-octeon.c
 @@ -2,7 +2,7 @@
@@ -3777,11 +3921,14 @@ index 32914ab..aa5f01e 100644
  		}
 -		if (result)
 -			return result;
-+	}
+ 	}
 +	octeon_i2c_reg_write(i2c, SW_TWSI_OP_TWSI_CLK, thp);
 +	octeon_i2c_reg_write(i2c, SW_TWSI_EOP_TWSI_CLKCTL, (mdiv << 3) | ndiv);
 +}
-+
+ 
+-	data = octeon_i2c_read_sw(i2c, SW_TWSI_EOP_TWSI_STAT);
+-	if ((data != STAT_START) && (data != STAT_RSTART)) {
+-		dev_err(i2c->dev, "%s: bad status (0x%x)\n", __func__, data);
 +static int octeon_i2c_init_lowlevel(struct octeon_i2c *i2c)
 +{
 +	u8 status = 0;
@@ -3795,11 +3942,8 @@ index 32914ab..aa5f01e 100644
 +		status = octeon_i2c_stat_read(i2c);
 +		if (status == STAT_IDLE)
 +			break;
- 	}
- 
--	data = octeon_i2c_read_sw(i2c, SW_TWSI_EOP_TWSI_STAT);
--	if ((data != STAT_START) && (data != STAT_RSTART)) {
--		dev_err(i2c->dev, "%s: bad status (0x%x)\n", __func__, data);
++	}
++
 +	if (status != STAT_IDLE) {
 +		dev_err(i2c->dev, "%s: TWSI_RST failed! (0x%x)\n",
 +			__func__, status);
@@ -3889,11 +4033,11 @@ index 32914ab..aa5f01e 100644
  {
  	int i, result;
 -	u8 tmp;
--
+ 
 -	result = octeon_i2c_start(i2c);
 -	if (result)
 -		return result;
- 
+-
 -	octeon_i2c_write_sw(i2c, SW_TWSI_EOP_TWSI_DATA, target << 1);
 -	octeon_i2c_write_sw(i2c, SW_TWSI_EOP_TWSI_CTL, TWSI_CTL_ENAB);
 +	octeon_i2c_data_write(i2c, target << 1);
@@ -3922,7 +4066,7 @@ index 32914ab..aa5f01e 100644
  
  		result = octeon_i2c_wait(i2c);
  		if (result)
-@@ -330,219 +904,247 @@ static int octeon_i2c_write(struct octeon_i2c *i2c, int target,
+@@ -330,219 +904,250 @@ static int octeon_i2c_write(struct octeon_i2c *i2c, int target,
  }
  
  /**
@@ -3978,8 +4122,15 @@ index 32914ab..aa5f01e 100644
 -				__func__, tmp);
 -			return -EIO;
 -		}
-+		/* for the last byte TWSI_CTL_AAK must not be set */
-+		if (i + 1 == length)
++		/*
++		 * For the last byte to receive TWSI_CTL_AAK must not be set.
++		 *
++		 * A special case is I2C_M_RECV_LEN where we don't know the
++		 * additional length yet. If recv_len is set we assume we're
++		 * not reading the final byte and therefore need to set
++		 * TWSI_CTL_AAK.
++		 */
++		if ((i + 1 == length) && !(recv_len && i == 0))
 +			final_read = true;
  
 -		if (i+1 < length)
@@ -4000,12 +4151,8 @@ index 32914ab..aa5f01e 100644
 -		data[i] = octeon_i2c_read_sw(i2c, SW_TWSI_EOP_TWSI_DATA);
 +		data[i] = octeon_i2c_data_read(i2c);
 +		if (recv_len && i == 0) {
-+			if (data[i] > I2C_SMBUS_BLOCK_MAX + 1) {
-+				dev_err(i2c->dev,
-+					"%s: read len > I2C_SMBUS_BLOCK_MAX %d\n",
-+					__func__, data[i]);
++			if (data[i] > I2C_SMBUS_BLOCK_MAX + 1)
 +				return -EPROTO;
-+			}
 +			length += data[i];
 +		}
 +
@@ -4302,7 +4449,7 @@ index 32914ab..aa5f01e 100644
  		dev_err(i2c->dev,
  			"no I2C 'clock-rate' or 'clock-frequency' property\n");
  		result = -ENXIO;
-@@ -551,17 +1153,35 @@ static int octeon_i2c_probe(struct platform_device *pdev)
+@@ -551,17 +1156,35 @@ static int octeon_i2c_probe(struct platform_device *pdev)
  
  	i2c->sys_freq = octeon_get_io_clock_rate();
  
@@ -4345,7 +4492,7 @@ index 32914ab..aa5f01e 100644
  	result = devm_request_irq(&pdev->dev, i2c->irq,
  				  octeon_i2c_isr, 0, DRV_NAME, i2c);
  	if (result < 0) {
-@@ -569,21 +1189,23 @@ static int octeon_i2c_probe(struct platform_device *pdev)
+@@ -569,21 +1192,23 @@ static int octeon_i2c_probe(struct platform_device *pdev)
  		goto out;
  	}
  
@@ -4376,7 +4523,7 @@ index 32914ab..aa5f01e 100644
  	i2c_set_adapdata(&i2c->adap, i2c);
  	platform_set_drvdata(pdev, i2c);
  
-@@ -592,8 +1214,7 @@ static int octeon_i2c_probe(struct platform_device *pdev)
+@@ -592,8 +1217,7 @@ static int octeon_i2c_probe(struct platform_device *pdev)
  		dev_err(i2c->dev, "failed to add adapter\n");
  		goto out;
  	}
@@ -4386,7 +4533,7 @@ index 32914ab..aa5f01e 100644
  	return 0;
  
  out:
-@@ -608,10 +1229,9 @@ static int octeon_i2c_remove(struct platform_device *pdev)
+@@ -608,10 +1232,9 @@ static int octeon_i2c_remove(struct platform_device *pdev)
  	return 0;
  };
  
@@ -4400,7 +4547,7 @@ index 32914ab..aa5f01e 100644
  	{},
  };
  MODULE_DEVICE_TABLE(of, octeon_i2c_match);
-@@ -630,4 +1250,3 @@ module_platform_driver(octeon_i2c_driver);
+@@ -630,4 +1253,3 @@ module_platform_driver(octeon_i2c_driver);
  MODULE_AUTHOR("Michael Lawnick <michael.lawnick.ext@nsn.com>");
  MODULE_DESCRIPTION("I2C-Bus adapter for Cavium OCTEON processors");
  MODULE_LICENSE("GPL");
@@ -10953,7 +11100,7 @@ index b5a982b..35bb775 100644
  }
  
 diff --git a/drivers/i2c/muxes/i2c-mux-reg.c b/drivers/i2c/muxes/i2c-mux-reg.c
-index 5fbd5bd..6773cad 100644
+index 5fbd5bd..26e7c51 100644
 --- a/drivers/i2c/muxes/i2c-mux-reg.c
 +++ b/drivers/i2c/muxes/i2c-mux-reg.c
 @@ -21,8 +21,6 @@
@@ -11125,6 +11272,14 @@ index 5fbd5bd..6773cad 100644
  
  	return 0;
  }
+@@ -279,6 +260,7 @@ static struct platform_driver i2c_mux_reg_driver = {
+ 	.remove	= i2c_mux_reg_remove,
+ 	.driver	= {
+ 		.name	= "i2c-mux-reg",
++		.of_match_table = of_match_ptr(i2c_mux_reg_of_match),
+ 	},
+ };
+ 
 diff --git a/include/linux/i2c-mux.h b/include/linux/i2c-mux.h
 index b5f9a00..d4c1d12 100644
 --- a/include/linux/i2c-mux.h
