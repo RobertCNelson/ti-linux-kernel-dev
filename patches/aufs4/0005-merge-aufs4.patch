@@ -1,6 +1,6 @@
-From c59f085c3213b8e43c132d04bde634208533ff07 Mon Sep 17 00:00:00 2001
+From 4da58ac0e4b8c3138cc3c4e1d8b11c3336c99130 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 22 Jun 2016 09:27:16 -0500
+Date: Wed, 29 Jun 2016 10:42:36 -0500
 Subject: [PATCH 5/6] merge: aufs4
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -32,10 +32,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/aufs/dbgaufs.h                                  |   48 +
  fs/aufs/dcsub.c                                    |  224 +++
  fs/aufs/dcsub.h                                    |  136 ++
- fs/aufs/debug.c                                    |  440 +++++
+ fs/aufs/debug.c                                    |  441 +++++
  fs/aufs/debug.h                                    |  225 +++
- fs/aufs/dentry.c                                   | 1140 ++++++++++++
- fs/aufs/dentry.h                                   |  240 +++
+ fs/aufs/dentry.c                                   | 1128 ++++++++++++
+ fs/aufs/dentry.h                                   |  252 +++
  fs/aufs/dinfo.c                                    |  552 ++++++
  fs/aufs/dir.c                                      |  758 ++++++++
  fs/aufs/dir.h                                      |  131 ++
@@ -51,9 +51,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/aufs/hfsnotify.c                                |  287 +++
  fs/aufs/hfsplus.c                                  |   56 +
  fs/aufs/hnotify.c                                  |  710 ++++++++
- fs/aufs/i_op.c                                     | 1478 ++++++++++++++++
+ fs/aufs/i_op.c                                     | 1484 ++++++++++++++++
  fs/aufs/i_op_add.c                                 |  924 ++++++++++
- fs/aufs/i_op_del.c                                 |  510 ++++++
+ fs/aufs/i_op_del.c                                 |  511 ++++++
  fs/aufs/i_op_ren.c                                 | 1015 +++++++++++
  fs/aufs/iinfo.c                                    |  284 +++
  fs/aufs/inode.c                                    |  517 ++++++
@@ -64,7 +64,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/aufs/magic.mk                                   |   30 +
  fs/aufs/module.c                                   |  223 +++
  fs/aufs/module.h                                   |   89 +
- fs/aufs/mvdown.c                                   |  703 ++++++++
+ fs/aufs/mvdown.c                                   |  704 ++++++++
  fs/aufs/opts.c                                     | 1859 ++++++++++++++++++++
  fs/aufs/opts.h                                     |  211 +++
  fs/aufs/plink.c                                    |  502 ++++++
@@ -92,7 +92,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/aufs/xattr.c                                    |  344 ++++
  fs/aufs/xino.c                                     | 1317 ++++++++++++++
  include/uapi/linux/aufs_type.h                     |  419 +++++
- 87 files changed, 34352 insertions(+)
+ 87 files changed, 34361 insertions(+)
  create mode 100644 Documentation/ABI/testing/debugfs-aufs
  create mode 100644 Documentation/ABI/testing/sysfs-aufs
  create mode 100644 Documentation/filesystems/aufs/README
@@ -6384,10 +6384,10 @@ index 0000000..9f4a2b5
 +#endif /* __AUFS_DCSUB_H__ */
 diff --git a/fs/aufs/debug.c b/fs/aufs/debug.c
 new file mode 100644
-index 0000000..acd137a
+index 0000000..6ef36f6
 --- /dev/null
 +++ b/fs/aufs/debug.c
-@@ -0,0 +1,440 @@
+@@ -0,0 +1,441 @@
 +/*
 + * Copyright (C) 2005-2016 Junjiro R. Okajima
 + *
@@ -6566,9 +6566,9 @@ index 0000000..acd137a
 +{
 +	struct dentry *wh = NULL;
 +	int hn;
++	struct inode *inode;
 +	struct au_iinfo *iinfo;
 +	struct au_hinode *hi;
-+	struct inode *inode;
 +
 +	if (!dentry || IS_ERR(dentry)) {
 +		dpri("d%d: err %ld\n", bindex, PTR_ERR(dentry));
@@ -6583,11 +6583,12 @@ index 0000000..acd137a
 +	     d_unhashed(dentry) ? "un" : "");
 +	hn = -1;
 +	inode = NULL;
-+	if (bindex >= 0
-+	    && d_is_positive(dentry)
-+	    && au_test_aufs(dentry->d_sb))
++	if (d_is_positive(dentry))
 +		inode = d_inode(dentry);
-+	if (inode && !au_is_bad_inode(inode)) {
++	if (inode
++	    && au_test_aufs(dentry->d_sb)
++	    && bindex >= 0
++	    && !au_is_bad_inode(inode)) {
 +		iinfo = au_ii(inode);
 +		hi = au_hinode(iinfo, bindex);
 +		hn = !!au_hn(hi);
@@ -7061,10 +7062,10 @@ index 0000000..cd5fc3f
 +#endif /* __AUFS_DEBUG_H__ */
 diff --git a/fs/aufs/dentry.c b/fs/aufs/dentry.c
 new file mode 100644
-index 0000000..0c7e44e
+index 0000000..0b94961
 --- /dev/null
 +++ b/fs/aufs/dentry.c
-@@ -0,0 +1,1140 @@
+@@ -0,0 +1,1128 @@
 +/*
 + * Copyright (C) 2005-2016 Junjiro R. Okajima
 + *
@@ -7088,14 +7089,6 @@ index 0000000..0c7e44e
 +
 +#include <linux/namei.h>
 +#include "aufs.h"
-+
-+#define AuLkup_ALLOW_NEG	1
-+#define AuLkup_IGNORE_PERM	(1 << 1)
-+#define au_ftest_lkup(flags, name)	((flags) & AuLkup_##name)
-+#define au_fset_lkup(flags, name) \
-+	do { (flags) |= AuLkup_##name; } while (0)
-+#define au_fclr_lkup(flags, name) \
-+	do { (flags) &= ~AuLkup_##name; } while (0)
 +
 +struct au_do_lookup_args {
 +	unsigned int		flags;
@@ -7199,15 +7192,15 @@ index 0000000..0c7e44e
 + * otherwise an error.
 + * can be called at unlinking with @type is zero.
 + */
-+int au_lkup_dentry(struct dentry *dentry, aufs_bindex_t btop, mode_t type)
++int au_lkup_dentry(struct dentry *dentry, aufs_bindex_t btop,
++		   unsigned int flags)
 +{
 +	int npositive, err;
 +	aufs_bindex_t bindex, btail, bdiropq;
 +	unsigned char isdir, dirperm1;
 +	struct qstr whname;
 +	struct au_do_lookup_args args = {
-+		.flags		= 0,
-+		.type		= type
++		.flags		= flags
 +	};
 +	const struct qstr *name = &dentry->d_name;
 +	struct dentry *parent;
@@ -7223,8 +7216,6 @@ index 0000000..0c7e44e
 +		goto out;
 +
 +	isdir = !!d_is_dir(dentry);
-+	if (!type)
-+		au_fset_lkup(args.flags, ALLOW_NEG);
 +	dirperm1 = !!au_opt_test(au_mntflags(sb), DIRPERM1);
 +
 +	npositive = 0;
@@ -7238,9 +7229,7 @@ index 0000000..0c7e44e
 +		if (h_dentry) {
 +			if (d_is_positive(h_dentry))
 +				npositive++;
-+			if (type != S_IFDIR)
-+				break;
-+			continue;
++			break;
 +		}
 +		h_parent = au_h_dptr(parent, bindex);
 +		if (!h_parent || !d_is_dir(h_parent))
@@ -7841,7 +7830,7 @@ index 0000000..0c7e44e
 +	 * if current working dir is removed, it returns an error.
 +	 * but the dentry is legal.
 +	 */
-+	err = au_lkup_dentry(dentry, /*btop*/0, /*type*/0);
++	err = au_lkup_dentry(dentry, /*btop*/0, AuLkup_ALLOW_NEG);
 +	AuDbgDentry(dentry);
 +	au_di_swap(tmp, dinfo);
 +	if (err == -ENOENT)
@@ -8207,10 +8196,10 @@ index 0000000..0c7e44e
 +};
 diff --git a/fs/aufs/dentry.h b/fs/aufs/dentry.h
 new file mode 100644
-index 0000000..238f4c7
+index 0000000..53c417f
 --- /dev/null
 +++ b/fs/aufs/dentry.h
-@@ -0,0 +1,240 @@
+@@ -0,0 +1,252 @@
 +/*
 + * Copyright (C) 2005-2016 Junjiro R. Okajima
 + *
@@ -8256,6 +8245,17 @@ index 0000000..238f4c7
 +
 +/* ---------------------------------------------------------------------- */
 +
++/* flags for au_lkup_dentry() */
++#define AuLkup_ALLOW_NEG	1
++#define AuLkup_IGNORE_PERM	(1 << 1)
++#define au_ftest_lkup(flags, name)	((flags) & AuLkup_##name)
++#define au_fset_lkup(flags, name) \
++	do { (flags) |= AuLkup_##name; } while (0)
++#define au_fclr_lkup(flags, name) \
++	do { (flags) &= ~AuLkup_##name; } while (0)
++
++/* ---------------------------------------------------------------------- */
++
 +/* dentry.c */
 +extern const struct dentry_operations aufs_dop, aufs_dop_noreval;
 +struct au_branch;
@@ -8263,7 +8263,8 @@ index 0000000..238f4c7
 +int au_h_verify(struct dentry *h_dentry, unsigned int udba, struct inode *h_dir,
 +		struct dentry *h_parent, struct au_branch *br);
 +
-+int au_lkup_dentry(struct dentry *dentry, aufs_bindex_t btop, mode_t type);
++int au_lkup_dentry(struct dentry *dentry, aufs_bindex_t btop,
++		   unsigned int flags);
 +int au_lkup_neg(struct dentry *dentry, aufs_bindex_t bindex, int wh);
 +int au_refresh_dentry(struct dentry *dentry, struct dentry *parent);
 +int au_reval_dpath(struct dentry *dentry, unsigned int sigen);
@@ -15201,10 +15202,10 @@ index 0000000..29440fa
 +}
 diff --git a/fs/aufs/i_op.c b/fs/aufs/i_op.c
 new file mode 100644
-index 0000000..01e5682
+index 0000000..c67b536
 --- /dev/null
 +++ b/fs/aufs/i_op.c
-@@ -0,0 +1,1478 @@
+@@ -0,0 +1,1484 @@
 +/*
 + * Copyright (C) 2005-2016 Junjiro R. Okajima
 + *
@@ -15404,8 +15405,9 @@ index 0000000..01e5682
 +	if (!err)
 +		err = au_digen_test(parent, au_sigen(sb));
 +	if (!err) {
++		/* regardless LOOKUP_CREATE, always ALLOW_NEG */
 +		npositive = au_lkup_dentry(dentry, au_dbtop(parent),
-+					   /*type*/0);
++					   AuLkup_ALLOW_NEG);
 +		err = npositive;
 +	}
 +	di_read_unlock(parent, AuLock_IR);
@@ -15486,6 +15488,7 @@ index 0000000..01e5682
 +			    umode_t create_mode, int *opened)
 +{
 +	int err, h_opened = *opened;
++	unsigned int lkup_flags;
 +	struct dentry *parent;
 +	struct dentry *d;
 +	struct au_sphlhead *aopen;
@@ -15499,14 +15502,18 @@ index 0000000..01e5682
 +	};
 +
 +	IMustLock(dir);
-+	AuDbg("open_flag 0x%x\n", open_flag);
++	AuDbg("open_flag 0%o\n", open_flag);
 +	AuDbgDentry(dentry);
 +
 +	err = 0;
 +	if (!au_di(dentry)) {
-+		d = aufs_lookup(dir, dentry, /*flags*/0);
++		lkup_flags = LOOKUP_OPEN;
++		if (open_flag & O_CREAT)
++			lkup_flags |= LOOKUP_CREATE;
++		d = aufs_lookup(dir, dentry, lkup_flags);
 +		if (IS_ERR(d)) {
 +			err = PTR_ERR(d);
++			AuTraceErr(err);
 +			goto out;
 +		} else if (d) {
 +			/*
@@ -15532,7 +15539,7 @@ index 0000000..01e5682
 +
 +	parent = dentry->d_parent;	/* dir is locked */
 +	di_write_lock_parent(parent);
-+	err = au_lkup_dentry(dentry, /*btop*/0, /*type*/0);
++	err = au_lkup_dentry(dentry, /*btop*/0, AuLkup_ALLOW_NEG);
 +	if (unlikely(err))
 +		goto out_unlock;
 +
@@ -17615,10 +17622,10 @@ index 0000000..3093702
 +}
 diff --git a/fs/aufs/i_op_del.c b/fs/aufs/i_op_del.c
 new file mode 100644
-index 0000000..3fe30b6
+index 0000000..9933550
 --- /dev/null
 +++ b/fs/aufs/i_op_del.c
-@@ -0,0 +1,510 @@
+@@ -0,0 +1,511 @@
 +/*
 + * Copyright (C) 2005-2016 Junjiro R. Okajima
 + *
@@ -17688,7 +17695,8 @@ index 0000000..3fe30b6
 +			au_di_cp(tmp, dinfo);
 +			au_di_swap(tmp, dinfo);
 +			/* returns the number of positive dentries */
-+			need_wh = au_lkup_dentry(dentry, btop + 1, /*type*/0);
++			need_wh = au_lkup_dentry(dentry, btop + 1,
++						 /* AuLkup_IGNORE_PERM */ 0);
 +			au_di_swap(tmp, dinfo);
 +			au_rw_write_unlock(&tmp->di_rwsem);
 +			au_di_free(tmp);
@@ -21460,10 +21468,10 @@ index 0000000..21344c6
 +#endif /* __AUFS_MODULE_H__ */
 diff --git a/fs/aufs/mvdown.c b/fs/aufs/mvdown.c
 new file mode 100644
-index 0000000..b67f43f
+index 0000000..87bca53
 --- /dev/null
 +++ b/fs/aufs/mvdown.c
-@@ -0,0 +1,703 @@
+@@ -0,0 +1,704 @@
 +/*
 + * Copyright (C) 2011-2016 Junjiro R. Okajima
 + *
@@ -21930,7 +21938,8 @@ index 0000000..b67f43f
 +	au_di_swap(tmp, dinfo);
 +
 +	/* returns the number of positive dentries */
-+	err = au_lkup_dentry(a->dentry, a->mvd_bsrc + 1, /*type*/0);
++	err = au_lkup_dentry(a->dentry, a->mvd_bsrc + 1,
++			     /* AuLkup_IGNORE_PERM */ 0);
 +	if (!err)
 +		a->bwh = au_dbwh(a->dentry);
 +	else if (err > 0)
@@ -30394,7 +30403,7 @@ index 0000000..46b6a9a
 +}
 diff --git a/fs/aufs/vfsub.h b/fs/aufs/vfsub.h
 new file mode 100644
-index 0000000..545e34d
+index 0000000..66edace
 --- /dev/null
 +++ b/fs/aufs/vfsub.h
 @@ -0,0 +1,308 @@
@@ -30618,7 +30627,7 @@ index 0000000..545e34d
 +static inline int vfsub_update_time(struct inode *h_inode, struct timespec *ts,
 +				    int flags)
 +{
-+	return generic_update_time(h_inode, ts, flags);
++	return update_time(h_inode, ts, flags);
 +	/* no vfsub_update_h_iattr() since we don't have struct path */
 +}
 +
@@ -34632,7 +34641,7 @@ index 0000000..d6d946c
 +}
 diff --git a/include/uapi/linux/aufs_type.h b/include/uapi/linux/aufs_type.h
 new file mode 100644
-index 0000000..4f641df
+index 0000000..6630afc
 --- /dev/null
 +++ b/include/uapi/linux/aufs_type.h
 @@ -0,0 +1,419 @@
@@ -34677,7 +34686,7 @@ index 0000000..4f641df
 +
 +#include <linux/limits.h>
 +
-+#define AUFS_VERSION	"4.4-20160620"
++#define AUFS_VERSION	"4.4-20160627"
 +
 +/* todo? move this to linux-2.6.19/include/magic.h */
 +#define AUFS_SUPER_MAGIC	('a' << 24 | 'u' << 16 | 'f' << 8 | 's')
