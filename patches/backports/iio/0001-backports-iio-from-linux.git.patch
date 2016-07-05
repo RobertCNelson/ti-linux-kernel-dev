@@ -1,6 +1,6 @@
-From af029a3c59d18ef361e6127a7ad83233f02c1eef Mon Sep 17 00:00:00 2001
+From b3c54208880065fb75f2c3dae9a6b41e4fe4703f Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 1 Jul 2016 10:28:10 -0500
+Date: Tue, 5 Jul 2016 11:44:55 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -14,6 +14,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/accel/bmc150-accel-spi.c               |    8 +-
  drivers/iio/accel/bmc150-accel.h                   |    1 +
  drivers/iio/accel/kxcjk-1013.c                     |   45 +-
+ drivers/iio/accel/kxsd9.c                          |    4 +-
  drivers/iio/accel/mma7455.h                        |   19 +
  drivers/iio/accel/mma7455_core.c                   |  310 ++++
  drivers/iio/accel/mma7455_i2c.c                    |   56 +
@@ -32,6 +33,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/accel/stk8ba50.c                       |    1 -
  drivers/iio/adc/Kconfig                            |  122 +-
  drivers/iio/adc/Makefile                           |   10 +
+ drivers/iio/adc/ad7266.c                           |    7 +-
  drivers/iio/adc/ad7793.c                           |    5 +-
  drivers/iio/adc/ad799x.c                           |    2 +-
  drivers/iio/adc/at91-sama5d2_adc.c                 |  556 ++++++
@@ -123,7 +125,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/imu/bmi160/bmi160_spi.c                |   63 +
  drivers/iio/imu/inv_mpu6050/Kconfig                |   29 +-
  drivers/iio/imu/inv_mpu6050/Makefile               |    8 +-
- drivers/iio/imu/inv_mpu6050/inv_mpu_acpi.c         |   26 +-
+ drivers/iio/imu/inv_mpu6050/inv_mpu_acpi.c         |   31 +-
  drivers/iio/imu/inv_mpu6050/inv_mpu_core.c         |  528 +++---
  drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c          |  200 +++
  drivers/iio/imu/inv_mpu6050/inv_mpu_iio.h          |   56 +-
@@ -213,7 +215,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/iio/accel/adis16240_core.c         |    5 +-
  drivers/staging/iio/accel/lis3l02dq.h              |   15 +-
  drivers/staging/iio/accel/lis3l02dq_core.c         |    4 +-
- drivers/staging/iio/accel/sca3000_core.c           |    3 +-
+ drivers/staging/iio/accel/sca3000_core.c           |    5 +-
  drivers/staging/iio/accel/sca3000_ring.c           |    5 +-
  drivers/staging/iio/adc/Kconfig                    |   23 +-
  drivers/staging/iio/adc/Makefile                   |    8 +-
@@ -223,7 +225,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/iio/adc/ad7606.h                   |   38 +-
  drivers/staging/iio/adc/ad7606_core.c              |   71 +-
  drivers/staging/iio/adc/ad7606_par.c               |   32 +-
- drivers/staging/iio/adc/ad7606_spi.c               |   37 +-
+ drivers/staging/iio/adc/ad7606_spi.c               |   35 +-
  drivers/staging/iio/adc/ad7780.c                   |   38 +-
  drivers/staging/iio/adc/ad7816.c                   |    6 +-
  drivers/staging/iio/adc/spear_adc.c                |   33 +-
@@ -233,7 +235,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/iio/cdc/ad7746.c                   |    4 +-
  drivers/staging/iio/frequency/ad9832.c             |    4 +-
  drivers/staging/iio/frequency/ad9834.c             |    2 +-
- drivers/staging/iio/impedance-analyzer/ad5933.c    |   53 +-
+ drivers/staging/iio/impedance-analyzer/ad5933.c    |   59 +-
  drivers/staging/iio/light/isl29018.c               |   75 +-
  drivers/staging/iio/light/isl29028.c               |   86 +-
  drivers/staging/iio/light/tsl2583.c                |   92 +-
@@ -267,7 +269,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/platform_data/ad5761.h               |   44 +
  include/linux/platform_data/st_sensors_pdata.h     |    2 +
  include/uapi/linux/iio/types.h                     |    3 +
- 262 files changed, 25795 insertions(+), 2393 deletions(-)
+ 264 files changed, 25808 insertions(+), 2402 deletions(-)
  create mode 100644 drivers/iio/accel/mma7455.h
  create mode 100644 drivers/iio/accel/mma7455_core.c
  create mode 100644 drivers/iio/accel/mma7455_i2c.c
@@ -1212,6 +1214,28 @@ index 18c1b06..bfe219a 100644
  	if (data->dready_trig) {
  		iio_triggered_buffer_cleanup(indio_dev);
  		iio_trigger_unregister(data->dready_trig);
+diff --git a/drivers/iio/accel/kxsd9.c b/drivers/iio/accel/kxsd9.c
+index 923f565..3a9f106 100644
+--- a/drivers/iio/accel/kxsd9.c
++++ b/drivers/iio/accel/kxsd9.c
+@@ -81,7 +81,7 @@ static int kxsd9_write_scale(struct iio_dev *indio_dev, int micro)
+ 
+ 	mutex_lock(&st->buf_lock);
+ 	ret = spi_w8r8(st->us, KXSD9_READ(KXSD9_REG_CTRL_C));
+-	if (ret)
++	if (ret < 0)
+ 		goto error_ret;
+ 	st->tx[0] = KXSD9_WRITE(KXSD9_REG_CTRL_C);
+ 	st->tx[1] = (ret & ~KXSD9_FS_MASK) | i;
+@@ -163,7 +163,7 @@ static int kxsd9_read_raw(struct iio_dev *indio_dev,
+ 		break;
+ 	case IIO_CHAN_INFO_SCALE:
+ 		ret = spi_w8r8(st->us, KXSD9_READ(KXSD9_REG_CTRL_C));
+-		if (ret)
++		if (ret < 0)
+ 			goto error_ret;
+ 		*val2 = kxsd9_micro_scales[ret & KXSD9_FS_MASK];
+ 		ret = IIO_VAL_INT_PLUS_MICRO;
 diff --git a/drivers/iio/accel/mma7455.h b/drivers/iio/accel/mma7455.h
 new file mode 100644
 index 0000000..2b1152c
@@ -3308,6 +3332,31 @@ index 99b37a9..38638d4 100644
  obj-$(CONFIG_TI_AM335X_ADC) += ti_am335x_adc.o
  obj-$(CONFIG_TWL4030_MADC) += twl4030-madc.o
  obj-$(CONFIG_TWL6030_GPADC) += twl6030-gpadc.o
+diff --git a/drivers/iio/adc/ad7266.c b/drivers/iio/adc/ad7266.c
+index 21e19b6..2123f0a 100644
+--- a/drivers/iio/adc/ad7266.c
++++ b/drivers/iio/adc/ad7266.c
+@@ -396,8 +396,8 @@ static int ad7266_probe(struct spi_device *spi)
+ 
+ 	st = iio_priv(indio_dev);
+ 
+-	st->reg = devm_regulator_get(&spi->dev, "vref");
+-	if (!IS_ERR_OR_NULL(st->reg)) {
++	st->reg = devm_regulator_get_optional(&spi->dev, "vref");
++	if (!IS_ERR(st->reg)) {
+ 		ret = regulator_enable(st->reg);
+ 		if (ret)
+ 			return ret;
+@@ -408,6 +408,9 @@ static int ad7266_probe(struct spi_device *spi)
+ 
+ 		st->vref_mv = ret / 1000;
+ 	} else {
++		/* Any other error indicates that the regulator does exist */
++		if (PTR_ERR(st->reg) != -ENODEV)
++			return PTR_ERR(st->reg);
+ 		/* Use internal reference */
+ 		st->vref_mv = 2500;
+ 	}
 diff --git a/drivers/iio/adc/ad7793.c b/drivers/iio/adc/ad7793.c
 index 4d960d3..7b07bb6 100644
 --- a/drivers/iio/adc/ad7793.c
@@ -21019,10 +21068,18 @@ index f566f6a..734af5e 100644
 +obj-$(CONFIG_INV_MPU6050_SPI) += inv-mpu6050-spi.o
 +inv-mpu6050-spi-objs := inv_mpu_spi.o
 diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_acpi.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_acpi.c
-index 1c982a5..f62b8bd 100644
+index 1c982a5..dd6fc6d 100644
 --- a/drivers/iio/imu/inv_mpu6050/inv_mpu_acpi.c
 +++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_acpi.c
-@@ -66,11 +66,11 @@ static int asus_acpi_get_sensor_info(struct acpi_device *adev,
+@@ -56,6 +56,7 @@ static int asus_acpi_get_sensor_info(struct acpi_device *adev,
+ 	int i;
+ 	acpi_status status;
+ 	union acpi_object *cpm;
++	int ret;
+ 
+ 	status = acpi_evaluate_object(adev->handle, "CNF0", NULL, &buffer);
+ 	if (ACPI_FAILURE(status))
+@@ -66,11 +67,11 @@ static int asus_acpi_get_sensor_info(struct acpi_device *adev,
  		union acpi_object *elem;
  		int j;
  
@@ -21036,7 +21093,20 @@ index 1c982a5..f62b8bd 100644
  			if (sub_elem->type == ACPI_TYPE_STRING)
  				strlcpy(info->type, sub_elem->string.pointer,
  					sizeof(info->type));
-@@ -139,22 +139,23 @@ static int inv_mpu_process_acpi_config(struct i2c_client *client,
+@@ -82,10 +83,10 @@ static int asus_acpi_get_sensor_info(struct acpi_device *adev,
+ 			}
+ 		}
+ 	}
+-
++	ret = cpm->package.count;
+ 	kfree(buffer.pointer);
+ 
+-	return cpm->package.count;
++	return ret;
+ }
+ 
+ static int acpi_i2c_check_resource(struct acpi_resource *ares, void *data)
+@@ -139,22 +140,23 @@ static int inv_mpu_process_acpi_config(struct i2c_client *client,
  	return 0;
  }
  
@@ -21064,7 +21134,7 @@ index 1c982a5..f62b8bd 100644
  							&info);
  			break;
  		/* Add more matched product processing here */
-@@ -166,7 +167,7 @@ int inv_mpu_acpi_create_mux_client(struct inv_mpu6050_state *st)
+@@ -166,7 +168,7 @@ int inv_mpu_acpi_create_mux_client(struct inv_mpu6050_state *st)
  			/* No matching DMI, so create device on INV6XX type */
  			unsigned short primary, secondary;
  
@@ -21073,7 +21143,7 @@ index 1c982a5..f62b8bd 100644
  							  &secondary);
  			if (!ret && secondary) {
  				char *name;
-@@ -182,17 +183,18 @@ int inv_mpu_acpi_create_mux_client(struct inv_mpu6050_state *st)
+@@ -182,17 +184,18 @@ int inv_mpu_acpi_create_mux_client(struct inv_mpu6050_state *st)
  			} else
  				return 0; /* no secondary addr, which is OK */
  		}
@@ -21095,7 +21165,7 @@ index 1c982a5..f62b8bd 100644
  	if (st->mux_client)
  		i2c_unregister_device(st->mux_client);
  }
-@@ -200,12 +202,12 @@ void inv_mpu_acpi_delete_mux_client(struct inv_mpu6050_state *st)
+@@ -200,12 +203,12 @@ void inv_mpu_acpi_delete_mux_client(struct inv_mpu6050_state *st)
  
  #include "inv_mpu_iio.h"
  
@@ -33694,7 +33764,7 @@ index 7939ae6..7a6fed3 100644
  	mutex_lock(&indio_dev->mlock);
  	/* read current control */
 diff --git a/drivers/staging/iio/accel/sca3000_core.c b/drivers/staging/iio/accel/sca3000_core.c
-index 02e930c..a8f533a 100644
+index 02e930c..ec12181 100644
 --- a/drivers/staging/iio/accel/sca3000_core.c
 +++ b/drivers/staging/iio/accel/sca3000_core.c
 @@ -216,8 +216,7 @@ static int sca3000_read_ctrl_reg(struct sca3000_state *st,
@@ -33707,6 +33777,15 @@ index 02e930c..a8f533a 100644
  error_ret:
  	return ret;
  }
+@@ -595,7 +594,7 @@ static ssize_t sca3000_read_frequency(struct device *dev,
+ 		goto error_ret_mut;
+ 	ret = sca3000_read_ctrl_reg(st, SCA3000_REG_CTRL_SEL_OUT_CTRL);
+ 	mutex_unlock(&st->lock);
+-	if (ret)
++	if (ret < 0)
+ 		goto error_ret;
+ 	val = ret;
+ 	if (base_freq > 0)
 diff --git a/drivers/staging/iio/accel/sca3000_ring.c b/drivers/staging/iio/accel/sca3000_ring.c
 index 20b878d..d1cb9b9 100644
 --- a/drivers/staging/iio/accel/sca3000_ring.c
@@ -34526,15 +34605,13 @@ index adc370e..84d2393 100644
  };
  
 diff --git a/drivers/staging/iio/adc/ad7606_spi.c b/drivers/staging/iio/adc/ad7606_spi.c
-index cbb3631..825da07 100644
+index cbb3631..9587fa8 100644
 --- a/drivers/staging/iio/adc/ad7606_spi.c
 +++ b/drivers/staging/iio/adc/ad7606_spi.c
-@@ -21,7 +21,8 @@ static int ad7606_spi_read_block(struct device *dev,
- {
+@@ -22,6 +22,7 @@ static int ad7606_spi_read_block(struct device *dev,
  	struct spi_device *spi = to_spi_device(dev);
  	int i, ret;
--	unsigned short *data = buf;
-+	unsigned short *data;
+ 	unsigned short *data = buf;
 +	__be16 *bdata = buf;
  
  	ret = spi_read(spi, buf, count * 2);
@@ -35020,7 +35097,7 @@ index 6464f2c..6366216 100644
  	struct iio_dev *indio_dev;
  	struct regulator *reg;
 diff --git a/drivers/staging/iio/impedance-analyzer/ad5933.c b/drivers/staging/iio/impedance-analyzer/ad5933.c
-index 10c43dda..9f43976 100644
+index 10c43dda..170ac98 100644
 --- a/drivers/staging/iio/impedance-analyzer/ad5933.c
 +++ b/drivers/staging/iio/impedance-analyzer/ad5933.c
 @@ -12,20 +12,16 @@
@@ -35132,6 +35209,20 @@ index 10c43dda..9f43976 100644
  	case AD5933_OUT_RANGE:
  		for (i = 0; i < 4; i++)
  			if (val == st->range_avail[i]) {
+@@ -436,10 +444,10 @@ static ssize_t ad5933_store(struct device *dev,
+ 		st->settling_cycles = val;
+ 
+ 		/* 2x, 4x handling, see datasheet */
+-		if (val > 511)
+-			val = (val >> 1) | (1 << 9);
+-		else if (val > 1022)
++		if (val > 1022)
+ 			val = (val >> 2) | (3 << 9);
++		else if (val > 511)
++			val = (val >> 1) | (1 << 9);
+ 
+ 		dat = cpu_to_be16(val);
+ 		ret = ad5933_i2c_write(st->client,
 @@ -558,7 +566,7 @@ out:
  }
  
