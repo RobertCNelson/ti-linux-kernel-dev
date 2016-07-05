@@ -472,33 +472,6 @@ pru_rpmsg () {
 	fi
 }
 
-x15 () {
-	#echo "dir: x15/fixes"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
-#	echo "dir: x15/dsp"
-#	#regenerate="enable"
-#	if [ "x${regenerate}" = "xenable" ] ; then
-#		start_cleanup
-#	fi
-
-#	${git} "${DIR}/patches/x15/dsp/0001-am57xx-beagle-x15-cmem.patch"
-#	${git} "${DIR}/patches/x15/dsp/0002-dra74x-dra7xx-debugss.patch"
-
-#	if [ "x${regenerate}" = "xenable" ] ; then
-#		number=2
-#		cleanup
-#	fi
-}
-
 bbb_overlays () {
 	echo "dir: bbb_overlays/dtc"
 	#regenerate="enable"
@@ -1050,6 +1023,21 @@ beaglebone () {
 	fi
 }
 
+x15 () {
+	echo "dir: x15/fixes"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/x15/fixes/0001-x15-mmc-cmem-debugss.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+}
+
 quieter () {
 	echo "dir: quieter"
 	#regenerate="enable"
@@ -1071,10 +1059,10 @@ lts44_backports
 reverts
 fixes
 ti
-#x15
 pru_rpmsg
 bbb_overlays
 beaglebone
+x15
 quieter
 
 packaging () {
