@@ -1066,21 +1066,6 @@ quieter () {
 	fi
 }
 
-hacks () {
-	echo "dir: hacks"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/hacks/0001-pruss-hack-uio-rproc.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-}
-
 ###
 lts44_backports
 reverts
