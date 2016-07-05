@@ -454,22 +454,6 @@ ti () {
 	unset is_mainline
 }
 
-pru_uio () {
-	echo "dir: pru_uio"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-#	${git} "${DIR}/patches/pru_uio/0001-Making-the-uio-pruss-driver-work.patch"
-#	${git} "${DIR}/patches/pru_uio/0002-Cleaned-up-error-reporting.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
-		cleanup
-	fi
-}
-
 pru_rpmsg () {
 	echo "dir: pru_rpmsg"
 	#regenerate="enable"
@@ -942,6 +926,20 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/pru"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/pru/0001-pruss-choose-rproc-or-uio.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="beaglebone/pru"
+		number=1
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -1074,7 +1072,6 @@ reverts
 fixes
 ti
 #x15
-pru_uio
 pru_rpmsg
 bbb_overlays
 beaglebone
