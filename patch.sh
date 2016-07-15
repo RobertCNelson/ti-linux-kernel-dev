@@ -1048,9 +1048,10 @@ x15 () {
 
 	${git} "${DIR}/patches/x15/fixes/0001-x15-mmc-cmem-debugss.patch"
 	${git} "${DIR}/patches/x15/fixes/0002-x15-cmem-keep-this-formating.patch"
+	${git} "${DIR}/patches/x15/fixes/0003-x15-add-eeprom.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=3
 		cleanup
 	fi
 }
