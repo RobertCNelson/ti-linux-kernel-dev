@@ -914,6 +914,41 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/vsc8531bbb"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	#https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/log/net/core/ethtool.c?id=refs/tags/v4.4.15
+	#https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/log/net/core/ethtool.c?id=refs/tags/v4.5.7
+
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0001-sctp-Rename-NETIF_F_SCTP_CSUM-to-NETIF_F_SCTP_CRC.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0002-net-Rename-NETIF_F_ALL_CSUM-to-NETIF_F_CSUM_MASK.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0003-ethtool-Add-phy-statistics.patch"
+
+	#https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/log/net/core/ethtool.c?id=refs/tags/v4.6.4
+
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0004-ethtool-Declare-netdev_rss_key-as-__read_mostly.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0005-ethtool-correctly-ensure-GS-CHANNELS-doesn-t-conflic.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0006-ethtool-ensure-channel-counts-are-within-bounds-duri.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0007-net-add-tc-offload-feature-flag.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0008-net-ethtool-introduce-a-new-ioctl-for-per-queue-sett.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0009-net-ethtool-support-get-coalesce-per-queue.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0010-net-ethtool-support-set-coalesce-per-queue.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0011-net-ethtool-add-new-ETHTOOL_xLINKSETTINGS-API.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0012-ethtool-Set-cmd-field-in-ETHTOOL_GLINKSETTINGS-respo.patch"
+
+	#board:
+
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0013-add-am335x-vsc8531bbb.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="beaglebone/vsc8531bbb"
+		number=13
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -967,6 +1002,8 @@ beaglebone () {
 
 		#device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
 		#device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
+
+		device="am335x-vsc8531bbb.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/

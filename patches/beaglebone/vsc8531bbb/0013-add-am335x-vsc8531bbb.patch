@@ -1,0 +1,1790 @@
+From 01ef2dc2614ea29fc018dd3cf823e0dc8237c69a Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Tue, 19 Jul 2016 17:04:18 -0500
+Subject: [PATCH 13/13] add: am335x-vsc8531bbb
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ .../boot/dts/am335x-bone-common_vsc8531bbb.dtsi    | 448 +++++++++++++++++++++
+ arch/arm/boot/dts/am335x-vsc8531bbb.dts            | 188 +++++++++
+ drivers/net/ethernet/ti/cpsw.c                     |  70 ++++
+ drivers/net/phy/Kconfig                            |   5 +
+ drivers/net/phy/Makefile                           |   1 +
+ drivers/net/phy/mscc.c                             | 422 +++++++++++++++++++
+ drivers/net/phy/mscc_reg.h                         | 112 ++++++
+ drivers/net/phy/phy.c                              | 115 ++++++
+ include/linux/ethtool.h                            |   8 +
+ include/linux/mscc.h                               |  61 +++
+ include/linux/phy.h                                |  13 +
+ include/uapi/linux/ethtool.h                       |  39 +-
+ net/core/ethtool.c                                 | 115 ++++++
+ 13 files changed, 1592 insertions(+), 5 deletions(-)
+ create mode 100644 arch/arm/boot/dts/am335x-bone-common_vsc8531bbb.dtsi
+ create mode 100644 arch/arm/boot/dts/am335x-vsc8531bbb.dts
+ create mode 100644 drivers/net/phy/mscc.c
+ create mode 100644 drivers/net/phy/mscc_reg.h
+ create mode 100644 include/linux/mscc.h
+
+diff --git a/arch/arm/boot/dts/am335x-bone-common_vsc8531bbb.dtsi b/arch/arm/boot/dts/am335x-bone-common_vsc8531bbb.dtsi
+new file mode 100644
+index 0000000..bdd87c9
+--- /dev/null
++++ b/arch/arm/boot/dts/am335x-bone-common_vsc8531bbb.dtsi
+@@ -0,0 +1,448 @@
++/*
++ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++/ {
++	cpus {
++		cpu@0 {
++			cpu0-supply = <&dcdc2_reg>;
++		};
++	};
++
++	memory {
++		device_type = "memory";
++		reg = <0x80000000 0x10000000>; /* 256 MB */
++	};
++
++	leds {
++		pinctrl-names = "default", "sleep";
++		pinctrl-0 = <&user_leds_default>;
++		pinctrl-1 = <&user_leds_sleep>;
++
++		compatible = "gpio-leds";
++
++		led@2 {
++			label = "beaglebone:green:usr0";
++			gpios = <&gpio1 21 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "heartbeat";
++			default-state = "off";
++		};
++
++		led@3 {
++			label = "beaglebone:green:usr1";
++			gpios = <&gpio1 22 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "mmc0";
++			default-state = "off";
++		};
++
++		led@4 {
++			label = "beaglebone:green:usr2";
++			gpios = <&gpio1 23 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "cpu0";
++			default-state = "off";
++		};
++
++		led@5 {
++			label = "beaglebone:green:usr3";
++			gpios = <&gpio1 24 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "mmc1";
++			default-state = "off";
++		};
++	};
++
++	vmmcsd_fixed: fixedregulator@0 {
++		compatible = "regulator-fixed";
++		regulator-name = "vmmcsd_fixed";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++	};
++};
++
++&am33xx_pinmux {
++	user_leds_default: user_leds_default {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x854, PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a5.gpio1_21 */
++			AM33XX_IOPAD(0x858, PIN_OUTPUT_PULLUP | MUX_MODE7)	/* gpmc_a6.gpio1_22 */
++			AM33XX_IOPAD(0x85c, PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a7.gpio1_23 */
++			AM33XX_IOPAD(0x860, PIN_OUTPUT_PULLUP | MUX_MODE7)	/* gpmc_a8.gpio1_24 */
++		>;
++	};
++
++	user_leds_sleep: user_leds_sleep {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x854, PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a5.gpio1_21 */
++			AM33XX_IOPAD(0x858, PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a6.gpio1_22 */
++			AM33XX_IOPAD(0x85c, PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a7.gpio1_23 */
++			AM33XX_IOPAD(0x860, PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a8.gpio1_24 */
++		>;
++	};
++
++	i2c0_pins: pinmux_i2c0_pins {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x988, PIN_INPUT_PULLUP | MUX_MODE0)	/* i2c0_sda.i2c0_sda */
++			AM33XX_IOPAD(0x98c, PIN_INPUT_PULLUP | MUX_MODE0)	/* i2c0_scl.i2c0_scl */
++		>;
++	};
++
++	i2c2_pins: pinmux_i2c2_pins {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x978, PIN_INPUT_PULLUP | MUX_MODE3)	/* uart1_ctsn.i2c2_sda */
++			AM33XX_IOPAD(0x97c, PIN_INPUT_PULLUP | MUX_MODE3)	/* uart1_rtsn.i2c2_scl */
++		>;
++	};
++
++	uart0_pins: pinmux_uart0_pins {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x970, PIN_INPUT_PULLUP | MUX_MODE0)	/* uart0_rxd.uart0_rxd */
++			AM33XX_IOPAD(0x974, PIN_OUTPUT_PULLDOWN | MUX_MODE0)	/* uart0_txd.uart0_txd */
++		>;
++	};
++
++	cpsw_default: cpsw_default {
++		pinctrl-single,pins = <
++			/* Slave 1 */
++			0x114 (PIN_OUTPUT_PULLDOWN | MUX_MODE2)	/* mii1_txen.rgmii1_tctl */
++			0x118 (PIN_INPUT_PULLUP | MUX_MODE2)	/* mii1_rxdv.rgmii1_rctl */
++			0x11c (PIN_OUTPUT_PULLDOWN | MUX_MODE2)	/* mii1_txd3.rgmii1_txd3 */
++			0x120 (PIN_OUTPUT_PULLDOWN | MUX_MODE2)	/* mii1_txd2.rgmii1_txd2 */
++			0x124 (PIN_OUTPUT_PULLDOWN | MUX_MODE2)	/* mii1_txd1.rgmii1_txd1 */
++			0x128 (PIN_OUTPUT_PULLDOWN | MUX_MODE2)	/* mii1_txd0.rgmii1_txd0 */
++			0x12c (PIN_OUTPUT_PULLDOWN | MUX_MODE2)	/* mii1_txclk.rgmii1_txclk */
++			0x130 (PIN_INPUT_PULLUP | MUX_MODE2)	/* mii1_rxclk.rgmii1_rxclk */
++			0x134 (PIN_INPUT_PULLUP | MUX_MODE2)	/* mii1_rxd3.rgmii1_rxd3 */
++			0x138 (PIN_INPUT_PULLUP | MUX_MODE2)	/* mii1_rxd2.rgmii1_rxd2 */
++			0x13c (PIN_INPUT_PULLUP | MUX_MODE2)	/* mii1_rxd1.rgmii1_rxd1 */
++			0x140 (PIN_INPUT_PULLUP | MUX_MODE2)	/* mii1_rxd0.rgmii1_rxd0 */
++		>;
++	};
++
++	cpsw_sleep: cpsw_sleep {
++		pinctrl-single,pins = <
++			/* Slave 1 reset value */
++			0x114 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x118 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x11c (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x120 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x124 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x128 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x12c (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x130 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x134 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x138 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x13c (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x140 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++		>;
++	};
++
++	davinci_mdio_default: davinci_mdio_default {
++		pinctrl-single,pins = <
++			/* MDIO */
++			AM33XX_IOPAD(0x948, PIN_INPUT_PULLUP | SLEWCTRL_FAST | MUX_MODE0)	/* mdio_data.mdio_data */
++			AM33XX_IOPAD(0x94c, PIN_OUTPUT_PULLUP | MUX_MODE0)			/* mdio_clk.mdio_clk */
++		>;
++	};
++
++	davinci_mdio_sleep: davinci_mdio_sleep {
++		pinctrl-single,pins = <
++			/* MDIO reset value */
++			AM33XX_IOPAD(0x948, PIN_INPUT_PULLDOWN | MUX_MODE7)
++			AM33XX_IOPAD(0x94c, PIN_INPUT_PULLDOWN | MUX_MODE7)
++		>;
++	};
++
++	mmc1_pins_default: pinmux_mmc1_pins {
++		pinctrl-single,pins = <
++			0x0F0 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_dat3.mmc0_dat3 */
++			0x0F4 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_dat2.mmc0_dat2 */
++			0x0F8 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_dat1.mmc0_dat1 */
++			0x0FC (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_dat0.mmc0_dat0 */
++			0x100 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_clk.mmc0_clk */
++			0x104 (PIN_INPUT_PULLUP | MUX_MODE0)	/* mmc0_cmd.mmc0_cmd */
++			0x160 (PIN_INPUT | MUX_MODE7)		/* spi0_cs1.gpio0_6 */
++		>;
++	};
++
++	mmc1_pins_sleep: pinmux_mmc1_pins_sleep {
++		pinctrl-single,pins = <
++			0x0F0 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x0F4 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x0F8 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x0FC (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x100 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x104 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++			0x160 (PIN_INPUT_PULLDOWN | MUX_MODE7)
++		>;
++	};
++
++	emmc_pins: pinmux_emmc_pins {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x880, PIN_INPUT_PULLUP | MUX_MODE2) /* gpmc_csn1.mmc1_clk */
++			AM33XX_IOPAD(0x884, PIN_INPUT_PULLUP | MUX_MODE2) /* gpmc_csn2.mmc1_cmd */
++			AM33XX_IOPAD(0x800, PIN_INPUT_PULLUP | MUX_MODE1) /* gpmc_ad0.mmc1_dat0 */
++			AM33XX_IOPAD(0x804, PIN_INPUT_PULLUP | MUX_MODE1) /* gpmc_ad1.mmc1_dat1 */
++			AM33XX_IOPAD(0x808, PIN_INPUT_PULLUP | MUX_MODE1) /* gpmc_ad2.mmc1_dat2 */
++			AM33XX_IOPAD(0x80c, PIN_INPUT_PULLUP | MUX_MODE1) /* gpmc_ad3.mmc1_dat3 */
++			AM33XX_IOPAD(0x810, PIN_INPUT_PULLUP | MUX_MODE1) /* gpmc_ad4.mmc1_dat4 */
++			AM33XX_IOPAD(0x814, PIN_INPUT_PULLUP | MUX_MODE1) /* gpmc_ad5.mmc1_dat5 */
++			AM33XX_IOPAD(0x818, PIN_INPUT_PULLUP | MUX_MODE1) /* gpmc_ad6.mmc1_dat6 */
++			AM33XX_IOPAD(0x81c, PIN_INPUT_PULLUP | MUX_MODE1) /* gpmc_ad7.mmc1_dat7 */
++		>;
++	};
++};
++
++&uart0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_pins>;
++
++	status = "okay";
++};
++
++&usb {
++	status = "okay";
++};
++
++&usb_ctrl_mod {
++	status = "okay";
++};
++
++&usb0_phy {
++	status = "okay";
++};
++
++&usb1_phy {
++	status = "okay";
++};
++
++&usb0 {
++	status = "okay";
++	dr_mode = "peripheral";
++};
++
++&usb1 {
++	status = "okay";
++	dr_mode = "host";
++};
++
++&cppi41dma  {
++	status = "okay";
++};
++
++&i2c0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c0_pins>;
++
++	status = "okay";
++	clock-frequency = <400000>;
++
++	tps: tps@24 {
++		reg = <0x24>;
++	};
++
++	baseboard_eeprom: baseboard_eeprom@50 {
++		compatible = "at,24c256";
++		reg = <0x50>;
++
++		#address-cells = <1>;
++		#size-cells = <1>;
++		baseboard_data: baseboard_data@0 {
++			reg = <0 0x100>;
++		};
++	};
++};
++
++&i2c2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2c2_pins>;
++
++	status = "okay";
++	clock-frequency = <100000>;
++
++	cape_eeprom0: cape_eeprom0@54 {
++		compatible = "at,24c256";
++		reg = <0x54>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++		cape0_data: cape_data@0 {
++			reg = <0 0x100>;
++		};
++	};
++
++	cape_eeprom1: cape_eeprom1@55 {
++		compatible = "at,24c256";
++		reg = <0x55>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++		cape1_data: cape_data@0 {
++			reg = <0 0x100>;
++		};
++	};
++
++	cape_eeprom2: cape_eeprom2@56 {
++		compatible = "at,24c256";
++		reg = <0x56>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++		cape2_data: cape_data@0 {
++			reg = <0 0x100>;
++		};
++	};
++
++	cape_eeprom3: cape_eeprom3@57 {
++		compatible = "at,24c256";
++		reg = <0x57>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++		cape3_data: cape_data@0 {
++			reg = <0 0x100>;
++		};
++	};
++};
++
++
++/include/ "tps65217.dtsi"
++
++&tps {
++	/*
++	 * Configure pmic to enter OFF-state instead of SLEEP-state ("RTC-only
++	 * mode") at poweroff.  Most BeagleBone versions do not support RTC-only
++	 * mode and risk hardware damage if this mode is entered.
++	 *
++	 * For details, see linux-omap mailing list May 2015 thread
++	 *	[PATCH] ARM: dts: am335x-bone* enable pmic-shutdown-controller
++	 * In particular, messages:
++	 *	http://www.spinics.net/lists/linux-omap/msg118585.html
++	 *	http://www.spinics.net/lists/linux-omap/msg118615.html
++	 *
++	 * You can override this later with
++	 *	&tps {  /delete-property/ ti,pmic-shutdown-controller;  }
++	 * if you want to use RTC-only mode and made sure you are not affected
++	 * by the hardware problems. (Tip: double-check by performing a current
++	 * measurement after shutdown: it should be less than 1 mA.)
++	 */
++	ti,pmic-shutdown-controller;
++
++	interrupt-parent = <&intc>;
++	interrupts = <7>;	/* NNMI */
++
++	regulators {
++		dcdc1_reg: regulator@0 {
++			regulator-name = "vdds_dpr";
++			regulator-always-on;
++		};
++
++		dcdc2_reg: regulator@1 {
++			/* VDD_MPU voltage limits 0.95V - 1.26V with +/-4% tolerance */
++			regulator-name = "vdd_mpu";
++			regulator-min-microvolt = <925000>;
++			regulator-max-microvolt = <1351500>;
++			regulator-boot-on;
++			regulator-always-on;
++		};
++
++		dcdc3_reg: regulator@2 {
++			/* VDD_CORE voltage limits 0.95V - 1.1V with +/-4% tolerance */
++			regulator-name = "vdd_core";
++			regulator-min-microvolt = <925000>;
++			regulator-max-microvolt = <1150000>;
++			regulator-boot-on;
++			regulator-always-on;
++		};
++
++		ldo1_reg: regulator@3 {
++			regulator-name = "vio,vrtc,vdds";
++			regulator-always-on;
++		};
++
++		ldo2_reg: regulator@4 {
++			regulator-name = "vdd_3v3aux";
++			regulator-always-on;
++		};
++
++		ldo3_reg: regulator@5 {
++			regulator-name = "vdd_1v8";
++			regulator-always-on;
++		};
++
++		ldo4_reg: regulator@6 {
++			regulator-name = "vdd_3v3a";
++			regulator-always-on;
++		};
++	};
++};
++
++&cpsw_emac0 {
++	phy_id = <&davinci_mdio>, <0>;
++	phy-mode = "rgmii";
++};
++
++&mac {
++	pinctrl-names = "default", "sleep";
++	pinctrl-0 = <&cpsw_default>;
++	pinctrl-1 = <&cpsw_sleep>;
++	slaves = <1>;
++	status = "okay";
++};
++
++&davinci_mdio {
++	pinctrl-names = "default", "sleep";
++	pinctrl-0 = <&davinci_mdio_default>;
++	pinctrl-1 = <&davinci_mdio_sleep>;
++	status = "okay";
++};
++
++&mmc1 {
++	status = "okay";
++	bus-width = <0x4>;
++	pinctrl-names = "default", "sleep";
++	pinctrl-0 = <&mmc1_pins_default>;
++	pinctrl-1 = <&mmc1_pins_sleep>;
++	cd-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
++	cd-inverted;
++};
++
++&aes {
++	status = "okay";
++};
++
++&sham {
++	status = "okay";
++};
++
++&wkup_m3_ipc {
++	ti,scale-data-fw = "am335x-bone-scale-data.bin";
++};
++
++&rtc {
++	clocks = <&clk_32768_ck>, <&clkdiv32k_ick>;
++	clock-names = "ext-clk", "int-clk";
++	system-power-controller;
++};
++
++/* the cape manager */
++/ {
++	bone_capemgr {
++		compatible = "ti,bone-capemgr";
++		status = "okay";
++
++		nvmem-cells = <&baseboard_data &cape0_data &cape1_data &cape2_data &cape3_data>;
++		nvmem-cell-names = "baseboard", "slot0", "slot1", "slot2", "slot3";
++		#slots = <4>;
++
++		/* map board revisions to compatible definitions */
++		baseboardmaps {
++			baseboard_beaglebone: board@0 {
++				board-name = "A335BONE";
++				compatible-name = "ti,beaglebone";
++			};
++
++			baseboard_beaglebone_black: board@1 {
++				board-name = "A335BNLT";
++				compatible-name = "ti,beaglebone-black";
++			};
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/am335x-vsc8531bbb.dts b/arch/arm/boot/dts/am335x-vsc8531bbb.dts
+new file mode 100644
+index 0000000..17386b5
+--- /dev/null
++++ b/arch/arm/boot/dts/am335x-vsc8531bbb.dts
+@@ -0,0 +1,188 @@
++/*
++ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++/dts-v1/;
++
++#include "am33xx.dtsi"
++#include "am335x-bone-common_vsc8531bbb.dtsi"
++#include "am33xx-overlay-edma-fix.dtsi"
++#include <dt-bindings/display/tda998x.h>
++/* #include "am335x-bone-jtag.dtsi" */
++
++/* pruss: pick one: */
++
++/*
++ * /etc/modprobe.d/pruss-blacklist.conf
++ *
++ * blacklist uio_pruss
++ */
++
++/* #include "am33xx-pruss-rproc.dtsi" */
++
++/*
++ * /etc/modprobe.d/pruss-blacklist.conf
++ *
++ * blacklist pruss
++ * blacklist pruss_intc
++ * blacklist pru-rproc
++ */
++
++/* #include "am33xx-pruss-uio.dtsi" */
++
++/ {
++	model = "TI AM335x BeagleBone Black";
++	compatible = "ti,am335x-bone-black", "ti,am335x-bone", "ti,am33xx";
++};
++
++&ldo3_reg {
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-always-on;
++};
++
++&mmc1 {
++	vmmc-supply = <&vmmcsd_fixed>;
++};
++
++&mmc2 {
++	vmmc-supply = <&vmmcsd_fixed>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&emmc_pins>;
++	bus-width = <8>;
++	status = "okay";
++};
++
++&cpu0_opp_table {
++	/*
++	 * All PG 2.0 silicon may not support 1GHz but some of the early
++	 * BeagleBone Blacks have PG 2.0 silicon which is guaranteed
++	 * to support 1GHz OPP so enable it for PG 2.0 on this board.
++	 */
++	oppnitro@1000000000 {
++		opp-supported-hw = <0x06 0x0100>;
++	};
++};
++
++&am33xx_pinmux {
++	nxp_hdmi_bonelt_pins: nxp_hdmi_bonelt_pins {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x9b0, PIN_OUTPUT_PULLDOWN | MUX_MODE3)	/* xdma_event_intr0 */
++			AM33XX_IOPAD(0x8a0, PIN_OUTPUT | MUX_MODE0)		/* lcd_data0.lcd_data0 */
++			AM33XX_IOPAD(0x8a4, PIN_OUTPUT | MUX_MODE0)		/* lcd_data1.lcd_data1 */
++			AM33XX_IOPAD(0x8a8, PIN_OUTPUT | MUX_MODE0)		/* lcd_data2.lcd_data2 */
++			AM33XX_IOPAD(0x8ac, PIN_OUTPUT | MUX_MODE0)		/* lcd_data3.lcd_data3 */
++			AM33XX_IOPAD(0x8b0, PIN_OUTPUT | MUX_MODE0)		/* lcd_data4.lcd_data4 */
++			AM33XX_IOPAD(0x8b4, PIN_OUTPUT | MUX_MODE0)		/* lcd_data5.lcd_data5 */
++			AM33XX_IOPAD(0x8b8, PIN_OUTPUT | MUX_MODE0)		/* lcd_data6.lcd_data6 */
++			AM33XX_IOPAD(0x8bc, PIN_OUTPUT | MUX_MODE0)		/* lcd_data7.lcd_data7 */
++			AM33XX_IOPAD(0x8c0, PIN_OUTPUT | MUX_MODE0)		/* lcd_data8.lcd_data8 */
++			AM33XX_IOPAD(0x8c4, PIN_OUTPUT | MUX_MODE0)		/* lcd_data9.lcd_data9 */
++			AM33XX_IOPAD(0x8c8, PIN_OUTPUT | MUX_MODE0)		/* lcd_data10.lcd_data10 */
++			AM33XX_IOPAD(0x8cc, PIN_OUTPUT | MUX_MODE0)		/* lcd_data11.lcd_data11 */
++			AM33XX_IOPAD(0x8d0, PIN_OUTPUT | MUX_MODE0)		/* lcd_data12.lcd_data12 */
++			AM33XX_IOPAD(0x8d4, PIN_OUTPUT | MUX_MODE0)		/* lcd_data13.lcd_data13 */
++			AM33XX_IOPAD(0x8d8, PIN_OUTPUT | MUX_MODE0)		/* lcd_data14.lcd_data14 */
++			AM33XX_IOPAD(0x8dc, PIN_OUTPUT | MUX_MODE0)		/* lcd_data15.lcd_data15 */
++			AM33XX_IOPAD(0x8e0, PIN_OUTPUT_PULLDOWN | MUX_MODE0)	/* lcd_vsync.lcd_vsync */
++			AM33XX_IOPAD(0x8e4, PIN_OUTPUT_PULLDOWN | MUX_MODE0)	/* lcd_hsync.lcd_hsync */
++			AM33XX_IOPAD(0x8e8, PIN_OUTPUT_PULLDOWN | MUX_MODE0)	/* lcd_pclk.lcd_pclk */
++			AM33XX_IOPAD(0x8ec, PIN_OUTPUT_PULLDOWN | MUX_MODE0)	/* lcd_ac_bias_en.lcd_ac_bias_en */
++		>;
++	};
++	nxp_hdmi_bonelt_off_pins: nxp_hdmi_bonelt_off_pins {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x9b0, PIN_OUTPUT_PULLDOWN | MUX_MODE3)	/* xdma_event_intr0 */
++		>;
++	};
++
++	mcasp0_pins: mcasp0_pins {
++		pinctrl-single,pins = <
++			AM33XX_IOPAD(0x9ac, PIN_INPUT_PULLUP | MUX_MODE0) /* mcasp0_ahcklx.mcasp0_ahclkx */
++			AM33XX_IOPAD(0x99c, PIN_OUTPUT_PULLDOWN | MUX_MODE2) /* mcasp0_ahclkr.mcasp0_axr2*/
++			AM33XX_IOPAD(0x994, PIN_OUTPUT_PULLUP | MUX_MODE0) /* mcasp0_fsx.mcasp0_fsx */
++			AM33XX_IOPAD(0x990, PIN_OUTPUT_PULLDOWN | MUX_MODE0) /* mcasp0_aclkx.mcasp0_aclkx */
++			AM33XX_IOPAD(0x86c, PIN_OUTPUT_PULLDOWN | MUX_MODE7) /* gpmc_a11.GPIO1_27 */
++		>;
++	};
++};
++
++&lcdc {
++	status = "okay";
++	port {
++		lcdc_0: endpoint@0 {
++			remote-endpoint = <&hdmi_0>;
++		};
++	};
++};
++
++&i2c0 {
++	tda19988: tda19988 {
++		compatible = "nxp,tda998x";
++		reg = <0x70>;
++
++		pinctrl-names = "default", "off";
++		pinctrl-0 = <&nxp_hdmi_bonelt_pins>;
++		pinctrl-1 = <&nxp_hdmi_bonelt_off_pins>;
++
++		#sound-dai-cells = <0>;
++		audio-ports = <	AFMT_I2S	0x03>;
++
++		ports {
++			port@0 {
++				hdmi_0: endpoint@0 {
++					remote-endpoint = <&lcdc_0>;
++				};
++			};
++		};
++	};
++};
++
++&mcasp0	{
++	#sound-dai-cells = <0>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&mcasp0_pins>;
++	status = "okay";
++	op-mode = <0>;	/* MCASP_IIS_MODE */
++	tdm-slots = <2>;
++	serial-dir = <	/* 0: INACTIVE, 1: TX, 2: RX */
++			0 0 1 0
++		>;
++	tx-num-evt = <32>;
++	rx-num-evt = <32>;
++};
++
++/ {
++	clk_mcasp0_fixed: clk_mcasp0_fixed {
++		#clock-cells = <0>;
++		compatible = "fixed-clock";
++		clock-frequency = <24576000>;
++	};
++
++	clk_mcasp0: clk_mcasp0 {
++		#clock-cells = <0>;
++		compatible = "gpio-gate-clock";
++		clocks = <&clk_mcasp0_fixed>;
++		enable-gpios = <&gpio1 27 0>; /* BeagleBone Black Clk enable on GPIO1_27 */
++	};
++
++	sound {
++		compatible = "simple-audio-card";
++		simple-audio-card,name = "TI BeagleBone Black";
++		simple-audio-card,format = "i2s";
++		simple-audio-card,bitclock-master = <&dailink0_master>;
++		simple-audio-card,frame-master = <&dailink0_master>;
++
++		dailink0_master: simple-audio-card,cpu {
++			sound-dai = <&mcasp0>;
++			clocks = <&clk_mcasp0>;
++		};
++
++		simple-audio-card,codec {
++			sound-dai = <&tda19988>;
++		};
++	};
++};
+diff --git a/drivers/net/ethernet/ti/cpsw.c b/drivers/net/ethernet/ti/cpsw.c
+index 3f48bb9..b793730 100644
+--- a/drivers/net/ethernet/ti/cpsw.c
++++ b/drivers/net/ethernet/ti/cpsw.c
+@@ -2252,6 +2252,70 @@ static int cpsw_set_pauseparam(struct net_device *ndev,
+ 	return 0;
+ }
+ 
++static int cpsw_phy_read_reg(struct net_device *ndev,
++			     struct ethtool_phy_reg *data)
++{
++	struct cpsw_priv *priv = netdev_priv(ndev);
++	int slave_no = cpsw_slave_index(priv);
++
++	if (priv->slaves[slave_no].phy)
++		phy_ethtool_read_reg(priv->slaves[slave_no].phy, data);
++	return 0;
++}
++
++static int cpsw_phy_write_reg(struct net_device *ndev,
++			      struct ethtool_phy_reg *data)
++{
++	struct cpsw_priv *priv = netdev_priv(ndev);
++	int slave_no = cpsw_slave_index(priv);
++
++	if (priv->slaves[slave_no].phy)
++		phy_ethtool_write_reg(priv->slaves[slave_no].phy, data);
++	return 0;
++}
++
++static int cpsw_phy_mac_if_set(struct net_device *ndev,
++			       struct ethtool_phy_cmd *data)
++{
++	struct cpsw_priv *priv = netdev_priv(ndev);
++	int slave_no = cpsw_slave_index(priv);
++
++	if (priv->slaves[slave_no].phy)
++		phy_ethtool_mac_if_set(priv->slaves[slave_no].phy, data);
++	return 0;
++}
++
++static int cpsw_phy_mac_if_get(struct net_device *ndev,
++			       struct ethtool_phy_cmd *data)
++{
++	struct cpsw_priv *priv = netdev_priv(ndev);
++	int slave_no = cpsw_slave_index(priv);
++
++	if (priv->slaves[slave_no].phy)
++		phy_ethtool_mac_if_get(priv->slaves[slave_no].phy, data);
++	return 0;
++}
++
++static int cpsw_phy_edge_rate_set(struct net_device *ndev, u8 *rate)
++{
++	struct cpsw_priv *priv = netdev_priv(ndev);
++	int slave_no = cpsw_slave_index(priv);
++
++	if (priv->slaves[slave_no].phy)
++		phy_ethtool_edge_rate_set(priv->slaves[slave_no].phy, rate);
++	return 0;
++}
++
++static int cpsw_phy_edge_rate_get(struct net_device *ndev, u8 *rate)
++{
++	struct cpsw_priv *priv = netdev_priv(ndev);
++	int slave_no = cpsw_slave_index(priv);
++
++	if (priv->slaves[slave_no].phy)
++		phy_ethtool_edge_rate_get(priv->slaves[slave_no].phy, rate);
++	return 0;
++}
++
+ static const struct ethtool_ops cpsw_ethtool_ops = {
+ 	.get_drvinfo	= cpsw_get_drvinfo,
+ 	.get_msglevel	= cpsw_get_msglevel,
+@@ -2271,6 +2335,12 @@ static const struct ethtool_ops cpsw_ethtool_ops = {
+ 	.set_wol	= cpsw_set_wol,
+ 	.get_regs_len	= cpsw_get_regs_len,
+ 	.get_regs	= cpsw_get_regs,
++	.phy_read_reg   = cpsw_phy_read_reg,
++	.phy_write_reg  = cpsw_phy_write_reg,
++	.phy_mac_if_set = cpsw_phy_mac_if_set,
++	.phy_mac_if_get = cpsw_phy_mac_if_get,
++	.phy_edge_rate_set = cpsw_phy_edge_rate_set,
++	.phy_edge_rate_get = cpsw_phy_edge_rate_get,
+ };
+ 
+ static void cpsw_slave_init(struct cpsw_slave *slave, struct cpsw_priv *priv,
+diff --git a/drivers/net/phy/Kconfig b/drivers/net/phy/Kconfig
+index 60994a8..3a6cddc 100644
+--- a/drivers/net/phy/Kconfig
++++ b/drivers/net/phy/Kconfig
+@@ -256,6 +256,11 @@ config MDIO_BCM_IPROC
+ 	  This module provides a driver for the MDIO busses found in the
+ 	  Broadcom iProc SoC's.
+ 
++config MICROSEMI_PHY
++        tristate "Drivers for the Microsemi PHYs"
++        ---help---
++          Currently supports the VSC8531 and VSC8541 PHYs
++
+ endif # PHYLIB
+ 
+ config MICREL_KS8995MA
+diff --git a/drivers/net/phy/Makefile b/drivers/net/phy/Makefile
+index f31a4e2..5cf3828 100644
+--- a/drivers/net/phy/Makefile
++++ b/drivers/net/phy/Makefile
+@@ -10,6 +10,7 @@ obj-$(CONFIG_CICADA_PHY)	+= cicada.o
+ obj-$(CONFIG_LXT_PHY)		+= lxt.o
+ obj-$(CONFIG_QSEMI_PHY)		+= qsemi.o
+ obj-$(CONFIG_SMSC_PHY)		+= smsc.o
++obj-$(CONFIG_MICROSEMI_PHY)     += mscc.o
+ obj-$(CONFIG_TERANETICS_PHY)	+= teranetics.o
+ obj-$(CONFIG_VITESSE_PHY)	+= vitesse.o
+ obj-$(CONFIG_BCM_NET_PHYLIB)	+= bcm-phy-lib.o
+diff --git a/drivers/net/phy/mscc.c b/drivers/net/phy/mscc.c
+new file mode 100644
+index 0000000..96def68
+--- /dev/null
++++ b/drivers/net/phy/mscc.c
+@@ -0,0 +1,422 @@
++/*
++ * Driver for Microsemi VSC85xx PHYs
++ *
++ * Author: Nagaraju Lakkaraju
++ *
++ * The MIT License (MIT)
++ *
++ * Copyright (c) 2016 Microsemi Corporation
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ *
++ */
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/mii.h>
++#include <linux/ethtool.h>
++#include <linux/netdevice.h>
++#include <linux/phy.h>
++#include <linux/mdio.h>
++#include <linux/mscc.h>
++
++#include "mscc_reg.h"
++
++#ifndef TRUE
++#define TRUE 1
++#endif
++#ifndef FALSE
++#define FALSE 0
++#endif
++
++/* RGMII Rx Clock delay value change with board lay-out */
++static u8 rgmii_rx_clk_delay = RGMII_RX_CLK_DELAY_1_1_NS;
++
++static int vsc85xx_phy_page_set(struct phy_device *phydev, u8 page)
++{
++	int rc = 0;
++
++	rc = phy_write(phydev, MSCC_EXT_PAGE_ACCESS, page);
++	return rc;
++}
++
++static int vsc85xx_default_config(struct phy_device *phydev)
++{
++	int rc = 0;
++	u16 reg_val = 0;
++
++	phydev->supported = (SUPPORTED_1000baseT_Full |
++			     SUPPORTED_1000baseT_Half |
++			     SUPPORTED_100baseT_Full  |
++			     SUPPORTED_100baseT_Half  |
++			     SUPPORTED_10baseT_Full   |
++			     SUPPORTED_10baseT_Half   |
++			     SUPPORTED_Autoneg        |
++			     SUPPORTED_Pause          |
++			     SUPPORTED_Asym_Pause     |
++			     SUPPORTED_TP);
++
++	phydev->speed = SPEED_1000;
++	phydev->duplex = DUPLEX_FULL;
++	phydev->pause = 0;
++	phydev->asym_pause = 0;
++	phydev->interface = PHY_INTERFACE_MODE_RGMII;
++	phydev->mdix = ETH_TP_MDI_AUTO;
++
++	mutex_lock(&phydev->lock);
++	rc = vsc85xx_phy_page_set(phydev, MSCC_PHY_PAGE_EXTENDED_2);
++	if (rc != 0) {
++		rc = -EINVAL;
++		goto out_unlock;
++	}
++	reg_val = phy_read(phydev, MSCC_PHY_RGMII_CNTL);
++	reg_val &= ~(RGMII_RX_CLK_DELAY_MASK);
++	reg_val |= (rgmii_rx_clk_delay << RGMII_RX_CLK_DELAY_POS);
++	phy_write(phydev, MSCC_PHY_RGMII_CNTL, reg_val);
++	rc = vsc85xx_phy_page_set(phydev, MSCC_PHY_PAGE_STANDARD);
++	if (rc != 0)
++		rc = -EINVAL;
++
++out_unlock:
++	mutex_unlock(&phydev->lock);
++
++	return rc;
++}
++
++static int vsc85xx_soft_reset(struct phy_device *phydev)
++{
++	int rc = 0;
++	u16 reg_val = 0;
++
++	reg_val = phy_read(phydev, MII_BMCR);
++	reg_val |= BMCR_RESET;
++	phy_write(phydev, MII_BMCR, reg_val);
++
++	return rc;
++}
++
++static int vsc85xx_edge_rate_cntl_set(struct phy_device *phydev,
++				      u8     *rate)
++{
++	int rc = 0;
++	u16 reg_val = 0;
++	u8  edge_rate = *rate;
++
++	mutex_lock(&phydev->lock);
++	rc = vsc85xx_phy_page_set(phydev, MSCC_PHY_PAGE_EXTENDED_2);
++	if (rc != 0) {
++		rc = -EINVAL;
++		goto out_unlock;
++	}
++	reg_val = phy_read(phydev, MSCC_PHY_WOL_MAC_CONTROL);
++	reg_val &= ~(EDGE_RATE_CNTL_MASK);
++	reg_val |= (edge_rate << EDGE_RATE_CNTL_POS);
++	phy_write(phydev, MSCC_PHY_WOL_MAC_CONTROL, reg_val);
++	rc = vsc85xx_phy_page_set(phydev, MSCC_PHY_PAGE_STANDARD);
++	if (rc != 0)
++		rc = -EINVAL;
++
++out_unlock:
++	mutex_unlock(&phydev->lock);
++
++	return rc;
++}
++
++static int vsc85xx_edge_rate_cntl_get(struct phy_device *phydev,
++				      u8     *rate)
++{
++	int rc = 0;
++	u16 reg_val = 0;
++
++	mutex_lock(&phydev->lock);
++	rc = vsc85xx_phy_page_set(phydev, MSCC_PHY_PAGE_EXTENDED_2);
++	if (rc != 0) {
++		rc = -EINVAL;
++		goto out_unlock;
++	}
++	reg_val = phy_read(phydev, MSCC_PHY_WOL_MAC_CONTROL);
++	reg_val &= EDGE_RATE_CNTL_MASK;
++	*rate = reg_val >> EDGE_RATE_CNTL_POS;
++	rc = vsc85xx_phy_page_set(phydev, MSCC_PHY_PAGE_STANDARD);
++	if (rc != 0)
++		rc = -EINVAL;
++
++out_unlock:
++	mutex_unlock(&phydev->lock);
++
++	return rc;
++}
++
++static int vsc85xx_mac_if_set(struct phy_device *phydev,
++			      phy_interface_t   *interface)
++{
++	int rc = 0;
++	u16 reg_val = 0;
++	phy_interface_t mac_if = *interface;
++
++	mutex_lock(&phydev->lock);
++
++	reg_val = phy_read(phydev, MSCC_PHY_EXT_PHY_CNTL_1);
++	switch (mac_if) {
++	case PHY_INTERFACE_MODE_RGMII:
++		reg_val &= ~(MAC_IF_SELECTION_MASK);
++		reg_val |= (MAC_IF_SELECTION_RGMII << MAC_IF_SELECTION_POS);
++		break;
++	case PHY_INTERFACE_MODE_RMII:
++		reg_val &= ~(MAC_IF_SELECTION_MASK);
++		reg_val |= (MAC_IF_SELECTION_RMII << MAC_IF_SELECTION_POS);
++		break;
++	case PHY_INTERFACE_MODE_MII:
++	case PHY_INTERFACE_MODE_GMII:
++	default:
++		reg_val &= ~(MAC_IF_SELECTION_MASK);
++		reg_val |= (MAC_IF_SELECTION_GMII << MAC_IF_SELECTION_POS);
++		break;
++	}
++	phy_write(phydev, MSCC_PHY_EXT_PHY_CNTL_1, reg_val);
++	rc = vsc85xx_soft_reset(phydev);
++	phydev->interface = mac_if;
++	reg_val = phy_read(phydev, MSCC_PHY_EXT_PHY_CNTL_1);
++
++	mutex_unlock(&phydev->lock);
++
++	return rc;
++}
++
++static int vsc85xx_mac_if_get(struct phy_device *phydev,
++			      phy_interface_t   *interface)
++{
++	int rc = 0;
++	u16 reg_val = 0;
++
++	mutex_lock(&phydev->lock);
++
++	reg_val = phy_read(phydev, MSCC_PHY_EXT_PHY_CNTL_1);
++	reg_val = ((reg_val & MAC_IF_SELECTION_MASK) >> MAC_IF_SELECTION_POS);
++	if (reg_val == MAC_IF_SELECTION_RGMII)
++		*interface = PHY_INTERFACE_MODE_RGMII;
++	else if (reg_val == MAC_IF_SELECTION_RMII)
++		*interface = PHY_INTERFACE_MODE_RMII;
++	else
++		*interface = PHY_INTERFACE_MODE_GMII;
++	phydev->interface = *interface;
++
++	mutex_unlock(&phydev->lock);
++
++	return rc;
++}
++
++static int vsc85xx_phy_read_reg(struct phy_device *phydev,
++				struct ethtool_phy_reg *data)
++{
++	int rc = 0;
++	u16 reg_addr = data->reg;
++	u8  page = data->pg;
++	u16 reg_val;
++
++	data->val = 0;
++	reg_val = 0;
++	mutex_lock(&phydev->lock);
++	if (page != 0) {
++		rc = vsc85xx_phy_page_set(phydev, page);
++		reg_val = phy_read(phydev, reg_addr);
++		rc = vsc85xx_phy_page_set(phydev, 0);
++	} else {
++		reg_val = phy_read(phydev, reg_addr);
++	}
++	data->val = reg_val;
++
++	mutex_unlock(&phydev->lock);
++
++	return rc;
++}
++
++static int vsc85xx_phy_write_reg(struct phy_device *phydev,
++				 struct ethtool_phy_reg *data)
++{
++	int rc = 0;
++	u16 reg_addr = data->reg;
++	u16 reg_val = data->val;
++	u8  page = data->pg;
++
++	mutex_lock(&phydev->lock);
++	if (page != 0) {
++		rc = vsc85xx_phy_page_set(phydev, page);
++		reg_val = phy_write(phydev, reg_addr, reg_val);
++		rc = vsc85xx_phy_page_set(phydev, 0);
++	} else {
++		reg_val = phy_write(phydev, reg_addr, reg_val);
++	}
++	mutex_unlock(&phydev->lock);
++
++	return rc;
++}
++
++static int vsc85xx_features_set(struct phy_device *phydev)
++{
++	int rc = 0;
++	struct phy_features_t *features = (struct phy_features_t *)phydev->priv;
++	u8 command = features->cmd;
++	u8 rate = features->rate;
++	phy_interface_t mac_if = features->mac_if;
++	struct ethtool_phy_reg *wr = features->data;
++
++	switch (command) {
++	case PHY_EDGE_RATE_CONTROL:
++		rc = vsc85xx_edge_rate_cntl_set(phydev, &rate);
++		break;
++	case PHY_MAC_IF:
++		rc = vsc85xx_mac_if_set(phydev, &mac_if);
++		break;
++	case PHY_WRITE_REG:
++		rc = vsc85xx_phy_write_reg(phydev, wr);
++		break;
++	default:
++		break;
++	}
++
++	return rc;
++}
++
++static int vsc85xx_features_get(struct phy_device *phydev)
++{
++	int rc = 0;
++	struct phy_features_t *features = (struct phy_features_t *)phydev->priv;
++	u8 command = features->cmd;
++	u8 rate = 0;
++	phy_interface_t mac_if = features->mac_if;
++	struct ethtool_phy_reg *rd = features->data;
++
++	switch (command) {
++	case PHY_EDGE_RATE_CONTROL:
++		rc = vsc85xx_edge_rate_cntl_get(phydev, &rate);
++		features->rate = rate;
++		break;
++	case PHY_MAC_IF:
++		rc = vsc85xx_mac_if_get(phydev, &mac_if);
++		break;
++	case PHY_READ_REG:
++		rc = vsc85xx_phy_read_reg(phydev, rd);
++		break;
++	default:
++		break;
++	}
++
++	return rc;
++}
++
++static int vsc85xx_config_init(struct phy_device *phydev)
++{
++	int rc = 0;
++
++	rc = vsc85xx_default_config(phydev);
++	rc = genphy_config_init(phydev);
++
++	return rc;
++}
++
++static int vsc85xx_config_aneg(struct phy_device *phydev)
++{
++	int rc = 0;
++
++	rc = genphy_config_aneg(phydev);
++
++	return rc;
++}
++
++static int vsc85xx_ack_interrupt(struct phy_device *phydev)
++{
++	int rc = 0;
++
++	if (phydev->interrupts == PHY_INTERRUPT_ENABLED)
++		rc = phy_read(phydev, MII_VSC85XX_INT_STATUS);
++
++	return (rc < 0) ? rc : 0;
++}
++
++static int vsc85xx_config_intr(struct phy_device *phydev)
++{
++	int rc;
++
++	if (phydev->interrupts == PHY_INTERRUPT_ENABLED)
++		rc = phy_write(phydev, MII_VSC85XX_INT_MASK,
++			       MII_VSC85XX_INT_MASK_MASK);
++	else {
++		rc = phy_read(phydev, MII_VSC85XX_INT_STATUS);
++		if (rc < 0)
++			return rc;
++		rc = phy_write(phydev, MII_VSC85XX_INT_MASK, 0);
++	}
++
++	return rc;
++}
++
++/* Microsemi VSC85xx PHYs */
++static struct phy_driver vsc85xx_driver[] = {
++{
++	.phy_id         = PHY_ID_VSC8531,
++	.name           = "Microsemi VSC8531",
++	.phy_id_mask    = 0xfffffff0,
++	.features       = PHY_GBIT_FEATURES,
++	.flags          = PHY_HAS_INTERRUPT,
++	.soft_reset     = &genphy_soft_reset,
++	.config_init    = &vsc85xx_config_init,
++	.config_aneg    = &vsc85xx_config_aneg,
++	.aneg_done      = &genphy_aneg_done,
++	.read_status    = &genphy_read_status,
++	.ack_interrupt  = &vsc85xx_ack_interrupt,
++	.config_intr    = &vsc85xx_config_intr,
++	.suspend        = &genphy_suspend,
++	.resume         = &genphy_resume,
++	.phy_features_set = &vsc85xx_features_set,
++	.phy_features_get = &vsc85xx_features_get,
++},
++{
++	.phy_id         = PHY_ID_VSC8541,
++	.name           = "Microsemi VSC8541 SyncE",
++	.phy_id_mask    = 0xfffffff0,
++	.features       = PHY_GBIT_FEATURES,
++	.flags          = PHY_HAS_INTERRUPT,
++	.soft_reset     = &genphy_soft_reset,
++	.config_init    = &vsc85xx_config_init,
++	.config_aneg    = &vsc85xx_config_aneg,
++	.aneg_done      = &genphy_aneg_done,
++	.read_status    = &genphy_read_status,
++	.ack_interrupt  = &vsc85xx_ack_interrupt,
++	.config_intr    = &vsc85xx_config_intr,
++	.suspend        = &genphy_suspend,
++	.resume         = &genphy_resume,
++	.phy_features_set = &vsc85xx_features_set,
++	.phy_features_get = &vsc85xx_features_get,
++}
++
++};
++
++module_phy_driver(vsc85xx_driver);
++
++static struct mdio_device_id __maybe_unused vsc85xx_tbl[] = {
++	{ PHY_ID_VSC8531, 0xfffffff0, },
++	{ PHY_ID_VSC8541, 0xfffffff0, },
++	{ }
++};
++
++MODULE_DEVICE_TABLE(mdio, vsc85xx_tbl);
++
++MODULE_DESCRIPTION("Microsemi VSC85xx PHY driver");
++MODULE_AUTHOR("Nagaraju Lakkaraju");
++MODULE_LICENSE("Dual MIT/GPL");
+diff --git a/drivers/net/phy/mscc_reg.h b/drivers/net/phy/mscc_reg.h
+new file mode 100644
+index 0000000..fa0bbd0
+--- /dev/null
++++ b/drivers/net/phy/mscc_reg.h
+@@ -0,0 +1,112 @@
++/*
++ * PHY Register Header file for Microsemi VSC85xx PHYs
++ *
++ * Author: Nagaraju Lakkaraju
++ *
++ * The MIT License (MIT)
++ *
++ * Copyright (c) 2016 Microsemi Corporation
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ *
++ */
++
++#ifndef __MSCC_REG_H
++#define __MSCC_REG_H
++
++/* Microsemi VSC85xx PHY registers */
++/* IEEE 802. Std Registers */
++#define MSCC_PHY_BYPASS_CONTROL        18
++#define DISABLE_HP_AUTO_MDIX_MASK      0x0080
++#define DISABLE_PAIR_SWAP_CORR_MASK    0x0020
++#define DISABLE_POLARITY_CORR_MASK     0x0010
++
++#define MSCC_PHY_EXT_PHY_CNTL_1        23
++#define MAC_IF_SELECTION_MASK          0x1800
++#define MAC_IF_SELECTION_GMII          0
++#define MAC_IF_SELECTION_RMII          1
++#define MAC_IF_SELECTION_RGMII         2
++#define MAC_IF_SELECTION_POS           11
++#define FAR_END_LOOPBACK_MODE_MASK     0x0008
++
++#define MSCC_PHY_EXT_PHY_CNTL_2        24
++#define CONNECTOR_LOOPBACK_MASK        0x0001
++#define JUMBO_PACKET_MODE_MASK         0x0030
++#define JUMBO_PACKET_MODE_POS          4
++
++#define MII_VSC85XX_INT_MASK           25
++#define MII_VSC85XX_INT_MASK_MDINT     0x8000
++#define MII_VSC85XX_INT_MASK_SPEED     0x4000
++#define MII_VSC85XX_INT_MASK_LINK      0x2000
++#define MII_VSC85XX_INT_MASK_DUPLEX    0x1000
++#define MII_VSC85XX_INT_MASK_MASK      0xa000
++
++#define MII_VSC85XX_INT_STATUS         26
++#define MSCC_PHY_DEV_AUX_CNTL          28
++#define HP_AUTO_MDIX_X_OVER_IND_MASK   0x2000
++
++#define MSCC_EXT_PAGE_ACCESS           31
++#define MSCC_PHY_PAGE_STANDARD         0x0000 /* Standard registers */
++#define MSCC_PHY_PAGE_EXTENDED         0x0001 /* Extended registers */
++#define MSCC_PHY_PAGE_EXTENDED_2       0x0002 /* Extended registers - page 2 */
++#define MSCC_PHY_PAGE_EXTENDED_3       0x0003 /* Extended registers - page 3 */
++#define MSCC_PHY_PAGE_EXTENDED_4       0x0004 /* Extended registers - page 4 */
++#define MSCC_PHY_PAGE_GPIO             0x0010 /* GPIO registers */
++
++/* Extended Page 1 Registers */
++#define MSCC_PHY_EXT_MODE_CNTL         19
++#define FORCE_MDI_CROSSOVER_MASK       0x000C
++#define FORCE_MDI_CROSSOVER_NORMAL     0
++#define FORCE_MDI_CROSSOVER_MDI        2
++#define FORCE_MDI_CROSSOVER_MDIX       3
++#define FORCE_MDI_CROSSOVER_POS        2
++
++#define MSCC_PHY_ACTIPHY_CNTL          20
++#define LINK_SPD_DOWNSHIFT_EN          0x0010
++#define LINK_SPD_DOWNSHIFT_CNTL_POS    2
++#define LINK_SPD_DOWNSHIFT_CNTL_MASK   0x000C
++
++#define MSCC_PHY_POE_MISC              23
++#define INLINE_POE_DETECTION           0x0400
++#define INLINE_POE_STATUS_MASK         0x0300
++#define INLINE_POE_STATUS_POS          8
++
++/* Extended Page 2 Registers */
++#define MSCC_PHY_RGMII_CNTL            20
++#define FLF2_ENABLE                    0x8000
++#define RGMII_RX_CLK_DELAY_MASK        0x0070
++#define RGMII_RX_CLK_DELAY_POS         4
++
++#define MSCC_PHY_WOL_LOWER_MAC_ADDR    21
++#define MSCC_PHY_WOL_MID_MAC_ADDR      22
++#define MSCC_PHY_WOL_UPPER_MAC_ADDR    23
++#define MSCC_PHY_WOL_LOWER_PASSWD      24
++#define MSCC_PHY_WOL_MID_PASSWD        25
++#define MSCC_PHY_WOL_UPPER_PASSWD      26
++
++#define MSCC_PHY_WOL_MAC_CONTROL       27
++#define EDGE_RATE_CNTL_POS             5
++#define EDGE_RATE_CNTL_MASK            0x00E0
++#define SECURE_ON_ENABLE               0x8000
++#define SECURE_ON_PASSWD_LEN_4         0x4000
++
++/* Microsemi PHY ID's */
++#define PHY_ID_VSC8531                 0x00070570
++#define PHY_ID_VSC8541                 0x00070770
++
++#endif /* __MSCC_REG_H */
+diff --git a/drivers/net/phy/phy.c b/drivers/net/phy/phy.c
+index 47cd306d..744348d 100644
+--- a/drivers/net/phy/phy.c
++++ b/drivers/net/phy/phy.c
+@@ -37,6 +37,7 @@
+ #include <linux/atomic.h>
+ 
+ #include <asm/irq.h>
++#include <linux/mscc.h>
+ 
+ static const char *phy_speed_to_str(int speed)
+ {
+@@ -1262,3 +1263,117 @@ void phy_ethtool_get_wol(struct phy_device *phydev, struct ethtool_wolinfo *wol)
+ 		phydev->drv->get_wol(phydev, wol);
+ }
+ EXPORT_SYMBOL(phy_ethtool_get_wol);
++
++int phy_ethtool_edge_rate_set(struct phy_device *phydev,
++			      u8 *rate)
++{
++	struct phy_features_t features;
++
++	if (phydev->drv->phy_features_set) {
++		features.cmd = PHY_EDGE_RATE_CONTROL;
++		features.rate = *rate;
++		phydev->priv = &features;
++		phydev->drv->phy_features_set(phydev);
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(phy_ethtool_edge_rate_set);
++
++int phy_ethtool_edge_rate_get(struct phy_device *phydev,
++			      u8 *rate)
++{
++	struct phy_features_t features;
++
++	if (phydev->drv->phy_features_set) {
++		features.cmd = PHY_EDGE_RATE_CONTROL;
++		phydev->priv = &features;
++		phydev->drv->phy_features_get(phydev);
++		*rate = features.rate;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(phy_ethtool_edge_rate_get);
++
++int phy_ethtool_mac_if_set(struct phy_device *phydev,
++			   struct ethtool_phy_cmd *data)
++{
++	struct phy_features_t features;
++
++	if (phydev->drv->phy_features_set) {
++		features.cmd = PHY_MAC_IF;
++		if (data->val == 2)
++			features.mac_if = PHY_INTERFACE_MODE_RGMII;
++		else if (data->val == 1)
++			features.mac_if = PHY_INTERFACE_MODE_RMII;
++		else
++			features.mac_if = PHY_INTERFACE_MODE_GMII;
++		phydev->priv = &features;
++		phydev->drv->phy_features_set(phydev);
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(phy_ethtool_mac_if_set);
++
++int phy_ethtool_mac_if_get(struct phy_device *phydev,
++			   struct ethtool_phy_cmd *data)
++{
++	struct phy_features_t features;
++
++	if (phydev->drv->phy_features_get) {
++		features.cmd = PHY_MAC_IF;
++		phydev->priv = &features;
++		phydev->drv->phy_features_get(phydev);
++		if (features.mac_if == PHY_INTERFACE_MODE_RGMII)
++			data->val = 2;
++		else if (features.mac_if == PHY_INTERFACE_MODE_RMII)
++			data->val = 1;
++		else
++			data->val = 0;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(phy_ethtool_mac_if_get);
++
++int phy_ethtool_read_reg(struct phy_device *phydev,
++			 struct ethtool_phy_reg *data)
++{
++	struct phy_features_t features;
++	struct ethtool_phy_reg reg_data;
++
++	if (phydev->drv->phy_features_set) {
++		features.cmd = PHY_READ_REG;
++		reg_data.reg = data->reg;
++		reg_data.pg = data->pg;
++		features.data = &reg_data;
++		phydev->priv = &features;
++		phydev->drv->phy_features_get(phydev);
++			data->val = reg_data.val;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(phy_ethtool_read_reg);
++
++int phy_ethtool_write_reg(struct phy_device *phydev,
++			  struct ethtool_phy_reg *data)
++{
++	struct phy_features_t features;
++	struct ethtool_phy_reg reg_data;
++
++	if (phydev->drv->phy_features_set) {
++		features.cmd = PHY_WRITE_REG;
++		reg_data.reg = data->reg;
++		reg_data.val = data->val;
++		reg_data.pg = data->pg;
++		features.data = &reg_data;
++		phydev->priv = &features;
++		phydev->drv->phy_features_set(phydev);
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(phy_ethtool_write_reg);
+diff --git a/include/linux/ethtool.h b/include/linux/ethtool.h
+index 8a400a5..694486b 100644
+--- a/include/linux/ethtool.h
++++ b/include/linux/ethtool.h
+@@ -369,5 +369,13 @@ struct ethtool_ops {
+ 				      struct ethtool_link_ksettings *);
+ 	int	(*set_link_ksettings)(struct net_device *,
+ 				      const struct ethtool_link_ksettings *);
++	int     (*phy_mac_if_set)(struct net_device *,
++				  struct ethtool_phy_cmd *);
++	int     (*phy_mac_if_get)(struct net_device *,
++				  struct ethtool_phy_cmd *);
++	int     (*phy_edge_rate_set)(struct net_device *, u8 *);
++	int     (*phy_edge_rate_get)(struct net_device *, u8 *);
++	int     (*phy_read_reg)(struct net_device *, struct ethtool_phy_reg *);
++	int     (*phy_write_reg)(struct net_device *, struct ethtool_phy_reg *);
+ };
+ #endif /* _LINUX_ETHTOOL_H */
+diff --git a/include/linux/mscc.h b/include/linux/mscc.h
+new file mode 100644
+index 0000000..c3e652d
+--- /dev/null
++++ b/include/linux/mscc.h
+@@ -0,0 +1,61 @@
++/*
++ * Driver header file for Microsemi VSC85xx PHYs
++ *
++ * Author: Nagaraju Lakkaraju
++ *
++ * The MIT License (MIT)
++ *
++ * Copyright (c) 2016 Microsemi Corporation
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ *
++ */
++
++#ifndef __LINUX_MSCC_H
++#define __LINUX_MSCC_H
++
++enum phy_features {
++	PHY_EDGE_RATE_CONTROL = 0,
++	PHY_MAC_IF            = 1,
++	PHY_READ_REG          = 2,
++	PHY_WRITE_REG         = 3,
++	PHY_SUPPORTED_FEATURES_MAX
++};
++
++enum rgmii_rx_clock_delay {
++	RGMII_RX_CLK_DELAY_0_2_NS = 0,
++	RGMII_RX_CLK_DELAY_0_8_NS = 1,
++	RGMII_RX_CLK_DELAY_1_1_NS = 2,
++	RGMII_RX_CLK_DELAY_1_7_NS = 3,
++	RGMII_RX_CLK_DELAY_2_0_NS = 4,
++	RGMII_RX_CLK_DELAY_2_3_NS = 5,
++	RGMII_RX_CLK_DELAY_2_6_NS = 6,
++	RGMII_RX_CLK_DELAY_3_4_NS = 7
++};
++
++struct phy_features_t {
++	enum phy_features cmd;           /* PHY Supported Features */
++	bool op;                         /* Enable/Disable operation */
++	u8   rate;                       /* Edge rate control */
++	u8   mdix;                       /* MDIX control */
++	u8   status;                     /* Status */
++	phy_interface_t mac_if;          /* MAC interface config */
++	struct ethtool_phy_reg *data;    /* Read/Write register operatioins */
++};
++
++#endif /*  __LINUX_MSCC_H */
+diff --git a/include/linux/phy.h b/include/linux/phy.h
+index a89cb0e..6c74166 100644
+--- a/include/linux/phy.h
++++ b/include/linux/phy.h
+@@ -595,6 +595,9 @@ struct phy_driver {
+ 	void (*get_stats)(struct phy_device *dev,
+ 			  struct ethtool_stats *stats, u64 *data);
+ 
++	int (*phy_features_set)(struct phy_device *dev);
++	int (*phy_features_get)(struct phy_device *dev);
++
+ 	struct device_driver driver;
+ };
+ #define to_phy_driver(d) container_of(d, struct phy_driver, driver)
+@@ -822,6 +825,16 @@ int phy_ethtool_get_eee(struct phy_device *phydev, struct ethtool_eee *data);
+ int phy_ethtool_set_wol(struct phy_device *phydev, struct ethtool_wolinfo *wol);
+ void phy_ethtool_get_wol(struct phy_device *phydev,
+ 			 struct ethtool_wolinfo *wol);
++int phy_ethtool_mac_if_set(struct phy_device *phydev,
++			   struct ethtool_phy_cmd *data);
++int phy_ethtool_mac_if_get(struct phy_device *phydev,
++			   struct ethtool_phy_cmd *data);
++int phy_ethtool_edge_rate_set(struct phy_device *phydev, u8 *rate);
++int phy_ethtool_edge_rate_get(struct phy_device *phydev, u8 *rate);
++int phy_ethtool_read_reg(struct phy_device *phydev,
++			 struct ethtool_phy_reg *data);
++int phy_ethtool_write_reg(struct phy_device *phydev,
++			  struct ethtool_phy_reg *data);
+ 
+ int __init mdio_bus_init(void);
+ void mdio_bus_exit(void);
+diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
+index 7b0f239..d6e4f0c 100644
+--- a/include/uapi/linux/ethtool.h
++++ b/include/uapi/linux/ethtool.h
+@@ -200,10 +200,10 @@ struct ethtool_drvinfo {
+  *	is set in @wolopts.
+  */
+ struct ethtool_wolinfo {
+-	__u32	cmd;
+-	__u32	supported;
+-	__u32	wolopts;
+-	__u8	sopass[SOPASS_MAX];
++	__u32   cmd;
++	__u32   supported;
++	__u32   wolopts;
++	__u8    sopass[SOPASS_MAX]; /* SecureOn(tm) password */
+ };
+ 
+ /* for passing single values */
+@@ -1143,6 +1143,30 @@ enum ethtool_sfeatures_retval_bits {
+ 	ETHTOOL_F_COMPAT__BIT,
+ };
+ 
++/**
++ * struct ethtool_phy_reg - holds a device's read or write operations
++ * @cmd: command number = %ETHTOOL_PHY_READ_REG or %ETHTOOL_PHY_WRITE_REG
++ * @reg: register address
++ * @val: register value
++ * @pg: page number
++ */
++struct ethtool_phy_reg {
++	__u32   cmd;
++	__u16   reg;
++	__u16   val;
++	__u8    pg;
++};
++
++/**
++ * struct ethtool_phy_cmd - holds a device's command's value
++ * @cmd: command number = %ETHTOOL_MAC_IF_GET or %ETHTOOL_MAC_IF_SET
++ * @val: either configuration value or configured value
++ */
++struct ethtool_phy_cmd {
++	__u32   cmd;
++	__u8    val;
++};
++
+ #define ETHTOOL_F_UNSUPPORTED   (1 << ETHTOOL_F_UNSUPPORTED__BIT)
+ #define ETHTOOL_F_WISH          (1 << ETHTOOL_F_WISH__BIT)
+ #define ETHTOOL_F_COMPAT        (1 << ETHTOOL_F_COMPAT__BIT)
+@@ -1253,7 +1277,12 @@ struct ethtool_per_queue_op {
+ 
+ #define ETHTOOL_GLINKSETTINGS	0x0000004c /* Get ethtool_link_settings */
+ #define ETHTOOL_SLINKSETTINGS	0x0000004d /* Set ethtool_link_settings */
+-
++#define ETHTOOL_PHY_READ_REG    0x0000004e /* Read PHY register */
++#define ETHTOOL_PHY_WRITE_REG   0x0000004f /* Write PHY register */
++#define ETHTOOL_PHY_MAC_IF_SET  0x00000050 /* Set PHY MAC Interface */
++#define ETHTOOL_PHY_MAC_IF_GET  0x00000051 /* Get PHY MAC Interface */
++#define ETHTOOL_PHY_EDGE_RATE_SET  0x00000052 /* Set PHY Edge rate control */
++#define ETHTOOL_PHY_EDGE_RATE_GET  0x00000053 /* Get PHY Edge rate control */
+ 
+ /* compatibility with older code */
+ #define SPARC_ETH_GSET		ETHTOOL_GSET
+diff --git a/net/core/ethtool.c b/net/core/ethtool.c
+index 1a6d74a..3d863ef 100644
+--- a/net/core/ethtool.c
++++ b/net/core/ethtool.c
+@@ -2431,6 +2431,98 @@ static int ethtool_set_per_queue(struct net_device *dev, void __user *useraddr)
+ 	};
+ }
+ 
++static int ethtool_phy_read_reg(struct net_device *dev, char __user *useraddr)
++{
++	struct ethtool_phy_reg data;
++
++	if (!dev->ethtool_ops->phy_read_reg)
++		return -EOPNOTSUPP;
++
++	if (copy_from_user(&data, useraddr, sizeof(data)))
++		return -EFAULT;
++	dev->ethtool_ops->phy_read_reg(dev, &data);
++	if (copy_to_user(useraddr, &data, sizeof(data)))
++		return -EFAULT;
++
++return 0;
++}
++
++static int ethtool_phy_write_reg(struct net_device *dev, char __user *useraddr)
++{
++	struct ethtool_phy_reg data;
++
++	if (!dev->ethtool_ops->phy_write_reg)
++		return -EOPNOTSUPP;
++
++	if (copy_from_user(&data, useraddr, sizeof(data)))
++		return -EFAULT;
++	dev->ethtool_ops->phy_write_reg(dev, &data);
++
++	return 0;
++}
++
++static int ethtool_phy_mac_if_set(struct net_device *dev, char __user *useraddr)
++{
++	struct ethtool_phy_cmd data;
++
++	if (!dev->ethtool_ops->phy_mac_if_set)
++		return -EOPNOTSUPP;
++
++	if (copy_from_user(&data, useraddr, sizeof(data)))
++		return -EFAULT;
++	dev->ethtool_ops->phy_mac_if_set(dev, &data);
++
++	return 0;
++}
++
++static int ethtool_phy_mac_if_get(struct net_device *dev, char __user *useraddr)
++{
++	struct ethtool_phy_cmd data;
++
++	if (!dev->ethtool_ops->phy_mac_if_get)
++		return -EOPNOTSUPP;
++
++	dev->ethtool_ops->phy_mac_if_get(dev, &data);
++	if (copy_to_user(useraddr, &data, sizeof(data)))
++		return -EFAULT;
++
++	return 0;
++}
++
++static int ethtool_phy_edge_rate_set(struct net_device *dev,
++				     char __user *useraddr)
++{
++	struct ethtool_phy_cmd data;
++	u8 edge_rate;
++
++	if (!dev->ethtool_ops->phy_edge_rate_set)
++		return -EOPNOTSUPP;
++
++	if (copy_from_user(&data, useraddr, sizeof(data)))
++		return -EFAULT;
++	edge_rate = data.val;
++	dev->ethtool_ops->phy_edge_rate_set(dev, &edge_rate);
++
++	return 0;
++}
++
++static int ethtool_phy_edge_rate_get(struct net_device *dev,
++				     char __user *useraddr)
++{
++	u8 edge_rate;
++	struct ethtool_phy_cmd data;
++
++	if (!dev->ethtool_ops->phy_edge_rate_get)
++		return -EOPNOTSUPP;
++
++	dev->ethtool_ops->phy_edge_rate_get(dev, &edge_rate);
++	data.val = edge_rate;
++	if (copy_to_user(useraddr, &data, sizeof(data)))
++		return -EFAULT;
++
++	return 0;
++}
++
+ /* The main entry point in this file.  Called from net/core/dev_ioctl.c */
+ 
+ int dev_ethtool(struct net *net, struct ifreq *ifr)
+@@ -2488,6 +2580,12 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+ 	case ETHTOOL_GET_TS_INFO:
+ 	case ETHTOOL_GEEE:
+ 	case ETHTOOL_GTUNABLE:
++	case ETHTOOL_PHY_READ_REG:
++	case ETHTOOL_PHY_WRITE_REG:
++	case ETHTOOL_PHY_MAC_IF_SET:
++	case ETHTOOL_PHY_MAC_IF_GET:
++	case ETHTOOL_PHY_EDGE_RATE_SET:
++	case ETHTOOL_PHY_EDGE_RATE_GET:
+ 		break;
+ 	default:
+ 		if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
+@@ -2692,6 +2790,23 @@ int dev_ethtool(struct net *net, struct ifreq *ifr)
+ 		break;
+ 	case ETHTOOL_SLINKSETTINGS:
+ 		rc = ethtool_set_link_ksettings(dev, useraddr);
++	case ETHTOOL_PHY_READ_REG:
++		rc = ethtool_phy_read_reg(dev, useraddr);
++		break;
++	case ETHTOOL_PHY_WRITE_REG:
++		rc = ethtool_phy_write_reg(dev, useraddr);
++		break;
++	case ETHTOOL_PHY_MAC_IF_SET:
++		rc = ethtool_phy_mac_if_set(dev, useraddr);
++		break;
++	case ETHTOOL_PHY_MAC_IF_GET:
++		rc = ethtool_phy_mac_if_get(dev, useraddr);
++		break;
++	case ETHTOOL_PHY_EDGE_RATE_SET:
++		rc = ethtool_phy_edge_rate_set(dev, useraddr);
++		break;
++	case ETHTOOL_PHY_EDGE_RATE_GET:
++		rc = ethtool_phy_edge_rate_get(dev, useraddr);
+ 		break;
+ 	default:
+ 		rc = -EOPNOTSUPP;
+-- 
+2.8.1
+
