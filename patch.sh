@@ -401,21 +401,6 @@ reverts () {
 		number=2
 		cleanup
 	fi
-
-	echo "dir: reverts/mmc"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/reverts/mmc/0001-Revert-mmc-host-omap_hsmmc-Fix-NULL-pointer-derefere.patch"
-	${git} "${DIR}/patches/reverts/mmc/0002-Revert-mmc-host-omap_hsmmc-reduce-indentation-in-set.patch"
-	${git} "${DIR}/patches/reverts/mmc/0003-Revert-mmc-host-omap_hsmmc-Fix-card_busy-ops.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
-		cleanup
-	fi
 }
 
 fixes () {
