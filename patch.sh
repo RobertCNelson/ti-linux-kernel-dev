@@ -943,9 +943,11 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0013-add-am335x-vsc8531bbb.patch"
 
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0014-lib-bitmap.c-conversion-routines-to-from-u32-array.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/vsc8531bbb"
-		number=13
+		number=14
 		cleanup
 	fi
 
