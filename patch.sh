@@ -259,7 +259,7 @@ patch_backports (){
 }
 
 lts44_backports () {
-	backport_tag="v4.6.4"
+	backport_tag="v4.6.5"
 
 	subsystem="tty"
 	#regenerate="enable"
@@ -301,7 +301,7 @@ lts44_backports () {
 		exit 2
 	fi
 
-	backport_tag="v4.7-rc7"
+	backport_tag="v4.7"
 	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then

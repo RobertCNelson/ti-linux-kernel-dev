@@ -1,6 +1,6 @@
-From b7613d708c032cc4c928b7d0585bd682c8c88c11 Mon Sep 17 00:00:00 2001
+From 38b3aeb5314c0b449986e65b38e22b3d3cc50b54 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 15 Jul 2016 09:28:01 -0500
+Date: Mon, 1 Aug 2016 13:00:45 -0500
 Subject: [PATCH] backports: i2c: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -39,7 +39,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/i2c/busses/i2c-omap.c                |   11 +-
  drivers/i2c/busses/i2c-piix4.c               |  226 ++++-
  drivers/i2c/busses/i2c-powermac.c            |    4 +-
- drivers/i2c/busses/i2c-qup.c                 |  977 ++++++++++++++++++++-
+ drivers/i2c/busses/i2c-qup.c                 |  979 ++++++++++++++++++++-
  drivers/i2c/busses/i2c-rcar.c                |  542 ++++++++----
  drivers/i2c/busses/i2c-rk3x.c                |   88 +-
  drivers/i2c/busses/i2c-s3c2410.c             |  250 +++---
@@ -47,12 +47,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/i2c/busses/i2c-sirf.c                |    4 +-
  drivers/i2c/busses/i2c-st.c                  |   51 +-
  drivers/i2c/busses/i2c-taos-evm.c            |    8 +-
- drivers/i2c/busses/i2c-tegra.c               |   85 +-
+ drivers/i2c/busses/i2c-tegra.c               |   87 +-
  drivers/i2c/busses/i2c-uniphier-f.c          |   13 +-
  drivers/i2c/busses/i2c-uniphier.c            |   13 +-
  drivers/i2c/busses/i2c-xiic.c                |  100 ++-
  drivers/i2c/busses/i2c-xlr.c                 |  250 +++++-
- drivers/i2c/i2c-boardinfo.c                  |    6 +-
+ drivers/i2c/i2c-boardinfo.c                  |   10 +-
  drivers/i2c/i2c-core.c                       |  177 ++--
  drivers/i2c/i2c-dev.c                        |   39 +-
  drivers/i2c/i2c-mux.c                        |  308 +++++--
@@ -66,10 +66,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/i2c/muxes/i2c-mux-pca9541.c          |   58 +-
  drivers/i2c/muxes/i2c-mux-pca954x.c          |   61 +-
  drivers/i2c/muxes/i2c-mux-pinctrl.c          |  135 +--
- drivers/i2c/muxes/i2c-mux-reg.c              |   70 +-
+ drivers/i2c/muxes/i2c-mux-reg.c              |   72 +-
  include/linux/i2c-mux.h                      |   55 +-
  include/linux/i2c.h                          |   97 +-
- 64 files changed, 4981 insertions(+), 1600 deletions(-)
+ 64 files changed, 4986 insertions(+), 1605 deletions(-)
  create mode 100644 drivers/i2c/muxes/i2c-demux-pinctrl.c
 
 diff --git a/drivers/i2c/algos/i2c-algo-bit.c b/drivers/i2c/algos/i2c-algo-bit.c
@@ -5010,7 +5010,7 @@ index 6abcf69..b0d9dee 100644
  	rc = pmac_i2c_open(bus, 0);
  	if (rc) {
 diff --git a/drivers/i2c/busses/i2c-qup.c b/drivers/i2c/busses/i2c-qup.c
-index fdcbdab..cc6439a 100644
+index fdcbdab..041050e 100644
 --- a/drivers/i2c/busses/i2c-qup.c
 +++ b/drivers/i2c/busses/i2c-qup.c
 @@ -14,8 +14,12 @@
@@ -6024,7 +6024,7 @@ index fdcbdab..cc6439a 100644
  	} while (qup->pos < msg->len);
  
  err:
-@@ -513,6 +1228,87 @@ out:
+@@ -513,6 +1228,89 @@ out:
  	return ret;
  }
  
@@ -6067,6 +6067,8 @@ index fdcbdab..cc6439a 100644
 +			}
 +		}
 +	}
++
++	idx = 0;
 +
 +	do {
 +		if (msgs[idx].len == 0) {
@@ -6112,7 +6114,7 @@ index fdcbdab..cc6439a 100644
  static u32 qup_i2c_func(struct i2c_adapter *adap)
  {
  	return I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK);
-@@ -523,6 +1319,11 @@ static const struct i2c_algorithm qup_i2c_algo = {
+@@ -523,6 +1321,11 @@ static const struct i2c_algorithm qup_i2c_algo = {
  	.functionality	= qup_i2c_func,
  };
  
@@ -6124,7 +6126,7 @@ index fdcbdab..cc6439a 100644
  /*
   * The QUP block will issue a NACK and STOP on the bus when reaching
   * the end of the read, the length of the read is specified as one byte
-@@ -561,6 +1362,7 @@ static int qup_i2c_probe(struct platform_device *pdev)
+@@ -561,6 +1364,7 @@ static int qup_i2c_probe(struct platform_device *pdev)
  	int ret, fs_div, hs_div;
  	int src_clk_freq;
  	u32 clk_freq = 100000;
@@ -6132,7 +6134,7 @@ index fdcbdab..cc6439a 100644
  
  	qup = devm_kzalloc(&pdev->dev, sizeof(*qup), GFP_KERNEL);
  	if (!qup)
-@@ -572,6 +1374,68 @@ static int qup_i2c_probe(struct platform_device *pdev)
+@@ -572,6 +1376,68 @@ static int qup_i2c_probe(struct platform_device *pdev)
  
  	of_property_read_u32(node, "clock-frequency", &clk_freq);
  
@@ -6201,7 +6203,7 @@ index fdcbdab..cc6439a 100644
  	/* We support frequencies up to FAST Mode (400KHz) */
  	if (!clk_freq || clk_freq > 400000) {
  		dev_err(qup->dev, "clock frequency not supported %d\n",
-@@ -667,10 +1531,10 @@ static int qup_i2c_probe(struct platform_device *pdev)
+@@ -667,10 +1533,10 @@ static int qup_i2c_probe(struct platform_device *pdev)
  		qup->out_blk_sz, qup->out_fifo_sz);
  
  	i2c_set_adapdata(&qup->adap, qup);
@@ -6214,7 +6216,7 @@ index fdcbdab..cc6439a 100644
  	strlcpy(qup->adap.name, "QUP I2C adapter", sizeof(qup->adap.name));
  
  	pm_runtime_set_autosuspend_delay(qup->dev, MSEC_PER_SEC);
-@@ -689,6 +1553,11 @@ fail_runtime:
+@@ -689,6 +1555,11 @@ fail_runtime:
  	pm_runtime_set_suspended(qup->dev);
  fail:
  	qup_i2c_disable_clocks(qup);
@@ -6226,7 +6228,7 @@ index fdcbdab..cc6439a 100644
  	return ret;
  }
  
-@@ -696,6 +1565,18 @@ static int qup_i2c_remove(struct platform_device *pdev)
+@@ -696,6 +1567,18 @@ static int qup_i2c_remove(struct platform_device *pdev)
  {
  	struct qup_i2c_dev *qup = platform_get_drvdata(pdev);
  
@@ -8048,7 +8050,7 @@ index 4c7fc2d..210ca82 100644
  		}
  	}
 diff --git a/drivers/i2c/busses/i2c-tegra.c b/drivers/i2c/busses/i2c-tegra.c
-index a0522fc..445398c3 100644
+index a0522fc..b126dba 100644
 --- a/drivers/i2c/busses/i2c-tegra.c
 +++ b/drivers/i2c/busses/i2c-tegra.c
 @@ -38,6 +38,7 @@
@@ -8224,7 +8226,7 @@ index a0522fc..445398c3 100644
  		i2c_dev->is_dvc = of_device_is_compatible(pdev->dev.of_node,
  						"nvidia,tegra20-i2c-dvc");
  	} else if (pdev->id == 3) {
-@@ -855,6 +900,15 @@ static int tegra_i2c_probe(struct platform_device *pdev)
+@@ -855,17 +900,26 @@ static int tegra_i2c_probe(struct platform_device *pdev)
  		goto unprepare_fast_clk;
  	}
  
@@ -8240,7 +8242,11 @@ index a0522fc..445398c3 100644
  	ret = tegra_i2c_init(i2c_dev);
  	if (ret) {
  		dev_err(&pdev->dev, "Failed to initialize i2c controller");
-@@ -865,7 +919,7 @@ static int tegra_i2c_probe(struct platform_device *pdev)
+-		goto unprepare_div_clk;
++		goto disable_div_clk;
+ 	}
+ 
+ 	ret = devm_request_irq(&pdev->dev, i2c_dev->irq,
  			tegra_i2c_isr, 0, dev_name(&pdev->dev), i2c_dev);
  	if (ret) {
  		dev_err(&pdev->dev, "Failed to request irq %i\n", i2c_dev->irq);
@@ -8996,7 +9002,7 @@ index 8b36bcf..613c3a4 100644
  };
  
 diff --git a/drivers/i2c/i2c-boardinfo.c b/drivers/i2c/i2c-boardinfo.c
-index 90e3229..e33022e 100644
+index 90e3229..6e5fac6 100644
 --- a/drivers/i2c/i2c-boardinfo.c
 +++ b/drivers/i2c/i2c-boardinfo.c
 @@ -12,11 +12,11 @@
@@ -9013,6 +9019,17 @@ index 90e3229..e33022e 100644
 +#include <linux/slab.h>
  
  #include "i2c-core.h"
+ 
+@@ -56,9 +56,7 @@ EXPORT_SYMBOL_GPL(__i2c_first_dynamic_bus_num);
+  * The board info passed can safely be __initdata, but be careful of embedded
+  * pointers (for platform_data, functions, etc) since that won't be copied.
+  */
+-int __init
+-i2c_register_board_info(int busnum,
+-	struct i2c_board_info const *info, unsigned len)
++int i2c_register_board_info(int busnum, struct i2c_board_info const *info, unsigned len)
+ {
+ 	int status;
  
 diff --git a/drivers/i2c/i2c-core.c b/drivers/i2c/i2c-core.c
 index ba8eb08..af11b65 100644
@@ -11100,7 +11117,7 @@ index b5a982b..35bb775 100644
  }
  
 diff --git a/drivers/i2c/muxes/i2c-mux-reg.c b/drivers/i2c/muxes/i2c-mux-reg.c
-index 5fbd5bd..26e7c51 100644
+index 5fbd5bd..c6a90b4 100644
 --- a/drivers/i2c/muxes/i2c-mux-reg.c
 +++ b/drivers/i2c/muxes/i2c-mux-reg.c
 @@ -21,8 +21,6 @@
@@ -11152,6 +11169,15 @@ index 5fbd5bd..26e7c51 100644
  	mux->data.parent = i2c_adapter_id(adapter);
  	put_device(&adapter->dev);
  
+@@ -150,7 +145,7 @@ static int i2c_mux_reg_probe_dt(struct regmux *mux,
+ 		mux->data.idle_in_use = true;
+ 
+ 	/* map address from "reg" if exists */
+-	if (of_address_to_resource(np, 0, &res)) {
++	if (of_address_to_resource(np, 0, &res) == 0) {
+ 		mux->data.reg_size = resource_size(&res);
+ 		mux->data.reg = devm_ioremap_resource(&pdev->dev, &res);
+ 		if (IS_ERR(mux->data.reg))
 @@ -161,7 +156,7 @@ static int i2c_mux_reg_probe_dt(struct regmux *mux,
  }
  #else
