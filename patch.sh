@@ -259,7 +259,7 @@ patch_backports (){
 }
 
 lts44_backports () {
-	backport_tag="v4.6.5"
+	backport_tag="v4.6.6"
 
 	subsystem="tty"
 	#regenerate="enable"
@@ -395,10 +395,12 @@ reverts () {
 	fi
 
 	${git} "${DIR}/patches/reverts/0001-Revert-spi-spidev-Warn-loudly-if-instantiated-from-D.patch"
-	${git} "${DIR}/patches/reverts/0002-Revert-pwms-pwm-ti-Remove-support-for-local-clock-ga.patch"
+	${git} "${DIR}/patches/reverts/0002-Revert-pwm-pwm-tipwmss-Remove-all-pm_runtime-gets-an.patch"
+	${git} "${DIR}/patches/reverts/0003-Revert-pwms-pwm-ti-Remove-support-for-local-clock-ga.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		wdir="reverts"
+		number=3
 		cleanup
 	fi
 }
@@ -582,7 +584,8 @@ bbb_overlays () {
 
 	if [ "x${merged_in_4_5}" = "xenable" ] ; then
 		#merged in 4.5.0-rc6?
-		${git} "${DIR}/patches/bbb_overlays/omap/0001-ARM-OMAP2-Fix-omap_device-for-module-reload-on-PM-ru.patch"
+		${git} "${DIR}/patches/bbb_overlays/omap/0001-Revert-ARM-OMAP2-omap_device-fix-crash-on-omap_devic.patch"
+		${git} "${DIR}/patches/bbb_overlays/omap/0002-ARM-OMAP2-Fix-omap_device-for-module-reload-on-PM-ru.patch"
 	fi
 
 	echo "dir: bbb_overlays"
