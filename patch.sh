@@ -277,6 +277,7 @@ pre_backports () {
 	cd ~/linux-src/
 	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master
 	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
+	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
 		git checkout ${backport_tag} -b tmp
 	fi
@@ -289,6 +290,7 @@ pre_backports_iio () {
 	cd ~/linux-src/
 	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master
 	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
+	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
 		git checkout ${backport_tag} -b tmp
 		#dht11
@@ -309,6 +311,9 @@ post_backports () {
 
 	git add .
 	git commit -a -m "backports: ${subsystem}: from: linux.git" -s
+	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
+		mkdir -p ../patches/backports/${subsystem}/
+	fi
 	git format-patch -1 -o ../patches/backports/${subsystem}/
 
 	exit 2
@@ -963,6 +968,10 @@ packaging () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
+		#v4.8.0-rc1+
+		if [ ! -d "${DIR}/KERNEL/scripts/gcc-plugins/" ] ; then
+			sed -i -e 's:(cd $objtree; find scripts/gcc-plugins:#(cd $objtree; find scripts/gcc-plugins:g' "${DIR}/KERNEL/scripts/package/builddeb"
+		fi
 		git commit -a -m 'packaging: sync builddeb changes' -s
 		git format-patch -1 -o "${DIR}/patches/packaging"
 		exit 2
