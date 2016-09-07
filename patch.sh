@@ -26,21 +26,17 @@
 if [ -f ${DIR}/system.sh ] ; then
 	. ${DIR}/system.sh
 fi
+git_bin=$(which git)
+#git hard requirements:
+#git: --no-edit
 
-#Debian 7 (Wheezy): git version 1.7.10.4 and later needs "--no-edit"
-unset git_opts
-git_no_edit=$(LC_ALL=C git help pull | grep -m 1 -e "--no-edit" || true)
-if [ ! "x${git_no_edit}" = "x" ] ; then
-	git_opts="--no-edit"
-fi
-
-git="git am"
+git="${git_bin} am"
 #git_patchset="git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git"
 git_patchset="https://github.com/RobertCNelson/ti-linux-kernel.git"
 #git_opts
 
 if [ "${RUN_BISECT}" ] ; then
-	git="git apply"
+	git="${git_bin} apply"
 fi
 
 echo "Starting patch.sh"
@@ -51,20 +47,20 @@ merged_in_4_6="enable"
 #unset merged_in_4_6
 
 git_add () {
-	git add .
-	git commit -a -m 'testing patchset'
+	${git_bin} add .
+	${git_bin} commit -a -m 'testing patchset'
 }
 
 start_cleanup () {
-	git="git am --whitespace=fix"
+	git="${git_bin} am --whitespace=fix"
 }
 
 cleanup () {
 	if [ "${number}" ] ; then
 		if [ "x${wdir}" = "x" ] ; then
-			git format-patch -${number} -o ${DIR}/patches/
+			${git_bin} format-patch -${number} -o ${DIR}/patches/
 		else
-			git format-patch -${number} -o ${DIR}/patches/${wdir}/
+			${git_bin} format-patch -${number} -o ${DIR}/patches/${wdir}/
 			unset wdir
 		fi
 	fi
@@ -75,14 +71,14 @@ cherrypick () {
 	if [ ! -d ../patches/${cherrypick_dir} ] ; then
 		mkdir -p ../patches/${cherrypick_dir}
 	fi
-	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/${cherrypick_dir}
+	${git_bin} format-patch -1 ${SHA} --start-number ${num} -o ../patches/${cherrypick_dir}
 	num=$(($num+1))
 }
 
 external_git () {
 	git_tag="ti-rt-linux-4.4.y"
 	echo "pulling: ${git_tag}"
-	git pull ${git_opts} ${git_patchset} ${git_tag}
+	${git_bin} pull ${git_opts} ${git_patchset} ${git_tag}
 	#. ${DIR}/.CC
 	#sed -i -e 's:linux-kernel:`pwd`/:g' ./ti_config_fragments/defconfig_merge.sh
 	#./ti_config_fragments/defconfig_merge.sh -o /dev/null -f ti_config_fragments/defconfig_fragment -c ${CC}
@@ -109,28 +105,28 @@ aufs4 () {
 		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-kbuild.patch
 		patch -p1 < aufs4-kbuild.patch || aufs_fail
 		rm -rf aufs4-kbuild.patch
-		git add .
-		git commit -a -m 'merge: aufs4-kbuild' -s
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: aufs4-kbuild' -s
 
 		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-base.patch
 		patch -p1 < aufs4-base.patch || aufs_fail
 		rm -rf aufs4-base.patch
-		git add .
-		git commit -a -m 'merge: aufs4-base' -s
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: aufs4-base' -s
 
 		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-mmap.patch
 		patch -p1 < aufs4-mmap.patch || aufs_fail
 		rm -rf aufs4-mmap.patch
-		git add .
-		git commit -a -m 'merge: aufs4-mmap' -s
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: aufs4-mmap' -s
 
 		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-standalone.patch
 		patch -p1 < aufs4-standalone.patch || aufs_fail
 		rm -rf aufs4-standalone.patch
-		git add .
-		git commit -a -m 'merge: aufs4-standalone' -s
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: aufs4-standalone' -s
 
-		git format-patch -4 -o ../patches/aufs4/
+		${git_bin} format-patch -4 -o ../patches/aufs4/
 		exit 2
 	fi
 
@@ -145,9 +141,9 @@ aufs4 () {
 
 		cd ../
 		if [ ! -f ./aufs4-standalone ] ; then
-			git clone https://github.com/sfjro/aufs4-standalone
+			${git_bin} clone https://github.com/sfjro/aufs4-standalone
 			cd ./aufs4-standalone
-			git checkout origin/aufs${KERNEL_REL} -b tmp
+			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
 			cd ../
 		fi
 		cd ./KERNEL/
@@ -159,9 +155,9 @@ aufs4 () {
 		cp -v ../aufs4-standalone/fs/aufs/* ./fs/aufs/
 		cp -v ../aufs4-standalone/include/uapi/linux/aufs_type.h ./include/uapi/linux/
 
-		git add .
-		git commit -a -m 'merge: aufs4' -s
-		git format-patch -5 -o ../patches/aufs4/
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: aufs4' -s
+		${git_bin} format-patch -5 -o ../patches/aufs4/
 
 		exit 2
 	fi
@@ -175,7 +171,7 @@ aufs4 () {
 	${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		git format-patch -6 -o ../patches/aufs4/
+		${git_bin} format-patch -6 -o ../patches/aufs4/
 		exit 2
 	fi
 }
@@ -191,9 +187,9 @@ rt () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		rm -f localversion-rt
-		git add .
-		git commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
-		git format-patch -1 -o ../patches/rt/
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
+		${git_bin} format-patch -1 -o ../patches/rt/
 
 		exit 2
 	fi
@@ -215,11 +211,11 @@ pre_backports () {
 	echo "dir: backports/${subsystem}"
 
 	cd ~/linux-src/
-	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master
-	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
-	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master
+	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
+	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
-		git checkout ${backport_tag} -b tmp
+		${git_bin} checkout ${backport_tag} -b tmp
 	fi
 	cd -
 }
@@ -228,13 +224,13 @@ pre_backports_tty () {
 	echo "dir: backports/${subsystem}"
 
 	cd ~/linux-src/
-	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master
-	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
-	git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
+	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master
+	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
+	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
-		git checkout ${backport_tag} -b tmp
-		git revert --no-edit be7635e7287e0e8013af3c89a6354a9e0182594c
-		git revert --no-edit c74ba8b3480da6ddaea17df2263ec09b869ac496
+		${git_bin} checkout ${backport_tag} -b tmp
+		${git_bin} revert --no-edit be7635e7287e0e8013af3c89a6354a9e0182594c
+		${git_bin} revert --no-edit c74ba8b3480da6ddaea17df2263ec09b869ac496
 	fi
 	cd -
 }
@@ -242,16 +238,16 @@ pre_backports_tty () {
 post_backports () {
 	if [ ! "x${backport_tag}" = "x" ] ; then
 		cd ~/linux-src/
-		git checkout master -f ; git branch -D tmp
+		${git_bin} checkout master -f ; ${git_bin} branch -D tmp
 		cd -
 	fi
 
-	git add .
-	git commit -a -m "backports: ${subsystem}: from: linux.git" -s
+	${git_bin} add .
+	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
 		mkdir -p ../patches/backports/${subsystem}/
 	fi
-	git format-patch -1 -o ../patches/backports/${subsystem}/
+	${git_bin} format-patch -1 -o ../patches/backports/${subsystem}/
 
 	exit 2
 }
@@ -1121,12 +1117,8 @@ packaging () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
-		#v4.8.0-rc1+
-		if [ ! -d "${DIR}/KERNEL/scripts/gcc-plugins/" ] ; then
-			sed -i -e 's:(cd $objtree; find scripts/gcc-plugins:#(cd $objtree; find scripts/gcc-plugins:g' "${DIR}/KERNEL/scripts/package/builddeb"
-		fi
-		git commit -a -m 'packaging: sync builddeb changes' -s
-		git format-patch -1 -o "${DIR}/patches/packaging"
+		${git_bin} commit -a -m 'packaging: sync builddeb changes' -s
+		${git_bin} format-patch -1 -o "${DIR}/patches/packaging"
 		exit 2
 	else
 		${git} "${DIR}/patches/packaging/0001-packaging-sync-builddeb-changes.patch"
