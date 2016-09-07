@@ -1083,6 +1083,22 @@ x15 () {
 	fi
 }
 
+brcmfmac () {
+	echo "dir: brcmfmac"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/brcmfmac/0001-brcmfmac43341.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="brcmfmac"
+		number=1
+		cleanup
+	fi
+}
+
 quieter () {
 	echo "dir: quieter"
 	#regenerate="enable"
@@ -1110,6 +1126,7 @@ pru_rpmsg
 bbb_overlays
 beaglebone
 x15
+brcmfmac
 quieter
 
 packaging () {
