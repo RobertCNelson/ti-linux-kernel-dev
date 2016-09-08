@@ -942,14 +942,14 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0012-ethtool-Set-cmd-field-in-ETHTOOL_GLINKSETTINGS-respo.patch"
 
 	#board:
-
 	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0013-add-am335x-vsc8531bbb.patch"
 
 	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0014-lib-bitmap.c-conversion-routines-to-from-u32-array.patch"
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0015-ti-cpsw-priv-cpsw-slaves.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/vsc8531bbb"
-		number=14
+		number=15
 		cleanup
 	fi
 
@@ -1091,10 +1091,11 @@ brcmfmac () {
 	fi
 
 	${git} "${DIR}/patches/brcmfmac/0001-brcmfmac43341.patch"
+	${git} "${DIR}/patches/brcmfmac/0002-brcmfmac-SDIOD_DRVSTR_KEY-BRCM_CC_43340-1.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="brcmfmac"
-		number=1
+		number=2
 		cleanup
 	fi
 }
