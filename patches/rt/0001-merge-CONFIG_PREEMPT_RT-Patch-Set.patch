@@ -1,6 +1,6 @@
-From cf73a2927dc20c769d23fb18ef3789af99488006 Mon Sep 17 00:00:00 2001
+From 96c6f35f880dc57dc6590b03c09d9cd40af34d20 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 23 Aug 2016 10:19:38 -0500
+Date: Thu, 8 Sep 2016 09:18:50 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -342,7 +342,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/posix-timers.c                              |   37 +-
  kernel/power/hibernate.c                           |    7 +
  kernel/power/suspend.c                             |    4 +
- kernel/printk/printk.c                             |  156 ++-
+ kernel/printk/printk.c                             |  157 ++-
  kernel/ptrace.c                                    |    9 +-
  kernel/rcu/tiny.c                                  |    2 +
  kernel/rcu/torture.c                               |    7 +
@@ -425,7 +425,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  scripts/mkcompile_h                                |    4 +-
  virt/kvm/async_pf.c                                |    4 +-
  virt/kvm/kvm_main.c                                |   16 +-
- 420 files changed, 12425 insertions(+), 2315 deletions(-)
+ 420 files changed, 12425 insertions(+), 2316 deletions(-)
  create mode 100644 Documentation/hwlat_detector.txt
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 arch/x86/include/asm/irq_work.h
@@ -8271,7 +8271,7 @@ index 14db9b8..a8fb795 100644
  
  static int __init
 diff --git a/drivers/usb/core/hcd.c b/drivers/usb/core/hcd.c
-index 21532ab..7c1f57d 100644
+index 598b9f1..cf6c492 100644
 --- a/drivers/usb/core/hcd.c
 +++ b/drivers/usb/core/hcd.c
 @@ -1681,9 +1681,9 @@ static void __usb_hcd_giveback_urb(struct urb *urb)
@@ -18286,10 +18286,10 @@ index 0374a59..9497033 100644
 +
 +#endif
 diff --git a/kernel/panic.c b/kernel/panic.c
-index 6d63003..d7eb245 100644
+index 16458b3..ea3e808 100644
 --- a/kernel/panic.c
 +++ b/kernel/panic.c
-@@ -368,9 +368,11 @@ static u64 oops_id;
+@@ -371,9 +371,11 @@ static u64 oops_id;
  
  static int init_oops_id(void)
  {
@@ -18727,7 +18727,7 @@ index 5455d5c..c2372ed 100644
  	BUG_ON(irqs_disabled());
  
 diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
-index 02e7fb4..4472339 100644
+index 2e0406f..ae1b19b 100644
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
 @@ -1026,6 +1026,7 @@ static int syslog_print_all(char __user *buf, int size, bool clear)
@@ -18975,7 +18975,7 @@ index 02e7fb4..4472339 100644
  	return;
  out:
  	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
-@@ -2068,12 +2158,17 @@ skip:
+@@ -2079,13 +2169,17 @@ skip:
  		console_idx = log_next(console_idx);
  		console_seq++;
  		console_prev = msg->flags;
@@ -18987,14 +18987,15 @@ index 02e7fb4..4472339 100644
  		call_console_drivers(level, text, len);
  		start_critical_timings();
  		local_irq_restore(flags);
+-
 +#else
 +		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
 +		call_console_drivers(level, text, len);
 +#endif
+ 		if (do_cond_resched)
+ 			cond_resched();
  	}
- 	console_locked = 0;
- 	mutex_release(&console_lock_dep_map, 1, _RET_IP_);
-@@ -2124,6 +2219,11 @@ void console_unblank(void)
+@@ -2138,6 +2232,11 @@ void console_unblank(void)
  {
  	struct console *c;
  
