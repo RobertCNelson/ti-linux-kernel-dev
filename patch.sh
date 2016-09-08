@@ -1092,10 +1092,11 @@ brcmfmac () {
 
 	${git} "${DIR}/patches/brcmfmac/0001-brcmfmac43341.patch"
 	${git} "${DIR}/patches/brcmfmac/0002-brcmfmac-SDIOD_DRVSTR_KEY-BRCM_CC_43340-1.patch"
+	${git} "${DIR}/patches/brcmfmac/0003-brcmfmac-l77-works-now.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="brcmfmac"
-		number=2
+		number=3
 		cleanup
 	fi
 }
