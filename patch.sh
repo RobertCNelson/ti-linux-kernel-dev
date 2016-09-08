@@ -26,40 +26,36 @@
 if [ -f ${DIR}/system.sh ] ; then
 	. ${DIR}/system.sh
 fi
+git_bin=$(which git)
+#git hard requirements:
+#git: --no-edit
 
-#Debian 7 (Wheezy): git version 1.7.10.4 and later needs "--no-edit"
-unset git_opts
-git_no_edit=$(LC_ALL=C git help pull | grep -m 1 -e "--no-edit" || true)
-if [ ! "x${git_no_edit}" = "x" ] ; then
-	git_opts="--no-edit"
-fi
-
-git="git am"
+git="${git_bin} am"
 #git_patchset="git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git"
 git_patchset="https://github.com/RobertCNelson/ti-linux-kernel.git"
 #git_opts
 
 if [ "${RUN_BISECT}" ] ; then
-	git="git apply"
+	git="${git_bin} apply"
 fi
 
 echo "Starting patch.sh"
 
 git_add () {
-	git add .
-	git commit -a -m 'testing patchset'
+	${git_bin} add .
+	${git_bin} commit -a -m 'testing patchset'
 }
 
 start_cleanup () {
-	git="git am --whitespace=fix"
+	git="${git_bin} am --whitespace=fix"
 }
 
 cleanup () {
 	if [ "${number}" ] ; then
 		if [ "x${wdir}" = "x" ] ; then
-			git format-patch -${number} -o ${DIR}/patches/
+			${git_bin} format-patch -${number} -o ${DIR}/patches/
 		else
-			git format-patch -${number} -o ${DIR}/patches/${wdir}/
+			${git_bin} format-patch -${number} -o ${DIR}/patches/${wdir}/
 			unset wdir
 		fi
 	fi
@@ -70,14 +66,14 @@ pick () {
 	if [ ! -d ../patches/${pick_dir} ] ; then
 		mkdir -p ../patches/${pick_dir}
 	fi
-	git format-patch -1 ${SHA} --start-number ${num} -o ../patches/${pick_dir}
+	${git_bin} format-patch -1 ${SHA} --start-number ${num} -o ../patches/${pick_dir}
 	num=$(($num+1))
 }
 
 external_git () {
 	git_tag="ti-linux-3.14.y"
 	echo "pulling: ${git_tag}"
-	git pull ${git_opts} ${git_patchset} ${git_tag}
+	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
 }
 
 rt_cleanup () {
@@ -100,9 +96,9 @@ rt () {
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
-		git add .
-		git commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
-		git format-patch -1 -o ../patches/rt/
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
+		${git_bin} format-patch -1 -o ../patches/rt/
 
 		exit 2
 	fi
@@ -188,7 +184,7 @@ dtsi_append () {
 	cp arch/arm/boot/dts/${base_dts}-base.dts ${wfile}
 	echo "" >> ${wfile}
 	echo "#include \"am335x-bone-${cape}.dtsi\"" >> ${wfile}
-	git add ${wfile}
+	${git_bin} add ${wfile}
 }
 
 dtsi_append_custom () {
@@ -196,28 +192,28 @@ dtsi_append_custom () {
 	cp arch/arm/boot/dts/${base_dts}-base.dts ${wfile}
 	echo "" >> ${wfile}
 	echo "#include \"am335x-bone-${cape}.dtsi\"" >> ${wfile}
-	git add ${wfile}
+	${git_bin} add ${wfile}
 }
 
 dtsi_append_hdmi_no_audio () {
 	dtsi_append
 	echo "#include \"am335x-boneblack-nxp-hdmi-no-audio.dtsi\"" >> ${wfile}
-	git add ${wfile}
+	${git_bin} add ${wfile}
 }
 
 dtsi_drop_nxp_hdmi_audio () {
 	sed -i -e 's:#include "am335x-boneblack-nxp-hdmi-audio.dtsi":/* #include "am335x-boneblack-nxp-hdmi-audio.dtsi" */:g' ${wfile}
-	git add ${wfile}
+	${git_bin} add ${wfile}
 }
 
 dtsi_drop_emmc () {
 	sed -i -e 's:#include "am335x-boneblack-emmc.dtsi":/* #include "am335x-boneblack-emmc.dtsi" */:g' ${wfile}
-	git add ${wfile}
+	${git_bin} add ${wfile}
 }
 
 dts_drop_clkout2_pin () {
 	sed -i -e 's:pinctrl-0 = <\&clkout2_pin>;:/* pinctrl-0 = <\&clkout2_pin>; */:g' ${wfile}
-	git add ${wfile}
+	${git_bin} add ${wfile}
 }
 
 beaglebone () {
@@ -365,8 +361,8 @@ beaglebone () {
 		dtsi_append
 		dtsi_drop_nxp_hdmi_audio
 
-		git commit -a -m 'auto generated: cape: uarts' -s
-		git format-patch -1 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: uarts' -s
+		${git_bin} format-patch -1 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-cape-uarts.patch"
 	fi
@@ -390,8 +386,8 @@ beaglebone () {
 		dtsi_append_hdmi_no_audio
 		dtsi_drop_nxp_hdmi_audio
 
-		git commit -a -m 'auto generated: cape: audio' -s
-		git format-patch -2 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: audio' -s
+		${git_bin} format-patch -2 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0002-auto-generated-cape-audio.patch"
 	fi
@@ -432,8 +428,8 @@ beaglebone () {
 		dtsi_append
 		dtsi_drop_nxp_hdmi_audio
 
-		git commit -a -m 'auto generated: cape: lcd' -s
-		git format-patch -3 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: lcd' -s
+		${git_bin} format-patch -3 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0003-auto-generated-cape-lcd.patch"
 	fi
@@ -451,8 +447,8 @@ beaglebone () {
 		dtsi_append_custom
 		dts_drop_clkout2_pin
 
-		git commit -a -m 'auto generated: cape: argus' -s
-		git format-patch -4 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: argus' -s
+		${git_bin} format-patch -4 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0004-auto-generated-cape-argus.patch"
 	fi
@@ -466,8 +462,8 @@ beaglebone () {
 		cape="rtc-01-00a1"
 		dtsi_append
 
-		git commit -a -m 'auto generated: cape: rtc-01-00a1' -s
-		git format-patch -5 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: rtc-01-00a1' -s
+		${git_bin} format-patch -5 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0005-auto-generated-cape-rtc-01-00a1.patch"
 	fi
@@ -481,8 +477,8 @@ beaglebone () {
 		cape="crypto-00a0"
 		dtsi_append
 
-		git commit -a -m 'auto generated: cape: crypto-00a0' -s
-		git format-patch -6 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: crypto-00a0' -s
+		${git_bin} format-patch -6 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0006-auto-generated-cape-crypto-00a0.patch"
 	fi
@@ -521,8 +517,8 @@ beaglebone () {
 		dtsi_append
 		dtsi_drop_nxp_hdmi_audio
 
-		git commit -a -m 'auto generated: cape: 4dcape' -s
-		git format-patch -7 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: 4dcape' -s
+		${git_bin} format-patch -7 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0007-auto-generated-cape-4dcape.patch"
 	fi
@@ -537,8 +533,8 @@ beaglebone () {
 		dtsi_append
 		dtsi_drop_nxp_hdmi_audio
 
-		git commit -a -m 'auto generated: cape: bbb-exp-c' -s
-		git format-patch -8 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: bbb-exp-c' -s
+		${git_bin} format-patch -8 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0008-auto-generated-cape-bbb-exp-c.patch"
 	fi
@@ -553,8 +549,8 @@ beaglebone () {
 		dtsi_append
 		dtsi_drop_nxp_hdmi_audio
 
-		git commit -a -m 'auto generated: cape: bb-view-43' -s
-		git format-patch -9 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: bb-view-43' -s
+		${git_bin} format-patch -9 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0009-auto-generated-cape-bb-view-43.patch"
 	fi
@@ -568,8 +564,8 @@ beaglebone () {
 		cape="can1"
 		dtsi_append
 
-		git commit -a -m 'auto generated: cape: can1' -s
-		git format-patch -10 -o ../patches/beaglebone/generated/
+		${git_bin} commit -a -m 'auto generated: cape: can1' -s
+		${git_bin} format-patch -10 -o ../patches/beaglebone/generated/
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0010-auto-generated-cape-can1.patch"
 	fi
@@ -648,8 +644,8 @@ beaglebone () {
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen.dtb" ; dtb_makefile_append
 
-		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
-		git format-patch -1 -o ../patches/beaglebone/generated/last/
+		${git_bin} commit -a -m 'auto generated: capes: add dtbs to makefile' -s
+		${git_bin} format-patch -1 -o ../patches/beaglebone/generated/last/
 		exit 2
 	else
 		${git} "${DIR}/patches/beaglebone/generated/last/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
@@ -685,12 +681,8 @@ packaging () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
-		#v4.8.0-rc1+
-		if [ ! -d "${DIR}/KERNEL/scripts/gcc-plugins/" ] ; then
-			sed -i -e 's:(cd $objtree; find scripts/gcc-plugins:#(cd $objtree; find scripts/gcc-plugins:g' "${DIR}/KERNEL/scripts/package/builddeb"
-		fi
-		git commit -a -m 'packaging: sync builddeb changes' -s
-		git format-patch -1 -o "${DIR}/patches/packaging"
+		${git_bin} commit -a -m 'packaging: sync builddeb changes' -s
+		${git_bin} format-patch -1 -o "${DIR}/patches/packaging"
 		exit 2
 	else
 		${git} "${DIR}/patches/packaging/0001-packaging-sync-builddeb-changes.patch"
