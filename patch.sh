@@ -78,7 +78,7 @@ cherrypick () {
 external_git () {
 	git_tag="ti-rt-linux-4.4.y"
 	echo "pulling: ${git_tag}"
-	${git_bin} pull ${git_opts} ${git_patchset} ${git_tag}
+	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
 	#. ${DIR}/.CC
 	#sed -i -e 's:linux-kernel:`pwd`/:g' ./ti_config_fragments/defconfig_merge.sh
 	#./ti_config_fragments/defconfig_merge.sh -o /dev/null -f ti_config_fragments/defconfig_fragment -c ${CC}
