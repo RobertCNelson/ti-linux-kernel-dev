@@ -1036,25 +1036,33 @@ beaglebone () {
 		start_cleanup
 	fi
 
-	#http://git.ti.com/gitweb/?p=ti-cm3-pm-firmware/amx3-cm3.git;a=summary
-	#git clone git://git.ti.com/ti-cm3-pm-firmware/amx3-cm3.git
-	#cd amx3-cm3/
-	#git checkout origin/ti-v4.1.y -b tmp
+	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=summary
+	#git clone git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git
 
-	#commit 730f0695ca2dda65abcff5763e8f108517bc0d43
+	#cd ti-amx3-cm3-pm-firmware/
+	#git checkout origin/ti-v4.1.y-next -b tmp
+
+	#commit ee4acf427055d7e87d9d1d82296cbd05e388642e
 	#Author: Dave Gerlach <d-gerlach@ti.com>
-	#Date:   Wed Mar 4 21:34:54 2015 -0600
+	#Date:   Tue Sep 6 14:33:11 2016 -0500
 	#
-	#    CM3: Bump firmware release to 0x191
+	#    CM3: Firmware release 0x192
 	#    
-	#    This version, 0x191, includes the following changes:
-	#         - Add trace output on boot for kernel remoteproc driver
-	#         - Fix resouce table as RSC_INTMEM is no longer used in kernel
-	#         - Add header dependency checking
+	#    This version, 0x192, includes the following changes:
+	#         - Fix DDR IO CTRL handling during suspend so both am335x and am437x
+	#           use optimal low power state and restore the exact previous
+	#           configuration.
+	#        - Explicitly configure PER state in standby, even though it is
+	#           configured to ON state to ensure proper state.
+	#         - Add new 'halt' flag in IPC_REG4 bit 11 to allow HLOS to configure
+	#           the suspend path to wait immediately before suspending the system
+	#           entirely to allow JTAG visiblity for debug.
+	#         - Fix board voltage scaling binaries i2c speed configuration in
+	#           order to properly configure 100khz operation.
 	#    
 	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
 
-	#cp -v bin/am* /opt/github/linux-dev/KERNEL/firmware/
+	#cp -v bin/am* /opt/github/bb.org/ti-4.4/normal/KERNEL/firmware/
 
 	#git add -f ./firmware/am*
 
