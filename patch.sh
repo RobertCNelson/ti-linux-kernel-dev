@@ -300,7 +300,7 @@ lts44_backports () {
 		exit 2
 	fi
 
-	backport_tag="v4.7.3"
+	backport_tag="v4.7.4"
 	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
