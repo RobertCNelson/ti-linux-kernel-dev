@@ -775,7 +775,7 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/bbgw/0001-add-beaglebone-green-wireless.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0002-am335x-bonegreen-wl1835-bluetooth-audio.patch"
-	${git} "${DIR}/patches/beaglebone/bbgw/0003-bbgw-use-gpio-hog-for-wl_en.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0003-bbgw-use-led-for-wl18xx_wl_en-wl18xx_bt_en.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/bbgw"
