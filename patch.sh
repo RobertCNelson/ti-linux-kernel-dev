@@ -346,16 +346,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
-	subsystem="edt-ft5x06"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/edt-ft5x06.c
-
-		post_backports
-	fi
-	patch_backports
+	${git} "${DIR}/patches/backports/edt-ft5x06/0001-Input-edt-ft5x06-fix-setting-gain-offset-and-thresho.patch"
 	${git} "${DIR}/patches/backports/edt-ft5x06/0002-edt-ft5x06-add-invert_x-invert_y-swap_xy.patch"
 
 	echo "dir: lts44_backports"
