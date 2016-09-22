@@ -60,6 +60,9 @@ cleanup () {
 		if [ "x${wdir}" = "x" ] ; then
 			${git_bin} format-patch -${number} -o ${DIR}/patches/
 		else
+			if [ ! -d ${DIR}/patches/${wdir}/ ] ; then
+				mkdir -p ${DIR}/patches/${wdir}/
+			fi
 			${git_bin} format-patch -${number} -o ${DIR}/patches/${wdir}/
 			unset wdir
 		fi
@@ -400,6 +403,101 @@ reverts () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
 		number=3
+		cleanup
+	fi
+
+	echo "dir: reverts/tilcdc"
+#	regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	#https://github.com/RobertCNelson/ti-linux-kernel/compare/64796e7f597d7f17bbcfa18242dbf1a3da839131...5fac424a36a240576b5ac97fa6e282c36cb0d144
+	#git revert --no-edit 4dc7dcabe8e570d2ffad688efbc3d97113ca55f8
+	#git revert --no-edit 91931688a4340b0bc6464549acf098010ca9a0ad
+	#git revert --no-edit 299676e72141eeefe92df628c0410ee08724f4cb
+	#git revert --no-edit 76806845b80e027365e761d5e754e4d414467bcb
+	#git revert --no-edit 0892292020aef30a0b30353a454ae2f2d7012b1e
+	#git revert --no-edit 10ca4f3505f61d0308a31f77561f1eda6508f555
+	#6
+
+	#git revert --no-edit 984edb0692a9d66284e974a6faf9c5bf7bfab5d6
+	#git revert --no-edit 9f6aed18943bec61859ea3d7550766850ba27473
+	#git revert --no-edit e34e57aed8d958082e57c58c8a7dc1dcf704e3ff
+	#git revert --no-edit dccd567228ca225afd99009b647a25a61234fa62
+	#git revert --no-edit d8ff0c63fbcb702f9c95b33a9134164e70a781be
+	#git revert --no-edit e462accdc4d2aa177ecc2a1cbcfee1eaa56f21b5
+	#12
+
+	#git revert --no-edit bcf7ab1c48206234412ec63c692b41507bbbe4e2
+	#git revert --no-edit 76fb2b46e6ea135b9bc0a3cf643c5c7ed3a25a85
+	#git revert --no-edit 6db644b05e317e094992273f1589be45990996aa
+	#git revert --no-edit 91df99d4ec325265b882d4320349b6ffcd4a7b1d
+	#git revert --no-edit 6b49c65a386fa82a8deb49cc18cd34c5137dd35b
+
+	#git revert --no-edit f63f2c8187cc10f552bde1469ee6abeb8db3a9d0
+	#git revert --no-edit 86928354e4501d1872d067b5dfd7a5bcb8add0dc
+	#git revert --no-edit a4e7a1ef617d1bc4b37f8a297095abdf3f3589c3
+	#git revert --no-edit 1757f7e91ea58229fee10e04d3a8c61267f6e625
+	#git revert --no-edit db464d1548c794f5082e75245064341cac6d960e
+
+	#git revert --no-edit ebbd1c9764a66f4eeb2ee327a03b96bcbeba6327
+	#git revert --no-edit 83822fb79ea6bb6bbb4a5800e23752e6c6a781e2
+	#git revert --no-edit 7262f5d93dbbeab26a55a57abf0ff753b91850d5
+	#git revert --no-edit e8cb1f8fcd44c603811000e7bfcfccc72ed8ed07
+	#git revert --no-edit 65eab9aed1883b65d71e7c6482644d3e767c1e47
+
+	#git revert --no-edit e6cbc0437dbdb6a9cb63610d50b20a6313235c90
+	#git revert --no-edit 8ff2aeb1b77b3e2ba614993c9e0bda69701fc821
+	#git revert --no-edit 10986125f55ea3b7b7a6aabef99d775a741ea47a
+	#git revert --no-edit c20b8aa249e0c75b3b028c80b2c7fdb716f19135
+	#git revert --no-edit 29635ffbeacd06a4813fdcde54e996c1ad7e952e
+
+	#git revert --no-edit d234b3a18ac6acc9a41fd5695008717080c55aab
+	#git revert --no-edit 23534af4f90e0125f08fca1fe6a60fafd14291f1
+	#git revert --no-edit 71c33d253f2a04fdf0f5e5e33c6b9a2444924d89
+
+	#git format-patch -35 -o ../patches/compare
+
+	${git} "${DIR}/patches/reverts/tilcdc/0001-Revert-drm-tilcdc-WARN-if-CRTC-is-touched-without-CR.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0002-Revert-drm-tilcdc-Take-CRTC-lock-when-calling-tilcdc.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0003-Revert-drm-tilcdc-Remove-unnecessary-tilcdc_crtc_dis.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0004-Revert-drm-tilcdc-Flush-flip-work-workqueue-before-d.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0005-Revert-drm-tilcdc-Clean-up-LCDC-functional-clock-rat.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0006-Revert-drm-tilcdc-Take-crtc-modeset-lock-while-updat.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0007-Revert-drm-tilcdc-Choose-console-BPP-that-supports-R.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0008-Revert-drm-tilcdc-Add-blue-and-red-crossed-devicetre.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0009-Revert-drm-tilcdc-Write-DMA-base-and-ceiling-address.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0010-Revert-drm-tilcdc-Enable-EOF-interrupts-for-v1-LCDC.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0011-Revert-drm-tilcdc-Adjust-the-FB_CEILING-address.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0012-Revert-drm-tilcdc-Fix-check-for-remote-port-parent.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0013-Revert-drm-tilcdc-Change-tilcdc_crtc_page_flip-to-ti.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0014-Revert-drm-tilcdc-Remove-unnecessary-pm_runtime_get-.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0015-Revert-drm-tilcdc-Get-rid-of-legacy-dpms-mechanism.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0016-Revert-drm-tilcdc-Use-drm_atomic_helper_resume-suspe.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0017-Revert-drm-tilcdc-Enable-and-disable-interrupts-in-c.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0018-Revert-drm-tilcdc-tfp410-Add-atomic-modeset-helpers-.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0019-Revert-drm-tilcdc-tfp410-Set-crtc-panel-info-at-init.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0020-Revert-drm-tilcdc-panel-Add-atomic-modeset-helpers-t.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0021-Revert-drm-tilcdc-panel-Set-crtc-panel-info-at-init-.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0022-Revert-drm-tilcdc-Remove-tilcdc_verify_fb.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0023-Revert-drm-tilcdc-Remove-obsolete-crtc-helper-functi.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0024-Revert-drm-tilcdc-Set-DRIVER_ATOMIC-and-use-atomic-c.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0025-Revert-drm-tilcdc-Add-drm_mode_config_reset-call-to-.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0026-Revert-drm-tilcdc-Add-atomic-mode-config-funcs.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0027-Revert-drm-tilcdc-Add-tilcdc_crtc_atomic_check.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0028-Revert-drm-tilcdc-Add-tilcdc_crtc_mode_set_nofb.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0029-Revert-drm-tilcdc-Initialize-dummy-primary-plane-fro.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0030-Revert-drm-tilcdc-Add-dummy-primary-plane-implementa.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0031-Revert-drm-tilcdc-Make-tilcdc_crtc_page_flip-work-if.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0032-Revert-drm-tilcdc-Make-tilcdc_crtc_page_flip-public.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0033-Revert-drm-tilcdc-Fix-tilcdc-component-master-unload.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0034-Revert-drm-i2c-tda998x-Choose-between-atomic-or-non-.patch"
+	${git} "${DIR}/patches/reverts/tilcdc/0035-Revert-drm-i2c-tda998x-Add-support-for-atomic-modese.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="reverts/tilcdc"
+		number=35
 		cleanup
 	fi
 }

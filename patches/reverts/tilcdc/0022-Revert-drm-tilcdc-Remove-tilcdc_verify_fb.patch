@@ -1,0 +1,54 @@
+From 19a8bf213638a2bd95d68404ef4fbbd5a5d6bf6c Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Thu, 22 Sep 2016 13:32:11 -0500
+Subject: [PATCH 22/35] Revert "drm/tilcdc: Remove tilcdc_verify_fb()"
+
+This reverts commit db464d1548c794f5082e75245064341cac6d960e.
+---
+ drivers/gpu/drm/tilcdc/tilcdc_crtc.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/drivers/gpu/drm/tilcdc/tilcdc_crtc.c b/drivers/gpu/drm/tilcdc/tilcdc_crtc.c
+index 68b8d9d..88f112d 100644
+--- a/drivers/gpu/drm/tilcdc/tilcdc_crtc.c
++++ b/drivers/gpu/drm/tilcdc/tilcdc_crtc.c
+@@ -151,6 +151,22 @@ static void tilcdc_crtc_destroy(struct drm_crtc *crtc)
+ 	drm_flip_work_cleanup(&tilcdc_crtc->unref_work);
+ }
+ 
++static int tilcdc_verify_fb(struct drm_crtc *crtc, struct drm_framebuffer *fb)
++{
++	struct drm_device *dev = crtc->dev;
++	unsigned int depth, bpp;
++
++	drm_fb_get_bpp_depth(fb->pixel_format, &depth, &bpp);
++
++	if (fb->pitches[0] != crtc->mode.hdisplay * bpp / 8) {
++		dev_err(dev->dev,
++			"Invalid pitch: fb and crtc widths must be the same");
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
+ int tilcdc_crtc_page_flip(struct drm_crtc *crtc,
+ 		struct drm_framebuffer *fb,
+ 		struct drm_pending_vblank_event *event,
+@@ -158,8 +174,13 @@ int tilcdc_crtc_page_flip(struct drm_crtc *crtc,
+ {
+ 	struct tilcdc_crtc *tilcdc_crtc = to_tilcdc_crtc(crtc);
+ 	struct drm_device *dev = crtc->dev;
++	int r;
+ 	unsigned long flags;
+ 
++	r = tilcdc_verify_fb(crtc, fb);
++	if (r)
++		return r;
++
+ 	if (tilcdc_crtc->event) {
+ 		dev_err(dev->dev, "already pending page flip!\n");
+ 		return -EBUSY;
+-- 
+2.9.3
+

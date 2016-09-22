@@ -1,0 +1,68 @@
+From 11cbca700406c9c45cda8001e969ad65b3bb349e Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Thu, 22 Sep 2016 13:32:04 -0500
+Subject: [PATCH 09/35] Revert "drm/tilcdc: Write DMA base and ceiling address
+ with single instruction"
+
+This reverts commit e34e57aed8d958082e57c58c8a7dc1dcf704e3ff.
+---
+ drivers/gpu/drm/tilcdc/tilcdc_crtc.c | 10 ++--------
+ drivers/gpu/drm/tilcdc/tilcdc_regs.h | 14 --------------
+ 2 files changed, 2 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/gpu/drm/tilcdc/tilcdc_crtc.c b/drivers/gpu/drm/tilcdc/tilcdc_crtc.c
+index 168ad5d..7f767f5 100644
+--- a/drivers/gpu/drm/tilcdc/tilcdc_crtc.c
++++ b/drivers/gpu/drm/tilcdc/tilcdc_crtc.c
+@@ -69,7 +69,6 @@ static void set_scanout(struct drm_crtc *crtc, struct drm_framebuffer *fb)
+ 	struct drm_gem_cma_object *gem;
+ 	unsigned int depth, bpp;
+ 	dma_addr_t start, end;
+-	u64 dma_base_and_ceiling;
+ 
+ 	drm_fb_get_bpp_depth(fb->pixel_format, &depth, &bpp);
+ 	gem = drm_fb_cma_get_gem_obj(fb, 0);
+@@ -80,13 +79,8 @@ static void set_scanout(struct drm_crtc *crtc, struct drm_framebuffer *fb)
+ 
+ 	end = start + (crtc->mode.vdisplay * fb->pitches[0]);
+ 
+-	/* Write LCDC_DMA_FB_BASE_ADDR_0_REG and LCDC_DMA_FB_CEILING_ADDR_0_REG
+-	 * with a single insruction, if available. This should make it more
+-	 * unlikely that LCDC would fetch the DMA addresses in the middle of
+-	 * an update.
+-	 */
+-	dma_base_and_ceiling = (u64)(end - 1) << 32 | start;
+-	tilcdc_write64(dev, LCDC_DMA_FB_BASE_ADDR_0_REG, dma_base_and_ceiling);
++	tilcdc_write(dev, LCDC_DMA_FB_BASE_ADDR_0_REG, start);
++	tilcdc_write(dev, LCDC_DMA_FB_CEILING_ADDR_0_REG, end - 1);
+ 
+ 	if (tilcdc_crtc->curr_fb)
+ 		drm_flip_work_queue(&tilcdc_crtc->unref_work,
+diff --git a/drivers/gpu/drm/tilcdc/tilcdc_regs.h b/drivers/gpu/drm/tilcdc/tilcdc_regs.h
+index f57c0d6..1bf5e25 100644
+--- a/drivers/gpu/drm/tilcdc/tilcdc_regs.h
++++ b/drivers/gpu/drm/tilcdc/tilcdc_regs.h
+@@ -119,20 +119,6 @@ static inline void tilcdc_write(struct drm_device *dev, u32 reg, u32 data)
+ 	iowrite32(data, priv->mmio + reg);
+ }
+ 
+-static inline void tilcdc_write64(struct drm_device *dev, u32 reg, u64 data)
+-{
+-	struct tilcdc_drm_private *priv = dev->dev_private;
+-	volatile void __iomem *addr = priv->mmio + reg;
+-
+-#ifdef iowrite64
+-	iowrite64(data, addr);
+-#else
+-	__iowmb();
+-	/* This compiles to strd (=64-bit write) on ARM7 */
+-	*(volatile u64 __force *)addr = __cpu_to_le64(data);
+-#endif
+-}
+-
+ static inline u32 tilcdc_read(struct drm_device *dev, u32 reg)
+ {
+ 	struct tilcdc_drm_private *priv = dev->dev_private;
+-- 
+2.9.3
+
