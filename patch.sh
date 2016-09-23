@@ -784,9 +784,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dts/0002-arm-dts-am335x-bone-common-add-collision-and-carrier.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0003-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
 	${git} "${DIR}/patches/beaglebone/dts/0004-am335x-bone-common-disable-default-clkout2_pin.patch"
+	${git} "${DIR}/patches/beaglebone/dts/0005-spi-omap2-mcspi-ti-pio-mode.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=4
+		number=5
 		cleanup
 	fi
 
