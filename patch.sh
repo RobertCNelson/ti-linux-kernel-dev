@@ -346,8 +346,25 @@ lts44_backports () {
 	fi
 	patch_backports
 
-	${git} "${DIR}/patches/backports/edt-ft5x06/0001-Input-edt-ft5x06-fix-setting-gain-offset-and-thresho.patch"
-	${git} "${DIR}/patches/backports/edt-ft5x06/0002-edt-ft5x06-add-invert_x-invert_y-swap_xy.patch"
+#	${git} "${DIR}/patches/backports/edt-ft5x06/0001-Input-edt-ft5x06-fix-setting-gain-offset-and-thresho.patch"
+#	${git} "${DIR}/patches/backports/edt-ft5x06/0002-edt-ft5x06-add-invert_x-invert_y-swap_xy.patch"
+
+	backport_tag="v4.8-rc7"
+	subsystem="touchscreen"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/
+		cp -v ~/linux-src/drivers/input/touchscreen/of_touchscreen.c ./drivers/input/touchscreen/
+		cp -v ~/linux-src/drivers/input/touchscreen/pixcir_i2c_ts.c ./drivers/input/touchscreen/
+		cp -v ~/linux-src/drivers/input/touchscreen/tsc200x-core.c ./drivers/input/touchscreen/
+		cp -v ~/linux-src/include/linux/input/touchscreen.h ./include/linux/input/
+
+		post_backports
+	fi
+	patch_backports
+	${git} "${DIR}/patches/backports/touchscreen/0002-edt-ft5x06-we-need-these-in-v4.4.x.patch"
 
 	echo "dir: lts44_backports"
 	#regenerate="enable"
