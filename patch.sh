@@ -911,9 +911,12 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/bbbw/0001-add-bbbw.patch"
 	${git} "${DIR}/patches/beaglebone/bbbw/0002-dts-am335x-boneblack-wireless.dts-working.patch"
+	${git} "${DIR}/patches/beaglebone/bbbw/0003-bbbw-disable-opp50-breaks-cpu0-cpufreq.patch"
+	${git} "${DIR}/patches/beaglebone/bbbw/0004-bbbw-control-wl18xx_bt_en-via-led-subsystem-instead-.patch"
+	${git} "${DIR}/patches/beaglebone/bbbw/0005-bbbw-control-wl18xx_wl_en-via-led-subsystem-instead-.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=2
+		number=5
 		cleanup
 	fi
 
