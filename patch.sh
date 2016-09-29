@@ -883,10 +883,11 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/bbgw/0001-add-beaglebone-green-wireless.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0002-am335x-bonegreen-wl1835-bluetooth-audio.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0003-bbgw-use-led-for-wl18xx_wl_en-wl18xx_bt_en.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0004-am335x-bonegreen-wireless-allow-both-options-old-way.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/bbgw"
-		number=3
+		number=4
 		cleanup
 	fi
 
@@ -1101,6 +1102,7 @@ beaglebone () {
 		device="am335x-olimex-som.dtb" ; dtb_makefile_append
 
 		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-wireless-led-hack.dtb" ; dtb_makefile_append
 
 		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
 
