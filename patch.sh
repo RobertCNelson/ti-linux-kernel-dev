@@ -921,6 +921,19 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/blue"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/blue/0001-add-am335x-boneblue.dtb.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
 	echo "dir: beaglebone/tre"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -1096,6 +1109,8 @@ beaglebone () {
 		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblue.dtb" ; dtb_makefile_append
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
