@@ -928,9 +928,10 @@ beaglebone () {
 	fi
 
 	${git} "${DIR}/patches/beaglebone/blue/0001-add-am335x-boneblue.dtb.patch"
+	${git} "${DIR}/patches/beaglebone/blue/0002-am335x-boneblue-universal.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
+		number=2
 		cleanup
 	fi
 
