@@ -1,7 +1,7 @@
-From bafc88dbd1f4376e303c52a4efdb8bf237189cb5 Mon Sep 17 00:00:00 2001
+From 3fe540fc382542d6502412cb98f61a19c794f544 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 29 Sep 2016 09:18:35 -0500
-Subject: [PATCH 1/2] backports: tty: from: linux.git
+Date: Mon, 3 Oct 2016 14:26:41 -0500
+Subject: [PATCH] backports: tty: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
@@ -25,7 +25,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/tty/serial/8250/8250_moxa.c                | 157 +++++++
  drivers/tty/serial/8250/8250_mtk.c                 |  16 +-
  drivers/tty/serial/{of_serial.c => 8250/8250_of.c} |  39 +-
- drivers/tty/serial/8250/8250_omap.c                | 107 ++---
+ drivers/tty/serial/8250/8250_omap.c                | 121 ++----
  drivers/tty/serial/8250/8250_pci.c                 | 286 +++---------
  drivers/tty/serial/8250/8250_pnp.c                 |  48 +-
  drivers/tty/serial/8250/8250_port.c                | 482 ++++++++++++++++-----
@@ -42,7 +42,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/serial_8250.h                        |   9 +-
  include/linux/serial_core.h                        |  28 +-
  include/uapi/linux/serial.h                        |   1 +
- 37 files changed, 1350 insertions(+), 1324 deletions(-)
+ 37 files changed, 1350 insertions(+), 1338 deletions(-)
  create mode 100644 drivers/tty/serial/8250/8250_bcm2835aux.c
  create mode 100644 drivers/tty/serial/8250/8250_moxa.c
  rename drivers/tty/serial/{of_serial.c => 8250/8250_of.c} (91%)
@@ -1540,7 +1540,7 @@ index de50296..c7ed3d2 100644
  	.probe = of_platform_serial_probe,
  	.remove = of_platform_serial_remove,
 diff --git a/drivers/tty/serial/8250/8250_omap.c b/drivers/tty/serial/8250/8250_omap.c
-index d85270a..6f76051 100644
+index 3827095..6f76051 100644
 --- a/drivers/tty/serial/8250/8250_omap.c
 +++ b/drivers/tty/serial/8250/8250_omap.c
 @@ -22,7 +22,6 @@
@@ -1721,7 +1721,44 @@ index d85270a..6f76051 100644
  		}
  	}
  #endif
-@@ -1421,8 +1400,6 @@ static int omap8250_runtime_suspend(struct device *dev)
+@@ -1324,18 +1303,8 @@ static void omap8250_complete(struct device *dev)
+ static int omap8250_suspend(struct device *dev)
+ {
+ 	struct omap8250_priv *priv = dev_get_drvdata(dev);
+-	struct uart_8250_port *up = serial8250_get_port(priv->line);
+ 
+ 	serial8250_suspend_port(priv->line);
+-
+-	pm_runtime_get_sync(dev);
+-	if (device_may_wakeup(dev))
+-		serial_out(up, UART_OMAP_WER, priv->wer);
+-	else
+-		serial_out(up, UART_OMAP_WER, 0);
+-	pm_runtime_mark_last_busy(dev);
+-	pm_runtime_put_autosuspend(dev);
+-
+ 	flush_work(&priv->qos_work);
+ 	return 0;
+ }
+@@ -1415,8 +1384,6 @@ static int omap8250_runtime_suspend(struct device *dev)
+ 	}
+ 
+ 	if (priv->habit & UART_ERRATA_CLOCK_DISABLE) {
+-		/* Save module level wakeup register */
+-		u32 wer = serial_in(up, UART_OMAP_WER);
+ 		int ret;
+ 
+ 		ret = omap8250_soft_reset(dev);
+@@ -1425,8 +1392,6 @@ static int omap8250_runtime_suspend(struct device *dev)
+ 
+ 		/* Restore to UART mode after reset (for wakeup) */
+ 		omap8250_update_mdr1(up, priv);
+-		/* Restore module level wakeup register */
+-		serial_out(up, UART_OMAP_WER, wer);
+ 	}
+ 
+ 	if (up->dma && up->dma->rxchan)
+@@ -1435,8 +1400,6 @@ static int omap8250_runtime_suspend(struct device *dev)
  	priv->latency = PM_QOS_CPU_DMA_LAT_DEFAULT_VALUE;
  	schedule_work(&priv->qos_work);
  
@@ -1730,7 +1767,7 @@ index d85270a..6f76051 100644
  	return 0;
  }
  
-@@ -1436,8 +1413,6 @@ static int omap8250_runtime_resume(struct device *dev)
+@@ -1450,8 +1413,6 @@ static int omap8250_runtime_resume(struct device *dev)
  	if (!priv)
  		return 0;
  
