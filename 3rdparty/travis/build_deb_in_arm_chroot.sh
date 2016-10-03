@@ -4,7 +4,7 @@ VERSION=jessie
 CHROOT_ARCH=armhf
 MIRROR=http://httpredir.debian.org/debian
 GUEST_DEPENDENCIES="build-essential git sudo lzop"
-DEBOOT="1.0.81"
+DEBOOT="1.0.82"
 
 function run_build {
 	cd ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}

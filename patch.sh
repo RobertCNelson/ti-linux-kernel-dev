@@ -303,7 +303,7 @@ lts44_backports () {
 		exit 2
 	fi
 
-	backport_tag="v4.7.5"
+	backport_tag="v4.7.6"
 	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -349,7 +349,7 @@ lts44_backports () {
 #	${git} "${DIR}/patches/backports/edt-ft5x06/0001-Input-edt-ft5x06-fix-setting-gain-offset-and-thresho.patch"
 #	${git} "${DIR}/patches/backports/edt-ft5x06/0002-edt-ft5x06-add-invert_x-invert_y-swap_xy.patch"
 
-	backport_tag="v4.8-rc8"
+	backport_tag="v4.8"
 	subsystem="touchscreen"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -1288,7 +1288,8 @@ travis () {
 		cp -v "${DIR}/3rdparty/travis/.travis.yml" "${DIR}/KERNEL/.travis.yml"
 		git add -f .travis.yml
 		cp -v "${DIR}/3rdparty/travis/build_deb_in_arm_chroot.sh" "${DIR}/KERNEL/"
-		git add  -f build_deb_in_arm_chroot.sh
+		cp -v "${DIR}/3rdparty/travis/build_on_x86.sh" "${DIR}/KERNEL/"
+		git add -f build_*.sh
 		git commit -a -m 'enable: travis: https://travis-ci.org/beagleboard/linux' -s
 		git format-patch -1 -o "${DIR}/patches/travis"
 		exit 2
