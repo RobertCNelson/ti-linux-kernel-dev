@@ -297,10 +297,12 @@ lts44_backports () {
 	fi
 
 	${git} "${DIR}/patches/backports/tty/0002-rt-Improve-the-serial-console-PASS_LIMIT.patch"
+	${git} "${DIR}/patches/backports/tty/0003-serial-8250-omap-Enable-UART-module-wakeup-based-on-.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		git format-patch -2 -o ../patches/backports/tty/
-		exit 2
+		wdir="backports/tty"
+		number=3
+		cleanup
 	fi
 
 	backport_tag="v4.7.6"
