@@ -948,23 +948,21 @@ beaglebone () {
 		cleanup
 	fi
 
-	#echo "dir: beaglebone/CTAG"
+	echo "dir: beaglebone/ctag"
 	#regenerate="enable"
-	#if [ "x${regenerate}" = "xenable" ] ; then
-	#	start_cleanup
-	#fi
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
 
-	#${git} "${DIR}/patches/beaglebone/CTAG/0001-Added-driver-and-device-tree-for-CTAG-face2-4-Audio-.patch"
-	#${git} "${DIR}/patches/beaglebone/CTAG/0002-Added-support-for-higher-sampling-rates-in-AD193X-dr.patch"
-	#${git} "${DIR}/patches/beaglebone/CTAG/0003-Added-support-for-AD193X-and-CTAG-face2-4-Audio-Card.patch"
-	#${git} "${DIR}/patches/beaglebone/CTAG/0004-Modified-ASOC-platform-driver-for-McASP-to-use-async.patch"
-	#${git} "${DIR}/patches/beaglebone/CTAG/0005-Changed-descriptions-in-files-belonging-to-CTAG-face.patch"
-	#${git} "${DIR}/patches/beaglebone/CTAG/0006-add-black-version-of-ctag-face-pass-uboot-cape-ctag-.patch"
+	${git} "${DIR}/patches/beaglebone/ctag/0001-Added-support-for-CTAG-face2-4-Audio-Card.patch"
+	${git} "${DIR}/patches/beaglebone/ctag/0002-Added-device-tree-for-BB-X15-and-CTAG-face2-4.patch"
+	${git} "${DIR}/patches/beaglebone/ctag/0003-Changed-SW-SPI-pins-due-to-collision-with-Bela.patch"
 
-	#if [ "x${regenerate}" = "xenable" ] ; then
-	#	number=6
-	#	cleanup
-	#fi
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="beaglebone/ctag"
+		number=3
+		cleanup
+	fi
 
 	echo "dir: beaglebone/capes"
 	#regenerate="enable"
@@ -1133,10 +1131,13 @@ beaglebone () {
 
 		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
 
-		#device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
-		#device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
 
 		device="am335x-vsc8531bbb.dtb" ; dtb_makefile_append
+
+		device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append
+		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
