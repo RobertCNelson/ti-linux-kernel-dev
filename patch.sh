@@ -130,20 +130,15 @@ aufs4 () {
 		${git_bin} commit -a -m 'merge: aufs4-standalone' -s
 
 		${git_bin} format-patch -4 -o ../patches/aufs4/
-		exit 2
-	fi
-
-	${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
-	${git} "${DIR}/patches/aufs4/0002-merge-aufs4-base.patch"
-	${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
-	${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: aufs4"
 
 		cd ../
 		if [ ! -f ./aufs4-standalone ] ; then
+			${git_bin} clone https://github.com/sfjro/aufs4-standalone
+			cd ./aufs4-standalone
+			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
+			cd ../
+		else
+			rm -rf ./aufs4-standalone || true
 			${git_bin} clone https://github.com/sfjro/aufs4-standalone
 			cd ./aufs4-standalone
 			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
@@ -170,12 +165,17 @@ aufs4 () {
 		start_cleanup
 	fi
 
+	${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
+	${git} "${DIR}/patches/aufs4/0002-merge-aufs4-base.patch"
+	${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
+	${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
 	${git} "${DIR}/patches/aufs4/0005-merge-aufs4.patch"
 	${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		${git_bin} format-patch -6 -o ../patches/aufs4/
-		exit 2
+		wdir="aufs4"
+		number=6
+		cleanup
 	fi
 }
 
@@ -305,7 +305,7 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.7.6"
+	backport_tag="v4.7.7"
 	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -348,10 +348,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
-#	${git} "${DIR}/patches/backports/edt-ft5x06/0001-Input-edt-ft5x06-fix-setting-gain-offset-and-thresho.patch"
-#	${git} "${DIR}/patches/backports/edt-ft5x06/0002-edt-ft5x06-add-invert_x-invert_y-swap_xy.patch"
-
-	backport_tag="v4.8"
+	backport_tag="v4.8.1"
 	subsystem="touchscreen"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
