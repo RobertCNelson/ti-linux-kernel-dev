@@ -825,9 +825,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/eqep/0001-Provides-a-sysfs-interface-to-the-eQEP-hardware-on-t.patch"
 	${git} "${DIR}/patches/beaglebone/eqep/0002-tieqep.c-devres-remove-devm_request_and_ioremap.patch"
 	${git} "${DIR}/patches/beaglebone/eqep/0003-tieqep-cleanup.patch"
+	${git} "${DIR}/patches/beaglebone/eqep/0004-fix-tieqep.c.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=4
 		cleanup
 	fi
 
@@ -1136,7 +1137,8 @@ beaglebone () {
 
 		device="am335x-vsc8531bbb.dtb" ; dtb_makefile_append
 
-		device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append
+		#already defined once...
+		#device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append
 		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
