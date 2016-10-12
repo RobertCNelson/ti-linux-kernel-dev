@@ -32,9 +32,11 @@ patch_kernel () {
 	export DIR
 	/bin/sh -e "${DIR}/patch.sh" || { ${git_bin} add . ; exit 1 ; }
 
-	if [ ! "${RUN_BISECT}" ] ; then
-		${git_bin} add --all
-		${git_bin} commit --allow-empty -a -m "${KERNEL_TAG}${BUILD} patchset"
+	if [ ! -f "${DIR}/.yakbuild" ] ; then
+		if [ ! "${RUN_BISECT}" ] ; then
+			${git_bin} add --all
+			${git_bin} commit --allow-empty -a -m "${KERNEL_TAG}${BUILD} patchset"
+		fi
 	fi
 
 	cd "${DIR}/" || exit
@@ -243,9 +245,7 @@ if [ "${FULL_REBUILD}" ] ; then
 		/bin/sh -e "${DIR}/scripts/bisect.sh" || { exit 1 ; }
 	fi
 
-	if [ ! -f "${DIR}/.yakbuild" ] ; then
-		patch_kernel
-	fi
+	patch_kernel
 	flash_kernel_db
 	copy_defconfig
 fi
