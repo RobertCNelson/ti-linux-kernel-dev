@@ -915,9 +915,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/bbbw/0003-bbbw-disable-opp50-breaks-cpu0-cpufreq.patch"
 	${git} "${DIR}/patches/beaglebone/bbbw/0004-bbbw-control-wl18xx_bt_en-via-led-subsystem-instead-.patch"
 	${git} "${DIR}/patches/beaglebone/bbbw/0005-bbbw-control-wl18xx_wl_en-via-led-subsystem-instead-.patch"
+	${git} "${DIR}/patches/beaglebone/bbbw/0006-bbbw-add-emmc-overlay.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
+		number=6
 		cleanup
 	fi
 
@@ -1109,6 +1110,8 @@ beaglebone () {
 		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblue.dtb" ; dtb_makefile_append
 
