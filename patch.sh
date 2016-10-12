@@ -324,9 +324,13 @@ lts44_backports () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -vr ~/linux-src/drivers/i2c/* ./drivers/i2c/
-		cp -v  ~/linux-src/include/linux/i2c-mux.h ./include/linux/
+		cp -v  ~/linux-src/drivers/i2c/i2c-mux.c ./drivers/i2c/
+		cp -v  ~/linux-src/drivers/i2c/i2c-core.c ./drivers/i2c/
+		cp -v  ~/linux-src/drivers/i2c/muxes/i2c-mux-pca954x.c ./drivers/i2c/muxes/
+		cp -v  ~/linux-src/drivers/i2c/muxes/i2c-mux-pinctrl.c ./drivers/i2c/muxes/
+		cp -v  ~/linux-src/drivers/i2c/muxes/i2c-arb-gpio-challenge.c ./drivers/i2c/muxes/
 		cp -v  ~/linux-src/include/linux/i2c.h ./include/linux/
+		cp -v  ~/linux-src/include/linux/i2c-mux.h ./include/linux/
 
 		post_backports
 	fi
