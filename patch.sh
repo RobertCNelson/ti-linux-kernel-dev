@@ -324,9 +324,14 @@ lts44_backports () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -vr ~/linux-src/drivers/i2c/* ./drivers/i2c/
-		cp -v  ~/linux-src/include/linux/i2c-mux.h ./include/linux/
+		cp -v  ~/linux-src/drivers/i2c/i2c-mux.c ./drivers/i2c/
+		cp -v  ~/linux-src/drivers/i2c/i2c-core.c ./drivers/i2c/
+		cp -v  ~/linux-src/drivers/i2c/busses/i2c-omap.c ./drivers/i2c/busses/
+		cp -v  ~/linux-src/drivers/i2c/muxes/i2c-mux-pca954x.c ./drivers/i2c/muxes/
+		cp -v  ~/linux-src/drivers/i2c/muxes/i2c-mux-pinctrl.c ./drivers/i2c/muxes/
+		cp -v  ~/linux-src/drivers/i2c/muxes/i2c-arb-gpio-challenge.c ./drivers/i2c/muxes/
 		cp -v  ~/linux-src/include/linux/i2c.h ./include/linux/
+		cp -v  ~/linux-src/include/linux/i2c-mux.h ./include/linux/
 
 		post_backports
 	fi
@@ -979,10 +984,11 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/capes/0004-add-am335x-boneblack-bbbmini.dts.patch"
 	${git} "${DIR}/patches/beaglebone/capes/0005-add-lcd-am335x-boneblack-bbb-exp-c.dtb-am335x-bonebl.patch"
 	${git} "${DIR}/patches/beaglebone/capes/0006-bb-audio-cape.patch"
+	${git} "${DIR}/patches/beaglebone/capes/0007-add-am335x-boneblack-lcd-ct43.dtb.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/capes"
-		number=6
+		number=7
 		cleanup
 	fi
 
@@ -1140,6 +1146,7 @@ beaglebone () {
 		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
 
 		device="am335x-vsc8531bbb.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-lcd-ct43.dtb" ; dtb_makefile_append
 
 		#already defined once...
 		#device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append
