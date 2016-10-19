@@ -890,10 +890,11 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/bbgw/0002-am335x-bonegreen-wl1835-bluetooth-audio.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0003-bbgw-use-led-for-wl18xx_wl_en-wl18xx_bt_en.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0004-am335x-bonegreen-wireless-allow-both-options-old-way.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0005-set-mmc3-speed-25Mhz.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/bbgw"
-		number=4
+		number=5
 		cleanup
 	fi
 
