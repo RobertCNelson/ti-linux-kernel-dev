@@ -891,10 +891,11 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/bbgw/0003-bbgw-use-led-for-wl18xx_wl_en-wl18xx_bt_en.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0004-am335x-bonegreen-wireless-allow-both-options-old-way.patch"
 	${git} "${DIR}/patches/beaglebone/bbgw/0005-set-mmc3-speed-25Mhz.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0006-bbgw-bt_aud_out-must-be-pulled-low-otherwise-wifi-is.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/bbgw"
-		number=5
+		number=6
 		cleanup
 	fi
 
