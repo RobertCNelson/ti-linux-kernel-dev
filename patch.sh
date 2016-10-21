@@ -924,9 +924,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/bbbw/0004-bbbw-control-wl18xx_bt_en-via-led-subsystem-instead-.patch"
 	${git} "${DIR}/patches/beaglebone/bbbw/0005-bbbw-control-wl18xx_wl_en-via-led-subsystem-instead-.patch"
 	${git} "${DIR}/patches/beaglebone/bbbw/0006-bbbw-add-emmc-overlay.patch"
+	${git} "${DIR}/patches/beaglebone/bbbw/0007-bbbw-use-wl_en_regualtor.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=6
+		number=8
 		cleanup
 	fi
 
@@ -1121,8 +1122,6 @@ beaglebone () {
 		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
-		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
-
 		device="am335x-boneblue.dtb" ; dtb_makefile_append
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
@@ -1130,7 +1129,6 @@ beaglebone () {
 		device="am335x-olimex-som.dtb" ; dtb_makefile_append
 
 		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
-		device="am335x-bonegreen-wireless-led-hack.dtb" ; dtb_makefile_append
 
 		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
 
@@ -1138,6 +1136,7 @@ beaglebone () {
 		device="am335x-boneblack-cape-bone-argus.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append

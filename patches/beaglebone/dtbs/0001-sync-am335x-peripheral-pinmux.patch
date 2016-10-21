@@ -1,6 +1,6 @@
-From c34a7db858703bafb1dc3a3f2b3506e67adc9b4a Mon Sep 17 00:00:00 2001
+From 5b8c8e4b300dd70a27110b297208005d6af52215 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 11 Oct 2016 21:51:51 -0500
+Date: Fri, 21 Oct 2016 11:08:33 -0500
 Subject: [PATCH] sync: am335x-peripheral/pinmux
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -27,8 +27,6 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../arm/boot/dts/am335x-boneblack-hdmi-overlay.dts |  28 ++++-
  .../boot/dts/am335x-boneblack-nhdmi-overlay.dts    |  28 ++++-
  arch/arm/boot/dts/am335x-boneblack-overlay.dts     |  17 ++-
- .../dts/am335x-boneblack-wireless-emmc-overlay.dts |  14 +--
- arch/arm/boot/dts/am335x-boneblack-wireless.dts    |  14 ++-
  arch/arm/boot/dts/am335x-boneblack-wl1835mod.dts   |  11 +-
  arch/arm/boot/dts/am335x-boneblack.dts             |  11 +-
  arch/arm/boot/dts/am335x-boneblue.dts              |   3 +-
@@ -44,7 +42,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/am335x-peripheral-ttyS5.dtsi     |  13 +++
  arch/arm/boot/dts/am335x-sancloud-bbe.dts          |  87 +++++++++-----
  arch/arm/boot/dts/am57xx-beagle-x15-revb1-ctag.dts |  85 ++++++++++++++
- 39 files changed, 1008 insertions(+), 159 deletions(-)
+ 37 files changed, 989 insertions(+), 150 deletions(-)
  create mode 100644 arch/arm/boot/dts/am335x-bone-emmc-in-reset.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-pinmux-can1.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-pinmux-emmc.dtsi
@@ -1223,84 +1221,6 @@ index e2aca6e..b17cc21 100644
 -&rtc {
 -	system-power-controller;
 -};
-diff --git a/arch/arm/boot/dts/am335x-boneblack-wireless-emmc-overlay.dts b/arch/arm/boot/dts/am335x-boneblack-wireless-emmc-overlay.dts
-index cbab12b..ad1b5ed 100644
---- a/arch/arm/boot/dts/am335x-boneblack-wireless-emmc-overlay.dts
-+++ b/arch/arm/boot/dts/am335x-boneblack-wireless-emmc-overlay.dts
-@@ -9,8 +9,10 @@
- 
- #include "am33xx.dtsi"
- #include "am335x-bone-common.dtsi"
--#include "am33xx-overlay-edma-fix.dtsi"
-+/* #include "am33xx-overlay-edma-fix.dtsi" */
-+/* #include <dt-bindings/display/tda998x.h> */
- #include "am335x-boneblack-wl1835.dtsi"
-+/* #include "am335x-bone-jtag.dtsi" */
- 
- /* pruss: pick one: */
- 
-@@ -64,12 +66,8 @@
- };
- 
- &cpu0_opp_table {
--	/*
--	 * All PG 2.0 silicon may not support 1GHz but some of the early
--	 * BeagleBone Blacks have PG 2.0 silicon which is guaranteed
--	 * to support 1GHz OPP so enable it for PG 2.0 on this board.
--	 */
--	oppnitro@1000000000 {
--		opp-supported-hw = <0x06 0x0100>;
-+	//osd335x
-+	opp50@300000000 {
-+		status = "disabled";
- 	};
- };
-diff --git a/arch/arm/boot/dts/am335x-boneblack-wireless.dts b/arch/arm/boot/dts/am335x-boneblack-wireless.dts
-index 8fa31ff..d253519 100644
---- a/arch/arm/boot/dts/am335x-boneblack-wireless.dts
-+++ b/arch/arm/boot/dts/am335x-boneblack-wireless.dts
-@@ -9,7 +9,7 @@
- 
- #include "am33xx.dtsi"
- #include "am335x-bone-common.dtsi"
--#include "am33xx-overlay-edma-fix.dtsi"
-+/* #include "am33xx-overlay-edma-fix.dtsi" */
- #include <dt-bindings/display/tda998x.h>
- #include "am335x-boneblack-wl1835.dtsi"
- /* #include "am335x-bone-jtag.dtsi" */
-@@ -66,6 +66,7 @@
- };
- 
- &cpu0_opp_table {
-+	//osd335x
- 	opp50@300000000 {
- 		status = "disabled";
- 	};
-@@ -116,6 +117,14 @@
- 
- &lcdc {
- 	status = "okay";
-+
-+	/* If you want to get 24 bit RGB and 16 BGR mode instead of
-+	 * current 16 bit RGB and 24 BGR modes, set the propety
-+	 * below to "crossed" and uncomment the video-ports -property
-+	 * in tda19988 node.
-+	 */
-+	blue-and-red-wiring = "straight";
-+
- 	port {
- 		lcdc_0: endpoint@0 {
- 			remote-endpoint = <&hdmi_0>;
-@@ -132,6 +141,9 @@
- 		pinctrl-0 = <&nxp_hdmi_bonelt_pins>;
- 		pinctrl-1 = <&nxp_hdmi_bonelt_off_pins>;
- 
-+		/* Convert 24bit BGR to RGB, e.g. cross red and blue wiring */
-+		/* video-ports = <0x234501>; */
-+
- 		#sound-dai-cells = <0>;
- 		audio-ports = <	AFMT_I2S	0x03>;
- 
 diff --git a/arch/arm/boot/dts/am335x-boneblack-wl1835mod.dts b/arch/arm/boot/dts/am335x-boneblack-wl1835mod.dts
 index 7446857..1b7fc5f 100644
 --- a/arch/arm/boot/dts/am335x-boneblack-wl1835mod.dts
