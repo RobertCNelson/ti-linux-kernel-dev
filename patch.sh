@@ -305,7 +305,7 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="b67be92feb486f800d80d72c67fd87b47b79b18e"
+	backport_tag="v4.9-rc1"
 	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -318,7 +318,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
-	backport_tag="v4.7.7"
+	backport_tag="v4.7.8"
 	subsystem="i2c"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -354,7 +354,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
-	backport_tag="v4.8.1"
+	backport_tag="v4.8.3"
 	subsystem="touchscreen"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -1104,6 +1104,7 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="beaglebone/dtbs"
 		number=1
 		cleanup
 	fi
@@ -1231,6 +1232,7 @@ x15 () {
 	${git} "${DIR}/patches/x15/fixes/0004-mmc-block-Use-the-mmc-host-device-index-as-the-mmcbl.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="x15/fixes"
 		number=4
 		cleanup
 	fi
