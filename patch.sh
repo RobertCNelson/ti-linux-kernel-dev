@@ -886,16 +886,11 @@ beaglebone () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/beaglebone/bbgw/0001-add-beaglebone-green-wireless.patch"
-	${git} "${DIR}/patches/beaglebone/bbgw/0002-am335x-bonegreen-wl1835-bluetooth-audio.patch"
-	${git} "${DIR}/patches/beaglebone/bbgw/0003-bbgw-use-led-for-wl18xx_wl_en-wl18xx_bt_en.patch"
-	${git} "${DIR}/patches/beaglebone/bbgw/0004-am335x-bonegreen-wireless-allow-both-options-old-way.patch"
-	${git} "${DIR}/patches/beaglebone/bbgw/0005-set-mmc3-speed-25Mhz.patch"
-	${git} "${DIR}/patches/beaglebone/bbgw/0006-bbgw-bt_aud_out-must-be-pulled-low-otherwise-wifi-is.patch"
+	${git} "${DIR}/patches/beaglebone/bbgw/0001-ARM-dts-add-am335x-bonegreen-wireless.dtb.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/bbgw"
-		number=6
+		number=1
 		cleanup
 	fi
 
@@ -918,16 +913,11 @@ beaglebone () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/beaglebone/bbbw/0001-add-bbbw.patch"
-	${git} "${DIR}/patches/beaglebone/bbbw/0002-dts-am335x-boneblack-wireless.dts-working.patch"
-	${git} "${DIR}/patches/beaglebone/bbbw/0003-bbbw-disable-opp50-breaks-cpu0-cpufreq.patch"
-	${git} "${DIR}/patches/beaglebone/bbbw/0004-bbbw-control-wl18xx_bt_en-via-led-subsystem-instead-.patch"
-	${git} "${DIR}/patches/beaglebone/bbbw/0005-bbbw-control-wl18xx_wl_en-via-led-subsystem-instead-.patch"
-	${git} "${DIR}/patches/beaglebone/bbbw/0006-bbbw-add-emmc-overlay.patch"
-	${git} "${DIR}/patches/beaglebone/bbbw/0007-bbbw-use-wl_en_regualtor.patch"
+	${git} "${DIR}/patches/beaglebone/bbbw/0001-ARM-dts-add-am335x-boneblack-wireless.dtb.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=8
+		wdir="beaglebone/bbbw"
+		number=1
 		cleanup
 	fi
 
@@ -937,13 +927,11 @@ beaglebone () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/beaglebone/blue/0001-add-am335x-boneblue.dtb.patch"
-	${git} "${DIR}/patches/beaglebone/blue/0002-am335x-boneblue-universal.patch"
-	${git} "${DIR}/patches/beaglebone/blue/0003-ARM-dts-am335x-boneblue.dtb-enable-pruss-rproc.patch"
-	${git} "${DIR}/patches/beaglebone/blue/0004-blue-use-wlan_en_regulator.patch"
+	${git} "${DIR}/patches/beaglebone/blue/0001-ARM-dts-add-am335x-boneblue.dtb.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=4
+		wdir="beaglebone/blue"
+		number=1
 		cleanup
 	fi
 
