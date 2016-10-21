@@ -940,9 +940,10 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/blue/0001-add-am335x-boneblue.dtb.patch"
 	${git} "${DIR}/patches/beaglebone/blue/0002-am335x-boneblue-universal.patch"
 	${git} "${DIR}/patches/beaglebone/blue/0003-ARM-dts-am335x-boneblue.dtb-enable-pruss-rproc.patch"
+	${git} "${DIR}/patches/beaglebone/blue/0004-blue-use-wlan_en_regulator.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=3
+		number=4
 		cleanup
 	fi
 
