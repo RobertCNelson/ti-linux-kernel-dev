@@ -368,10 +368,11 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0003-drivers-iio-ti_am335x_adc-add-dma-support.patch"
 	${git} "${DIR}/patches/backports/iio/0004-ARM-dts-am33xx-add-DMA-properties-for-tscadc.patch"
 	${git} "${DIR}/patches/backports/iio/0005-ARM-dts-am4372-add-DMA-properties-for-tscadc.patch"
+	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="backports/iio"
-		number=5
+		number=6
 		cleanup
 	fi
 
