@@ -337,6 +337,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
+	backport_tag="v4.8.4"
 	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -350,9 +351,28 @@ lts44_backports () {
 		cp -v  ~/linux-src/include/linux/platform_data/st_sensors_pdata.h ./include/linux/platform_data/
 		cp -v  ~/linux-src/include/uapi/linux/iio/types.h ./include/uapi/linux/iio/types.h
 
+		cp -v  ~/linux-src/include/linux/mfd/ti_am335x_tscadc.h ./include/linux/mfd/ti_am335x_tscadc.h
+		cp -v  ~/linux-src/drivers/mfd/ti_am335x_tscadc.c ./drivers/mfd/ti_am335x_tscadc.c
+
 		post_backports
 	fi
 	patch_backports
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/backports/iio/0002-mfd-ti_am335x_tscadc-store-physical-address.patch"
+	${git} "${DIR}/patches/backports/iio/0003-drivers-iio-ti_am335x_adc-add-dma-support.patch"
+	${git} "${DIR}/patches/backports/iio/0004-ARM-dts-am33xx-add-DMA-properties-for-tscadc.patch"
+	${git} "${DIR}/patches/backports/iio/0005-ARM-dts-am4372-add-DMA-properties-for-tscadc.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="backports/iio"
+		number=5
+		cleanup
+	fi
 
 	backport_tag="v4.8.4"
 	subsystem="touchscreen"
