@@ -928,10 +928,11 @@ beaglebone () {
 	fi
 
 	${git} "${DIR}/patches/beaglebone/blue/0001-ARM-dts-add-am335x-boneblue.dtb.patch"
+	${git} "${DIR}/patches/beaglebone/blue/0002-add-am335x-boneblack-roboticscape.dts.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/blue"
-		number=1
+		number=2
 		cleanup
 	fi
 
@@ -1130,6 +1131,7 @@ beaglebone () {
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
 
 		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
 
