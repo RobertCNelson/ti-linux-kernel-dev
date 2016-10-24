@@ -353,6 +353,7 @@ lts44_backports () {
 
 		cp -v  ~/linux-src/include/linux/mfd/ti_am335x_tscadc.h ./include/linux/mfd/ti_am335x_tscadc.h
 		cp -v  ~/linux-src/drivers/mfd/ti_am335x_tscadc.c ./drivers/mfd/ti_am335x_tscadc.c
+		cp -v  ~/linux-src/drivers/input/touchscreen/ti_am335x_tsc.c ./drivers/input/touchscreen/ti_am335x_tsc.c
 
 		post_backports
 	fi
