@@ -391,7 +391,20 @@ lts44_backports () {
 		post_backports
 	fi
 	patch_backports
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
 	${git} "${DIR}/patches/backports/touchscreen/0002-edt-ft5x06-we-need-these-in-v4.4.x.patch"
+	${git} "${DIR}/patches/backports/touchscreen/0003-ar1021_i2c-invert-swap.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="backports/touchscreen"
+		number=3
+		cleanup
+	fi
 
 	echo "dir: lts44_backports"
 	#regenerate="enable"
