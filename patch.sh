@@ -984,6 +984,20 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/sirius"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/sirius/0001-ARM-dts-am335x-siriusDEB.dtb.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="beaglebone/sirius"
+		number=1
+		cleanup
+	fi
+
 	echo "dir: beaglebone/ctag"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -1179,6 +1193,8 @@ beaglebone () {
 		#already defined once...
 		#device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append
 		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
+
+		device="am335x-siriusDEB.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
