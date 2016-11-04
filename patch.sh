@@ -22,6 +22,8 @@
 
 # Split out, so build_kernel.sh and build_deb.sh can share..
 
+shopt -s nullglob
+
 . ${DIR}/version.sh
 if [ -f ${DIR}/system.sh ] ; then
 	. ${DIR}/system.sh
@@ -63,6 +65,28 @@ cleanup () {
 		fi
 	fi
 	exit 2
+}
+
+dir () {
+	wdir="$1"
+	if [ -d "${DIR}/patches/$wdir" ]; then
+		echo "dir: $wdir"
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			start_cleanup
+		fi
+
+		number=
+		for p in "${DIR}/patches/$wdir/"*.patch; do
+			${git} "$p"
+			number=$(( $number + 1 ))
+		done
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			cleanup
+		fi
+	fi
+	unset wdir
 }
 
 cherrypick () {
@@ -285,33 +309,22 @@ fixes () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/fixes/0001-kbuild-add-fno-PIE.patch"
-	${git} "${DIR}/patches/fixes/0002-kbuild-modversions-for-EXPORT_SYMBOL-for-asm.patch"
-	${git} "${DIR}/patches/fixes/0003-kbuild-provide-include-asm-asm-prototypes.h-for-ARM.patch"
-	#v4.9.0-rc3:
 	${git} "${DIR}/patches/fixes/0004-ARM-wire-up-new-pkey-syscalls.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="fixes"
-		number=4
+		number=1
 		cleanup
 	fi
 }
 
+build () {
+	dir 'build/kbuild'
+}
+
 drivers () {
-	echo "dir: drivers/spi"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/drivers/spi/0001-NFM-spi-spidev-allow-use-of-spidev-in-DT.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="drivers/spi"
-		number=1
-		cleanup
-	fi
+	dir 'drivers/spi'
+	dir 'drivers/pm_bus'
 
 	echo "dir: drivers/pm_opp"
 	#regenerate="enable"
@@ -381,34 +394,6 @@ drivers () {
 		cleanup
 	fi
 
-	echo "dir: drivers/ti/uio"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/drivers/ti/uio/0001-Making-the-uio-pruss-driver-work.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="drivers/ti/uio"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: drivers/ti/rpmsg"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/drivers/ti/rpmsg/0001-ARM-samples-seccomp-no-m32.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="drivers/ti/rpmsg"
-		number=1
-		cleanup
-	fi
-
 	#https://github.com/pantoniou/linux-beagle-track-mainline/tree/bbb-overlays
 	echo "dir: drivers/ti/bbb_overlays"
 	#regenerate="enable"
@@ -470,151 +455,79 @@ drivers () {
 		cleanup
 	fi
 
-	echo "dir: drivers/ti/cpsw"
+	echo "dir: drivers/ti/firmware"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/drivers/ti/cpsw/0001-cpsw-search-for-phy.patch"
+	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=summary
+	#git clone git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git
+
+	#cd ti-amx3-cm3-pm-firmware/
+	#git checkout origin/ti-v4.1.y-next -b tmp
+
+	#commit ee4acf427055d7e87d9d1d82296cbd05e388642e
+	#Author: Dave Gerlach <d-gerlach@ti.com>
+	#Date:   Tue Sep 6 14:33:11 2016 -0500
+	#
+	#    CM3: Firmware release 0x192
+	#    
+	#    This version, 0x192, includes the following changes:
+	#         - Fix DDR IO CTRL handling during suspend so both am335x and am437x
+	#           use optimal low power state and restore the exact previous
+	#           configuration.
+	#        - Explicitly configure PER state in standby, even though it is
+	#           configured to ON state to ensure proper state.
+	#         - Add new 'halt' flag in IPC_REG4 bit 11 to allow HLOS to configure
+	#           the suspend path to wait immediately before suspending the system
+	#           entirely to allow JTAG visiblity for debug.
+	#         - Fix board voltage scaling binaries i2c speed configuration in
+	#           order to properly configure 100khz operation.
+	#    
+	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
+
+	#cp -v bin/am* /opt/github/bb.org/ti-4.4/normal/KERNEL/firmware/
+
+	#git add -f ./firmware/am*
+
+	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="drivers/ti/cpsw"
+		wdir="drivers/ti/firmware"
 		number=1
 		cleanup
 	fi
 
-	echo "dir: drivers/ti/eqep"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
+	dir 'drivers/ti/cpsw'
+	dir 'drivers/ti/eqep'
+	dir 'drivers/ti/mcasp'
+	dir 'drivers/ti/mmc'
+	dir 'drivers/ti/rpmsg'
+	dir 'drivers/ti/rtc'
+	dir 'drivers/ti/serial'
+	dir 'drivers/ti/spi'
+	dir 'drivers/ti/uio'
 
-	${git} "${DIR}/patches/drivers/ti/eqep/0001-tieqep-forward-port-of-Nathaniel-Lewis-eQEP-driver.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="drivers/ti/eqep"
-		number=1
-		cleanup
-	fi
+	dir 'drivers/ti/gpio'
 }
 
 soc () {
-	echo "dir: soc/ti"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/soc/ti/0001-sync-with-ti-4.4.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="soc/ti"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: soc/ti/bone_common"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/soc/ti/bone_common/0001-ARM-dts-am335x-bone-common-update-leds-to-match-3.8..patch"
-	${git} "${DIR}/patches/soc/ti/bone_common/0002-ARM-dts-am335x-bone-common-add-collision-and-carrier.patch"
-	${git} "${DIR}/patches/soc/ti/bone_common/0003-ARM-dts-am335x-bone-common-disable-running-JTAG.patch"
-	${git} "${DIR}/patches/soc/ti/bone_common/0004-ARM-dts-am335x-bone-common-overlays.patch"
-	${git} "${DIR}/patches/soc/ti/bone_common/0005-ARM-dts-am335x-bone-common-rtc-defined-in-common.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="soc/ti/bone_common"
-		number=5
-		cleanup
-	fi
-
-	echo "dir: soc/ti/bbg"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/soc/ti/bbg/0001-NFM-ARM-dts-am335x-bonegreen.dts-disable-usart-for-o.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="soc/ti/bbg"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: soc/ti/bbgw"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/soc/ti/bbgw/0001-ARM-dts-add-am335x-bonegreen-wireless.dtb.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="soc/ti/bbgw"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: soc/ti/bbbw"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/soc/ti/bbbw/0001-ARM-dts-add-am335x-boneblack-wireless.dtb.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="soc/ti/bbbw"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: soc/ti/blue"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/soc/ti/blue/0001-ARM-dts-add-am335x-boneblue.dtb.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="soc/ti/blue"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: soc/ti/sancloud"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/soc/ti/sancloud/0001-add-am335x-sancloud-bbe.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="soc/ti/sancloud"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: soc/ti/tre"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/soc/ti/tre/0001-add-am335x-arduino-tre.dts.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="soc/ti/tre"
-		number=1
-		cleanup
-	fi
+#	dir 'soc/exynos'
+#	dir 'soc/imx/udoo'
+#	dir 'soc/imx/wandboard'
+#	dir 'soc/imx'
+#	dir 'soc/sunxi'
+	dir 'soc/ti'
+	dir 'soc/ti/bone_common'
+	dir 'soc/ti/bbg'
+	dir 'soc/ti/bbgw'
+	dir 'soc/ti/bbbw'
+	dir 'soc/ti/blue'
+	dir 'soc/ti/sancloud'
+	dir 'soc/ti/tre'
+	dir 'soc/ti/abbbi'
+	dir 'soc/ti/am335x_olimex_som'
 
 	echo "dir: soc/ti/opp"
 	#regenerate="enable"
@@ -637,6 +550,8 @@ soc () {
 		number=8
 		cleanup
 	fi
+
+	dir 'soc/ti/beaglebone_capes'
 }
 
 dtb_makefile_append () {
@@ -644,83 +559,6 @@ dtb_makefile_append () {
 }
 
 beaglebone () {
-	echo "dir: beaglebone/pinmux-helper"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0001-BeagleBone-pinmux-helper.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0002-pinmux-helper-Add-runtime-configuration-capability.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0003-pinmux-helper-Switch-to-using-kmalloc.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0004-gpio-Introduce-GPIO-OF-helper.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0005-Add-dir-changeable-property-to-gpio-of-helper.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0006-am33xx.dtsi-add-ocp-label.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0007-beaglebone-added-expansion-header-to-dtb.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0008-bone-pinmux-helper-Add-support-for-mode-device-tree-.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0009-pinmux-helper-add-P8_37_pinmux-P8_38_pinmux.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0010-pinmux-helper-hdmi.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0011-pinmux-helper-can1.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0012-Remove-CONFIG_EXPERIMENTAL-dependency-on-CONFIG_GPIO.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0013-pinmux-helper-add-P9_19_pinmux-P9_20_pinmux.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0014-gpio-of-helper-idr_alloc.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/pinmux-helper"
-		number=14
-		cleanup
-	fi
-
-	echo "dir: beaglebone/abbbi"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/abbbi/0001-gpu-drm-i2c-add-alternative-adv7511-driver-with-audi.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0002-gpu-drm-i2c-adihdmi-componentize-driver-and-huge-ref.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0003-ARM-dts-add-Arrow-BeagleBone-Black-Industrial-dts.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0004-drm-adihdmi-Drop-dummy-save-restore-hooks.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0005-drm-adihdmi-Pass-name-to-drm_encoder_init.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0006-adihdmi_drv-reg_default-reg_sequence.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=6
-		cleanup
-	fi
-
-	echo "dir: beaglebone/am335x_olimex_som"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/am335x_olimex_som/0001-ARM-dts-Add-support-for-Olimex-AM3352-SOM.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/capes"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0002-ARM-dts-am335x-boneblack-enable-wl1835mod-cape-suppo.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0003-add-am335x-boneblack-bbbmini.dts.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0004-add-lcd-am335x-boneblack-bbb-exp-c.dtb-am335x-bonebl.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0005-bb-audio-cape.patch"
-
-	#Replicape use am335x-boneblack-overlay.dtb???
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
-		cleanup
-	fi
-
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -781,91 +619,17 @@ beaglebone () {
 	else
 		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
 	fi
-
-	echo "dir: beaglebone/firmware"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=summary
-	#git clone git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git
-
-	#cd ti-amx3-cm3-pm-firmware/
-	#git checkout origin/ti-v4.1.y-next -b tmp
-
-	#commit ee4acf427055d7e87d9d1d82296cbd05e388642e
-	#Author: Dave Gerlach <d-gerlach@ti.com>
-	#Date:   Tue Sep 6 14:33:11 2016 -0500
-	#
-	#    CM3: Firmware release 0x192
-	#    
-	#    This version, 0x192, includes the following changes:
-	#         - Fix DDR IO CTRL handling during suspend so both am335x and am437x
-	#           use optimal low power state and restore the exact previous
-	#           configuration.
-	#        - Explicitly configure PER state in standby, even though it is
-	#           configured to ON state to ensure proper state.
-	#         - Add new 'halt' flag in IPC_REG4 bit 11 to allow HLOS to configure
-	#           the suspend path to wait immediately before suspending the system
-	#           entirely to allow JTAG visiblity for debug.
-	#         - Fix board voltage scaling binaries i2c speed configuration in
-	#           order to properly configure 100khz operation.
-	#    
-	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
-
-	#cp -v bin/am* /opt/github/bb.org/ti-4.4/normal/KERNEL/firmware/
-
-	#git add -f ./firmware/am*
-
-	${git} "${DIR}/patches/beaglebone/firmware/0001-add-am33x-firmware.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-}
-
-quieter () {
-	echo "dir: quieter"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	#quiet some hide obvious things...
-	${git} "${DIR}/patches/quieter/0001-quiet-8250_omap.c-use-pr_info-over-pr_err.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-}
-
-more_fixes () {
-	echo "dir: more_fixes"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/more_fixes/0001-slab-gcc5-fixes.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
 }
 
 ###
 #backports
 reverts
 fixes
+build
 drivers
 soc
 beaglebone
-quieter
-more_fixes
+dir 'build/gcc'
 
 packaging () {
 	echo "dir: packaging"
