@@ -329,7 +329,7 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.9-rc2"
+	backport_tag="v4.9-rc3"
 	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -361,7 +361,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
-	backport_tag="v4.8.4"
+	backport_tag="v4.8.6"
 	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -400,7 +400,7 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.8.4"
+	backport_tag="v4.8.6"
 	subsystem="touchscreen"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
