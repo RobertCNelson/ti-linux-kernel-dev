@@ -302,22 +302,6 @@ reverts () {
 	fi
 }
 
-fixes () {
-	echo "dir: fixes"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/fixes/0004-ARM-wire-up-new-pkey-syscalls.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="fixes"
-		number=1
-		cleanup
-	fi
-}
-
 build () {
 	dir 'build/kbuild'
 }
@@ -624,7 +608,6 @@ beaglebone () {
 ###
 #backports
 reverts
-fixes
 build
 drivers
 soc
