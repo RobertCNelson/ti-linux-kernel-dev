@@ -988,10 +988,11 @@ beaglebone () {
 
 	${git} "${DIR}/patches/beaglebone/blue/0001-ARM-dts-add-am335x-boneblue.dtb.patch"
 	${git} "${DIR}/patches/beaglebone/blue/0002-add-am335x-boneblack-roboticscape.dts.patch"
+	${git} "${DIR}/patches/beaglebone/blue/0003-update-boneblue-and-add-bb-wireless.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/blue"
-		number=2
+		number=3
 		cleanup
 	fi
 
