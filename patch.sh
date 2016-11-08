@@ -329,7 +329,7 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.9-rc3"
+	backport_tag="v4.9-rc4"
 	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
