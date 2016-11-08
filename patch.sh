@@ -362,21 +362,8 @@ drivers () {
 		cleanup
 	fi
 
-	echo "dir: drivers/ti/iodelay"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/drivers/ti/iodelay/0001-pinctrl-bindings-pinctrl-Add-support-for-TI-s-IODela.patch"
-	${git} "${DIR}/patches/drivers/ti/iodelay/0002-pinctrl-Introduce-TI-IOdelay-configuration-driver.patch"
-	${git} "${DIR}/patches/drivers/ti/iodelay/0003-ARM-dts-dra7-Add-iodelay-module.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="drivers/ti/iodelay"
-		number=3
-		cleanup
-	fi
+	dir 'drivers/broadcom'
+	dir 'drivers/ti/iodelay'
 
 	#https://github.com/pantoniou/linux-beagle-track-mainline/tree/bbb-overlays
 	echo "dir: drivers/ti/bbb_overlays"
