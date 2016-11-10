@@ -574,25 +574,6 @@ reverts () {
 	fi
 }
 
-fixes () {
-	echo "dir: fixes"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/fixes/0001-fix-sleep33xx.S-for-thumb2.patch"
-	${git} "${DIR}/patches/fixes/0002-fix-sleep43xx.S-for-thumb2.patch"
-	${git} "${DIR}/patches/fixes/0003-fix-ti-emif-sram-pm.S-for-thumb2.patch"
-	${git} "${DIR}/patches/fixes/0004-net-wireless-SanCloud-wifi-issue-when-associating-wi.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="fixes"
-		number=4
-		cleanup
-	fi
-}
-
 ti () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -838,283 +819,24 @@ dtb_makefile_append () {
 }
 
 beaglebone () {
-	echo "dir: beaglebone/dts"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/dts/0001-dts-am335x-bone-common-fixup-leds-to-match-3.8.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0002-arm-dts-am335x-bone-common-add-collision-and-carrier.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0003-tps65217-Enable-KEY_POWER-press-on-AC-loss-PWR_BUT.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0004-am335x-bone-common-disable-default-clkout2_pin.patch"
-	${git} "${DIR}/patches/beaglebone/dts/0005-spi-omap2-mcspi-ti-pio-mode.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=5
-		cleanup
-	fi
-
-	echo "dir: beaglebone/pinmux-helper"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0001-BeagleBone-pinmux-helper.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0002-pinmux-helper-Add-runtime-configuration-capability.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0003-pinmux-helper-Switch-to-using-kmalloc.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0004-gpio-Introduce-GPIO-OF-helper.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0005-Add-dir-changeable-property-to-gpio-of-helper.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0006-am33xx.dtsi-add-ocp-label.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0007-beaglebone-added-expansion-header-to-dtb.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0008-bone-pinmux-helper-Add-support-for-mode-device-tree-.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0009-pinmux-helper-add-P8_37_pinmux-P8_38_pinmux.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0010-pinmux-helper-hdmi.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0011-pinmux-helper-can1.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0012-Remove-CONFIG_EXPERIMENTAL-dependency-on-CONFIG_GPIO.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0013-pinmux-helper-add-P9_19_pinmux-P9_20_pinmux.patch"
-	${git} "${DIR}/patches/beaglebone/pinmux-helper/0014-gpio-of-helper-idr_alloc.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=14
-		cleanup
-	fi
-
-	echo "dir: beaglebone/eqep"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/eqep/0001-Provides-a-sysfs-interface-to-the-eQEP-hardware-on-t.patch"
-	${git} "${DIR}/patches/beaglebone/eqep/0002-tieqep.c-devres-remove-devm_request_and_ioremap.patch"
-	${git} "${DIR}/patches/beaglebone/eqep/0003-tieqep-cleanup.patch"
-	${git} "${DIR}/patches/beaglebone/eqep/0004-fix-tieqep.c.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=4
-		cleanup
-	fi
-
-	echo "dir: beaglebone/overlays"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/overlays/0001-am335x-overlays.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/abbbi"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/abbbi/0001-gpu-drm-i2c-add-alternative-adv7511-driver-with-audi.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0002-gpu-drm-i2c-adihdmi-componentize-driver-and-huge-ref.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0003-adihdmi_drv-reg_default-reg_sequence.patch"
-	${git} "${DIR}/patches/beaglebone/abbbi/0004-ARM-dts-add-Arrow-BeagleBone-Black-Industrial-dts.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=4
-		cleanup
-	fi
-
-	echo "dir: beaglebone/am335x_olimex_som"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/am335x_olimex_som/0001-ARM-dts-Add-support-for-Olimex-AM3352-SOM.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/bbgw"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/bbgw/0001-ARM-dts-add-am335x-bonegreen-wireless.dtb.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/bbgw"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/sancloud"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/sancloud/0001-add-am335x-sancloud-bbe.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/bbbw"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/bbbw/0001-ARM-dts-add-am335x-boneblack-wireless.dtb.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/bbbw"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/blue"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/blue/0001-ARM-dts-add-am335x-boneblue.dtb.patch"
-	${git} "${DIR}/patches/beaglebone/blue/0002-add-am335x-boneblack-roboticscape.dts.patch"
-	${git} "${DIR}/patches/beaglebone/blue/0003-update-boneblue-and-add-bb-wireless.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/blue"
-		number=3
-		cleanup
-	fi
-
-	echo "dir: beaglebone/tre"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/tre/0001-add-am335x-arduino-tre.dts.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/sirius"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/sirius/0001-ARM-dts-am335x-siriusDEB.dtb.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/sirius"
-		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/ctag"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/ctag/0001-Added-support-for-CTAG-face2-4-Audio-Card.patch"
-	${git} "${DIR}/patches/beaglebone/ctag/0002-Added-device-tree-for-BB-X15-and-CTAG-face2-4.patch"
-	${git} "${DIR}/patches/beaglebone/ctag/0003-Changed-SW-SPI-pins-due-to-collision-with-Bela.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/ctag"
-		number=3
-		cleanup
-	fi
-
-	echo "dir: beaglebone/capes"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/capes/0001-cape-Argus-UPS-cape-support.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0002-ARM-dts-am335x-boneblack-enable-wl1835mod-cape-suppo.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0003-am335x-boneblack-wl1835mod-fix-bluetooth.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0004-add-am335x-boneblack-bbbmini.dts.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0005-add-lcd-am335x-boneblack-bbb-exp-c.dtb-am335x-bonebl.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0006-bb-audio-cape.patch"
-	${git} "${DIR}/patches/beaglebone/capes/0007-add-am335x-boneblack-lcd-ct43.dtb.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/capes"
-		number=7
-		cleanup
-	fi
-
-	echo "dir: beaglebone/mctrl_gpio"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0001-tty-serial-8250-make-UART_MCR-register-access-consis.patch"
-		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0002-serial-mctrl_gpio-add-modem-control-read-routine.patch"
-		${git} "${DIR}/patches/beaglebone/mctrl_gpio/0003-serial-mctrl_gpio-add-IRQ-locking.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/mctrl_gpio"
-		number=3
-		cleanup
-	fi
-
-	echo "dir: beaglebone/jtag"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/jtag/0001-add-jtag-clock-pinmux.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
-	echo "dir: beaglebone/wl18xx"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/wl18xx/0001-add-wilink8-bt.patch"
-	${git} "${DIR}/patches/beaglebone/wl18xx/0002-wl18xx-forward-port-from-v4.1.x-ti.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/wl18xx"
-		number=2
-		cleanup
-	fi
-
-	echo "dir: beaglebone/pru"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/pru/0001-pruss-choose-rproc-or-uio.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/pru"
-		number=1
-		cleanup
-	fi
+	dir 'beaglebone/dts'
+	dir 'beaglebone/pinmux-helper'
+	dir 'beaglebone/eqep'
+	dir 'beaglebone/overlays'
+	dir 'beaglebone/abbbi'
+	dir 'beaglebone/am335x_olimex_som'
+	dir 'beaglebone/bbgw'
+	dir 'beaglebone/sancloud'
+	dir 'beaglebone/bbbw'
+	dir 'beaglebone/blue'
+	dir 'beaglebone/tre'
+	dir 'beaglebone/sirius'
+	dir 'beaglebone/ctag'
+	dir 'beaglebone/capes'
+	dir 'beaglebone/mctrl_gpio'
+	dir 'beaglebone/jtag'
+	dir 'beaglebone/wl18xx'
+	dir 'beaglebone/pru'
 
 	echo "dir: beaglebone/vsc8531bbb"
 	#regenerate="enable"
@@ -1228,18 +950,7 @@ beaglebone () {
 		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
 	fi
 
-	echo "dir: beaglebone/phy"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/phy/0001-cpsw-search-for-phy.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
+	dir 'beaglebone/phy'
 
 	echo "dir: beaglebone/firmware"
 	#regenerate="enable"
@@ -1285,72 +996,17 @@ beaglebone () {
 	fi
 }
 
-x15 () {
-	echo "dir: x15/fixes"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/x15/fixes/0001-x15-mmc-cmem-debugss.patch"
-	${git} "${DIR}/patches/x15/fixes/0002-x15-cmem-keep-this-formating.patch"
-	${git} "${DIR}/patches/x15/fixes/0003-x15-add-eeprom.patch"
-	${git} "${DIR}/patches/x15/fixes/0004-mmc-block-Use-the-mmc-host-device-index-as-the-mmcbl.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="x15/fixes"
-		number=4
-		cleanup
-	fi
-}
-
-brcmfmac () {
-	echo "dir: brcmfmac"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/brcmfmac/0001-brcmfmac43341.patch"
-	${git} "${DIR}/patches/brcmfmac/0002-brcmfmac-SDIOD_DRVSTR_KEY-BRCM_CC_43340-1.patch"
-	${git} "${DIR}/patches/brcmfmac/0003-brcmfmac-l77-works-now.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="brcmfmac"
-		number=3
-		cleanup
-	fi
-}
-
-quieter () {
-	echo "dir: quieter"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	#quiet some hide obvious things...
-	${git} "${DIR}/patches/quieter/0001-quiet-8250_omap.c-use-pr_info-over-pr_err.patch"
-	${git} "${DIR}/patches/quieter/0002-quiet-wlcore.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="quieter"
-		number=2
-		cleanup
-	fi
-}
-
 ###
 lts44_backports
 reverts
-fixes
+dir 'fixes'
 ti
 pru_rpmsg
 bbb_overlays
 beaglebone
-x15
-brcmfmac
-quieter
+dir 'x15/fixes'
+dir 'brcmfmac'
+dir 'quieter'
 
 packaging () {
 	echo "dir: packaging"
