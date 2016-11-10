@@ -1000,6 +1000,7 @@ beaglebone () {
 lts44_backports
 reverts
 dir 'fixes'
+dir 'fixes/gcc6'
 ti
 pru_rpmsg
 bbb_overlays
