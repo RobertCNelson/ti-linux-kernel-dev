@@ -430,6 +430,34 @@ lts44_backports () {
 		cleanup
 	fi
 
+	backport_tag="v4.5.7"
+	subsystem="etnaviv"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -vr ~/linux-src/drivers/gpu/drm/etnaviv/ ./drivers/gpu/drm/etnaviv/
+		cp -v ~/linux-src/include/uapi/drm/etnaviv_drm.h ./include/uapi/drm/etnaviv_drm.h
+
+		post_backports
+	fi
+	patch_backports
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/backports/etnaviv/0002-drm-etnaviv-add-initial-etnaviv-DRM-driver.patch"
+	${git} "${DIR}/patches/backports/etnaviv/0003-etnaviv-enable-for-ARCH_OMAP2PLUS.patch"
+	${git} "${DIR}/patches/backports/etnaviv/0004-drm-etnaviv-julbouln-diff.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="backports/etnaviv"
+		number=4
+		cleanup
+	fi
+
 	echo "dir: lts44_backports"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
