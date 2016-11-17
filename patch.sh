@@ -430,7 +430,7 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.5.7"
+	backport_tag="v4.9-rc5"
 	subsystem="etnaviv"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
