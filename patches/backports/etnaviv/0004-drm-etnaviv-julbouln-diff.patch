@@ -1,94 +1,103 @@
-From 27dd992dee183704a40b598adc0a7c1cf5bc5fe2 Mon Sep 17 00:00:00 2001
+From bcf1183a5a27bafa3908138de4c3ac451dfcd808 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 16 Nov 2016 16:58:04 -0600
+Date: Wed, 16 Nov 2016 18:53:15 -0600
 Subject: [PATCH 4/4] drm: etnaviv: julbouln diff
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/gpu/drm/etnaviv/etnaviv_buffer.c   |  43 +++++
- drivers/gpu/drm/etnaviv/etnaviv_drv.c      |   1 +
- drivers/gpu/drm/etnaviv/etnaviv_drv.h      |   1 +
- drivers/gpu/drm/etnaviv/etnaviv_gpu.c      |  40 ++++-
- drivers/gpu/drm/etnaviv/etnaviv_gpu.h      |   2 +
- drivers/gpu/drm/etnaviv/etnaviv_iommu.h    |   1 +
- drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c | 261 ++++++++++++++++++++++++++++-
- drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h |   3 +-
- drivers/gpu/drm/etnaviv/state_hi.xml.h     |  16 +-
- 9 files changed, 357 insertions(+), 11 deletions(-)
+ drivers/gpu/drm/etnaviv/etnaviv_drv.c        | 25 ++++++++++++++++---------
+ drivers/gpu/drm/etnaviv/etnaviv_gem.c        |  6 +++++-
+ drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c |  7 +++++++
+ drivers/gpu/drm/etnaviv/etnaviv_gpu.c        | 12 ++++++++----
+ drivers/gpu/drm/etnaviv/etnaviv_iommu.c      |  2 +-
+ drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c   |  2 +-
+ drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h   | 24 ++++++++++++++++++++++++
+ 7 files changed, 62 insertions(+), 16 deletions(-)
+ create mode 100644 drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h
 
-diff --git a/drivers/gpu/drm/etnaviv/etnaviv_buffer.c b/drivers/gpu/drm/etnaviv/etnaviv_buffer.c
-index 332c55e..bddbf6c 100644
---- a/drivers/gpu/drm/etnaviv/etnaviv_buffer.c
-+++ b/drivers/gpu/drm/etnaviv/etnaviv_buffer.c
-@@ -22,6 +22,7 @@
- #include "common.xml.h"
- #include "state.xml.h"
- #include "cmdstream.xml.h"
-+#include "state_hi.xml.h"
- 
- /*
-  * Command Buffer helper:
-@@ -85,6 +86,14 @@ static inline void CMD_STALL(struct etnaviv_cmdbuf *buffer,
- 	OUT(buffer, VIV_FE_STALL_TOKEN_FROM(from) | VIV_FE_STALL_TOKEN_TO(to));
- }
- 
-+
-+static inline void CMD_SEM(struct etnaviv_cmdbuf *buffer, u32 from, u32 to)
-+{
-+	CMD_LOAD_STATE(buffer, VIVS_GL_SEMAPHORE_TOKEN,
-+		       VIVS_GL_SEMAPHORE_TOKEN_FROM(from) |
-+		       VIVS_GL_SEMAPHORE_TOKEN_TO(to));
-+}
-+
- static void etnaviv_cmd_select_pipe(struct etnaviv_cmdbuf *buffer, u8 pipe)
- {
- 	u32 flush;
-@@ -144,6 +153,40 @@ u16 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
- 	return buffer->user_size / 8;
- }
- 
-+
-+u16 etnaviv_buffer_config_mmuv2(struct etnaviv_gpu *gpu, u32 mtlb_addr, u32 safe_addr)
-+{
-+	struct etnaviv_cmdbuf *buffer = gpu->buffer;
-+
-+	buffer->user_size = 0;
-+
-+	if (gpu->identity.features & chipFeatures_PIPE_3D) {
-+		CMD_LOAD_STATE(buffer, VIVS_GL_PIPE_SELECT,
-+			       VIVS_GL_PIPE_SELECT_PIPE(ETNA_PIPE_3D));
-+		CMD_LOAD_STATE(buffer, VIVS_MMUv2_CONFIGURATION,
-+			mtlb_addr | VIVS_MMUv2_CONFIGURATION_MODE_MODE4_K);
-+		CMD_LOAD_STATE(buffer, VIVS_MMUv2_SAFE_ADDRESS, safe_addr);
-+		CMD_SEM(buffer, SYNC_RECIPIENT_FE, SYNC_RECIPIENT_PE);
-+		CMD_STALL(buffer, SYNC_RECIPIENT_FE, SYNC_RECIPIENT_PE);
-+	}
-+
-+	if (gpu->identity.features & chipFeatures_PIPE_2D) {
-+		CMD_LOAD_STATE(buffer, VIVS_GL_PIPE_SELECT,
-+			       VIVS_GL_PIPE_SELECT_PIPE(ETNA_PIPE_2D));
-+		CMD_LOAD_STATE(buffer, VIVS_MMUv2_CONFIGURATION,
-+			mtlb_addr | VIVS_MMUv2_CONFIGURATION_MODE_MODE4_K);
-+		CMD_LOAD_STATE(buffer, VIVS_MMUv2_SAFE_ADDRESS, safe_addr);
-+		CMD_SEM(buffer, SYNC_RECIPIENT_FE, SYNC_RECIPIENT_PE);
-+		CMD_STALL(buffer, SYNC_RECIPIENT_FE, SYNC_RECIPIENT_PE);
-+	}
-+
-+	CMD_END(buffer);
-+
-+	buffer->user_size = ALIGN(buffer->user_size, 8);
-+
-+	return buffer->user_size / 8;
-+}
-+
- void etnaviv_buffer_end(struct etnaviv_gpu *gpu)
- {
- 	struct etnaviv_cmdbuf *buffer = gpu->buffer;
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_drv.c b/drivers/gpu/drm/etnaviv/etnaviv_drv.c
-index e885898..0aa8cb8 100644
+index aa68766..0aa8cb8 100644
 --- a/drivers/gpu/drm/etnaviv/etnaviv_drv.c
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_drv.c
-@@ -660,6 +660,7 @@ static int etnaviv_pdev_remove(struct platform_device *pdev)
+@@ -91,8 +91,10 @@ static void load_gpu(struct drm_device *dev)
+ 			int ret;
+ 
+ 			ret = etnaviv_gpu_init(g);
+-			if (ret)
++			if (ret) {
++				dev_err(g->dev, "hw init failed: %d\n", ret);
+ 				priv->gpu[i] = NULL;
++			}
+ 		}
+ 	}
+ }
+@@ -312,7 +314,7 @@ static int etnaviv_ioctl_gem_cpu_prep(struct drm_device *dev, void *data,
+ 	if (args->op & ~(ETNA_PREP_READ | ETNA_PREP_WRITE | ETNA_PREP_NOSYNC))
+ 		return -EINVAL;
+ 
+-	obj = drm_gem_object_lookup(file, args->handle);
++	obj = drm_gem_object_lookup(dev, file, args->handle);
+ 	if (!obj)
+ 		return -ENOENT;
+ 
+@@ -333,7 +335,7 @@ static int etnaviv_ioctl_gem_cpu_fini(struct drm_device *dev, void *data,
+ 	if (args->flags)
+ 		return -EINVAL;
+ 
+-	obj = drm_gem_object_lookup(file, args->handle);
++	obj = drm_gem_object_lookup(dev, file, args->handle);
+ 	if (!obj)
+ 		return -ENOENT;
+ 
+@@ -354,7 +356,7 @@ static int etnaviv_ioctl_gem_info(struct drm_device *dev, void *data,
+ 	if (args->pad)
+ 		return -EINVAL;
+ 
+-	obj = drm_gem_object_lookup(file, args->handle);
++	obj = drm_gem_object_lookup(dev, file, args->handle);
+ 	if (!obj)
+ 		return -ENOENT;
+ 
+@@ -439,7 +441,7 @@ static int etnaviv_ioctl_gem_wait(struct drm_device *dev, void *data,
+ 	if (!gpu)
+ 		return -ENXIO;
+ 
+-	obj = drm_gem_object_lookup(file, args->handle);
++	obj = drm_gem_object_lookup(dev, file, args->handle);
+ 	if (!obj)
+ 		return -ENOENT;
+ 
+@@ -488,12 +490,14 @@ static const struct file_operations fops = {
+ };
+ 
+ static struct drm_driver etnaviv_drm_driver = {
+-	.driver_features    = DRIVER_GEM |
++	.driver_features    = DRIVER_HAVE_IRQ |
++				DRIVER_GEM |
+ 				DRIVER_PRIME |
+ 				DRIVER_RENDER,
+ 	.open               = etnaviv_open,
+ 	.preclose           = etnaviv_preclose,
+-	.gem_free_object_unlocked = etnaviv_gem_free_object,
++	.set_busid          = drm_platform_set_busid,
++	.gem_free_object    = etnaviv_gem_free_object,
+ 	.gem_vm_ops         = &vm_ops,
+ 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
+ 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
+@@ -529,8 +533,10 @@ static int etnaviv_bind(struct device *dev)
+ 	int ret;
+ 
+ 	drm = drm_dev_alloc(&etnaviv_drm_driver, dev);
+-	if (IS_ERR(drm))
+-		return PTR_ERR(drm);
++	if (!drm)
++		return -ENOMEM;
++
++	drm->platformdev = to_platform_device(dev);
+ 
+ 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
+ 	if (!priv) {
+@@ -654,6 +660,7 @@ static int etnaviv_pdev_remove(struct platform_device *pdev)
  static const struct of_device_id dt_match[] = {
  	{ .compatible = "fsl,imx-gpu-subsystem" },
  	{ .compatible = "marvell,dove-gpu-subsystem" },
@@ -96,466 +105,143 @@ index e885898..0aa8cb8 100644
  	{}
  };
  MODULE_DEVICE_TABLE(of, dt_match);
-diff --git a/drivers/gpu/drm/etnaviv/etnaviv_drv.h b/drivers/gpu/drm/etnaviv/etnaviv_drv.h
-index 1cd6046..ea80f19 100644
---- a/drivers/gpu/drm/etnaviv/etnaviv_drv.h
-+++ b/drivers/gpu/drm/etnaviv/etnaviv_drv.h
-@@ -99,6 +99,7 @@ struct drm_gem_object *etnaviv_gem_new(struct drm_device *dev,
- int etnaviv_gem_new_userptr(struct drm_device *dev, struct drm_file *file,
- 	uintptr_t ptr, u32 size, u32 flags, u32 *handle);
- u16 etnaviv_buffer_init(struct etnaviv_gpu *gpu);
-+u16 etnaviv_buffer_config_mmuv2(struct etnaviv_gpu *gpu, u32 mtlb_addr, u32 safe_addr);
- void etnaviv_buffer_end(struct etnaviv_gpu *gpu);
- void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event,
- 	struct etnaviv_cmdbuf *cmdbuf);
-diff --git a/drivers/gpu/drm/etnaviv/etnaviv_gpu.c b/drivers/gpu/drm/etnaviv/etnaviv_gpu.c
-index a33162c..3a6eace 100644
---- a/drivers/gpu/drm/etnaviv/etnaviv_gpu.c
-+++ b/drivers/gpu/drm/etnaviv/etnaviv_gpu.c
-@@ -18,6 +18,9 @@
- #include <linux/fence.h>
- #include <linux/moduleparam.h>
- #include <linux/of_device.h>
-+
-+//#define PHYS_OFFSET 0x80000000
-+
- #include "etnaviv_dump.h"
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_gem.c b/drivers/gpu/drm/etnaviv/etnaviv_gem.c
+index 0370b84..f7cac70 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_gem.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_gem.c
+@@ -762,8 +762,12 @@ static struct page **etnaviv_gem_userptr_do_get_pages(
+ 
+ 	down_read(&mm->mmap_sem);
+ 	while (pinned < npages) {
+-		ret = get_user_pages_remote(task, mm, ptr, npages - pinned,
++		ret = get_user_pages(task, mm, ptr, npages - pinned,
++				     !etnaviv_obj->userptr.ro, 0,
++				     pvec + pinned, NULL);
++/*		ret = get_user_pages_remote(task, mm, ptr, npages - pinned,
+ 					    flags, pvec + pinned, NULL);
++*/
+ 		if (ret < 0)
+ 			break;
+ 
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c b/drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c
+index afdd55d..44454c5 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c
+@@ -19,6 +19,13 @@
  #include "etnaviv_gpu.h"
  #include "etnaviv_gem.h"
-@@ -487,6 +490,16 @@ static int etnaviv_hw_reset(struct etnaviv_gpu *gpu)
- 	return 0;
- }
  
 +
-+void etnaviv_gpu_start_fe(struct etnaviv_gpu *gpu, u32 address, u16 prefetch)
-+{
-+	gpu_write(gpu, VIVS_FE_COMMAND_ADDRESS, address);
-+	gpu_write(gpu, VIVS_FE_COMMAND_CONTROL,
-+		  VIVS_FE_COMMAND_CONTROL_ENABLE |
-+		  VIVS_FE_COMMAND_CONTROL_PREFETCH(prefetch));
-+}
++#define u64_to_user_ptr(x) (            \
++ {                                       \
++         typecheck(u64, x);              \
++         (void __user *)(uintptr_t)x;    \
++ }                                       \
++)
+ /*
+  * Cmdstream submission:
+  */
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_gpu.c b/drivers/gpu/drm/etnaviv/etnaviv_gpu.c
+index b1254f8..b430f30 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_gpu.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_gpu.c
+@@ -27,6 +27,8 @@
+ #include "state_hi.xml.h"
+ #include "cmdstream.xml.h"
+ 
++//#define PHYS_OFFSET 0x80000000
 +
-+
- static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
+ static const struct platform_device_id gpu_ids[] = {
+ 	{ .name = "etnaviv-gpu,2d" },
+ 	{ },
+@@ -1127,7 +1129,7 @@ struct etnaviv_cmdbuf *etnaviv_gpu_cmdbuf_new(struct etnaviv_gpu *gpu, u32 size,
+ 	if (gpu->mmu->version == ETNAVIV_IOMMU_V2)
+ 		size = ALIGN(size, SZ_4K);
+ 
+-	cmdbuf->vaddr = dma_alloc_wc(gpu->dev, size, &cmdbuf->paddr,
++	cmdbuf->vaddr = dma_alloc_writecombine(gpu->dev, size, &cmdbuf->paddr,
+ 				     GFP_KERNEL);
+ 	if (!cmdbuf->vaddr) {
+ 		kfree(cmdbuf);
+@@ -1143,7 +1145,7 @@ struct etnaviv_cmdbuf *etnaviv_gpu_cmdbuf_new(struct etnaviv_gpu *gpu, u32 size,
+ void etnaviv_gpu_cmdbuf_free(struct etnaviv_cmdbuf *cmdbuf)
  {
- 	u16 prefetch;
-@@ -581,23 +594,25 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
- 	 * simple and to get something working, just use a single address space:
- 	 */
- 	mmuv2 = gpu->identity.minor_features1 & chipMinorFeatures1_MMU_VERSION;
--	dev_dbg(gpu->dev, "mmuv2: %d\n", mmuv2);
-+	dev_info(gpu->dev, "mmuv2: %d\n", mmuv2);
- 
- 	if (!mmuv2) {
- 		iommu = etnaviv_iommu_domain_alloc(gpu);
- 		version = ETNAVIV_IOMMU_V1;
- 	} else {
--		iommu = etnaviv_iommu_v2_domain_alloc(gpu);
-+		iommu = etnaviv_iommuv2_domain_alloc(gpu);
- 		version = ETNAVIV_IOMMU_V2;
- 	}
- 
- 	if (!iommu) {
-+		dev_err(gpu->dev, "no mmu\n");
- 		ret = -ENOMEM;
- 		goto fail;
- 	}
- 
- 	gpu->mmu = etnaviv_iommu_new(gpu, iommu, version);
- 	if (!gpu->mmu) {
-+		dev_err(gpu->dev, "mmu init fail\n");
- 		iommu_domain_free(iommu);
- 		ret = -ENOMEM;
- 		goto fail;
-@@ -1430,6 +1445,27 @@ static int etnaviv_gpu_clk_disable(struct etnaviv_gpu *gpu)
- 	return 0;
+ 	etnaviv_iommu_put_cmdbuf_va(cmdbuf->gpu, cmdbuf);
+-	dma_free_wc(cmdbuf->gpu->dev, cmdbuf->size, cmdbuf->vaddr,
++	dma_free_writecombine(cmdbuf->gpu->dev, cmdbuf->size, cmdbuf->vaddr,
+ 		    cmdbuf->paddr);
+ 	kfree(cmdbuf);
  }
+@@ -1561,9 +1563,11 @@ static int etnaviv_gpu_bind(struct device *dev, struct device *master,
+ 	INIT_WORK(&gpu->recover_work, recover_worker);
+ 	init_waitqueue_head(&gpu->fence_event);
  
-+int etnaviv_gpu_wait_idle(struct etnaviv_gpu *gpu, unsigned int timeout_ms)
-+{
-+	unsigned long timeout = jiffies + msecs_to_jiffies(timeout_ms);
-+
-+	do {
-+		u32 idle = gpu_read(gpu, VIVS_HI_IDLE_STATE);
-+
-+		if ((idle & gpu->idle_mask) == gpu->idle_mask)
-+			return 0;
-+
-+		if (time_is_before_jiffies(timeout)) {
-+			dev_warn(gpu->dev,
-+				 "timed out waiting for idle: idle=0x%x\n",
-+				 idle);
-+			return -ETIMEDOUT;
-+		}
-+
-+		udelay(5);
-+	} while (1);
-+}
-+
- static int etnaviv_gpu_hw_suspend(struct etnaviv_gpu *gpu)
- {
- 	if (gpu->buffer) {
-diff --git a/drivers/gpu/drm/etnaviv/etnaviv_gpu.h b/drivers/gpu/drm/etnaviv/etnaviv_gpu.h
-index f233ac4..17abaa0 100644
---- a/drivers/gpu/drm/etnaviv/etnaviv_gpu.h
-+++ b/drivers/gpu/drm/etnaviv/etnaviv_gpu.h
-@@ -212,6 +212,8 @@ struct etnaviv_cmdbuf *etnaviv_gpu_cmdbuf_new(struct etnaviv_gpu *gpu,
- void etnaviv_gpu_cmdbuf_free(struct etnaviv_cmdbuf *cmdbuf);
- int etnaviv_gpu_pm_get_sync(struct etnaviv_gpu *gpu);
- void etnaviv_gpu_pm_put(struct etnaviv_gpu *gpu);
-+int etnaviv_gpu_wait_idle(struct etnaviv_gpu *gpu, unsigned int timeout_ms);
-+void etnaviv_gpu_start_fe(struct etnaviv_gpu *gpu, u32 address, u16 prefetch);
+-	setup_deferrable_timer(&gpu->hangcheck_timer, hangcheck_handler,
++	setup_timer(&gpu->hangcheck_timer, hangcheck_handler,
++			(unsigned long)gpu);
++/*	setup_deferrable_timer(&gpu->hangcheck_timer, hangcheck_handler,
+ 			       (unsigned long)gpu);
+-
++*/
+ 	priv->gpu[priv->num_gpus++] = gpu;
  
- extern struct platform_driver etnaviv_gpu_driver;
+ 	pm_runtime_mark_last_busy(gpu->dev);
+diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu.c
+index 81f1583..f769af7 100644
+--- a/drivers/gpu/drm/etnaviv/etnaviv_iommu.c
++++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu.c
+@@ -232,7 +232,7 @@ struct iommu_domain *etnaviv_iommuv1_domain_alloc(struct etnaviv_gpu *gpu)
  
-diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu.h b/drivers/gpu/drm/etnaviv/etnaviv_iommu.h
-index cf45503..00350e3 100644
---- a/drivers/gpu/drm/etnaviv/etnaviv_iommu.h
-+++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu.h
-@@ -24,5 +24,6 @@ struct iommu_domain *etnaviv_iommu_domain_alloc(struct etnaviv_gpu *gpu);
- void etnaviv_iommu_domain_restore(struct etnaviv_gpu *gpu,
- 	struct iommu_domain *domain);
- struct iommu_domain *etnaviv_iommu_v2_domain_alloc(struct etnaviv_gpu *gpu);
-+void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu);
+ 	etnaviv_domain->domain.type = __IOMMU_DOMAIN_PAGING;
+ 	etnaviv_domain->domain.ops = &etnaviv_iommu_ops.ops;
+-	etnaviv_domain->domain.pgsize_bitmap = SZ_4K;
++//	etnaviv_domain->domain.pgsize_bitmap = SZ_4K;
+ 	etnaviv_domain->domain.geometry.aperture_start = GPU_MEM_START;
+ 	etnaviv_domain->domain.geometry.aperture_end = GPU_MEM_START + PT_ENTRIES * SZ_4K - 1;
  
- #endif /* __ETNAVIV_IOMMU_H__ */
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
-index fbb4aed..f557f2a 100644
+index 7e9c4d2..f557f2a 100644
 --- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
-@@ -1,5 +1,5 @@
- /*
-- * Copyright (C) 2014 Christian Gmeiner <christian.gmeiner@gmail.com>
-+ * Copyright (C) 2016 Etnaviv Project
-   *
-  * This program is free software; you can redistribute it and/or modify it
-  * under the terms of the GNU General Public License version 2 as published by
-@@ -22,12 +22,267 @@
- #include <linux/bitops.h>
+@@ -272,7 +272,7 @@ struct iommu_domain *etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu)
  
- #include "etnaviv_gpu.h"
-+#include "etnaviv_mmu.h"
- #include "etnaviv_iommu.h"
-+#include "state.xml.h"
- #include "state_hi.xml.h"
- 
-+#define MMUv2_PTE_PRESENT		BIT(0)
-+#define MMUv2_PTE_EXCEPTION		BIT(1)
-+#define MMUv2_PTE_WRITEABLE		BIT(2)
- 
--struct iommu_domain *etnaviv_iommu_v2_domain_alloc(struct etnaviv_gpu *gpu)
-+#define MMUv2_MTLB_MASK			0xffc00000
-+#define MMUv2_MTLB_SHIFT		22
-+#define MMUv2_STLB_MASK			0x003ff000
-+#define MMUv2_STLB_SHIFT		12
-+
-+#define MMUv2_MAX_STLB_ENTRIES		1024
-+
-+struct etnaviv_iommuv2_domain {
-+	struct iommu_domain domain;
-+	struct device *dev;
-+	void *bad_page_cpu;
-+	dma_addr_t bad_page_dma;
-+	/* M(aster) TLB aka first level pagetable */
-+	u32 *mtlb_cpu;
-+	dma_addr_t mtlb_dma;
-+	/* S(lave) TLB aka second level pagetable */
-+	u32 *stlb_cpu[1024];
-+	dma_addr_t stlb_dma[1024];
-+};
-+
-+static struct etnaviv_iommuv2_domain *to_etnaviv_domain(struct iommu_domain *domain)
-+{
-+	return container_of(domain, struct etnaviv_iommuv2_domain, domain);
-+}
-+
-+static int etnaviv_iommuv2_map(struct iommu_domain *domain, unsigned long iova,
-+	   phys_addr_t paddr, size_t size, int prot)
-+{
-+	struct etnaviv_iommuv2_domain *etnaviv_domain =
-+			to_etnaviv_domain(domain);
-+	int mtlb_entry, stlb_entry;
-+	u32 entry = (u32)paddr | MMUv2_PTE_PRESENT;
-+
-+	if (size != SZ_4K)
-+		return -EINVAL;
-+
-+	if (prot & IOMMU_WRITE)
-+		entry |= MMUv2_PTE_WRITEABLE;
-+
-+	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
-+	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
-+
-+	etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] = entry;
-+
-+	return 0;
-+}
-+
-+static size_t etnaviv_iommuv2_unmap(struct iommu_domain *domain,
-+	unsigned long iova, size_t size)
-+{
-+	struct etnaviv_iommuv2_domain *etnaviv_domain =
-+			to_etnaviv_domain(domain);
-+	int mtlb_entry, stlb_entry;
-+
-+	if (size != SZ_4K)
-+		return -EINVAL;
-+
-+	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
-+	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
-+
-+	etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] = MMUv2_PTE_EXCEPTION;
-+
-+	return SZ_4K;
-+}
-+
-+static phys_addr_t etnaviv_iommuv2_iova_to_phys(struct iommu_domain *domain,
-+	dma_addr_t iova)
-+{
-+	struct etnaviv_iommuv2_domain *etnaviv_domain =
-+			to_etnaviv_domain(domain);
-+	int mtlb_entry, stlb_entry;
-+
-+	mtlb_entry = (iova & MMUv2_MTLB_MASK) >> MMUv2_MTLB_SHIFT;
-+	stlb_entry = (iova & MMUv2_STLB_MASK) >> MMUv2_STLB_SHIFT;
-+
-+	return etnaviv_domain->stlb_cpu[mtlb_entry][stlb_entry] & ~(SZ_4K - 1);
-+}
-+
-+static int etnaviv_iommuv2_init(struct etnaviv_iommuv2_domain *etnaviv_domain)
-+{
-+	u32 *p;
-+	int ret, i, j;
-+
-+	/* allocate scratch page */
-+	etnaviv_domain->bad_page_cpu = dma_alloc_coherent(etnaviv_domain->dev,
-+						  SZ_4K,
-+						  &etnaviv_domain->bad_page_dma,
-+						  GFP_KERNEL);
-+	if (!etnaviv_domain->bad_page_cpu) {
-+		ret = -ENOMEM;
-+		goto fail_mem;
-+	}
-+	p = etnaviv_domain->bad_page_cpu;
-+	for (i = 0; i < SZ_4K / 4; i++)
-+		*p++ = 0xdead55aa;
-+
-+	etnaviv_domain->mtlb_cpu = dma_alloc_coherent(etnaviv_domain->dev,
-+						  SZ_4K,
-+						  &etnaviv_domain->mtlb_dma,
-+						  GFP_KERNEL);
-+	if (!etnaviv_domain->mtlb_cpu) {
-+		ret = -ENOMEM;
-+		goto fail_mem;
-+	}
-+
-+	/* pre-populate STLB pages (may want to switch to on-demand later) */
-+	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
-+		etnaviv_domain->stlb_cpu[i] =
-+				dma_alloc_coherent(etnaviv_domain->dev,
-+						   SZ_4K,
-+						   &etnaviv_domain->stlb_dma[i],
-+						   GFP_KERNEL);
-+		if (!etnaviv_domain->stlb_cpu[i]) {
-+			ret = -ENOMEM;
-+			goto fail_mem;
-+		}
-+		p = etnaviv_domain->stlb_cpu[i];
-+		for (j = 0; j < SZ_4K / 4; j++)
-+			*p++ = MMUv2_PTE_EXCEPTION;
-+
-+		etnaviv_domain->mtlb_cpu[i] = etnaviv_domain->stlb_dma[i] |
-+					      MMUv2_PTE_PRESENT;
-+	}
-+
-+	return 0;
-+
-+fail_mem:
-+	if (etnaviv_domain->bad_page_cpu)
-+		dma_free_coherent(etnaviv_domain->dev, SZ_4K,
-+				  etnaviv_domain->bad_page_cpu,
-+				  etnaviv_domain->bad_page_dma);
-+
-+	if (etnaviv_domain->mtlb_cpu)
-+		dma_free_coherent(etnaviv_domain->dev, SZ_4K,
-+				  etnaviv_domain->mtlb_cpu,
-+				  etnaviv_domain->mtlb_dma);
-+
-+	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
-+		if (etnaviv_domain->stlb_cpu[i])
-+			dma_free_coherent(etnaviv_domain->dev, SZ_4K,
-+					  etnaviv_domain->stlb_cpu[i],
-+					  etnaviv_domain->stlb_dma[i]);
-+	}
-+
-+	return ret;
-+}
-+
-+static void etnaviv_iommuv2_domain_free(struct iommu_domain *domain)
-+{
-+	struct etnaviv_iommuv2_domain *etnaviv_domain =
-+			to_etnaviv_domain(domain);
-+	int i;
-+
-+	dma_free_coherent(etnaviv_domain->dev, SZ_4K,
-+			  etnaviv_domain->bad_page_cpu,
-+			  etnaviv_domain->bad_page_dma);
-+
-+	dma_free_coherent(etnaviv_domain->dev, SZ_4K,
-+			  etnaviv_domain->mtlb_cpu,
-+			  etnaviv_domain->mtlb_dma);
-+
-+	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
-+		if (etnaviv_domain->stlb_cpu[i])
-+			dma_free_coherent(etnaviv_domain->dev, SZ_4K,
-+					  etnaviv_domain->stlb_cpu[i],
-+					  etnaviv_domain->stlb_dma[i]);
-+	}
-+
-+	vfree(etnaviv_domain);
-+}
-+
-+static size_t etnaviv_iommuv2_dump_size(struct iommu_domain *domain)
-+{
-+	struct etnaviv_iommuv2_domain *etnaviv_domain =
-+			to_etnaviv_domain(domain);
-+	size_t dump_size = SZ_4K;
-+	int i;
-+
-+	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++)
-+		if (etnaviv_domain->mtlb_cpu[i] & MMUv2_PTE_PRESENT)
-+			dump_size += SZ_4K;
-+
-+	return dump_size;
-+}
-+
-+static void etnaviv_iommuv2_dump(struct iommu_domain *domain, void *buf)
- {
--	/* TODO */
-+	struct etnaviv_iommuv2_domain *etnaviv_domain =
-+			to_etnaviv_domain(domain);
-+	int i;
-+
-+	memcpy(buf, etnaviv_domain->mtlb_cpu, SZ_4K);
-+	buf += SZ_4K;
-+	for (i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++, buf += SZ_4K)
-+		if (etnaviv_domain->mtlb_cpu[i] & MMUv2_PTE_PRESENT)
-+			memcpy(buf, etnaviv_domain->stlb_cpu[i], SZ_4K);
-+}
-+
-+static struct etnaviv_iommu_ops etnaviv_iommu_ops = {
-+	.ops = {
-+		.domain_free = etnaviv_iommuv2_domain_free,
-+		.map = etnaviv_iommuv2_map,
-+		.unmap = etnaviv_iommuv2_unmap,
-+		.iova_to_phys = etnaviv_iommuv2_iova_to_phys,
-+		.pgsize_bitmap = SZ_4K,
-+	},
-+	.dump_size = etnaviv_iommuv2_dump_size,
-+	.dump = etnaviv_iommuv2_dump,
-+};
-+
-+void etnaviv_iommuv2_restore(struct etnaviv_gpu *gpu)
-+{
-+	struct etnaviv_iommuv2_domain *etnaviv_domain =
-+			to_etnaviv_domain(gpu->mmu->domain);
-+	u16 prefetch;
-+
-+	/* If the MMU is already enabled the state is still there. */
-+	if (gpu_read(gpu, VIVS_MMUv2_CONTROL) & VIVS_MMUv2_CONTROL_ENABLE)
-+		return;
-+
-+	prefetch = etnaviv_buffer_config_mmuv2(gpu,
-+				(u32)etnaviv_domain->mtlb_dma,
-+				(u32)etnaviv_domain->bad_page_dma);
-+	etnaviv_gpu_start_fe(gpu, gpu->buffer->paddr, prefetch);
-+	etnaviv_gpu_wait_idle(gpu, 100);
-+
-+	gpu_write(gpu, VIVS_MMUv2_CONTROL, VIVS_MMUv2_CONTROL_ENABLE);
-+}
-+struct iommu_domain *etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu)
-+{
-+	struct etnaviv_iommuv2_domain *etnaviv_domain;
-+	int ret;
-+
-+	etnaviv_domain = vzalloc(sizeof(*etnaviv_domain));
-+	if (!etnaviv_domain)
-+		return NULL;
-+
-+	etnaviv_domain->dev = gpu->dev;
-+
-+	etnaviv_domain->domain.type = __IOMMU_DOMAIN_PAGING;
-+	etnaviv_domain->domain.ops = &etnaviv_iommu_ops.ops;
+ 	etnaviv_domain->domain.type = __IOMMU_DOMAIN_PAGING;
+ 	etnaviv_domain->domain.ops = &etnaviv_iommu_ops.ops;
+-	etnaviv_domain->domain.pgsize_bitmap = SZ_4K;
 +//	etnaviv_domain->domain.pgsize_bitmap = SZ_4K;
-+	etnaviv_domain->domain.geometry.aperture_start = 0;
-+	etnaviv_domain->domain.geometry.aperture_end = ~0UL & ~(SZ_4K - 1);
-+
-+	ret = etnaviv_iommuv2_init(etnaviv_domain);
-+	if (ret)
-+		goto out_free;
-+
-+	return &etnaviv_domain->domain;
-+
-+out_free:
-+	vfree(etnaviv_domain);
- 	return NULL;
- }
+ 	etnaviv_domain->domain.geometry.aperture_start = 0;
+ 	etnaviv_domain->domain.geometry.aperture_end = ~0UL & ~(SZ_4K - 1);
+ 
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h
-index 603ea41..60c77b3 100644
---- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h
+new file mode 100644
+index 0000000..60c77b3
+--- /dev/null
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h
-@@ -20,6 +20,5 @@
- #include <linux/iommu.h>
- struct etnaviv_gpu;
- 
--struct iommu_domain *etnaviv_iommu_v2_domain_alloc(struct etnaviv_gpu *gpu);
--
+@@ -0,0 +1,24 @@
++/*
++ * Copyright (C) 2014 Christian Gmeiner <christian.gmeiner@gmail.com>
++  *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 as published by
++ * the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along with
++ * this program.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef __ETNAVIV_IOMMU_V2_H__
++#define __ETNAVIV_IOMMU_V2_H__
++
++#include <linux/iommu.h>
++struct etnaviv_gpu;
++
 +struct iommu_domain *etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu);
- #endif /* __ETNAVIV_IOMMU_V2_H__ */
-diff --git a/drivers/gpu/drm/etnaviv/state_hi.xml.h b/drivers/gpu/drm/etnaviv/state_hi.xml.h
-index 6a7de5f..43c73e2 100644
---- a/drivers/gpu/drm/etnaviv/state_hi.xml.h
-+++ b/drivers/gpu/drm/etnaviv/state_hi.xml.h
-@@ -8,10 +8,10 @@ http://0x04.net/cgit/index.cgi/rules-ng-ng
- git clone git://0x04.net/rules-ng-ng
- 
- The rules-ng-ng source files this header was generated from are:
--- state_hi.xml (  24309 bytes, from 2015-12-12 09:02:53)
--- common.xml   (  18437 bytes, from 2015-12-12 09:02:53)
-+- state_hi.xml (  25620 bytes, from 2016-08-19 22:07:37)
-+- common.xml   (  20583 bytes, from 2016-06-07 05:22:38)
- 
--Copyright (C) 2015
-+Copyright (C) 2016
- */
- 
- 
-@@ -78,9 +78,10 @@ Copyright (C) 2015
- #define VIVS_HI_AXI_STATUS_DET_RD_ERR				0x00000200
- 
- #define VIVS_HI_INTR_ACKNOWLEDGE				0x00000010
--#define VIVS_HI_INTR_ACKNOWLEDGE_INTR_VEC__MASK			0x7fffffff
-+#define VIVS_HI_INTR_ACKNOWLEDGE_INTR_VEC__MASK			0x3fffffff
- #define VIVS_HI_INTR_ACKNOWLEDGE_INTR_VEC__SHIFT		0
- #define VIVS_HI_INTR_ACKNOWLEDGE_INTR_VEC(x)			(((x) << VIVS_HI_INTR_ACKNOWLEDGE_INTR_VEC__SHIFT) & VIVS_HI_INTR_ACKNOWLEDGE_INTR_VEC__MASK)
-+#define VIVS_HI_INTR_ACKNOWLEDGE_MMU_EXCEPTION			0x40000000
- #define VIVS_HI_INTR_ACKNOWLEDGE_AXI_BUS_ERROR			0x80000000
- 
- #define VIVS_HI_INTR_ENBL					0x00000014
-@@ -218,6 +219,13 @@ Copyright (C) 2015
- #define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_FE	0x00000001
- #define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_DE	0x00000002
- #define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_PE	0x00000004
-+#define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_SH	0x00000008
-+#define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_PA	0x00000010
-+#define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_SE	0x00000020
-+#define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_RA	0x00000040
-+#define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_TX	0x00000080
-+#define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_RA_EZ	0x00010000
-+#define VIVS_PM_MODULE_CONTROLS_DISABLE_MODULE_CLOCK_GATING_RA_HZ	0x00020000
- 
- #define VIVS_PM_MODULE_STATUS					0x00000108
- #define VIVS_PM_MODULE_STATUS_MODULE_CLOCK_GATED_FE		0x00000001
++#endif /* __ETNAVIV_IOMMU_V2_H__ */
 -- 
 2.10.2
 
