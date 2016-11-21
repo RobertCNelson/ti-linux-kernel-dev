@@ -197,7 +197,7 @@ rt_cleanup () {
 rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		rm -f localversion-rt
 		${git_bin} add .
@@ -471,6 +471,7 @@ drivers () {
 	fi
 
 	dir 'drivers/ti/cpsw'
+	dir 'drivers/ti/etnaviv'
 	dir 'drivers/ti/eqep'
 	dir 'drivers/ti/mcasp'
 	dir 'drivers/ti/mmc'
