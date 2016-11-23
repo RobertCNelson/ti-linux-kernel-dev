@@ -329,19 +329,6 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.9-rc5"
-	subsystem="fbtft"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
-		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
-
-		post_backports
-	fi
-	patch_backports
-
 	backport_tag="v4.7.10"
 	subsystem="i2c"
 	#regenerate="enable"
@@ -361,7 +348,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
-	backport_tag="v4.8.8"
+	backport_tag="v4.8.10"
 	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -400,7 +387,20 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.8.8"
+	backport_tag="v4.9-rc6"
+
+	subsystem="fbtft"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
+		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
+
+		post_backports
+	fi
+	patch_backports
+
 	subsystem="touchscreen"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -430,7 +430,6 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.9-rc5"
 	subsystem="etnaviv"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
