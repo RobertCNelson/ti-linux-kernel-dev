@@ -599,6 +599,8 @@ reverts () {
 		number=35
 		cleanup
 	fi
+
+	dir 'reverts/pwm'
 }
 
 ti () {
