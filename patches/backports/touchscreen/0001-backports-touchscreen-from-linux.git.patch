@@ -1,19 +1,19 @@
-From fe16c262abf4b797ed36a60200adf1eeae661f0e Mon Sep 17 00:00:00 2001
+From e54f8aabb0a969d907c0b24033e7665d71754d52 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 16 Nov 2016 16:33:25 -0600
+Date: Wed, 23 Nov 2016 10:51:48 -0600
 Subject: [PATCH] backports: touchscreen: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/input/touchscreen/edt-ft5x06.c     | 29 ++++-----
- drivers/input/touchscreen/of_touchscreen.c | 81 ++++++++++++++++++++++++-
- drivers/input/touchscreen/pixcir_i2c_ts.c  | 94 +++++++++++++++++++-----------
- drivers/input/touchscreen/tsc200x-core.c   |  2 +-
- include/linux/input/touchscreen.h          | 21 ++++++-
- 5 files changed, 178 insertions(+), 49 deletions(-)
+ drivers/input/touchscreen/edt-ft5x06.c     |  37 ++++++----
+ drivers/input/touchscreen/of_touchscreen.c |  81 +++++++++++++++++++++-
+ drivers/input/touchscreen/pixcir_i2c_ts.c  | 107 +++++++++++++++++------------
+ drivers/input/touchscreen/tsc200x-core.c   |   2 +-
+ include/linux/input/touchscreen.h          |  21 +++++-
+ 5 files changed, 187 insertions(+), 61 deletions(-)
 
 diff --git a/drivers/input/touchscreen/edt-ft5x06.c b/drivers/input/touchscreen/edt-ft5x06.c
-index 9e452c2..703e295 100644
+index 9e452c2..28466e3 100644
 --- a/drivers/input/touchscreen/edt-ft5x06.c
 +++ b/drivers/input/touchscreen/edt-ft5x06.c
 @@ -86,6 +86,7 @@ struct edt_reg_addr {
@@ -73,7 +73,32 @@ index 9e452c2..703e295 100644
  
  	error = input_mt_init_slots(input, tsdata->max_support_points,
  				INPUT_MT_DIRECT);
-@@ -1087,10 +1094,6 @@ static struct i2c_driver edt_ft5x06_ts_driver = {
+@@ -1056,9 +1063,15 @@ static const struct edt_i2c_chip_data edt_ft5506_data = {
+ 	.max_support_points = 10,
+ };
+ 
++static const struct edt_i2c_chip_data edt_ft6236_data = {
++	.max_support_points = 2,
++};
++
+ static const struct i2c_device_id edt_ft5x06_ts_id[] = {
+ 	{ .name = "edt-ft5x06", .driver_data = (long)&edt_ft5x06_data },
+ 	{ .name = "edt-ft5506", .driver_data = (long)&edt_ft5506_data },
++	/* Note no edt- prefix for compatibility with the ft6236.c driver */
++	{ .name = "ft6236", .driver_data = (long)&edt_ft6236_data },
+ 	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(i2c, edt_ft5x06_ts_id);
+@@ -1069,6 +1082,8 @@ static const struct of_device_id edt_ft5x06_of_match[] = {
+ 	{ .compatible = "edt,edt-ft5306", .data = &edt_ft5x06_data },
+ 	{ .compatible = "edt,edt-ft5406", .data = &edt_ft5x06_data },
+ 	{ .compatible = "edt,edt-ft5506", .data = &edt_ft5506_data },
++	/* Note focaltech vendor prefix for compatibility with ft6236.c */
++	{ .compatible = "focaltech,ft6236", .data = &edt_ft6236_data },
+ 	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, edt_ft5x06_of_match);
+@@ -1087,10 +1102,6 @@ static struct i2c_driver edt_ft5x06_ts_driver = {
  
  module_i2c_driver(edt_ft5x06_ts_driver);
  
@@ -188,10 +213,21 @@ index bb6f2fe..8d7f9c8 100644
 +}
 +EXPORT_SYMBOL(touchscreen_report_pos);
 diff --git a/drivers/input/touchscreen/pixcir_i2c_ts.c b/drivers/input/touchscreen/pixcir_i2c_ts.c
-index 4b961ad..d159e14 100644
+index 4b961ad..3bb0637 100644
 --- a/drivers/input/touchscreen/pixcir_i2c_ts.c
 +++ b/drivers/input/touchscreen/pixcir_i2c_ts.c
-@@ -27,9 +27,9 @@
+@@ -11,10 +11,6 @@
+  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public
+- * License along with this library; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+  */
+ 
+ #include <linux/delay.h>
+@@ -27,9 +23,9 @@
  #include <linux/input/touchscreen.h>
  #include <linux/gpio.h>
  #include <linux/gpio/consumer.h>
@@ -202,7 +238,7 @@ index 4b961ad..d159e14 100644
  
  #define PIXCIR_MAX_SLOTS       5 /* Max fingers supported by driver */
  
-@@ -38,20 +38,18 @@ struct pixcir_i2c_ts_data {
+@@ -38,20 +34,18 @@ struct pixcir_i2c_ts_data {
  	struct input_dev *input;
  	struct gpio_desc *gpio_attb;
  	struct gpio_desc *gpio_reset;
@@ -228,7 +264,7 @@ index 4b961ad..d159e14 100644
  };
  
  static void pixcir_ts_parse(struct pixcir_i2c_ts_data *tsdata,
-@@ -96,11 +94,11 @@ static void pixcir_ts_parse(struct pixcir_i2c_ts_data *tsdata,
+@@ -96,11 +90,11 @@ static void pixcir_ts_parse(struct pixcir_i2c_ts_data *tsdata,
  	bufptr = &rdbuf[2];
  
  	for (i = 0; i < touch; i++) {
@@ -244,7 +280,7 @@ index 4b961ad..d159e14 100644
  			bufptr = bufptr + 5;
  		} else {
  			bufptr = bufptr + 4;
-@@ -111,9 +109,7 @@ static void pixcir_ts_parse(struct pixcir_i2c_ts_data *tsdata,
+@@ -111,9 +105,7 @@ static void pixcir_ts_parse(struct pixcir_i2c_ts_data *tsdata,
  static void pixcir_ts_report(struct pixcir_i2c_ts_data *ts,
  			     struct pixcir_report_data *report)
  {
@@ -254,7 +290,7 @@ index 4b961ad..d159e14 100644
  	int n, i, slot;
  	struct device *dev = &ts->client->dev;
  	const struct pixcir_i2c_chip_data *chip = ts->chip;
-@@ -122,24 +118,16 @@ static void pixcir_ts_report(struct pixcir_i2c_ts_data *ts,
+@@ -122,24 +114,16 @@ static void pixcir_ts_report(struct pixcir_i2c_ts_data *ts,
  	if (n > PIXCIR_MAX_SLOTS)
  		n = PIXCIR_MAX_SLOTS;
  
@@ -284,7 +320,7 @@ index 4b961ad..d159e14 100644
  				continue;
  			}
  		} else {
-@@ -147,14 +135,15 @@ static void pixcir_ts_report(struct pixcir_i2c_ts_data *ts,
+@@ -147,14 +131,15 @@ static void pixcir_ts_report(struct pixcir_i2c_ts_data *ts,
  		}
  
  		input_mt_slot(ts->input, slot);
@@ -305,7 +341,7 @@ index 4b961ad..d159e14 100644
  	}
  
  	input_mt_sync_frame(ts->input);
-@@ -208,6 +197,11 @@ static int pixcir_set_power_mode(struct pixcir_i2c_ts_data *ts,
+@@ -208,6 +193,11 @@ static int pixcir_set_power_mode(struct pixcir_i2c_ts_data *ts,
  	struct device *dev = &ts->client->dev;
  	int ret;
  
@@ -317,7 +353,7 @@ index 4b961ad..d159e14 100644
  	ret = i2c_smbus_read_byte_data(ts->client, PIXCIR_REG_POWER_MODE);
  	if (ret < 0) {
  		dev_err(dev, "%s: can't read reg 0x%x : %d\n",
-@@ -228,6 +222,11 @@ static int pixcir_set_power_mode(struct pixcir_i2c_ts_data *ts,
+@@ -228,6 +218,11 @@ static int pixcir_set_power_mode(struct pixcir_i2c_ts_data *ts,
  		return ret;
  	}
  
@@ -329,7 +365,7 @@ index 4b961ad..d159e14 100644
  	return 0;
  }
  
-@@ -302,6 +301,11 @@ static int pixcir_start(struct pixcir_i2c_ts_data *ts)
+@@ -302,6 +297,11 @@ static int pixcir_start(struct pixcir_i2c_ts_data *ts)
  	struct device *dev = &ts->client->dev;
  	int error;
  
@@ -341,7 +377,7 @@ index 4b961ad..d159e14 100644
  	/* LEVEL_TOUCH interrupt with active low polarity */
  	error = pixcir_set_int_mode(ts, PIXCIR_INT_LEVEL_TOUCH, 0);
  	if (error) {
-@@ -343,6 +347,9 @@ static int pixcir_stop(struct pixcir_i2c_ts_data *ts)
+@@ -343,6 +343,9 @@ static int pixcir_stop(struct pixcir_i2c_ts_data *ts)
  	/* Wait till running ISR is complete */
  	synchronize_irq(ts->client->irq);
  
@@ -351,7 +387,30 @@ index 4b961ad..d159e14 100644
  	return 0;
  }
  
-@@ -495,7 +502,7 @@ static int pixcir_i2c_ts_probe(struct i2c_client *client,
+@@ -397,7 +400,6 @@ static int __maybe_unused pixcir_i2c_ts_resume(struct device *dev)
+ 	mutex_lock(&input->mutex);
+ 
+ 	if (device_may_wakeup(&client->dev)) {
+-
+ 		if (!input->users) {
+ 			ret = pixcir_stop(ts);
+ 			if (ret) {
+@@ -424,13 +426,7 @@ static const struct of_device_id pixcir_of_match[];
+ static int pixcir_parse_dt(struct device *dev,
+ 			   struct pixcir_i2c_ts_data *tsdata)
+ {
+-	const struct of_device_id *match;
+-
+-	match = of_match_device(of_match_ptr(pixcir_of_match), dev);
+-	if (!match)
+-		return -EINVAL;
+-
+-	tsdata->chip = (const struct pixcir_i2c_chip_data *)match->data;
++	tsdata->chip = of_device_get_match_data(dev);
+ 	if (!tsdata->chip)
+ 		return -EINVAL;
+ 
+@@ -495,7 +491,7 @@ static int pixcir_i2c_ts_probe(struct i2c_client *client,
  	} else {
  		input_set_capability(input, EV_ABS, ABS_MT_POSITION_X);
  		input_set_capability(input, EV_ABS, ABS_MT_POSITION_Y);
@@ -360,7 +419,7 @@ index 4b961ad..d159e14 100644
  		if (!input_abs_get_max(input, ABS_MT_POSITION_X) ||
  		    !input_abs_get_max(input, ABS_MT_POSITION_Y)) {
  			dev_err(dev, "Touchscreen size is not specified\n");
-@@ -534,6 +541,27 @@ static int pixcir_i2c_ts_probe(struct i2c_client *client,
+@@ -534,6 +530,27 @@ static int pixcir_i2c_ts_probe(struct i2c_client *client,
  		return error;
  	}
  

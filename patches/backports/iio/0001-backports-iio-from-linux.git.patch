@@ -1,6 +1,6 @@
-From 4698af061495b2ce332271c5d81219662bd12d3b Mon Sep 17 00:00:00 2001
+From 34c5771b79c6cab06a6b05f9b447cbefd05470ad Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 16 Nov 2016 16:32:01 -0600
+Date: Wed, 23 Nov 2016 10:50:30 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -28,7 +28,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/accel/mxc6255.c                        |  198 +++
  drivers/iio/accel/st_accel.h                       |    3 +
  drivers/iio/accel/st_accel_buffer.c                |    2 +-
- drivers/iio/accel/st_accel_core.c                  |  199 ++-
+ drivers/iio/accel/st_accel_core.c                  |  211 ++-
  drivers/iio/accel/st_accel_i2c.c                   |   14 +
  drivers/iio/accel/st_accel_spi.c                   |    2 +
  drivers/iio/accel/stk8312.c                        |    1 -
@@ -84,7 +84,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../iio/common/hid-sensors/hid-sensor-trigger.c    |    2 +-
  drivers/iio/common/ms_sensors/ms_sensors_i2c.c     |    2 +-
  drivers/iio/common/st_sensors/st_sensors_buffer.c  |  101 +-
- drivers/iio/common/st_sensors/st_sensors_core.c    |   92 +-
+ drivers/iio/common/st_sensors/st_sensors_core.c    |  100 +-
  drivers/iio/common/st_sensors/st_sensors_core.h    |    8 +
  drivers/iio/common/st_sensors/st_sensors_i2c.c     |    4 +-
  drivers/iio/common/st_sensors/st_sensors_trigger.c |  219 ++-
@@ -318,7 +318,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/platform_data/ad5761.h               |   44 +
  include/linux/platform_data/st_sensors_pdata.h     |    2 +
  include/uapi/linux/iio/types.h                     |    4 +
- 313 files changed, 31031 insertions(+), 3234 deletions(-)
+ 313 files changed, 31044 insertions(+), 3241 deletions(-)
  create mode 100644 drivers/iio/accel/bma220_spi.c
  create mode 100644 drivers/iio/accel/mma7455.h
  create mode 100644 drivers/iio/accel/mma7455_core.c
@@ -3934,7 +3934,7 @@ index a1e642e..7fddc13 100644
  }
  
 diff --git a/drivers/iio/accel/st_accel_core.c b/drivers/iio/accel/st_accel_core.c
-index 197a08b..da3fb06 100644
+index 197a08b..ce69048 100644
 --- a/drivers/iio/accel/st_accel_core.c
 +++ b/drivers/iio/accel/st_accel_core.c
 @@ -39,6 +39,9 @@
@@ -4208,7 +4208,34 @@ index 197a08b..da3fb06 100644
  };
  
  static int st_accel_read_raw(struct iio_dev *indio_dev,
-@@ -619,6 +805,7 @@ static const struct iio_info accel_info = {
+@@ -557,8 +743,8 @@ static int st_accel_read_raw(struct iio_dev *indio_dev,
+ 
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_SCALE:
+-		*val = 0;
+-		*val2 = adata->current_fullscale->gain;
++		*val = adata->current_fullscale->gain / 1000000;
++		*val2 = adata->current_fullscale->gain % 1000000;
+ 		return IIO_VAL_INT_PLUS_MICRO;
+ 	case IIO_CHAN_INFO_SAMP_FREQ:
+ 		*val = adata->odr;
+@@ -577,9 +763,13 @@ static int st_accel_write_raw(struct iio_dev *indio_dev,
+ 	int err;
+ 
+ 	switch (mask) {
+-	case IIO_CHAN_INFO_SCALE:
+-		err = st_sensors_set_fullscale_by_gain(indio_dev, val2);
++	case IIO_CHAN_INFO_SCALE: {
++		int gain;
++
++		gain = val * 1000000 + val2;
++		err = st_sensors_set_fullscale_by_gain(indio_dev, gain);
+ 		break;
++	}
+ 	case IIO_CHAN_INFO_SAMP_FREQ:
+ 		if (val2)
+ 			return -EINVAL;
+@@ -619,6 +809,7 @@ static const struct iio_info accel_info = {
  static const struct iio_trigger_ops st_accel_trigger_ops = {
  	.owner = THIS_MODULE,
  	.set_trigger_state = ST_ACCEL_TRIGGER_SET_STATE,
@@ -4216,7 +4243,7 @@ index 197a08b..da3fb06 100644
  };
  #define ST_ACCEL_TRIGGER_OPS (&st_accel_trigger_ops)
  #else
-@@ -635,13 +822,15 @@ int st_accel_common_probe(struct iio_dev *indio_dev)
+@@ -635,13 +826,15 @@ int st_accel_common_probe(struct iio_dev *indio_dev)
  	indio_dev->info = &accel_info;
  	mutex_init(&adata->tb.buf_lock);
  
@@ -4234,7 +4261,7 @@ index 197a08b..da3fb06 100644
  
  	adata->num_data_channels = ST_ACCEL_NUMBER_DATA_CHANNELS;
  	adata->multiread_bit = adata->sensor_settings->multi_read_bit;
-@@ -658,11 +847,11 @@ int st_accel_common_probe(struct iio_dev *indio_dev)
+@@ -658,11 +851,11 @@ int st_accel_common_probe(struct iio_dev *indio_dev)
  
  	err = st_sensors_init_sensor(indio_dev, adata->dev->platform_data);
  	if (err < 0)
@@ -4248,7 +4275,7 @@ index 197a08b..da3fb06 100644
  
  	if (irq > 0) {
  		err = st_sensors_allocate_trigger(indio_dev,
-@@ -685,6 +874,8 @@ st_accel_device_register_error:
+@@ -685,6 +878,8 @@ st_accel_device_register_error:
  		st_sensors_deallocate_trigger(indio_dev);
  st_accel_probe_trigger_error:
  	st_accel_deallocate_ring(indio_dev);
@@ -15890,7 +15917,7 @@ index e18bc67..d06e728 100644
  st_sensors_get_buffer_element_error:
  	iio_trigger_notify_done(indio_dev->trig);
 diff --git a/drivers/iio/common/st_sensors/st_sensors_core.c b/drivers/iio/common/st_sensors/st_sensors_core.c
-index 25258e2..2d5282e 100644
+index 25258e2..32a5946 100644
 --- a/drivers/iio/common/st_sensors/st_sensors_core.c
 +++ b/drivers/iio/common/st_sensors/st_sensors_core.c
 @@ -18,16 +18,15 @@
@@ -16088,6 +16115,28 @@ index 25258e2..2d5282e 100644
  	}
  
  	sdata->sensor_settings =
+@@ -569,7 +619,7 @@ EXPORT_SYMBOL(st_sensors_sysfs_sampling_frequency_avail);
+ ssize_t st_sensors_sysfs_scale_avail(struct device *dev,
+ 				struct device_attribute *attr, char *buf)
+ {
+-	int i, len = 0;
++	int i, len = 0, q, r;
+ 	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+ 	struct st_sensor_data *sdata = iio_priv(indio_dev);
+ 
+@@ -578,8 +628,10 @@ ssize_t st_sensors_sysfs_scale_avail(struct device *dev,
+ 		if (sdata->sensor_settings->fs.fs_avl[i].num == 0)
+ 			break;
+ 
+-		len += scnprintf(buf + len, PAGE_SIZE - len, "0.%06u ",
+-				sdata->sensor_settings->fs.fs_avl[i].gain);
++		q = sdata->sensor_settings->fs.fs_avl[i].gain / 1000000;
++		r = sdata->sensor_settings->fs.fs_avl[i].gain % 1000000;
++
++		len += scnprintf(buf + len, PAGE_SIZE - len, "%u.%06u ", q, r);
+ 	}
+ 	mutex_unlock(&indio_dev->mlock);
+ 	buf[len - 1] = '\n';
 diff --git a/drivers/iio/common/st_sensors/st_sensors_core.h b/drivers/iio/common/st_sensors/st_sensors_core.h
 new file mode 100644
 index 0000000..cd88098
@@ -43280,7 +43329,7 @@ index 6464f2c..6366216 100644
  	struct iio_dev *indio_dev;
  	struct regulator *reg;
 diff --git a/drivers/staging/iio/impedance-analyzer/ad5933.c b/drivers/staging/iio/impedance-analyzer/ad5933.c
-index 10c43dda..24c348d 100644
+index 196da09..98d9473 100644
 --- a/drivers/staging/iio/impedance-analyzer/ad5933.c
 +++ b/drivers/staging/iio/impedance-analyzer/ad5933.c
 @@ -12,20 +12,16 @@
@@ -43438,7 +43487,7 @@ index 10c43dda..24c348d 100644
  };
  
  static int ad5933_register_ring_funcs_and_init(struct iio_dev *indio_dev)
-@@ -683,8 +691,9 @@ static void ad5933_work(struct work_struct *work)
+@@ -686,8 +694,9 @@ static void ad5933_work(struct work_struct *work)
  	}
  
  	if (status & AD5933_STAT_SWEEP_DONE) {
@@ -43450,7 +43499,7 @@ index 10c43dda..24c348d 100644
  		ad5933_cmd(st, AD5933_CTRL_POWER_DOWN);
  	} else {
  		/* we just received a valid datum, move on to the next */
-@@ -699,7 +708,7 @@ static int ad5933_probe(struct i2c_client *client,
+@@ -702,7 +711,7 @@ static int ad5933_probe(struct i2c_client *client,
  				   const struct i2c_device_id *id)
  {
  	int ret, voltage_uv = 0;
