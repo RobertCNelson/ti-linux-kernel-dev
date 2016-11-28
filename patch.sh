@@ -348,7 +348,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
-	backport_tag="v4.8.10"
+	backport_tag="v4.8.11"
 	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -387,7 +387,7 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.9-rc6"
+	backport_tag="v4.9-rc7"
 
 	subsystem="fbtft"
 	#regenerate="enable"
@@ -1030,7 +1030,6 @@ beaglebone () {
 lts44_backports
 reverts
 dir 'fixes'
-dir 'fixes/gcc6'
 ti
 pru_rpmsg
 bbb_overlays
