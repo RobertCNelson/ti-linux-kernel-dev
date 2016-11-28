@@ -4,8 +4,8 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="-ti-r"
-branch_prefix="ti-linux-"
+build_prefix="-ti-xenomai-r"
+branch_prefix="ti-linux-xenomai-"
 branch_postfix=".y"
 
 #arm
@@ -41,7 +41,9 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=cross
 DEBARCH=armhf
 
-ti_git_old_release="87318e43187c81a4b8f07990f93b947b2e42c20b"
-        ti_git_pre="87318e43187c81a4b8f07990f93b947b2e42c20b"
-       ti_git_post="35cf2bbebaedee45a3a591718a71d0a9d61cc50e"
+xenomai_checkout="4993d845b9af8a51255aa2978e25715f0207162e"
+
+ti_git_old_release="c8a68cfe1a3df011b18072d97f1093e447a2816c"
+        ti_git_pre="c8a68cfe1a3df011b18072d97f1093e447a2816c"
+       ti_git_post="c8a68cfe1a3df011b18072d97f1093e447a2816c"
 #

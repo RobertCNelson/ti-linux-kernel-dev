@@ -208,6 +208,44 @@ git_kernel () {
 	cd "${DIR}/" || exit
 }
 
+git_xenomai () {
+	XENO_GIT="${DIR}/ignore/xenomai"
+
+	echo "-----------------------------"
+	echo "scripts/git: Xenomai 3 repository"
+
+	# Check/clone/update local xenomai repository
+	if [ ! -f "${XENO_GIT}/.git/config" ] ; then
+		rm -rf ${XENO_GIT} || true
+		echo "scripts/git: Cloning ${xenomai} into ${XENO_GIT}"
+		${git_bin} clone ${xenomai} ${XENO_GIT}
+	fi
+
+	#Automaticly, just recover the git repo from a git crash
+	if [ -f "${XENO_GIT}/ignore/xenomai/.git/index.lock" ] ; then
+		rm -rf ${XENO_GIT}/ignore/xenomai/ || true
+		echo "scripts/git: xenomai repository ${XENO_GIT} wedged"
+		echo "Recloning..."
+		${git_bin} clone ${xenomai} ${XENO_GIT}
+	fi
+
+	cd "${XENO_GIT}"
+	${git_bin} am --abort || echo "git tree is clean..."
+	${git_bin} add --all
+	${git_bin} commit --allow-empty -a -m 'empty cleanup commit'
+
+	${git_bin} reset --hard HEAD
+	${git_bin} checkout master -f
+
+	${git_bin} pull --no-edit || true
+
+	if [ "x${xenomai_checkout}" = "x" ] ; then
+		${git_bin} checkout master -f
+	else
+		${git_bin} checkout ${xenomai_checkout} -f
+	fi
+}
+
 git_shallow_fail () {
 	echo "Sorry, ${kernel_tag} is not in git, trying via patch"
 	old_kernel=$(echo ${kernel_tag} | awk -F'-' '{print $1}')
@@ -308,9 +346,11 @@ torvalds_linux="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.g
 unsecure_torvalds_linux="git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 linux_stable="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
 unsecure_linux_stable="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
+xenomai="git://git.xenomai.org/xenomai-3.git"
 
 if [ ! -f "${DIR}/.yakbuild" ] ; then
 	git_kernel
+	git_xenomai
 else
 	. "${DIR}/recipe.sh"
 	git_shallow

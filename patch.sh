@@ -103,21 +103,18 @@ cherrypick () {
 }
 
 external_git () {
-	git_tag="ti-rt-linux-4.4.y"
+	git_tag="ti-linux-4.4.y"
 	echo "pulling: ${git_tag}"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
-	#. ${DIR}/.CC
-	#sed -i -e 's:linux-kernel:`pwd`/:g' ./ti_config_fragments/defconfig_merge.sh
-	#./ti_config_fragments/defconfig_merge.sh -o /dev/null -f ti_config_fragments/defconfig_fragment -c ${CC}
-	#git checkout -- ./ti_config_fragments/defconfig_merge.sh
-
-	#make ARCH=arm CROSS_COMPILE="${CC}" appended_omap2plus_defconfig
-	#mv -v .config ../patches/ti_omap2plus_defconfig
-
-	#rm -f arch/arm/configs/appended_omap2plus_defconfig
-	#rm -f ti_config_fragments/working_config/base_config
-	#rm -f ti_config_fragments/working_config/final_config
-	#rm -f ti_config_fragments/working_config/merged_omap2plus_defconfig
+	if [ ! "x${ti_git_post}" = "x" ] ; then
+		${git_bin} checkout master -f
+		test_for_branch=$(${git_bin} branch --list "v${KERNEL_TAG}${BUILD}")
+		if [ "x${test_for_branch}" != "x" ] ; then
+			${git_bin} branch "v${KERNEL_TAG}${BUILD}" -D
+		fi
+		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
+	fi
+	${git_bin} describe
 }
 
 aufs_fail () {
@@ -231,8 +228,93 @@ local_patch () {
 
 external_git
 aufs4
-rt
+#rt
 #local_patch
+
+ipipe () {
+	kernel_base="v4.4.26"
+	xenomai_branch="ipipe-4.4.y"
+	echo "dir: ipipe"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		#https://git.xenomai.org/ipipe.git/log/?h=ipipe-4.4.y
+		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
+		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
+		if [ "x${test_for_branch}" != "x" ] ; then
+			${git_bin} branch "${xenomai_branch}" -D
+		fi
+
+		if [ ! -d ../patches/${xenomai_branch}/ ] ; then
+			mkdir -p ../patches/${xenomai_branch}/
+		fi
+
+		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
+
+		cp -v arch/arm/mach-omap2/timer.c ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c
+		cp -v arch/x86/kvm/x86.c ../patches/${xenomai_branch}/arch_x86_kvm_x86.c
+		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
+		cp -v drivers/memory/omap-gpmc.c ../patches/${xenomai_branch}/drivers_memory_omap-gpmc.c
+
+		${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}
+		${git_bin} diff ${kernel_base}...HEAD > ../patches/${xenomai_branch}/${xenomai_branch}.diff
+
+		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
+		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
+		if [ "x${test_for_branch}" != "x" ] ; then
+			${git_bin} branch "${xenomai_branch}" -D
+		fi
+
+		cp -v ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c arch/arm/mach-omap2/timer.c
+		cp -v ../patches/${xenomai_branch}/arch_x86_kvm_x86.c arch/x86/kvm/x86.c
+		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
+		cp -v ../patches/${xenomai_branch}/drivers_memory_omap-gpmc.c drivers/memory/omap-gpmc.c
+
+		${git_bin} add --all
+		${git_bin} commit --allow-empty -a -m 'xenomai pre-patchset'
+
+		patch -p1 < ../patches/${xenomai_branch}/${xenomai_branch}.diff
+
+		${git_bin} add --all
+		${git_bin} commit -a -m 'xenomai ipipe patchset'
+
+		wdir="${xenomai_branch}"
+		number=2
+		cleanup
+
+	fi
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/${xenomai_branch}/0001-xenomai-pre-patchset.patch"
+	${git} "${DIR}/patches/${xenomai_branch}/0002-xenomai-ipipe-patchset.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="${xenomai_branch}"
+		number=2
+		cleanup
+	fi
+
+	echo "dir: xenomai - prepare_kernel"
+	# Add the rest of xenomai to the kernel
+	OUTPATCH=$(mktemp "${DIR}/ignore/xenomai-patch.XXXXXXXXXX") || { echo "Failed to create temp file"; exit 1; }
+
+	# generate the xenomai patch
+	# doing it this way fixes the dangling symlinks problem under /usr/src/linux-headers-*
+	${DIR}/ignore/xenomai/scripts/prepare-kernel.sh --linux=./ --arch=arm --outpatch="${OUTPATCH}"
+
+	# and apply it
+	git apply "${OUTPATCH}"
+
+	git add .
+	git commit -a -m 'xenomai patchset'
+
+	#exit 2
+}
+
+ipipe
 
 pre_backports () {
 	echo "dir: backports/${subsystem}"
@@ -862,7 +944,7 @@ beaglebone () {
 	dir 'beaglebone/sirius'
 	dir 'beaglebone/ctag'
 	dir 'beaglebone/capes'
-	dir 'beaglebone/mctrl_gpio'
+#	dir 'beaglebone/mctrl_gpio'
 	dir 'beaglebone/jtag'
 	dir 'beaglebone/wl18xx'
 	dir 'beaglebone/pru'
@@ -1027,7 +1109,7 @@ beaglebone () {
 }
 
 ###
-lts44_backports
+#lts44_backports
 reverts
 dir 'fixes'
 ti
