@@ -210,6 +210,58 @@ rt () {
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
 
+tinydrm () {
+	echo "dir: tinydrm"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./tinydrm ] ; then
+			${git_bin} clone https://github.com/notro/tinydrm
+			cd ./tinydrm
+			${git_bin} checkout origin/master -b tmp
+			cd ../
+		else
+			rm -rf ./tinydrm || true
+			${git_bin} clone https://github.com/notro/tinydrm
+			cd ./tinydrm
+			${git_bin} checkout origin/master -b tmp
+			cd ../
+		fi
+		cd ./KERNEL/
+
+		mkdir -p ./drivers/gpu/drm/tinydrm/core/
+		cp -v ../tinydrm/Kconfig ./drivers/gpu/drm/tinydrm/
+		cp -v ../tinydrm/Makefile ./drivers/gpu/drm/tinydrm/
+		cp -rv ../tinydrm/core/* ./drivers/gpu/drm/tinydrm/core/
+		cp -rv ../tinydrm/*.c ./drivers/gpu/drm/tinydrm/
+		mkdir -p ./include/drm/tinydrm
+		cp -v ../tinydrm/include/drm/tinydrm/*.h ./include/drm/tinydrm
+		cp -v ../tinydrm/include/uapi/drm/*.h ./include/uapi/drm
+
+		echo "obj-\$(CONFIG_DRM_TINYDRM)+= tinydrm/" >> ./drivers/gpu/drm/Makefile
+		echo "source \"drivers/gpu/drm/tinydrm/Kconfig\"" >> ./drivers/gpu/drm/Kconfig
+
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: tinydrm' -s
+		${git_bin} format-patch -1 -o ../patches/drivers/tinydrm/
+
+		exit 2
+	fi
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/drivers/tinydrm/0001-merge-tinydrm.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="drivers/tinydrm"
+		number=1
+		cleanup
+	fi
+}
+
 local_patch () {
 	echo "dir: dir"
 	${git} "${DIR}/patches/dir/0001-patch.patch"
@@ -218,6 +270,7 @@ local_patch () {
 external_git
 #aufs4
 #rt
+tinydrm
 #local_patch
 
 pre_backports () {
@@ -295,15 +348,13 @@ reverts () {
 	${git} "${DIR}/patches/reverts/0006-Revert-wlcore-sdio-Populate-config-firmware-data.patch"
 	${git} "${DIR}/patches/reverts/0007-Revert-wlcore-Prepare-family-to-fix-nvs-file-handlin.patch"
 
+	${git} "${DIR}/patches/reverts/0008-Revert-Fix-subtle-CONFIG_MODVERSIONS-problems.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
-		number=7
+		number=8
 		cleanup
 	fi
-}
-
-build () {
-	dir 'build/kbuild'
 }
 
 drivers () {
@@ -595,7 +646,6 @@ beaglebone () {
 ###
 #backports
 reverts
-build
 drivers
 soc
 beaglebone
