@@ -143,7 +143,7 @@ aufs4 () {
 		${git_bin} format-patch -4 -o ../patches/aufs4/
 
 		cd ../
-		if [ ! -f ./aufs4-standalone ] ; then
+		if [ ! -d ./aufs4-standalone ] ; then
 			${git_bin} clone https://github.com/sfjro/aufs4-standalone
 			cd ./aufs4-standalone
 			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
@@ -197,7 +197,7 @@ rt_cleanup () {
 rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
-	regenerate="enable"
+	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		rm -f localversion-rt
 		${git_bin} add .
