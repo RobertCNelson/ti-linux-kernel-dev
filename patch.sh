@@ -106,18 +106,15 @@ external_git () {
 	git_tag="ti-rt-linux-4.4.y"
 	echo "pulling: ${git_tag}"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
-	#. ${DIR}/.CC
-	#sed -i -e 's:linux-kernel:`pwd`/:g' ./ti_config_fragments/defconfig_merge.sh
-	#./ti_config_fragments/defconfig_merge.sh -o /dev/null -f ti_config_fragments/defconfig_fragment -c ${CC}
-	#git checkout -- ./ti_config_fragments/defconfig_merge.sh
-
-	#make ARCH=arm CROSS_COMPILE="${CC}" appended_omap2plus_defconfig
-	#mv -v .config ../patches/ti_omap2plus_defconfig
-
-	#rm -f arch/arm/configs/appended_omap2plus_defconfig
-	#rm -f ti_config_fragments/working_config/base_config
-	#rm -f ti_config_fragments/working_config/final_config
-	#rm -f ti_config_fragments/working_config/merged_omap2plus_defconfig
+	if [ ! "x${ti_git_post}" = "x" ] ; then
+		${git_bin} checkout master -f
+		test_for_branch=$(${git_bin} branch --list "v${KERNEL_TAG}${BUILD}")
+		if [ "x${test_for_branch}" != "x" ] ; then
+			${git_bin} branch "v${KERNEL_TAG}${BUILD}" -D
+		fi
+		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
+	fi
+	${git_bin} describe
 }
 
 aufs_fail () {
