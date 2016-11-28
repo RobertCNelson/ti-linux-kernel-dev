@@ -98,11 +98,7 @@ cherrypick () {
 }
 
 external_git () {
-	if [ "x${kernel_rt}" = "xtrue" ] ; then
-		git_tag="ti-rt-linux-${KERNEL_REL}.y"
-	else
-		git_tag="ti-linux-${KERNEL_REL}.y"
-	fi
+	git_tag="ti-linux-${KERNEL_REL}.y"
 	echo "pulling: ${git_tag}"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
 }
@@ -199,6 +195,9 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
+		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
+		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
