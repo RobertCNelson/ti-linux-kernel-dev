@@ -101,6 +101,15 @@ external_git () {
 	git_tag="ti-linux-${KERNEL_REL}.y"
 	echo "pulling: ${git_tag}"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
+	if [ ! "x${ti_git_post}" = "x" ] ; then
+		${git_bin} checkout master -f
+		test_for_branch=$(${git_bin} branch --list "v${KERNEL_TAG}${BUILD}")
+		if [ "x${test_for_branch}" != "x" ] ; then
+			${git_bin} branch "v${KERNEL_TAG}${BUILD}" -D
+		fi
+		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
+	fi
+	${git_bin} describe
 }
 
 aufs_fail () {
