@@ -101,6 +101,7 @@ external_git () {
 	git_tag="ti-linux-${KERNEL_REL}.y"
 	echo "pulling: ${git_tag}"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
+	top_of_branch=$(${git_bin} describe)
 	if [ ! "x${ti_git_post}" = "x" ] ; then
 		${git_bin} checkout master -f
 		test_for_branch=$(${git_bin} branch --list "v${KERNEL_TAG}${BUILD}")
@@ -108,8 +109,15 @@ external_git () {
 			${git_bin} branch "v${KERNEL_TAG}${BUILD}" -D
 		fi
 		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
+		current_git=$(${git_bin} describe)
+		echo "${current_git}"
+
+		if [ ! "x${top_of_branch}" = "x${current_git}" ] ; then
+			echo "INFO: external git repo has updates..."
+		fi
+	else
+		echo "${top_of_branch}"
 	fi
-	${git_bin} describe
 }
 
 aufs_fail () {
