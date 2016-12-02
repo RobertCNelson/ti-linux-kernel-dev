@@ -1,18 +1,18 @@
-From bcf1183a5a27bafa3908138de4c3ac451dfcd808 Mon Sep 17 00:00:00 2001
+From f78c7461b1e982ff6e94bb9f3bb0a123bb759d44 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 16 Nov 2016 18:53:15 -0600
+Date: Fri, 2 Dec 2016 16:09:27 -0600
 Subject: [PATCH 4/4] drm: etnaviv: julbouln diff
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/gpu/drm/etnaviv/etnaviv_drv.c        | 25 ++++++++++++++++---------
- drivers/gpu/drm/etnaviv/etnaviv_gem.c        |  6 +++++-
+ drivers/gpu/drm/etnaviv/etnaviv_gem.c        | 12 +++++++++++-
  drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c |  7 +++++++
  drivers/gpu/drm/etnaviv/etnaviv_gpu.c        | 12 ++++++++----
  drivers/gpu/drm/etnaviv/etnaviv_iommu.c      |  2 +-
  drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c   |  2 +-
  drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h   | 24 ++++++++++++++++++++++++
- 7 files changed, 62 insertions(+), 16 deletions(-)
+ 7 files changed, 68 insertions(+), 16 deletions(-)
  create mode 100644 drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h
 
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_drv.c b/drivers/gpu/drm/etnaviv/etnaviv_drv.c
@@ -106,10 +106,36 @@ index aa68766..0aa8cb8 100644
  };
  MODULE_DEVICE_TABLE(of, dt_match);
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_gem.c b/drivers/gpu/drm/etnaviv/etnaviv_gem.c
-index 0370b84..f7cac70 100644
+index 0370b84..53488e1 100644
 --- a/drivers/gpu/drm/etnaviv/etnaviv_gem.c
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_gem.c
-@@ -762,8 +762,12 @@ static struct page **etnaviv_gem_userptr_do_get_pages(
+@@ -550,12 +550,17 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
+ {
+ 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
+ 	struct etnaviv_vram_mapping *mapping, *tmp;
++	struct drm_device *dev = etnaviv_obj->base.dev;
++	struct etnaviv_drm_private *priv = dev->dev_private;
+ 
+ 	/* object should not be active */
+ 	WARN_ON(is_active(etnaviv_obj));
+ 
++	mutex_lock(&priv->gem_lock);
+ 	list_del(&etnaviv_obj->gem_node);
++	mutex_unlock(&priv->gem_lock);
+ 
++	mutex_lock(&etnaviv_obj->lock);
+ 	list_for_each_entry_safe(mapping, tmp, &etnaviv_obj->vram_list,
+ 				 obj_node) {
+ 		struct etnaviv_iommu *mmu = mapping->mmu;
+@@ -568,6 +573,7 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
+ 		list_del(&mapping->obj_node);
+ 		kfree(mapping);
+ 	}
++	mutex_unlock(&etnaviv_obj->lock);
+ 
+ 	drm_gem_free_mmap_offset(obj);
+ 	etnaviv_obj->ops->release(etnaviv_obj);
+@@ -762,8 +768,12 @@ static struct page **etnaviv_gem_userptr_do_get_pages(
  
  	down_read(&mm->mmap_sem);
  	while (pinned < npages) {
