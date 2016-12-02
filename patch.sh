@@ -600,6 +600,10 @@ reverts () {
 	dir 'reverts/pwm'
 }
 
+drivers () {
+	dir 'drivers/tsl2550'
+}
+
 ti () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -1026,6 +1030,7 @@ beaglebone () {
 ###
 lts44_backports
 reverts
+drivers
 dir 'fixes'
 ti
 pru_rpmsg
