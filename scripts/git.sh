@@ -214,36 +214,20 @@ git_xenomai () {
 	echo "-----------------------------"
 	echo "scripts/git: Xenomai 3 repository"
 
-	# Check/clone/update local xenomai repository
-	if [ ! -f "${XENO_GIT}/.git/config" ] ; then
-		rm -rf ${XENO_GIT} || true
-		echo "scripts/git: Cloning ${xenomai} into ${XENO_GIT}"
-		${git_bin} clone ${xenomai} ${XENO_GIT}
-	fi
-
-	#Automaticly, just recover the git repo from a git crash
-	if [ -f "${XENO_GIT}/ignore/xenomai/.git/index.lock" ] ; then
-		rm -rf ${XENO_GIT}/ignore/xenomai/ || true
-		echo "scripts/git: xenomai repository ${XENO_GIT} wedged"
-		echo "Recloning..."
-		${git_bin} clone ${xenomai} ${XENO_GIT}
-	fi
-
-	cd "${XENO_GIT}"
-	${git_bin} am --abort || echo "git tree is clean..."
-	${git_bin} add --all
-	${git_bin} commit --allow-empty -a -m 'empty cleanup commit'
-
-	${git_bin} reset --hard HEAD
-	${git_bin} checkout master -f
-
-	${git_bin} pull --no-edit || true
-
 	if [ "x${xenomai_checkout}" = "x" ] ; then
-		${git_bin} checkout master -f
-	else
-		${git_bin} checkout ${xenomai_checkout} -f
+		echo "error: set kernel_tag in system.sh"
+		exit 2
 	fi
+	if [ ! -f "${DIR}/ignore/xenomai/.ignore-${xenomai_checkout}" ] ; then
+		if [ -d "${DIR}/ignore/xenomai/" ] ; then
+			rm -rf "${DIR}/ignore/xenomai/" || true
+		fi
+		mkdir "${DIR}/ignore/xenomai/" || true
+		echo "git: [git clone -b stable-3.0.x ${xenomai}]"
+		${git_bin} clone --depth=50 -b stable-3.0.x ${xenomai} "${DIR}/ignore/xenomai/"
+		touch "${DIR}/ignore/xenomai/.ignore-${xenomai_checkout}"
+	fi
+	echo "-----------------------------"
 }
 
 git_shallow_fail () {
