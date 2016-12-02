@@ -345,7 +345,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
-	backport_tag="v4.8.11"
+	backport_tag="v4.8.12"
 	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
