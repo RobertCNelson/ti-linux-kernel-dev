@@ -43,11 +43,6 @@ fi
 
 echo "Starting patch.sh"
 
-merged_in_4_5="enable"
-#unset merged_in_4_5
-merged_in_4_6="enable"
-#unset merged_in_4_6
-
 git_add () {
 	${git_bin} add .
 	${git_bin} commit -a -m 'testing patchset'
@@ -454,59 +449,11 @@ lts44_backports () {
 		cleanup
 	fi
 
-	echo "dir: lts44_backports"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: lts44_backports/dmtimer"
-		cherrypick_dir="lts44_backports/dmtimer"
-		SHA="6604c6556db9e41c85f2839f66bd9d617bcf9f87" ; num="1" ; cherrypick
-		SHA="074726402b82f14ca377da0b4a4767674c3d1ff8" ; cherrypick
-		SHA="20437f79f6627a31752f422688a6047c25cefcf1" ; cherrypick
-		SHA="f8caa792261c0edded20eba2b8fcc899a1b91819" ; cherrypick
-		SHA="cd378881426379a62a7fe67f34b8cbe738302022" ; cherrypick
-		SHA="7b0883f33809ff0aeca9848193c31629a752bb77" ; cherrypick
-		SHA="922201d129c8f9d0c3207dca90ea6ffd8e2242f0" ; cherrypick
-		exit 2
-	fi
-
-	echo "dir: lts44_backports/dmtimer"
-	if [ "x${merged_in_4_5}" = "xenable" ] ; then
-		#4.5.0-rc0
-		${git} "${DIR}/patches/lts44_backports/dmtimer/0001-pwm-Add-PWM-driver-for-OMAP-using-dual-mode-timers.patch"
-		${git} "${DIR}/patches/lts44_backports/dmtimer/0002-pwm-omap-dmtimer-Potential-NULL-dereference-on-error.patch"
-		${git} "${DIR}/patches/lts44_backports/dmtimer/0003-ARM-OMAP-Add-PWM-dmtimer-platform-data-quirks.patch"
-	fi
-	if [ "x${merged_in_4_6}" = "xenable" ] ; then
-		#4.6.0-rc0
-		${git} "${DIR}/patches/lts44_backports/dmtimer/0004-pwm-omap-dmtimer-Fix-inaccurate-period-and-duty-cycl.patch"
-		${git} "${DIR}/patches/lts44_backports/dmtimer/0005-pwm-omap-dmtimer-Add-sanity-checking-for-load-and-ma.patch"
-		${git} "${DIR}/patches/lts44_backports/dmtimer/0006-pwm-omap-dmtimer-Round-load-and-match-values-rather-.patch"
-		${git} "${DIR}/patches/lts44_backports/dmtimer/0007-pwm-omap-dmtimer-Add-debug-message-for-effective-per.patch"
-	fi
+	dir 'lts44_backports/dmtimer'
 }
 
 reverts () {
-	echo "dir: reverts"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/reverts/0001-Revert-spi-spidev-Warn-loudly-if-instantiated-from-D.patch"
-	${git} "${DIR}/patches/reverts/0002-Revert-pwm-pwm-tipwmss-Remove-all-pm_runtime-gets-an.patch"
-	${git} "${DIR}/patches/reverts/0003-Revert-pwms-pwm-ti-Remove-support-for-local-clock-ga.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="reverts"
-		number=3
-		cleanup
-	fi
-
-	echo "dir: reverts/tilcdc"
-#	regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
+	dir 'reverts'
 
 	#https://github.com/RobertCNelson/ti-linux-kernel/compare/64796e7f597d7f17bbcfa18242dbf1a3da839131...5fac424a36a240576b5ac97fa6e282c36cb0d144
 	#git revert --no-edit 4dc7dcabe8e570d2ffad688efbc3d97113ca55f8
@@ -555,85 +502,14 @@ reverts () {
 
 	#git format-patch -35 -o ../patches/compare
 
-	${git} "${DIR}/patches/reverts/tilcdc/0001-Revert-drm-tilcdc-WARN-if-CRTC-is-touched-without-CR.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0002-Revert-drm-tilcdc-Take-CRTC-lock-when-calling-tilcdc.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0003-Revert-drm-tilcdc-Remove-unnecessary-tilcdc_crtc_dis.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0004-Revert-drm-tilcdc-Flush-flip-work-workqueue-before-d.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0005-Revert-drm-tilcdc-Clean-up-LCDC-functional-clock-rat.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0006-Revert-drm-tilcdc-Take-crtc-modeset-lock-while-updat.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0007-Revert-drm-tilcdc-Choose-console-BPP-that-supports-R.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0008-Revert-drm-tilcdc-Add-blue-and-red-crossed-devicetre.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0009-Revert-drm-tilcdc-Write-DMA-base-and-ceiling-address.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0010-Revert-drm-tilcdc-Enable-EOF-interrupts-for-v1-LCDC.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0011-Revert-drm-tilcdc-Adjust-the-FB_CEILING-address.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0012-Revert-drm-tilcdc-Fix-check-for-remote-port-parent.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0013-Revert-drm-tilcdc-Change-tilcdc_crtc_page_flip-to-ti.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0014-Revert-drm-tilcdc-Remove-unnecessary-pm_runtime_get-.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0015-Revert-drm-tilcdc-Get-rid-of-legacy-dpms-mechanism.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0016-Revert-drm-tilcdc-Use-drm_atomic_helper_resume-suspe.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0017-Revert-drm-tilcdc-Enable-and-disable-interrupts-in-c.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0018-Revert-drm-tilcdc-tfp410-Add-atomic-modeset-helpers-.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0019-Revert-drm-tilcdc-tfp410-Set-crtc-panel-info-at-init.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0020-Revert-drm-tilcdc-panel-Add-atomic-modeset-helpers-t.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0021-Revert-drm-tilcdc-panel-Set-crtc-panel-info-at-init-.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0022-Revert-drm-tilcdc-Remove-tilcdc_verify_fb.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0023-Revert-drm-tilcdc-Remove-obsolete-crtc-helper-functi.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0024-Revert-drm-tilcdc-Set-DRIVER_ATOMIC-and-use-atomic-c.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0025-Revert-drm-tilcdc-Add-drm_mode_config_reset-call-to-.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0026-Revert-drm-tilcdc-Add-atomic-mode-config-funcs.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0027-Revert-drm-tilcdc-Add-tilcdc_crtc_atomic_check.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0028-Revert-drm-tilcdc-Add-tilcdc_crtc_mode_set_nofb.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0029-Revert-drm-tilcdc-Initialize-dummy-primary-plane-fro.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0030-Revert-drm-tilcdc-Add-dummy-primary-plane-implementa.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0031-Revert-drm-tilcdc-Make-tilcdc_crtc_page_flip-work-if.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0032-Revert-drm-tilcdc-Make-tilcdc_crtc_page_flip-public.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0033-Revert-drm-tilcdc-Fix-tilcdc-component-master-unload.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0034-Revert-drm-i2c-tda998x-Choose-between-atomic-or-non-.patch"
-	${git} "${DIR}/patches/reverts/tilcdc/0035-Revert-drm-i2c-tda998x-Add-support-for-atomic-modese.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="reverts/tilcdc"
-		number=35
-		cleanup
-	fi
-
+	dir 'reverts/tilcdc'
 	dir 'reverts/pwm'
 }
 
 drivers () {
 	dir 'drivers/tsl2550'
-}
-
-ti () {
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: ti/iodelay"
-		cherrypick_dir="ti/iodelay"
-		SHA="d3fecebe6b63c6b49a890b6f70866e2ce6024ae3" ; num="1" ; cherrypick
-		SHA="52a607e7c45e44e09f50233384cc352417556966" ; cherrypick
-		SHA="7735321423eead6bffce89c8f635b6c66a3052a1" ; cherrypick
-
-		exit 2
-	fi
-
-	#is_mainline="enable"
-	if [ "x${is_mainline}" = "xenable" ] ; then
-		echo "dir: ti/iodelay/"
-		#regenerate="enable"
-		if [ "x${regenerate}" = "xenable" ] ; then
-			start_cleanup
-		fi
-
-		${git} "${DIR}/patches/ti/iodelay/0001-pinctrl-bindings-pinctrl-Add-support-for-TI-s-IODela.patch"
-		${git} "${DIR}/patches/ti/iodelay/0002-pinctrl-Introduce-TI-IOdelay-configuration-driver.patch"
-		${git} "${DIR}/patches/ti/iodelay/0003-ARM-dts-dra7-Add-iodelay-module.patch"
-
-		if [ "x${regenerate}" = "xenable" ] ; then
-			number=3
-			cleanup
-		fi
-	fi
-	unset is_mainline
+	dir 'drivers/ti/pm'
+	dir 'drivers/wireless'
 }
 
 pru_rpmsg () {
@@ -689,9 +565,9 @@ bbb_overlays () {
 		fi
 	fi
 
-	echo "dir: bbb_overlays/nvmem"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: bbb_overlays/nvmem"
 		cherrypick_dir="bbb_overlays/nvmem"
 		#merged in 4.6.0-rc0
 		SHA="092462c2b52259edba80a6748acb3305f7f70423" ; num="1" ; cherrypick
@@ -707,65 +583,45 @@ bbb_overlays () {
 		SHA="1c4b6e2c7534b9b193f440f77dd47e420a150288" ; cherrypick
 		SHA="bec3c11bad0e7ac05fb90f204d0ab6f79945822b" ; cherrypick
 		exit 2
-	fi
-
-	if [ "x${merged_in_4_6}" = "xenable" ] ; then
+	else
 		#merged in 4.6.0-rc0
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0001-misc-eeprom-use-kobj_to_dev.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0002-misc-eeprom_93xx46-Fix-16-bit-read-and-write-accesse.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0003-misc-eeprom_93xx46-Implement-eeprom_93xx46-DT-bindin.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0004-misc-eeprom_93xx46-Add-quirks-to-support-Atmel-AT93C.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0005-misc-eeprom_93xx46-Add-support-for-a-GPIO-select-lin.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0006-nvmem-Add-flag-to-export-NVMEM-to-root-only.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0007-nvmem-Add-backwards-compatibility-support-for-older-.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0008-eeprom-at24-extend-driver-to-plug-into-the-NVMEM-fra.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0009-eeprom-at25-Remove-in-kernel-API-for-accessing-the-E.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0010-eeprom-at25-extend-driver-to-plug-into-the-NVMEM-fra.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0011-eeprom-93xx46-extend-driver-to-plug-into-the-NVMEM-f.patch"
-		${git} "${DIR}/patches/bbb_overlays/nvmem/0012-misc-at24-replace-memory_accessor-with-nvmem_device_.patch"
+		dir 'bbb_overlays/nvmem'
 	fi
 
-	echo "dir: bbb_overlays/configfs"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: bbb_overlays/configfs"
 		cherrypick_dir="bbb_overlays/configfs"
 		#merged in 4.5.0-rc0
 		SHA="03607ace807b414eab46323c794b6fb8fcc2d48c" ; num="1" ; cherrypick
 		exit 2
-	fi
-
-	if [ "x${merged_in_4_5}" = "xenable" ] ; then
+	else
 		#merged in 4.5.0-rc0
-		${git} "${DIR}/patches/bbb_overlays/configfs/0001-configfs-implement-binary-attributes.patch"
+		dir 'bbb_overlays/configfs'
 	fi
 
-	echo "dir: bbb_overlays/of"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: bbb_overlays/of"
 		cherrypick_dir="bbb_overlays/of"
 		#merged in 4.5.0-rc0
 		SHA="183223770ae8625df8966ed15811d1b3ee8720aa" ; num="1" ; cherrypick
 		exit 2
-	fi
-
-	if [ "x${merged_in_4_5}" = "xenable" ] ; then
+	else
 		#merged in 4.5.0-rc0
-		${git} "${DIR}/patches/bbb_overlays/of/0001-drivers-of-Export-OF-changeset-functions.patch"
+		dir 'bbb_overlays/of'
 	fi
 
-	echo "dir: bbb_overlays/omap"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		echo "dir: bbb_overlays/omap"
 		cherrypick_dir="bbb_overlays/omap"
 		#merged in 4.5.0-rc6?
 		SHA="cf26f1137333251f3515dea31f95775b99df0fd5" ; num="1" ; cherrypick
 		exit 2
-	fi
-
-	if [ "x${merged_in_4_5}" = "xenable" ] ; then
+	else
 		#merged in 4.5.0-rc6?
-		${git} "${DIR}/patches/bbb_overlays/omap/0001-Revert-ARM-OMAP2-omap_device-fix-crash-on-omap_devic.patch"
-		${git} "${DIR}/patches/bbb_overlays/omap/0002-ARM-OMAP2-Fix-omap_device-for-module-reload-on-PM-ru.patch"
+		dir 'bbb_overlays/omap'
 	fi
 
 	echo "dir: bbb_overlays"
@@ -1031,8 +887,6 @@ beaglebone () {
 lts44_backports
 reverts
 drivers
-dir 'fixes'
-ti
 pru_rpmsg
 bbb_overlays
 beaglebone
