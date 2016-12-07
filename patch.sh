@@ -848,6 +848,21 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: beaglebone/modio"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/beaglebone/modio/0001-Add-device-tree-file-for-the-Modio-BB-cape.patch"
+	${git} "${DIR}/patches/beaglebone/modio/0002-add-am335x-boneblack-modio.dtb.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="beaglebone/modio"
+		number=1
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -916,6 +931,9 @@ beaglebone () {
 		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
 
 		device="am335x-siriusDEB.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-modio.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-modio.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
