@@ -466,7 +466,7 @@ lts44_backports () {
 		cleanup
 	fi
 
-	backport_tag="v4.9-rc7"
+	backport_tag="v4.9-rc8"
 
 	subsystem="fbtft"
 	#regenerate="enable"
