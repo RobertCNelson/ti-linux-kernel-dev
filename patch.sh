@@ -267,6 +267,8 @@ ipipe () {
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
 		cp -v ../patches/${xenomai_branch}/drivers_memory_omap-gpmc.c drivers/memory/omap-gpmc.c
 
+		#exit 2
+
 		${git_bin} add --all
 		${git_bin} commit --allow-empty -a -m 'xenomai pre-patchset'
 
@@ -427,7 +429,7 @@ lts44_backports () {
 	fi
 	patch_backports
 
-	backport_tag="v4.8.12"
+	backport_tag="v4.8.13"
 	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
