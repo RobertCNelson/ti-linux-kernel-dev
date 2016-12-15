@@ -384,6 +384,7 @@ drivers () {
 	dir 'drivers/pm_opp'
 
 	dir 'drivers/spi'
+	dir 'drivers/thumb2'
 	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
 
@@ -516,7 +517,6 @@ soc () {
 #	dir 'soc/imx/wandboard'
 #	dir 'soc/imx'
 #	dir 'soc/sunxi'
-	dir 'soc/ti'
 	dir 'soc/ti/bone_common'
 	dir 'soc/ti/bbg'
 	dir 'soc/ti/bbgw'
