@@ -222,7 +222,7 @@ git_xenomai () {
 		if [ -d "${DIR}/ignore/xenomai/" ] ; then
 			rm -rf "${DIR}/ignore/xenomai/" || true
 		fi
-		mkdir "${DIR}/ignore/xenomai/" || true
+		mkdir -p "${DIR}/ignore/xenomai/" || true
 		echo "git: [git clone -b stable-3.0.x ${xenomai}]"
 		${git_bin} clone --depth=50 -b stable-3.0.x ${xenomai} "${DIR}/ignore/xenomai/"
 		touch "${DIR}/ignore/xenomai/.ignore-${xenomai_checkout}"
