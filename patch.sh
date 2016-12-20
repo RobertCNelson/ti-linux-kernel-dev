@@ -383,10 +383,6 @@ reverts () {
 
 drivers () {
 	dir 'drivers/pm_bus'
-
-	#[PATCH V5 00/10] PM / OPP: Multiple regulator support
-#	dir 'drivers/pm_opp'
-
 	dir 'drivers/spi'
 	dir 'drivers/thumb2'
 	dir 'drivers/tsl2550'
