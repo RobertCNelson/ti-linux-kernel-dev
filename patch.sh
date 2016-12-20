@@ -173,6 +173,8 @@ aufs4 () {
 		${git_bin} commit -a -m 'merge: aufs4' -s
 		${git_bin} format-patch -5 -o ../patches/aufs4/
 
+		rm -rf ../aufs4-standalone/ || true
+
 		exit 2
 	fi
 
@@ -267,8 +269,6 @@ post_backports () {
 		mkdir -p ../patches/backports/${subsystem}/
 	fi
 	${git_bin} format-patch -1 -o ../patches/backports/${subsystem}/
-
-	exit 2
 }
 
 patch_backports (){
@@ -304,26 +304,15 @@ lts44_backports () {
 		cp -v ~/linux-src/include/uapi/linux/serial.h ./include/uapi/linux/
 
 		post_backports
-	fi
-	patch_backports
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
+	else
+		patch_backports
 	fi
 
 	${git} "${DIR}/patches/backports/tty/0002-rt-Improve-the-serial-console-PASS_LIMIT.patch"
 	${git} "${DIR}/patches/backports/tty/0003-serial-8250-omap-Enable-UART-module-wakeup-based-on-.patch"
 
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="backports/tty"
-		number=3
-		cleanup
-	fi
-
 	backport_tag="v4.7.10"
 	subsystem="i2c"
-	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -337,12 +326,12 @@ lts44_backports () {
 		cp -v  ~/linux-src/include/linux/i2c-mux.h ./include/linux/
 
 		post_backports
+	else
+		patch_backports
 	fi
-	patch_backports
 
 	backport_tag="v4.8.15"
 	subsystem="iio"
-	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -359,30 +348,15 @@ lts44_backports () {
 		cp -v  ~/linux-src/drivers/input/touchscreen/ti_am335x_tsc.c ./drivers/input/touchscreen/ti_am335x_tsc.c
 
 		post_backports
-	fi
-	patch_backports
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
+	else
+		patch_backports
 	fi
 
-#	${git} "${DIR}/patches/backports/iio/0002-mfd-ti_am335x_tscadc-store-physical-address.patch"
-#	${git} "${DIR}/patches/backports/iio/0003-drivers-iio-ti_am335x_adc-add-dma-support.patch"
-#	${git} "${DIR}/patches/backports/iio/0004-ARM-dts-am33xx-add-DMA-properties-for-tscadc.patch"
-#	${git} "${DIR}/patches/backports/iio/0005-ARM-dts-am4372-add-DMA-properties-for-tscadc.patch"
 	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="backports/iio"
-		number=6
-		cleanup
-	fi
 
 	backport_tag="v4.9"
 
 	subsystem="fbtft"
-	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -390,11 +364,11 @@ lts44_backports () {
 		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
 
 		post_backports
+	else
+		patch_backports
 	fi
-	patch_backports
 
 	subsystem="touchscreen"
-	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -405,25 +379,14 @@ lts44_backports () {
 		cp -v ~/linux-src/include/linux/input/touchscreen.h ./include/linux/input/
 
 		post_backports
-	fi
-	patch_backports
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
+	else
+		patch_backports
 	fi
 
 	${git} "${DIR}/patches/backports/touchscreen/0002-edt-ft5x06-we-need-these-in-v4.4.x.patch"
 	${git} "${DIR}/patches/backports/touchscreen/0003-ar1021_i2c-invert-swap.patch"
 
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="backports/touchscreen"
-		number=3
-		cleanup
-	fi
-
 	subsystem="etnaviv"
-	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -431,23 +394,14 @@ lts44_backports () {
 		cp -v ~/linux-src/include/uapi/drm/etnaviv_drm.h ./include/uapi/drm/etnaviv_drm.h
 
 		post_backports
-	fi
-	patch_backports
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
+		exit 2
+	else
+		patch_backports
 	fi
 
 	${git} "${DIR}/patches/backports/etnaviv/0002-drm-etnaviv-add-initial-etnaviv-DRM-driver.patch"
 	${git} "${DIR}/patches/backports/etnaviv/0003-etnaviv-enable-for-ARCH_OMAP2PLUS.patch"
 	${git} "${DIR}/patches/backports/etnaviv/0004-drm-etnaviv-julbouln-diff.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="backports/etnaviv"
-		number=4
-		cleanup
-	fi
 
 	dir 'lts44_backports/dmtimer'
 }
