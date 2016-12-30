@@ -946,6 +946,22 @@ beaglebone () {
 	fi
 }
 
+machinekit () {
+	echo "dir: machinekit"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	#sed -i -e 's/\/\* #include \"am33xx-pruss-uio.dtsi\" \*\//#include \"am33xx-pruss-uio.dtsi\"/' arch/arm/boot/dts/am335x-*.dts
+	${git} "${DIR}/patches/machinekit/0001-machinekit-enable-am33xx-pruss-uio.dtsi.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+}
+
 ###
 #lts44_backports
 reverts
@@ -956,6 +972,7 @@ beaglebone
 dir 'x15/fixes'
 dir 'brcmfmac'
 dir 'quieter'
+machinekit
 
 packaging () {
 	echo "dir: packaging"
