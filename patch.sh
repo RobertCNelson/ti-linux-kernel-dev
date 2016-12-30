@@ -648,8 +648,10 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/0036-of-rename-_node_sysfs-to-_node_post.patch"
 	${git} "${DIR}/patches/bbb_overlays/0037-of-Support-hashtable-lookups-for-phandles.patch"
 
+	${git} "${DIR}/patches/bbb_overlays/0038-bone_capemgr-uboot_capemgr_enabled-flag.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=37
+		number=38
 		cleanup
 	fi
 }
