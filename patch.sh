@@ -946,6 +946,47 @@ beaglebone () {
 	fi
 }
 
+sync_mainline_dtc () {
+	echo "dir: dtc"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./dtc ] ; then
+			${git_bin} clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
+			cd ./dtc
+			${git_bin} checkout origin/master -b tmp
+			cd ../
+		else
+			rm -rf ./dtc || true
+			${git_bin} clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
+			cd ./dtc
+			${git_bin} checkout origin/master -b tmp
+			cd ../
+		fi
+		cd ./KERNEL/
+
+		sed -i -e 's:git commit:#git commit:g' ./scripts/dtc/update-dtc-source.sh
+		./scripts/dtc/update-dtc-source.sh
+		sed -i -e 's:#git commit:git commit:g' ./scripts/dtc/update-dtc-source.sh
+		git commit -a -m "scripts/dtc: Update to upstream version overlays" -s
+		git format-patch -1 -o ../patches/dtc/
+		exit 2
+	else
+		#regenerate="enable"
+		if [ "x${regenerate}" = "xenable" ] ; then
+			start_cleanup
+		fi
+
+		${git} "${DIR}/patches/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			wdir="dtc"
+			number=1
+			cleanup
+		fi
+	fi
+}
+
 machinekit () {
 	echo "dir: machinekit"
 	#regenerate="enable"
@@ -972,6 +1013,7 @@ beaglebone
 dir 'x15/fixes'
 dir 'brcmfmac'
 dir 'quieter'
+sync_mainline_dtc
 machinekit
 
 packaging () {
