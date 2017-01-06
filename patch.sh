@@ -893,10 +893,11 @@ sync_mainline_dtc () {
 		fi
 
 		${git} "${DIR}/patches/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
+		${git} "${DIR}/patches/dtc/0002-dtc-turn-off-dtc-unit-address-warnings-by-default.patch"
 
 		if [ "x${regenerate}" = "xenable" ] ; then
 			wdir="dtc"
-			number=1
+			number=2
 			cleanup
 		fi
 	fi
