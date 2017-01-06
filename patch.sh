@@ -330,7 +330,7 @@ lts44_backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.8.15"
+	backport_tag="v4.8.16"
 	subsystem="iio"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
@@ -354,7 +354,7 @@ lts44_backports () {
 
 	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 
-	backport_tag="v4.9"
+	backport_tag="v4.9.1"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -881,6 +881,9 @@ sync_mainline_dtc () {
 		sed -i -e 's:#git commit:git commit:g' ./scripts/dtc/update-dtc-source.sh
 		git commit -a -m "scripts/dtc: Update to upstream version overlays" -s
 		git format-patch -1 -o ../patches/dtc/
+
+		rm -rf ../dtc/ || true
+
 		exit 2
 	else
 		#regenerate="enable"
