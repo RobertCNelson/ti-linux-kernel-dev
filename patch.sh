@@ -330,7 +330,7 @@ lts44_backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.8.16"
+	backport_tag="v4.8.17"
 	subsystem="iio"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
@@ -354,7 +354,7 @@ lts44_backports () {
 
 	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 
-	backport_tag="v4.9.1"
+	backport_tag="v4.9.2"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -894,10 +894,11 @@ sync_mainline_dtc () {
 
 		${git} "${DIR}/patches/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
 		${git} "${DIR}/patches/dtc/0002-dtc-turn-off-dtc-unit-address-warnings-by-default.patch"
+		${git} "${DIR}/patches/dtc/0003-ARM-boot-Add-an-implementation-of-strnlen-for-libfdt.patch"
 
 		if [ "x${regenerate}" = "xenable" ] ; then
 			wdir="dtc"
-			number=2
+			number=3
 			cleanup
 		fi
 	fi
