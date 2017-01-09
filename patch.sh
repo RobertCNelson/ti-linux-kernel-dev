@@ -387,9 +387,7 @@ drivers () {
 	dir 'drivers/thumb2'
 	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
-
 	dir 'drivers/broadcom'
-	dir 'drivers/ti/iodelay'
 
 	#https://github.com/pantoniou/linux-beagle-track-mainline/tree/bbb-overlays
 	echo "dir: drivers/ti/bbb_overlays"
@@ -619,6 +617,9 @@ sync_mainline_dtc () {
 		sed -i -e 's:#git commit:git commit:g' ./scripts/dtc/update-dtc-source.sh
 		git commit -a -m "scripts/dtc: Update to upstream version overlays" -s
 		git format-patch -1 -o ../patches/dtc/
+
+		rm -rf ../dtc/ || true
+
 		exit 2
 	else
 		#regenerate="enable"
