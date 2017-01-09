@@ -387,9 +387,7 @@ drivers () {
 	dir 'drivers/thumb2'
 	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
-
 	dir 'drivers/broadcom'
-	dir 'drivers/ti/iodelay'
 
 	#https://github.com/pantoniou/linux-beagle-track-mainline/tree/bbb-overlays
 	echo "dir: drivers/ti/bbb_overlays"
