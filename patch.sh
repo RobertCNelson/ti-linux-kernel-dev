@@ -351,9 +351,9 @@ backports () {
 		cp -v ~/linux-src/x/ ./x/
 
 		post_backports
+		exit 2
 	else
 		patch_backports
-		exit 2
 	fi
 }
 
@@ -619,6 +619,9 @@ sync_mainline_dtc () {
 		sed -i -e 's:#git commit:git commit:g' ./scripts/dtc/update-dtc-source.sh
 		git commit -a -m "scripts/dtc: Update to upstream version overlays" -s
 		git format-patch -1 -o ../patches/dtc/
+
+		rm -rf ../dtc/ || true
+
 		exit 2
 	else
 		#regenerate="enable"
