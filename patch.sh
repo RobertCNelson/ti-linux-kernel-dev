@@ -351,9 +351,9 @@ backports () {
 		cp -v ~/linux-src/x/ ./x/
 
 		post_backports
+		exit 2
 	else
 		patch_backports
-		exit 2
 	fi
 }
 
