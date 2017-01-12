@@ -443,7 +443,7 @@ lts44_backports () {
 
 	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 
-	backport_tag="v4.9.2"
+	backport_tag="v4.9.3"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
