@@ -1427,6 +1427,9 @@ config="CONFIG_EXTCON_GPIO" ; config_enable
 config="CONFIG_EXTCON_PALMAS" ; config_enable
 config="CONFIG_EXTCON_USB_GPIO" ; config_enable
 
+config="CONFIG_TI_EMIF" ; config_enable
+config="CONFIG_TI_EMIF_SRAM" ; config_enable
+
 config="CONFIG_IIO_BUFFER_CB" ; config_module
 config="CONFIG_IIO_CONFIGFS" ; config_module
 config="CONFIG_IIO_SW_DEVICE" ; config_module
