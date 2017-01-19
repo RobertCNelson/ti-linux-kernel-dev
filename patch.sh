@@ -442,8 +442,9 @@ lts44_backports () {
 	fi
 
 	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
+	${git} "${DIR}/patches/backports/iio/0007-staging-iio-ad7606-fix-improper-setting-of-oversampl.patch"
 
-	backport_tag="v4.9.3"
+	backport_tag="v4.9.4"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
