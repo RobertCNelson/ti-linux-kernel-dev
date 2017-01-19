@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 #
 # Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
 #
@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 
 # Split out, so build_kernel.sh and build_deb.sh can share..
+
+shopt -s nullglob
 
 . ${DIR}/version.sh
 if [ -f ${DIR}/system.sh ] ; then
@@ -63,6 +65,28 @@ cleanup () {
 		fi
 	fi
 	exit 2
+}
+
+dir () {
+	wdir="$1"
+	if [ -d "${DIR}/patches/$wdir" ]; then
+		echo "dir: $wdir"
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			start_cleanup
+		fi
+
+		number=
+		for p in "${DIR}/patches/$wdir/"*.patch; do
+			${git} "$p"
+			number=$(( $number + 1 ))
+		done
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			cleanup
+		fi
+	fi
+	unset wdir
 }
 
 cherrypick () {
@@ -172,28 +196,21 @@ aufs4 () {
 		${git_bin} commit -a -m 'merge: aufs4-standalone' -s
 
 		${git_bin} format-patch -4 -o ../patches/aufs4/
-		KERNEL_REL="4.1"
-		exit 2
-	fi
-
-	${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
-	${git} "${DIR}/patches/aufs4/0002-merge-aufs4-base.patch"
-	${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
-	${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		echo "dir: aufs4"
 
 		cd ../
-		if [ ! -f ./aufs4-standalone ] ; then
+		if [ ! -d ./aufs4-standalone ] ; then
 			${git_bin} clone https://github.com/sfjro/aufs4-standalone
 			cd ./aufs4-standalone
-			KERNEL_REL="4.1.13+"
 			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
-			KERNEL_REL="4.1"
+			cd ../
+		else
+			rm -rf ./aufs4-standalone || true
+			${git_bin} clone https://github.com/sfjro/aufs4-standalone
+			cd ./aufs4-standalone
+			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
 			cd ../
 		fi
+		KERNEL_REL="4.1"
 		cd ./KERNEL/
 
 		cp -v ../aufs4-standalone/Documentation/ABI/testing/*aufs ./Documentation/ABI/testing/
@@ -207,6 +224,8 @@ aufs4 () {
 		${git_bin} commit -a -m 'merge: aufs4' -s
 		${git_bin} format-patch -5 -o ../patches/aufs4/
 
+		rm -rf ../aufs4-standalone/ || true
+
 		exit 2
 	fi
 
@@ -215,12 +234,17 @@ aufs4 () {
 		start_cleanup
 	fi
 
+	${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
+	${git} "${DIR}/patches/aufs4/0002-merge-aufs4-base.patch"
+	${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
+	${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
 	${git} "${DIR}/patches/aufs4/0005-merge-aufs4.patch"
 	${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		${git_bin} format-patch -6 -o ../patches/aufs4/
-		exit 2
+		wdir="aufs4"
+		number=6
+		cleanup
 	fi
 }
 
