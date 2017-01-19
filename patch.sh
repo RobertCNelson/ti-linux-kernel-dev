@@ -627,8 +627,10 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/0031-boneblack-defconfig.patch"
 	fi
 
+	${git} "${DIR}/patches/bbb_overlays/0032-bone_capemgr-uboot_capemgr_enabled-flag.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=31
+		number=32
 		cleanup
 	fi
 }
@@ -974,6 +976,52 @@ quieter () {
 	fi
 }
 
+sync_mainline_dtc () {
+	echo "dir: dtc"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./dtc ] ; then
+			${git_bin} clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
+			cd ./dtc
+			${git_bin} checkout origin/master -b tmp
+			cd ../
+		else
+			rm -rf ./dtc || true
+			${git_bin} clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
+			cd ./dtc
+			${git_bin} checkout origin/master -b tmp
+			cd ../
+		fi
+		cd ./KERNEL/
+
+		sed -i -e 's:git commit:#git commit:g' ./scripts/dtc/update-dtc-source.sh
+		./scripts/dtc/update-dtc-source.sh
+		sed -i -e 's:#git commit:git commit:g' ./scripts/dtc/update-dtc-source.sh
+		git commit -a -m "scripts/dtc: Update to upstream version overlays" -s
+		git format-patch -1 -o ../patches/dtc/
+
+		rm -rf ../dtc/ || true
+
+		exit 2
+	else
+		#regenerate="enable"
+		if [ "x${regenerate}" = "xenable" ] ; then
+			start_cleanup
+		fi
+
+		${git} "${DIR}/patches/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
+		${git} "${DIR}/patches/dtc/0002-dtc-turn-off-dtc-unit-address-warnings-by-default.patch"
+		${git} "${DIR}/patches/dtc/0003-ARM-boot-Add-an-implementation-of-strnlen-for-libfdt.patch"
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			wdir="dtc"
+			number=3
+			cleanup
+		fi
+	fi
+}
+
 ###
 reverts
 backports
@@ -984,7 +1032,7 @@ pru_rpmsg
 bbb_overlays
 beaglebone
 quieter
-
+sync_mainline_dtc
 
 packaging () {
 	echo "dir: packaging"
@@ -1006,7 +1054,8 @@ travis () {
 		cp -v "${DIR}/3rdparty/travis/.travis.yml" "${DIR}/KERNEL/.travis.yml"
 		${git_bin} add -f .travis.yml
 		cp -v "${DIR}/3rdparty/travis/build_deb_in_arm_chroot.sh" "${DIR}/KERNEL/"
-		${git_bin} add  -f build_deb_in_arm_chroot.sh
+		cp -v "${DIR}/3rdparty/travis/build_on_x86.sh" "${DIR}/KERNEL/"
+		${git_bin} add -f build_*.sh
 		${git_bin} commit -a -m 'enable: travis: https://travis-ci.org/beagleboard/linux' -s
 		${git_bin} format-patch -1 -o "${DIR}/patches/travis"
 		exit 2
