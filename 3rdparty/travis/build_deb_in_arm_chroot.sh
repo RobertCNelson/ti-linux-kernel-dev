@@ -4,7 +4,7 @@ VERSION=jessie
 CHROOT_ARCH=armhf
 MIRROR=http://httpredir.debian.org/debian
 GUEST_DEPENDENCIES="build-essential git sudo lzop"
-DEBOOT="1.0.80"
+DEBOOT="1.0.82"
 
 function run_build {
 	cd ${CHROOT_DIR}/${TRAVIS_BUILD_DIR}
@@ -13,7 +13,7 @@ function run_build {
 }
 
 function run_package {
-if [ ! true ] ; then
+if [ true ] ; then
 	make KBUILD_DEBARCH=armhf KDEB_SOURCENAME=linux KDEB_CHANGELOG_DIST=unstable
 else
 	echo "Not running this time"
@@ -27,6 +27,7 @@ function setup_arm_chroot {
 
 	sudo mkdir ${CHROOT_DIR}
 	sudo tar xzf /tmp/arm-debian-jessie.rootfs.tgz -C ${CHROOT_DIR}
+	sudo cp -v /etc/resolv.conf ${CHROOT_DIR}/etc/resolv.conf
 
 	echo "export ARCH=${ARCH}" > envvars.sh
 	echo "export TRAVIS_BUILD_DIR=${TRAVIS_BUILD_DIR}" >> envvars.sh
