@@ -1,14 +1,13 @@
-From ff42e4ff86b46caab411cb6481b01bac877bd640 Mon Sep 17 00:00:00 2001
+From 0f61a2ea9271186a81e3d8648eea85e7d414fe75 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 19 Jan 2017 15:11:42 -0600
+Date: Thu, 26 Jan 2017 14:51:32 -0600
 Subject: [PATCH 1/2] xenomai pre-patchset
 
 ---
  arch/arm/mach-omap2/timer.c |  80 +-----
- arch/x86/kvm/x86.c          |  29 +-
  drivers/gpio/gpio-davinci.c | 122 +++-----
  drivers/memory/omap-gpmc.c  | 662 ++++++++++++++++----------------------------
- 4 files changed, 287 insertions(+), 606 deletions(-)
+ 3 files changed, 282 insertions(+), 582 deletions(-)
 
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
 index 25f0eee33869..f86692dbcfd5 100644
@@ -165,95 +164,6 @@ index 25f0eee33869..f86692dbcfd5 100644
  static void __init omap4_sync32k_timer_init(void)
  {
  	__omap_sync32k_timer_init(1, "timer_32k_ck", "ti,timer-alwon",
-diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
-index b3c2ae7aa213..d7cb9577fa31 100644
---- a/arch/x86/kvm/x86.c
-+++ b/arch/x86/kvm/x86.c
-@@ -199,18 +199,7 @@ static void kvm_on_user_return(struct user_return_notifier *urn)
- 	struct kvm_shared_msrs *locals
- 		= container_of(urn, struct kvm_shared_msrs, urn);
- 	struct kvm_shared_msr_values *values;
--	unsigned long flags;
- 
--	/*
--	 * Disabling irqs at this point since the following code could be
--	 * interrupted and executed through kvm_arch_hardware_disable()
--	 */
--	local_irq_save(flags);
--	if (locals->registered) {
--		locals->registered = false;
--		user_return_notifier_unregister(urn);
--	}
--	local_irq_restore(flags);
- 	for (slot = 0; slot < shared_msrs_global.nr; ++slot) {
- 		values = &locals->values[slot];
- 		if (values->host != values->curr) {
-@@ -218,6 +207,8 @@ static void kvm_on_user_return(struct user_return_notifier *urn)
- 			values->curr = values->host;
- 		}
- 	}
-+	locals->registered = false;
-+	user_return_notifier_unregister(urn);
- }
- 
- static void shared_msr_update(unsigned slot, u32 msr)
-@@ -2949,8 +2940,6 @@ static void kvm_vcpu_ioctl_x86_get_vcpu_events(struct kvm_vcpu *vcpu,
- 	memset(&events->reserved, 0, sizeof(events->reserved));
- }
- 
--static void kvm_set_hflags(struct kvm_vcpu *vcpu, unsigned emul_flags);
--
- static int kvm_vcpu_ioctl_x86_set_vcpu_events(struct kvm_vcpu *vcpu,
- 					      struct kvm_vcpu_events *events)
- {
-@@ -2983,13 +2972,10 @@ static int kvm_vcpu_ioctl_x86_set_vcpu_events(struct kvm_vcpu *vcpu,
- 		vcpu->arch.apic->sipi_vector = events->sipi_vector;
- 
- 	if (events->flags & KVM_VCPUEVENT_VALID_SMM) {
--		u32 hflags = vcpu->arch.hflags;
- 		if (events->smi.smm)
--			hflags |= HF_SMM_MASK;
-+			vcpu->arch.hflags |= HF_SMM_MASK;
- 		else
--			hflags &= ~HF_SMM_MASK;
--		kvm_set_hflags(vcpu, hflags);
--
-+			vcpu->arch.hflags &= ~HF_SMM_MASK;
- 		vcpu->arch.smi_pending = events->smi.pending;
- 		if (events->smi.smm_inside_nmi)
- 			vcpu->arch.hflags |= HF_SMM_INSIDE_NMI_MASK;
-@@ -3331,7 +3317,6 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
- 	};
- 	case KVM_SET_VAPIC_ADDR: {
- 		struct kvm_vapic_addr va;
--		int idx;
- 
- 		r = -EINVAL;
- 		if (!lapic_in_kernel(vcpu))
-@@ -3339,9 +3324,7 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
- 		r = -EFAULT;
- 		if (copy_from_user(&va, argp, sizeof va))
- 			goto out;
--		idx = srcu_read_lock(&vcpu->kvm->srcu);
- 		r = kvm_lapic_set_vapic_addr(vcpu, va.vapic_addr);
--		srcu_read_unlock(&vcpu->kvm->srcu, idx);
- 		break;
- 	}
- 	case KVM_X86_SETUP_MCE: {
-@@ -7269,12 +7252,10 @@ void kvm_put_guest_fpu(struct kvm_vcpu *vcpu)
- 
- void kvm_arch_vcpu_free(struct kvm_vcpu *vcpu)
- {
--	void *wbinvd_dirty_mask = vcpu->arch.wbinvd_dirty_mask;
--
- 	kvmclock_reset(vcpu);
- 
-+	free_cpumask_var(vcpu->arch.wbinvd_dirty_mask);
- 	kvm_x86_ops->vcpu_free(vcpu);
--	free_cpumask_var(wbinvd_dirty_mask);
- }
- 
- struct kvm_vcpu *kvm_arch_vcpu_create(struct kvm *kvm,
 diff --git a/drivers/gpio/gpio-davinci.c b/drivers/gpio/gpio-davinci.c
 index 90c6b09793dc..5e715388803d 100644
 --- a/drivers/gpio/gpio-davinci.c

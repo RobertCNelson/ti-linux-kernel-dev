@@ -232,7 +232,7 @@ aufs4
 #local_patch
 
 ipipe () {
-	kernel_base="v4.4.26"
+	kernel_base="v4.4.43"
 	xenomai_branch="ipipe-4.4.y"
 	echo "dir: ipipe"
 	#regenerate="enable"
@@ -251,7 +251,6 @@ ipipe () {
 		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
 
 		cp -v arch/arm/mach-omap2/timer.c ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c
-		cp -v arch/x86/kvm/x86.c ../patches/${xenomai_branch}/arch_x86_kvm_x86.c
 		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
 		cp -v drivers/memory/omap-gpmc.c ../patches/${xenomai_branch}/drivers_memory_omap-gpmc.c
 
@@ -265,7 +264,6 @@ ipipe () {
 		fi
 
 		cp -v ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c arch/arm/mach-omap2/timer.c
-		cp -v ../patches/${xenomai_branch}/arch_x86_kvm_x86.c arch/x86/kvm/x86.c
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
 		cp -v ../patches/${xenomai_branch}/drivers_memory_omap-gpmc.c drivers/memory/omap-gpmc.c
 
@@ -418,6 +416,7 @@ lts44_backports () {
 	else
 		patch_backports
 	fi
+	${git} "${DIR}/patches/backports/i2c/0001-i2c-print-correct-device-invalid-address.patch"
 
 	backport_tag="v4.8.17"
 	subsystem="iio"
@@ -444,7 +443,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 	${git} "${DIR}/patches/backports/iio/0007-staging-iio-ad7606-fix-improper-setting-of-oversampl.patch"
 
-	backport_tag="v4.9.4"
+	backport_tag="v4.9.6"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -823,6 +822,19 @@ beaglebone () {
 		cleanup
 	fi
 
+	echo "dir: soc/ti/uboot"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/soc/ti/uboot/0001-add-am335x-boneblack-uboot.dts.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		number=1
+		cleanup
+	fi
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -894,6 +906,8 @@ beaglebone () {
 
 		device="am335x-boneblack-modio.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-modio.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
