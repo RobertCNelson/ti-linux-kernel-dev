@@ -41,12 +41,12 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=cross
 DEBARCH=armhf
 
-ti_git_old_release="90e3e814d73641b329d05759d67afc4a71aa21a4"
-        ti_git_pre="90e3e814d73641b329d05759d67afc4a71aa21a4"
-       ti_git_post="0df57e69c1dc4df1f96c9dd0602d4b07a05b957c"
+ti_git_old_release="0df57e69c1dc4df1f96c9dd0602d4b07a05b957c"
+        ti_git_pre="0df57e69c1dc4df1f96c9dd0602d4b07a05b957c"
+       ti_git_post="fb30973887f8d4a88cb975d3a215c2ac62856ff7"
 #
 
 #https://git.xenomai.org/xenomai-3.git/
 #https://git.xenomai.org/xenomai-3.git/log/?h=stable-3.0.x
-xenomai_checkout="1f8cadb9ce402aadf61133e3930afb2090b5ce90"
+xenomai_checkout="00e3d016519efc54cb2b2b33437814ff6725cf33"
 #
