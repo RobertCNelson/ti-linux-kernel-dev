@@ -550,6 +550,8 @@ config="CONFIG_DEVKMEM" ; config_enable
 config="CONFIG_SERIAL_8250_DMA" ; config_disable
 config="CONFIG_SERIAL_8250_NR_UARTS" ; option="6" ; config_value
 config="CONFIG_SERIAL_8250_RUNTIME_UARTS" ; option="6" ; config_value
+config="CONFIG_SERIAL_8250_FSL" ; config_disable
+config="CONFIG_SERIAL_8250_DW" ; config_disable
 config="CONFIG_SERIAL_8250_OMAP" ; config_enable
 config="CONFIG_SERIAL_8250_OMAP_TTYO_FIXUP" ; config_enable
 
@@ -628,6 +630,7 @@ config="CONFIG_GPIO_TS4900" ; config_module
 #
 # MFD GPIO expanders
 #
+config="CONFIG_GPIO_DA9052" ; config_disable
 config="CONFIG_GPIO_TPS65218" ; config_enable
 config="CONFIG_GPIO_TPS65910" ; config_enable
 
@@ -798,6 +801,7 @@ config="CONFIG_MFD_TPS65217" ; config_enable
 config="CONFIG_MFD_TPS65218" ; config_enable
 config="CONFIG_MFD_TPS65910" ; config_enable
 config="CONFIG_MFD_WL1273_CORE" ; config_module
+config="CONFIG_MFD_VEXPRESS_SYSREG" ; config_disable
 config="CONFIG_REGULATOR_USERSPACE_CONSUMER" ; config_disable
 config="CONFIG_REGULATOR_ACT8865" ; config_disable
 config="CONFIG_REGULATOR_AS3722" ; config_disable
@@ -1114,6 +1118,7 @@ config="CONFIG_LEDS_LM355x" ; config_module_special
 config="CONFIG_LEDS_TRIGGER_TIMER" ; config_enable
 config="CONFIG_LEDS_TRIGGER_ONESHOT" ; config_enable
 config="CONFIG_LEDS_TRIGGER_DISK" ; config_enable
+config="CONFIG_LEDS_TRIGGER_MTD" ; config_enable
 config="CONFIG_LEDS_TRIGGER_HEARTBEAT" ; config_enable
 config="CONFIG_LEDS_TRIGGER_BACKLIGHT" ; config_enable
 config="CONFIG_LEDS_TRIGGER_GPIO" ; config_enable
@@ -1759,7 +1764,6 @@ config="CONFIG_VFAT_FS" ; config_enable
 #
 config="CONFIG_ORANGEFS_FS" ; config_enable
 config="CONFIG_UBIFS_FS" ; config_enable
-config="CONFIG_LOGFS" ; config_disable
 config="CONFIG_SQUASHFS_LZ4" ; config_enable
 
 #AUFS_FS
