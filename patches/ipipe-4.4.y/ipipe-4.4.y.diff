@@ -4072,10 +4072,10 @@ index 000000000000..ba209ff5d005
 +EXPORT_SYMBOL_GPL(cpu_architecture);
 diff --git a/arch/arm/kernel/ipipe_tsc.c b/arch/arm/kernel/ipipe_tsc.c
 new file mode 100644
-index 000000000000..6f9cff89a6b8
+index 000000000000..4ac6fe8f5a58
 --- /dev/null
 +++ b/arch/arm/kernel/ipipe_tsc.c
-@@ -0,0 +1,265 @@
+@@ -0,0 +1,270 @@
 +#include <linux/kernel.h>
 +#include <linux/module.h>
 +#include <linux/sched.h>
@@ -4309,9 +4309,14 @@ index 000000000000..6f9cff89a6b8
 +	if (state == CPUFREQ_POSTCHANGE && tsc_info.refresh_freq) {
 +		freq = tsc_info.refresh_freq();
 +		if (freqs->cpu == 0) {
++			int oldrate;
 +			tsc_info.freq = freq;
 +			__ipipe_tsc_register(&tsc_info);
 +			__ipipe_report_clockfreq_update(freq);
++			/* force timekeeper to recalculate the clocksource */
++			oldrate = clksrc.rating;
++			clocksource_change_rating(&clksrc, 0);
++			clocksource_change_rating(&clksrc, oldrate);
 +		}
 +		smp_call_function_single(freqs->cpu, update_timer_freq,
 +					 &freq, 1);
@@ -23331,7 +23336,7 @@ index c64d543d64bf..be40452c837c 100644
  	clocksource_register_hz(&clocksource_counter, arch_timer_rate);
  	cyclecounter.mult = clocksource_counter.mult;
 diff --git a/drivers/clocksource/arm_global_timer.c b/drivers/clocksource/arm_global_timer.c
-index a2cb6fae9295..1d31c3a661ec 100644
+index a2cb6fae9295..f071563026f5 100644
 --- a/drivers/clocksource/arm_global_timer.c
 +++ b/drivers/clocksource/arm_global_timer.c
 @@ -24,6 +24,7 @@
@@ -23351,7 +23356,7 @@ index a2cb6fae9295..1d31c3a661ec 100644
  static unsigned long gt_clk_rate;
  static int gt_ppi;
  static struct clock_event_device __percpu *gt_evt;
-@@ -210,8 +213,34 @@ static u64 notrace gt_sched_clock_read(void)
+@@ -210,8 +213,36 @@ static u64 notrace gt_sched_clock_read(void)
  }
  #endif
  
@@ -23360,6 +23365,8 @@ index a2cb6fae9295..1d31c3a661ec 100644
 +static unsigned int refresh_gt_freq(void)
 +{
 +	gt_clk_rate = clk_get_rate(gt_clk);
++
++	__clocksource_update_freq_hz(&gt_clocksource, gt_clk_rate);
 +
 +	return gt_clk_rate;
 +}
@@ -23386,7 +23393,7 @@ index a2cb6fae9295..1d31c3a661ec 100644
  	writel(0, gt_base + GT_CONTROL);
  	writel(0, gt_base + GT_COUNTER0);
  	writel(0, gt_base + GT_COUNTER1);
-@@ -221,6 +250,9 @@ static void __init gt_clocksource_init(void)
+@@ -221,6 +252,9 @@ static void __init gt_clocksource_init(void)
  #ifdef CONFIG_CLKSRC_ARM_GLOBAL_TIMER_SCHED_CLOCK
  	sched_clock_register(gt_sched_clock_read, 64, gt_clk_rate);
  #endif
@@ -23396,7 +23403,7 @@ index a2cb6fae9295..1d31c3a661ec 100644
  	clocksource_register_hz(&gt_clocksource, gt_clk_rate);
  }
  
-@@ -244,8 +276,8 @@ static struct notifier_block gt_cpu_nb = {
+@@ -244,8 +278,8 @@ static struct notifier_block gt_cpu_nb = {
  
  static void __init global_timer_of_register(struct device_node *np)
  {
@@ -23407,7 +23414,7 @@ index a2cb6fae9295..1d31c3a661ec 100644
  
  	/*
  	 * In A9 r2p0 the comparators for each processor with the global timer
-@@ -255,13 +287,15 @@ static void __init global_timer_of_register(struct device_node *np)
+@@ -255,13 +289,15 @@ static void __init global_timer_of_register(struct device_node *np)
  	if (read_cpuid_part() == ARM_CPU_PART_CORTEX_A9
  	    && (read_cpuid_id() & 0xf0000f) < 0x200000) {
  		pr_warn("global-timer: non support for this cpu version.\n");
@@ -23428,7 +23435,7 @@ index a2cb6fae9295..1d31c3a661ec 100644
  	}
  
  	gt_base = of_iomap(np, 0);
-@@ -270,6 +304,11 @@ static void __init global_timer_of_register(struct device_node *np)
+@@ -270,6 +306,11 @@ static void __init global_timer_of_register(struct device_node *np)
  		return;
  	}
  
@@ -23440,7 +23447,7 @@ index a2cb6fae9295..1d31c3a661ec 100644
  	gt_clk = of_clk_get(np, 0);
  	if (!IS_ERR(gt_clk)) {
  		err = clk_prepare_enable(gt_clk);
-@@ -282,30 +321,33 @@ static void __init global_timer_of_register(struct device_node *np)
+@@ -282,30 +323,33 @@ static void __init global_timer_of_register(struct device_node *np)
  	}
  
  	gt_clk_rate = clk_get_rate(gt_clk);

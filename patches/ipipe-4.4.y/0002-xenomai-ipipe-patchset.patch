@@ -1,6 +1,6 @@
-From 6dd1df88ef693e57f2c6827735e74173d868b9fc Mon Sep 17 00:00:00 2001
+From 2d85d6a692877edced996198c70541b7eb53e831 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 30 Jan 2017 10:31:07 -0600
+Date: Mon, 6 Feb 2017 13:58:17 -0600
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
@@ -51,7 +51,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm/kernel/entry-header.S                 |   36 +-
  arch/arm/kernel/hibernate.c                    |    2 +-
  arch/arm/kernel/ipipe.c                        |  526 +++++++
- arch/arm/kernel/ipipe_tsc.c                    |  265 ++++
+ arch/arm/kernel/ipipe_tsc.c                    |  270 ++++
  arch/arm/kernel/ipipe_tsc_asm.S                |  298 ++++
  arch/arm/kernel/perf_callchain.c               |    3 +
  arch/arm/kernel/process.c                      |   45 +-
@@ -320,7 +320,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  drivers/clk/imx/clk-imx51-imx53.c              |    4 +
  drivers/clocksource/Makefile                   |    3 +
  drivers/clocksource/arm_arch_timer.c           |   79 +-
- drivers/clocksource/arm_global_timer.c         |   94 +-
+ drivers/clocksource/arm_global_timer.c         |   96 +-
  drivers/clocksource/i8253.c                    |   55 +-
  drivers/clocksource/ipipe_i486_tsc_emu.S       |   97 ++
  drivers/clocksource/mxs_timer.c                |   97 +-
@@ -469,7 +469,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  mm/mprotect.c                                  |   10 +-
  mm/vmalloc.c                                   |    2 +
  scripts/ipipe/genpatches.sh                    |  198 +++
- 465 files changed, 23552 insertions(+), 1687 deletions(-)
+ 465 files changed, 23559 insertions(+), 1687 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -4594,10 +4594,10 @@ index 000000000000..ba209ff5d005
 +EXPORT_SYMBOL_GPL(cpu_architecture);
 diff --git a/arch/arm/kernel/ipipe_tsc.c b/arch/arm/kernel/ipipe_tsc.c
 new file mode 100644
-index 000000000000..6f9cff89a6b8
+index 000000000000..4ac6fe8f5a58
 --- /dev/null
 +++ b/arch/arm/kernel/ipipe_tsc.c
-@@ -0,0 +1,265 @@
+@@ -0,0 +1,270 @@
 +#include <linux/kernel.h>
 +#include <linux/module.h>
 +#include <linux/sched.h>
@@ -4831,9 +4831,14 @@ index 000000000000..6f9cff89a6b8
 +	if (state == CPUFREQ_POSTCHANGE && tsc_info.refresh_freq) {
 +		freq = tsc_info.refresh_freq();
 +		if (freqs->cpu == 0) {
++			int oldrate;
 +			tsc_info.freq = freq;
 +			__ipipe_tsc_register(&tsc_info);
 +			__ipipe_report_clockfreq_update(freq);
++			/* force timekeeper to recalculate the clocksource */
++			oldrate = clksrc.rating;
++			clocksource_change_rating(&clksrc, 0);
++			clocksource_change_rating(&clksrc, oldrate);
 +		}
 +		smp_call_function_single(freqs->cpu, update_timer_freq,
 +					 &freq, 1);
@@ -23846,7 +23851,7 @@ index c64d543d64bf..be40452c837c 100644
  	clocksource_register_hz(&clocksource_counter, arch_timer_rate);
  	cyclecounter.mult = clocksource_counter.mult;
 diff --git a/drivers/clocksource/arm_global_timer.c b/drivers/clocksource/arm_global_timer.c
-index 817a787be843..edf3889b8d2c 100644
+index 817a787be843..a80b4a19ed8e 100644
 --- a/drivers/clocksource/arm_global_timer.c
 +++ b/drivers/clocksource/arm_global_timer.c
 @@ -24,6 +24,7 @@
@@ -23866,7 +23871,7 @@ index 817a787be843..edf3889b8d2c 100644
  static unsigned long gt_clk_rate;
  static int gt_ppi;
  static struct clock_event_device __percpu *gt_evt;
-@@ -221,8 +224,34 @@ static u64 notrace gt_sched_clock_read(void)
+@@ -221,8 +224,36 @@ static u64 notrace gt_sched_clock_read(void)
  }
  #endif
  
@@ -23875,6 +23880,8 @@ index 817a787be843..edf3889b8d2c 100644
 +static unsigned int refresh_gt_freq(void)
 +{
 +	gt_clk_rate = clk_get_rate(gt_clk);
++
++	__clocksource_update_freq_hz(&gt_clocksource, gt_clk_rate);
 +
 +	return gt_clk_rate;
 +}
@@ -23901,7 +23908,7 @@ index 817a787be843..edf3889b8d2c 100644
  	writel(0, gt_base + GT_CONTROL);
  	writel(0, gt_base + GT_COUNTER0);
  	writel(0, gt_base + GT_COUNTER1);
-@@ -232,6 +261,9 @@ static void __init gt_clocksource_init(void)
+@@ -232,6 +263,9 @@ static void __init gt_clocksource_init(void)
  #ifdef CONFIG_CLKSRC_ARM_GLOBAL_TIMER_SCHED_CLOCK
  	sched_clock_register(gt_sched_clock_read, 64, gt_clk_rate);
  #endif
@@ -23911,7 +23918,7 @@ index 817a787be843..edf3889b8d2c 100644
  	clocksource_register_hz(&gt_clocksource, gt_clk_rate);
  }
  
-@@ -255,8 +287,8 @@ static struct notifier_block gt_cpu_nb = {
+@@ -255,8 +289,8 @@ static struct notifier_block gt_cpu_nb = {
  
  static void __init global_timer_of_register(struct device_node *np)
  {
@@ -23922,7 +23929,7 @@ index 817a787be843..edf3889b8d2c 100644
  
  	/*
  	 * In A9 r2p0 the comparators for each processor with the global timer
-@@ -266,13 +298,15 @@ static void __init global_timer_of_register(struct device_node *np)
+@@ -266,13 +300,15 @@ static void __init global_timer_of_register(struct device_node *np)
  	if (read_cpuid_part() == ARM_CPU_PART_CORTEX_A9
  	    && (read_cpuid_id() & 0xf0000f) < 0x200000) {
  		pr_warn("global-timer: non support for this cpu version.\n");
@@ -23943,7 +23950,7 @@ index 817a787be843..edf3889b8d2c 100644
  	}
  
  	gt_base = of_iomap(np, 0);
-@@ -281,6 +315,11 @@ static void __init global_timer_of_register(struct device_node *np)
+@@ -281,6 +317,11 @@ static void __init global_timer_of_register(struct device_node *np)
  		return;
  	}
  
@@ -23955,7 +23962,7 @@ index 817a787be843..edf3889b8d2c 100644
  	gt_clk = of_clk_get(np, 0);
  	if (!IS_ERR(gt_clk)) {
  		err = clk_prepare_enable(gt_clk);
-@@ -293,30 +332,33 @@ static void __init global_timer_of_register(struct device_node *np)
+@@ -293,30 +334,33 @@ static void __init global_timer_of_register(struct device_node *np)
  	}
  
  	gt_clk_rate = clk_get_rate(gt_clk);
