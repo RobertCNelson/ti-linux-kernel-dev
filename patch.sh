@@ -110,6 +110,7 @@ external_git () {
 		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
 	fi
 	${git_bin} describe
+	${git} "${DIR}/patches/stable/patch-4.4.47-48"
 }
 
 aufs_fail () {
