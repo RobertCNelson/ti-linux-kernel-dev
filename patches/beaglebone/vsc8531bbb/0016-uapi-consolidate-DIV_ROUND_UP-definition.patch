@@ -1,0 +1,201 @@
+From 8a9e456b0d2e8d50d8bc1f84ba59e131ee66d9c6 Mon Sep 17 00:00:00 2001
+From: Nicolas Dichtel <nicolas.dichtel@...nd.com>
+Date: Fri, 4 Mar 2016 11:52:15 +0100
+Subject: [PATCH 16/16] uapi: consolidate DIV_ROUND_UP definition
+
+The inital goal was to consolidate ethtool.h uapi header. But I took the
+opportunity to remove all duplicate definitions of DIV_ROUND_UP.
+
+v3: add patch #2 and #3
+
+v2: split the patch
+    define DIV_ROUND_UP in uapi
+
+ .../drm/vmwgfx/device_include/svga3d_surfacedefs.h   | 20 +++++++++++---------
+ drivers/scsi/cxgbi/cxgb4i/cxgb4i.c                   |  2 +-
+ include/linux/kernel.h                               |  2 +-
+ include/uapi/linux/ethtool.h                         |  7 ++++++-
+ include/uapi/linux/kernel.h                          |  1 +
+ include/uapi/linux/mroute6.h                         |  9 ++-------
+ 6 files changed, 22 insertions(+), 19 deletions(-)
+
+Regards,
+Nicolas
+
+Date:	Fri,  4 Mar 2016 11:52:18 +0100
+From:	Nicolas Dichtel <nicolas.dichtel@...nd.com>
+To:	davem@...emloft.net
+Cc:	netdev@...r.kernel.org, ben@...adent.org.uk,
+	Karen Xie <kxie@...lsio.com>, linux-scsi@...r.kernel.org,
+	linux-kernel@...r.kernel.org, David Airlie <airlied@...ux.ie>,
+	dri-devel@...ts.freedesktop.org,
+	Nicolas Dichtel <nicolas.dichtel@...nd.com>
+Subject: [PATCH net-next v3 3/4] drm/vmwgfx: remove userland definition of DIV_ROUND_UP
+
+Let's use __KERNEL_DIV_ROUND_UP, which is defined in uapi/linux/kernel.h.
+
+Signed-off-by: Nicolas Dichtel <nicolas.dichtel@...nd.com>
+---
+ .../drm/vmwgfx/device_include/svga3d_surfacedefs.h   | 20 +++++++++++---------
+ drivers/scsi/cxgbi/cxgb4i/cxgb4i.c                   |  2 +-
+ include/linux/kernel.h                               |  2 +-
+ include/uapi/linux/ethtool.h                         |  7 ++++++-
+ include/uapi/linux/kernel.h                          |  1 +
+ include/uapi/linux/mroute6.h                         |  9 ++-------
+ 6 files changed, 22 insertions(+), 19 deletions(-)
+
+diff --git a/drivers/gpu/drm/vmwgfx/device_include/svga3d_surfacedefs.h b/drivers/gpu/drm/vmwgfx/device_include/svga3d_surfacedefs.h
+index 58704f0a4607..531d22025fec 100644
+--- a/drivers/gpu/drm/vmwgfx/device_include/svga3d_surfacedefs.h
++++ b/drivers/gpu/drm/vmwgfx/device_include/svga3d_surfacedefs.h
+@@ -25,6 +25,8 @@
+  *
+  **************************************************************************/
+ 
++#include <linux/kernel.h>
++
+ #ifdef __KERNEL__
+ 
+ #include <drm/vmwgfx_drm.h>
+@@ -36,7 +38,6 @@
+ #define ARRAY_SIZE(_A) (sizeof(_A) / sizeof((_A)[0]))
+ #endif /* ARRAY_SIZE */
+ 
+-#define DIV_ROUND_UP(x, y)  (((x) + (y) - 1) / (y))
+ #define max_t(type, x, y)  ((x) > (y) ? (x) : (y))
+ #define surf_size_struct SVGA3dSize
+ #define u32 uint32
+@@ -987,12 +988,12 @@ svga3dsurface_get_size_in_blocks(const struct svga3d_surface_desc *desc,
+ 				 const surf_size_struct *pixel_size,
+ 				 surf_size_struct *block_size)
+ {
+-	block_size->width = DIV_ROUND_UP(pixel_size->width,
+-					 desc->block_size.width);
+-	block_size->height = DIV_ROUND_UP(pixel_size->height,
+-					  desc->block_size.height);
+-	block_size->depth = DIV_ROUND_UP(pixel_size->depth,
+-					 desc->block_size.depth);
++	block_size->width = __KERNEL_DIV_ROUND_UP(pixel_size->width,
++						  desc->block_size.width);
++	block_size->height = __KERNEL_DIV_ROUND_UP(pixel_size->height,
++						   desc->block_size.height);
++	block_size->depth = __KERNEL_DIV_ROUND_UP(pixel_size->depth,
++						  desc->block_size.depth);
+ }
+ 
+ static inline bool
+@@ -1100,8 +1101,9 @@ svga3dsurface_get_pixel_offset(SVGA3dSurfaceFormat format,
+ 	const struct svga3d_surface_desc *desc = svga3dsurface_get_desc(format);
+ 	const u32 bw = desc->block_size.width, bh = desc->block_size.height;
+ 	const u32 bd = desc->block_size.depth;
+-	const u32 rowstride = DIV_ROUND_UP(width, bw) * desc->bytes_per_block;
+-	const u32 imgstride = DIV_ROUND_UP(height, bh) * rowstride;
++	const u32 rowstride = __KERNEL_DIV_ROUND_UP(width, bw) *
++			      desc->bytes_per_block;
++	const u32 imgstride = __KERNEL_DIV_ROUND_UP(height, bh) * rowstride;
+ 	const u32 offset = (z / bd * imgstride +
+ 			    y / bh * rowstride +
+ 			    x / bw * desc->bytes_per_block);
+diff --git a/drivers/scsi/cxgbi/cxgb4i/cxgb4i.c b/drivers/scsi/cxgbi/cxgb4i/cxgb4i.c
+index 804806e1cbb4..339f6b7f4803 100644
+--- a/drivers/scsi/cxgbi/cxgb4i/cxgb4i.c
++++ b/drivers/scsi/cxgbi/cxgb4i/cxgb4i.c
+@@ -13,6 +13,7 @@
+ 
+ #define pr_fmt(fmt) KBUILD_MODNAME ":%s: " fmt, __func__
+ 
++#include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
+ #include <scsi/scsi_host.h>
+@@ -158,7 +159,6 @@ static struct scsi_transport_template *cxgb4i_stt;
+  * open/close/abort and data send/receive.
+  */
+ 
+-#define DIV_ROUND_UP(n, d)	(((n) + (d) - 1) / (d))
+ #define RCV_BUFSIZ_MASK		0x3FFU
+ #define MAX_IMM_TX_PKT_LEN	256
+ 
+diff --git a/include/linux/kernel.h b/include/linux/kernel.h
+index d68f639f7330..a7f8e266ab50 100644
+--- a/include/linux/kernel.h
++++ b/include/linux/kernel.h
+@@ -64,7 +64,7 @@
+ #define round_down(x, y) ((x) & ~__round_mask(x, y))
+ 
+ #define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
+-#define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
++#define DIV_ROUND_UP __KERNEL_DIV_ROUND_UP
+ #define DIV_ROUND_UP_ULL(ll,d) \
+ 	({ unsigned long long _tmp = (ll)+(d)-1; do_div(_tmp, d); _tmp; })
+ 
+diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
+index d6e4f0c7beda..5939b33dce3a 100644
+--- a/include/uapi/linux/ethtool.h
++++ b/include/uapi/linux/ethtool.h
+@@ -13,9 +13,14 @@
+ #ifndef _UAPI_LINUX_ETHTOOL_H
+ #define _UAPI_LINUX_ETHTOOL_H
+ 
++#include <linux/kernel.h>
+ #include <linux/types.h>
+ #include <linux/if_ether.h>
+ 
++#ifndef __KERNEL__
++#include <limits.h> /* for INT_MAX */
++#endif
++
+ /* All structures exposed to userland should be defined such that they
+  * have the same layout for 32-bit and 64-bit userland.
+  */
+@@ -1183,7 +1188,7 @@ struct ethtool_phy_cmd {
+ struct ethtool_per_queue_op {
+ 	__u32	cmd;
+ 	__u32	sub_command;
+-	__u32	queue_mask[DIV_ROUND_UP(MAX_NUM_QUEUE, 32)];
++	__u32	queue_mask[__KERNEL_DIV_ROUND_UP(MAX_NUM_QUEUE, 32)];
+ 	char	data[];
+ };
+ 
+diff --git a/include/uapi/linux/kernel.h b/include/uapi/linux/kernel.h
+index 321e399457f5..466073f0ce46 100644
+--- a/include/uapi/linux/kernel.h
++++ b/include/uapi/linux/kernel.h
+@@ -9,5 +9,6 @@
+ #define __ALIGN_KERNEL(x, a)		__ALIGN_KERNEL_MASK(x, (typeof(x))(a) - 1)
+ #define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
+ 
++#define __KERNEL_DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+ 
+ #endif /* _UAPI_LINUX_KERNEL_H */
+diff --git a/include/uapi/linux/mroute6.h b/include/uapi/linux/mroute6.h
+index ce91215cf7e6..5062fb5751e1 100644
+--- a/include/uapi/linux/mroute6.h
++++ b/include/uapi/linux/mroute6.h
+@@ -1,6 +1,7 @@
+ #ifndef _UAPI__LINUX_MROUTE6_H
+ #define _UAPI__LINUX_MROUTE6_H
+ 
++#include <linux/kernel.h>
+ #include <linux/types.h>
+ #include <linux/sockios.h>
+ 
+@@ -46,14 +47,8 @@ typedef unsigned short mifi_t;
+ typedef	__u32		if_mask;
+ #define NIFBITS (sizeof(if_mask) * 8)        /* bits per mask */
+ 
+-#if !defined(__KERNEL__)
+-#if !defined(DIV_ROUND_UP)
+-#define	DIV_ROUND_UP(x,y)	(((x) + ((y) - 1)) / (y))
+-#endif
+-#endif
+-
+ typedef struct if_set {
+-	if_mask ifs_bits[DIV_ROUND_UP(IF_SETSIZE, NIFBITS)];
++	if_mask ifs_bits[__KERNEL_DIV_ROUND_UP(IF_SETSIZE, NIFBITS)];
+ } if_set;
+ 
+ #define IF_SET(n, p)    ((p)->ifs_bits[(n)/NIFBITS] |= (1 << ((n) % NIFBITS)))
+-- 
+2.11.0
+

@@ -803,9 +803,12 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0014-lib-bitmap.c-conversion-routines-to-from-u32-array.patch"
 	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0015-ti-cpsw-priv-cpsw-slaves.patch"
 
+	#https://github.com/beagleboard/linux/pull/114
+	${git} "${DIR}/patches/beaglebone/vsc8531bbb/0016-uapi-consolidate-DIV_ROUND_UP-definition.patch"
+
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="beaglebone/vsc8531bbb"
-		number=15
+		number=16
 		cleanup
 	fi
 
