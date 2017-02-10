@@ -1,6 +1,6 @@
-From fbe6e3ba002b6d6cd10248dceaf1a38ede1e3ea5 Mon Sep 17 00:00:00 2001
+From de57536a1e4e261ca4f9ebc7b58f5f50a26a2ed4 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 6 Feb 2017 14:06:01 -0600
+Date: Fri, 10 Feb 2017 14:20:28 -0600
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -196,7 +196,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/locallock.h                          |  278 +++++
  include/linux/mm_types.h                           |    4 +
  include/linux/mutex.h                              |   20 +-
- include/linux/mutex_rt.h                           |   84 ++
+ include/linux/mutex_rt.h                           |   89 ++
  include/linux/netdevice.h                          |   54 +-
  include/linux/netfilter/x_tables.h                 |    7 +
  include/linux/nfs_fs.h                             |    4 +
@@ -277,7 +277,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/locking/locktorture.c                       |    1 -
  kernel/locking/percpu-rwsem.c                      |    6 +-
  kernel/locking/rt.c                                |  498 +++++++++
- kernel/locking/rtmutex.c                           |  823 +++++++++++++-
+ kernel/locking/rtmutex.c                           |  826 +++++++++++++-
  kernel/locking/rtmutex_common.h                    |   17 +-
  kernel/locking/spinlock.c                          |    7 +
  kernel/locking/spinlock_debug.c                    |    5 +
@@ -316,7 +316,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/time/tick-sched.c                           |   30 +-
  kernel/time/timekeeping.c                          |    6 +-
  kernel/time/timekeeping.h                          |    3 +-
- kernel/time/timer.c                                |   98 +-
+ kernel/time/timer.c                                |  194 +++-
  kernel/trace/Kconfig                               |  104 ++
  kernel/trace/Makefile                              |    4 +
  kernel/trace/latency_hist.c                        | 1178 ++++++++++++++++++++
@@ -373,7 +373,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/sunrpc/svc_xprt.c                              |    6 +-
  scripts/mkcompile_h                                |    4 +-
  sound/core/pcm_native.c                            |    8 +-
- 368 files changed, 10057 insertions(+), 1891 deletions(-)
+ 368 files changed, 10130 insertions(+), 1922 deletions(-)
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 include/linux/locallock.h
  create mode 100644 include/linux/mutex_rt.h
@@ -2662,7 +2662,7 @@ index 931ced8ca345..167975ac8af7 100644
  /* --------------------------------------------------------------------------
                                Boot-time Configuration
 diff --git a/arch/x86/kernel/apic/io_apic.c b/arch/x86/kernel/apic/io_apic.c
-index 3d8ff40ecc6f..2e96d4e0295b 100644
+index 7249f1500bcb..a79d5c224004 100644
 --- a/arch/x86/kernel/apic/io_apic.c
 +++ b/arch/x86/kernel/apic/io_apic.c
 @@ -1712,7 +1712,8 @@ static bool io_apic_level_ack_pending(struct mp_chip_data *data)
@@ -3028,10 +3028,10 @@ index 3f05c044720b..fe68afd37162 100644
  	/*
  	 * APIC is created enabled. This will prevent kvm_lapic_set_base from
 diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
-index 487b957e7802..a144b8cb358b 100644
+index 731044efb195..d2905d9881f0 100644
 --- a/arch/x86/kvm/x86.c
 +++ b/arch/x86/kvm/x86.c
-@@ -5932,6 +5932,13 @@ int kvm_arch_init(void *opaque)
+@@ -5933,6 +5933,13 @@ int kvm_arch_init(void *opaque)
  		goto out;
  	}
  
@@ -3628,10 +3628,10 @@ index 1cb5dd3a5da1..2f1ec8a67cbe 100644
  
  #else /* CONFIG_HIGHMEM */
 diff --git a/crypto/algapi.c b/crypto/algapi.c
-index df939b54b09f..efe5e06adcf7 100644
+index 1fad2a6b3bbb..ecb7315426a9 100644
 --- a/crypto/algapi.c
 +++ b/crypto/algapi.c
-@@ -718,13 +718,13 @@ EXPORT_SYMBOL_GPL(crypto_spawn_tfm2);
+@@ -719,13 +719,13 @@ EXPORT_SYMBOL_GPL(crypto_spawn_tfm2);
  
  int crypto_register_notifier(struct notifier_block *nb)
  {
@@ -5805,7 +5805,7 @@ index 46cb20f63da9..e8e246c4abdb 100644
  	usb_anchor_resume_wakeups(anchor);
  	atomic_dec(&urb->use_count);
 diff --git a/drivers/usb/gadget/function/f_fs.c b/drivers/usb/gadget/function/f_fs.c
-index 17989b72cdae..88c6574b5992 100644
+index 8d412d8b1f29..176491dd739e 100644
 --- a/drivers/usb/gadget/function/f_fs.c
 +++ b/drivers/usb/gadget/function/f_fs.c
 @@ -1593,7 +1593,7 @@ static void ffs_data_put(struct ffs_data *ffs)
@@ -6015,7 +6015,7 @@ index b205a629001d..5646afc022ba 100644
  		__this_cpu_inc(bh_accounting.nr);
  		recalc_bh_state();
 diff --git a/fs/cifs/readdir.c b/fs/cifs/readdir.c
-index 8f6a2a5863b9..4217828d0b68 100644
+index a27fc8791551..791aecb7c1ac 100644
 --- a/fs/cifs/readdir.c
 +++ b/fs/cifs/readdir.c
 @@ -80,7 +80,7 @@ cifs_prime_dcache(struct dentry *parent, struct qstr *name,
@@ -7491,7 +7491,7 @@ index 72f0721f75e7..480972ae47d3 100644
   * Autoprobing for irqs:
   *
 diff --git a/include/linux/irq.h b/include/linux/irq.h
-index e79875574b39..177cee0c3305 100644
+index 39e3254e5769..8ebac94fbb9f 100644
 --- a/include/linux/irq.h
 +++ b/include/linux/irq.h
 @@ -72,6 +72,7 @@ enum irqchip_irq_state;
@@ -8137,10 +8137,10 @@ index 2cb7531e7d7a..b3fdfc820216 100644
  #endif /* __LINUX_MUTEX_H */
 diff --git a/include/linux/mutex_rt.h b/include/linux/mutex_rt.h
 new file mode 100644
-index 000000000000..c38a44b14da5
+index 000000000000..e0284edec655
 --- /dev/null
 +++ b/include/linux/mutex_rt.h
-@@ -0,0 +1,84 @@
+@@ -0,0 +1,89 @@
 +#ifndef __LINUX_MUTEX_RT_H
 +#define __LINUX_MUTEX_RT_H
 +
@@ -8186,7 +8186,12 @@ index 000000000000..c38a44b14da5
 +#define mutex_lock_killable(l)		_mutex_lock_killable(l)
 +#define mutex_trylock(l)		_mutex_trylock(l)
 +#define mutex_unlock(l)			_mutex_unlock(l)
++
++#ifdef CONFIG_DEBUG_MUTEXES
 +#define mutex_destroy(l)		rt_mutex_destroy(&(l)->lock)
++#else
++static inline void mutex_destroy(struct mutex *lock) {}
++#endif
 +
 +#ifdef CONFIG_DEBUG_LOCK_ALLOC
 +# define mutex_lock_nested(l, s)	_mutex_lock_nested(l, s)
@@ -11345,7 +11350,7 @@ index 3f9c97419f02..11dbe26a8279 100644
  
  config PREEMPT_COUNT
 diff --git a/kernel/cgroup.c b/kernel/cgroup.c
-index 85bc9beb046d..3b8da75ba2e0 100644
+index 4e2f3de0e40b..6401eb5fe140 100644
 --- a/kernel/cgroup.c
 +++ b/kernel/cgroup.c
 @@ -5040,10 +5040,10 @@ static void css_free_rcu_fn(struct rcu_head *rcu_head)
@@ -11372,7 +11377,7 @@ index 85bc9beb046d..3b8da75ba2e0 100644
  }
  
  static void init_and_link_css(struct cgroup_subsys_state *css,
-@@ -5742,6 +5742,7 @@ static int __init cgroup_wq_init(void)
+@@ -5739,6 +5739,7 @@ static int __init cgroup_wq_init(void)
  	 */
  	cgroup_destroy_wq = alloc_workqueue("cgroup_destroy", 0, 1);
  	BUG_ON(!cgroup_destroy_wq);
@@ -12030,7 +12035,7 @@ index fc1ef736253c..83c666537a7a 100644
  	return r;
  }
 diff --git a/kernel/events/core.c b/kernel/events/core.c
-index e5a8839e7076..c60c9d7b12a1 100644
+index b1cfd7416db0..1a2895d90fca 100644
 --- a/kernel/events/core.c
 +++ b/kernel/events/core.c
 @@ -1050,6 +1050,7 @@ static void __perf_mux_hrtimer_init(struct perf_cpu_context *cpuctx, int cpu)
@@ -12041,7 +12046,7 @@ index e5a8839e7076..c60c9d7b12a1 100644
  }
  
  static int perf_mux_hrtimer_restart(struct perf_cpu_context *cpuctx)
-@@ -8335,6 +8336,7 @@ static void perf_swevent_init_hrtimer(struct perf_event *event)
+@@ -8358,6 +8359,7 @@ static void perf_swevent_init_hrtimer(struct perf_event *event)
  
  	hrtimer_init(&hwc->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
  	hwc->hrtimer.function = perf_swevent_hrtimer;
@@ -13320,7 +13325,7 @@ index 000000000000..665754c00e1e
 +}
 +EXPORT_SYMBOL(atomic_dec_and_mutex_lock);
 diff --git a/kernel/locking/rtmutex.c b/kernel/locking/rtmutex.c
-index 2c49d76f96c3..4f1a7663c34d 100644
+index 2c49d76f96c3..9bd7e70d98a2 100644
 --- a/kernel/locking/rtmutex.c
 +++ b/kernel/locking/rtmutex.c
 @@ -7,6 +7,11 @@
@@ -14332,7 +14337,17 @@ index 2c49d76f96c3..4f1a7663c34d 100644
  }
  
  /**
-@@ -1607,13 +2226,12 @@ EXPORT_SYMBOL_GPL(rt_mutex_destroy);
+@@ -1592,8 +2211,7 @@ void rt_mutex_destroy(struct rt_mutex *lock)
+ 	lock->magic = NULL;
+ #endif
+ }
+-
+-EXPORT_SYMBOL_GPL(rt_mutex_destroy);
++EXPORT_SYMBOL(rt_mutex_destroy);
+ 
+ /**
+  * __rt_mutex_init - initialize the rt lock
+@@ -1607,13 +2225,12 @@ EXPORT_SYMBOL_GPL(rt_mutex_destroy);
  void __rt_mutex_init(struct rt_mutex *lock, const char *name)
  {
  	lock->owner = NULL;
@@ -14347,7 +14362,7 @@ index 2c49d76f96c3..4f1a7663c34d 100644
  
  /**
   * rt_mutex_init_proxy_locked - initialize and lock a rt_mutex on behalf of a
-@@ -1628,7 +2246,7 @@ EXPORT_SYMBOL_GPL(__rt_mutex_init);
+@@ -1628,7 +2245,7 @@ EXPORT_SYMBOL_GPL(__rt_mutex_init);
  void rt_mutex_init_proxy_locked(struct rt_mutex *lock,
  				struct task_struct *proxy_owner)
  {
@@ -14356,7 +14371,7 @@ index 2c49d76f96c3..4f1a7663c34d 100644
  	debug_rt_mutex_proxy_lock(lock, proxy_owner);
  	rt_mutex_set_owner(lock, proxy_owner);
  	rt_mutex_deadlock_account_lock(lock, proxy_owner);
-@@ -1676,6 +2294,35 @@ int rt_mutex_start_proxy_lock(struct rt_mutex *lock,
+@@ -1676,6 +2293,35 @@ int rt_mutex_start_proxy_lock(struct rt_mutex *lock,
  		return 1;
  	}
  
@@ -14392,7 +14407,7 @@ index 2c49d76f96c3..4f1a7663c34d 100644
  	/* We enforce deadlock detection for futexes */
  	ret = task_blocks_on_rt_mutex(lock, waiter, task,
  				      RT_MUTEX_FULL_CHAINWALK);
-@@ -1690,7 +2337,7 @@ int rt_mutex_start_proxy_lock(struct rt_mutex *lock,
+@@ -1690,7 +2336,7 @@ int rt_mutex_start_proxy_lock(struct rt_mutex *lock,
  		ret = 0;
  	}
  
@@ -14401,7 +14416,7 @@ index 2c49d76f96c3..4f1a7663c34d 100644
  		remove_waiter(lock, waiter);
  
  	raw_spin_unlock_irq(&lock->wait_lock);
-@@ -1746,7 +2393,7 @@ int rt_mutex_finish_proxy_lock(struct rt_mutex *lock,
+@@ -1746,7 +2392,7 @@ int rt_mutex_finish_proxy_lock(struct rt_mutex *lock,
  	set_current_state(TASK_INTERRUPTIBLE);
  
  	/* sleep on the mutex */
@@ -14410,7 +14425,7 @@ index 2c49d76f96c3..4f1a7663c34d 100644
  
  	if (unlikely(ret))
  		remove_waiter(lock, waiter);
-@@ -1761,3 +2408,89 @@ int rt_mutex_finish_proxy_lock(struct rt_mutex *lock,
+@@ -1761,3 +2407,89 @@ int rt_mutex_finish_proxy_lock(struct rt_mutex *lock,
  
  	return ret;
  }
@@ -19266,7 +19281,7 @@ index 704f595ce83f..763a3e5121ff 100644
  #define CS_NAME_LEN	32
  
 diff --git a/kernel/time/timer.c b/kernel/time/timer.c
-index c611c47de884..08a5ab762495 100644
+index c611c47de884..cdff4411f8f6 100644
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
 @@ -193,8 +193,11 @@ EXPORT_SYMBOL(jiffies_64);
@@ -19282,7 +19297,16 @@ index c611c47de884..08a5ab762495 100644
  	unsigned long		clk;
  	unsigned long		next_expiry;
  	unsigned int		cpu;
-@@ -948,10 +951,10 @@ static struct timer_base *lock_timer_base(struct timer_list *timer,
+@@ -203,6 +206,8 @@ struct timer_base {
+ 	bool			is_idle;
+ 	DECLARE_BITMAP(pending_map, WHEEL_SIZE);
+ 	struct hlist_head	vectors[WHEEL_SIZE];
++	struct hlist_head	expired_lists[LVL_DEPTH];
++	int			expired_count;
+ } ____cacheline_aligned;
+ 
+ static DEFINE_PER_CPU(struct timer_base, timer_bases[NR_BASES]);
+@@ -948,10 +953,10 @@ static struct timer_base *lock_timer_base(struct timer_list *timer,
  
  		if (!(tf & TIMER_MIGRATING)) {
  			base = get_timer_base(tf);
@@ -19295,7 +19319,7 @@ index c611c47de884..08a5ab762495 100644
  		}
  		cpu_relax();
  	}
-@@ -1023,9 +1026,9 @@ __mod_timer(struct timer_list *timer, unsigned long expires, bool pending_only)
+@@ -1023,9 +1028,9 @@ __mod_timer(struct timer_list *timer, unsigned long expires, bool pending_only)
  			/* See the comment in lock_timer_base() */
  			timer->flags |= TIMER_MIGRATING;
  
@@ -19307,7 +19331,7 @@ index c611c47de884..08a5ab762495 100644
  			WRITE_ONCE(timer->flags,
  				   (timer->flags & ~TIMER_BASEMASK) | base->cpu);
  		}
-@@ -1050,7 +1053,7 @@ __mod_timer(struct timer_list *timer, unsigned long expires, bool pending_only)
+@@ -1050,7 +1055,7 @@ __mod_timer(struct timer_list *timer, unsigned long expires, bool pending_only)
  	}
  
  out_unlock:
@@ -19316,7 +19340,7 @@ index c611c47de884..08a5ab762495 100644
  
  	return ret;
  }
-@@ -1144,19 +1147,46 @@ void add_timer_on(struct timer_list *timer, int cpu)
+@@ -1144,19 +1149,46 @@ void add_timer_on(struct timer_list *timer, int cpu)
  	if (base != new_base) {
  		timer->flags |= TIMER_MIGRATING;
  
@@ -19366,7 +19390,7 @@ index c611c47de884..08a5ab762495 100644
  /**
   * del_timer - deactive a timer.
   * @timer: the timer to be deactivated
-@@ -1180,7 +1210,7 @@ int del_timer(struct timer_list *timer)
+@@ -1180,7 +1212,7 @@ int del_timer(struct timer_list *timer)
  	if (timer_pending(timer)) {
  		base = lock_timer_base(timer, &flags);
  		ret = detach_if_pending(timer, base, true);
@@ -19375,7 +19399,7 @@ index c611c47de884..08a5ab762495 100644
  	}
  
  	return ret;
-@@ -1208,13 +1238,13 @@ int try_to_del_timer_sync(struct timer_list *timer)
+@@ -1208,13 +1240,13 @@ int try_to_del_timer_sync(struct timer_list *timer)
  		timer_stats_timer_clear_start_info(timer);
  		ret = detach_if_pending(timer, base, true);
  	}
@@ -19391,7 +19415,7 @@ index c611c47de884..08a5ab762495 100644
  /**
   * del_timer_sync - deactivate a timer and wait for the handler to finish.
   * @timer: the timer to be deactivated
-@@ -1274,7 +1304,7 @@ int del_timer_sync(struct timer_list *timer)
+@@ -1274,7 +1306,7 @@ int del_timer_sync(struct timer_list *timer)
  		int ret = try_to_del_timer_sync(timer);
  		if (ret >= 0)
  			return ret;
@@ -19400,7 +19424,17 @@ index c611c47de884..08a5ab762495 100644
  	}
  }
  EXPORT_SYMBOL(del_timer_sync);
-@@ -1339,14 +1369,17 @@ static void expire_timers(struct timer_base *base, struct hlist_head *head)
+@@ -1323,7 +1355,8 @@ static void call_timer_fn(struct timer_list *timer, void (*fn)(unsigned long),
+ 	}
+ }
+ 
+-static void expire_timers(struct timer_base *base, struct hlist_head *head)
++static inline void __expire_timers(struct timer_base *base,
++				   struct hlist_head *head)
+ {
+ 	while (!hlist_empty(head)) {
+ 		struct timer_list *timer;
+@@ -1339,33 +1372,53 @@ static void expire_timers(struct timer_base *base, struct hlist_head *head)
  		fn = timer->function;
  		data = timer->data;
  
@@ -19423,7 +19457,56 @@ index c611c47de884..08a5ab762495 100644
  		}
  	}
  }
-@@ -1515,7 +1548,7 @@ u64 get_next_timer_interrupt(unsigned long basej, u64 basem)
+ 
+-static int __collect_expired_timers(struct timer_base *base,
+-				    struct hlist_head *heads)
++static void expire_timers(struct timer_base *base)
++{
++	struct hlist_head *head;
++
++	while (base->expired_count--) {
++		head = base->expired_lists + base->expired_count;
++		__expire_timers(base, head);
++	}
++	base->expired_count = 0;
++}
++
++static void __collect_expired_timers(struct timer_base *base)
+ {
+ 	unsigned long clk = base->clk;
+ 	struct hlist_head *vec;
+-	int i, levels = 0;
++	int i;
+ 	unsigned int idx;
+ 
++	/*
++	 * expire_timers() must be called at least once before we can
++	 * collect more timers
++	 */
++	if (WARN_ON(base->expired_count))
++		return;
++
+ 	for (i = 0; i < LVL_DEPTH; i++) {
+ 		idx = (clk & LVL_MASK) + i * LVL_SIZE;
+ 
+ 		if (__test_and_clear_bit(idx, base->pending_map)) {
+ 			vec = base->vectors + idx;
+-			hlist_move_list(vec, heads++);
+-			levels++;
++			hlist_move_list(vec,
++				&base->expired_lists[base->expired_count++]);
+ 		}
+ 		/* Is it time to look at the next level? */
+ 		if (clk & LVL_CLK_MASK)
+@@ -1373,7 +1426,6 @@ static int __collect_expired_timers(struct timer_base *base,
+ 		/* Shift clock for the next level granularity */
+ 		clk >>= LVL_CLK_SHIFT;
+ 	}
+-	return levels;
+ }
+ 
+ #ifdef CONFIG_NO_HZ_COMMON
+@@ -1515,7 +1567,7 @@ u64 get_next_timer_interrupt(unsigned long basej, u64 basem)
  	if (cpu_is_offline(smp_processor_id()))
  		return expires;
  
@@ -19432,7 +19515,7 @@ index c611c47de884..08a5ab762495 100644
  	nextevt = __next_timer_interrupt(base);
  	is_max_delta = (nextevt == base->clk + NEXT_TIMER_MAX_DELTA);
  	base->next_expiry = nextevt;
-@@ -1543,7 +1576,7 @@ u64 get_next_timer_interrupt(unsigned long basej, u64 basem)
+@@ -1543,7 +1595,7 @@ u64 get_next_timer_interrupt(unsigned long basej, u64 basem)
  		if ((expires - basem) > TICK_NSEC)
  			base->is_idle = true;
  	}
@@ -19441,7 +19524,72 @@ index c611c47de884..08a5ab762495 100644
  
  	return cmp_next_hrtimer_event(basem, expires);
  }
-@@ -1608,13 +1641,13 @@ void update_process_times(int user_tick)
+@@ -1566,8 +1618,7 @@ void timer_clear_idle(void)
+ 	base->is_idle = false;
+ }
+ 
+-static int collect_expired_timers(struct timer_base *base,
+-				  struct hlist_head *heads)
++static void collect_expired_timers(struct timer_base *base)
+ {
+ 	/*
+ 	 * NOHZ optimization. After a long idle sleep we need to forward the
+@@ -1584,20 +1635,49 @@ static int collect_expired_timers(struct timer_base *base,
+ 		if (time_after(next, jiffies)) {
+ 			/* The call site will increment clock! */
+ 			base->clk = jiffies - 1;
+-			return 0;
++			return;
+ 		}
+ 		base->clk = next;
+ 	}
+-	return __collect_expired_timers(base, heads);
++	__collect_expired_timers(base);
+ }
+ #else
+-static inline int collect_expired_timers(struct timer_base *base,
+-					 struct hlist_head *heads)
++static inline void collect_expired_timers(struct timer_base *base)
+ {
+-	return __collect_expired_timers(base, heads);
++	__collect_expired_timers(base);
+ }
+ #endif
+ 
++static int find_expired_timers(struct timer_base *base)
++{
++	const unsigned long int end_clk = jiffies;
++
++	while (!base->expired_count && time_after_eq(end_clk, base->clk)) {
++		collect_expired_timers(base);
++		base->clk++;
++	}
++
++	return base->expired_count;
++}
++
++/* Called from CPU tick routine to quickly collect expired timers */
++static int tick_find_expired(struct timer_base *base)
++{
++	int count;
++
++	raw_spin_lock(&base->lock);
++
++	if (unlikely(time_after(jiffies, base->clk + HZ))) {
++		/* defer to ktimersoftd; don't spend too long in irq context */
++		count = -1;
++	} else
++		count = find_expired_timers(base);
++
++	raw_spin_unlock(&base->lock);
++
++	return count;
++}
++
+ /*
+  * Called from the timer interrupt handler to charge one tick to the current
+  * process.  user_tick is 1 if the tick is user time, 0 for system.
+@@ -1608,13 +1688,13 @@ void update_process_times(int user_tick)
  
  	/* Note: this timer irq context must be accounted for as well. */
  	account_process_tick(p, user_tick);
@@ -19457,19 +19605,29 @@ index c611c47de884..08a5ab762495 100644
  	run_posix_cpu_timers(p);
  }
  
-@@ -1630,7 +1663,7 @@ static inline void __run_timers(struct timer_base *base)
- 	if (!time_after_eq(jiffies, base->clk))
- 		return;
- 
--	spin_lock_irq(&base->lock);
+@@ -1624,24 +1704,13 @@ void update_process_times(int user_tick)
+  */
+ static inline void __run_timers(struct timer_base *base)
+ {
+-	struct hlist_head heads[LVL_DEPTH];
+-	int levels;
+-
+-	if (!time_after_eq(jiffies, base->clk))
+-		return;
 +	raw_spin_lock_irq(&base->lock);
  
- 	while (time_after_eq(jiffies, base->clk)) {
+-	spin_lock_irq(&base->lock);
++	while (find_expired_timers(base))
++		expire_timers(base);
  
-@@ -1640,8 +1673,8 @@ static inline void __run_timers(struct timer_base *base)
- 		while (levels--)
- 			expire_timers(base, heads + levels);
- 	}
+-	while (time_after_eq(jiffies, base->clk)) {
+-
+-		levels = collect_expired_timers(base, heads);
+-		base->clk++;
+-
+-		while (levels--)
+-			expire_timers(base, heads + levels);
+-	}
 -	base->running_timer = NULL;
 -	spin_unlock_irq(&base->lock);
 +	raw_spin_unlock_irq(&base->lock);
@@ -19477,7 +19635,7 @@ index c611c47de884..08a5ab762495 100644
  }
  
  /*
-@@ -1651,6 +1684,8 @@ static __latent_entropy void run_timer_softirq(struct softirq_action *h)
+@@ -1651,6 +1720,8 @@ static __latent_entropy void run_timer_softirq(struct softirq_action *h)
  {
  	struct timer_base *base = this_cpu_ptr(&timer_bases[BASE_STD]);
  
@@ -19486,7 +19644,22 @@ index c611c47de884..08a5ab762495 100644
  	__run_timers(base);
  	if (IS_ENABLED(CONFIG_NO_HZ_COMMON) && base->nohz_active)
  		__run_timers(this_cpu_ptr(&timer_bases[BASE_DEF]));
-@@ -1836,16 +1871,16 @@ int timers_dead_cpu(unsigned int cpu)
+@@ -1665,12 +1736,12 @@ void run_local_timers(void)
+ 
+ 	hrtimer_run_queues();
+ 	/* Raise the softirq only if required. */
+-	if (time_before(jiffies, base->clk)) {
++	if (time_before(jiffies, base->clk) || !tick_find_expired(base)) {
+ 		if (!IS_ENABLED(CONFIG_NO_HZ_COMMON) || !base->nohz_active)
+ 			return;
+ 		/* CPU is awake, so check the deferrable base. */
+ 		base++;
+-		if (time_before(jiffies, base->clk))
++		if (time_before(jiffies, base->clk) || !tick_find_expired(base))
+ 			return;
+ 	}
+ 	raise_softirq(TIMER_SOFTIRQ);
+@@ -1836,16 +1907,17 @@ int timers_dead_cpu(unsigned int cpu)
  		 * The caller is globally serialized and nobody else
  		 * takes two locks at once, deadlock is not possible.
  		 */
@@ -19496,6 +19669,7 @@ index c611c47de884..08a5ab762495 100644
 +		raw_spin_lock_nested(&old_base->lock, SINGLE_DEPTH_NESTING);
  
  		BUG_ON(old_base->running_timer);
++		BUG_ON(old_base->expired_count);
  
  		for (i = 0; i < WHEEL_SIZE; i++)
  			migrate_timer_list(new_base, old_base->vectors + i);
@@ -19507,7 +19681,7 @@ index c611c47de884..08a5ab762495 100644
  		put_cpu_ptr(&timer_bases);
  	}
  	return 0;
-@@ -1861,8 +1896,11 @@ static void __init init_timer_cpu(int cpu)
+@@ -1861,8 +1933,12 @@ static void __init init_timer_cpu(int cpu)
  	for (i = 0; i < NR_BASES; i++) {
  		base = per_cpu_ptr(&timer_bases[i], cpu);
  		base->cpu = cpu;
@@ -19517,6 +19691,7 @@ index c611c47de884..08a5ab762495 100644
 +#ifdef CONFIG_PREEMPT_RT_FULL
 +		init_swait_queue_head(&base->wait_for_running_timer);
 +#endif
++		base->expired_count = 0;
  	}
  }
  
@@ -22412,7 +22587,7 @@ index 70e6bec46dc2..6678ed58b7c6 100644
  				cc->last_migrated_pfn = 0;
  			}
 diff --git a/mm/filemap.c b/mm/filemap.c
-index 173273255ce5..e17c58739f2e 100644
+index 29f16cc3e68b..1bef68d07f1a 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
 @@ -159,9 +159,12 @@ static int page_cache_tree_insert(struct address_space *mapping,
