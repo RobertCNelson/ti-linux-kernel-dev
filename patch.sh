@@ -466,7 +466,7 @@ drivers () {
 	dir 'drivers/ti/rtc'
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/spi'
-	dir 'drivers/ti/uio'
+#	dir 'drivers/ti/uio'
 
 	dir 'drivers/ti/gpio'
 }
