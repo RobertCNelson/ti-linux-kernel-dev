@@ -110,6 +110,7 @@ external_git () {
 		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
 	fi
 	${git_bin} describe
+	${git} "${DIR}/patches/stable/patch-4.4.48-49"
 }
 
 aufs_fail () {
@@ -445,7 +446,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 	${git} "${DIR}/patches/backports/iio/0007-staging-iio-ad7606-fix-improper-setting-of-oversampl.patch"
 
-	backport_tag="v4.9.9"
+	backport_tag="v4.9.10"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then

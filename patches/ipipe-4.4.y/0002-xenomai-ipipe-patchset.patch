@@ -1,6 +1,6 @@
-From e071a56c80064e01a69d24a616bf6e9b428c62ce Mon Sep 17 00:00:00 2001
+From 507316d190ea2ef993d8a07dc04431674b3291dd Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 10 Feb 2017 13:58:28 -0600
+Date: Wed, 15 Feb 2017 15:13:54 -0600
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
@@ -468,8 +468,8 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  mm/mmu_context.c                               |    5 +-
  mm/mprotect.c                                  |   10 +-
  mm/vmalloc.c                                   |    2 +
- scripts/ipipe/genpatches.sh                    |  198 +++
- 465 files changed, 23559 insertions(+), 1687 deletions(-)
+ scripts/ipipe/genpatches.sh                    |  219 +++
+ 465 files changed, 23580 insertions(+), 1687 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -5251,7 +5251,7 @@ index 4adfb46e3ee9..30dacb9a0639 100644
  }
  
 diff --git a/arch/arm/kernel/ptrace.c b/arch/arm/kernel/ptrace.c
-index 4d9375814b53..05c23110ad50 100644
+index d54c53b7ab63..08d6dac1cc5d 100644
 --- a/arch/arm/kernel/ptrace.c
 +++ b/arch/arm/kernel/ptrace.c
 @@ -214,6 +214,10 @@ void ptrace_break(struct task_struct *tsk, struct pt_regs *regs)
@@ -9363,7 +9363,7 @@ index d9e0d00a6699..41bd962a3d4f 100644
  
  /*
 diff --git a/arch/arm/mm/fault.c b/arch/arm/mm/fault.c
-index daafcf121ce0..6386a5f366f1 100644
+index c095455d496e..97debc933dc7 100644
 --- a/arch/arm/mm/fault.c
 +++ b/arch/arm/mm/fault.c
 @@ -25,11 +25,45 @@
@@ -39464,10 +39464,10 @@ index 8e3c9c5a3042..d8a7b29d03d3 100644
  
 diff --git a/scripts/ipipe/genpatches.sh b/scripts/ipipe/genpatches.sh
 new file mode 100644
-index 000000000000..f3349ac4434b
+index 000000000000..c32bd92f1797
 --- /dev/null
 +++ b/scripts/ipipe/genpatches.sh
-@@ -0,0 +1,198 @@
+@@ -0,0 +1,219 @@
 +#! /bin/sh
 +
 +me=`basename $0`
@@ -39532,7 +39532,6 @@ index 000000000000..f3349ac4434b
 +    driver_arch["iommu/irq_remapping.c"]="noarch"
 +
 +    driver_arch["clk/mxs/clk-imx28.c"]="arm"
-+    driver_arch["clocksource/arm_arch_timer.c"]="arm"
 +    driver_arch["clocksource/mxs_timer.c"]="arm"
 +    driver_arch["clocksource/arm_global_timer.c"]="arm"
 +    driver_arch["clocksource/pxa_timer.c"]="arm"
@@ -39551,7 +39550,6 @@ index 000000000000..f3349ac4434b
 +    driver_arch["irqchip/spear-shirq.c"]="arm"
 +    driver_arch["irqchip/irq-mxs.c"]="arm"
 +    driver_arch["irqchip/irq-s3c24xx.c"]="arm"
-+    driver_arch["irqchip/irq-gic.c"]="arm"
 +    driver_arch["irqchip/irq-vic.c"]="arm"
 +    driver_arch["irqchip/irq-atmel-aic.c"]="arm"
 +    driver_arch["irqchip/irq-atmel-aic5.c"]="arm"
@@ -39559,7 +39557,6 @@ index 000000000000..f3349ac4434b
 +    driver_arch["irqchip/irq-bcm7120-l2.c"]="arm"
 +    driver_arch["irqchip/irq-brcmstb-l2.c"]="arm"
 +    driver_arch["irqchip/irq-dw-apb-ictl.c"]="arm"
-+    driver_arch["irqchip/irq-gic-v3.c"]="arm"
 +    driver_arch["irqchip/irq-sunxi-nmi.c"]="arm"
 +    driver_arch["irqchip/irq-crossbar.c"]="arm"
 +    driver_arch["mfd/twl4030-irq.c"]="arm"
@@ -39581,6 +39578,10 @@ index 000000000000..f3349ac4434b
 +    driver_arch["media/platform/vsp1/vsp1_video.c"]="arm"
 +    driver_arch["soc/dove/pmu.c"]="arm"
 +
++    driver_arch["irqchip/irq-gic.c"]="arm arm64"
++    driver_arch["irqchip/irq-gic-v3.c"]="arm arm64"
++    driver_arch["clocksource/arm_arch_timer.c"]="arm arm64"
++
 +    driver_arch["tty/serial/amba-pl011.c"]="arm64"
 +    driver_arch["gpio/gpio-pl061.c"]="arm64"
 +
@@ -39599,6 +39600,7 @@ index 000000000000..f3349ac4434b
 +    split(substr($0, RSTART, RLENGTH), arch, /\//)
 +    a=arch[3]
 +
++    is_multiarch=0
 +    set_current_arch(a)
 +    print $0 >> current_file
 +    next
@@ -39613,14 +39615,25 @@ index 000000000000..f3349ac4434b
 +	 print "Error unknown architecture for driver "f
 +	 unknown_file_error=1
 +    } else {
-+	 a = driver_arch[f]
-+	 set_current_arch(a)
-+	 print $0 >> current_file
-+	 next
++        a = driver_arch[f]
++        if(index(a, " ")) {
++            is_multiarch = 1
++            split(a, multiarch, " ")
++            for(a in multiarch) {
++                set_current_arch(multiarch[a])
++                print $0 >> current_file
++            }
++        } else {
++            is_multiarch = 0
++            set_current_arch(a)
++            print $0 >> current_file
++        }
++        next
 +    }
 +}
 +
 +/^diff --git a\/scripts\/ipipe\/genpatches.sh/ {
++    is_multiarch=0
 +    if (splitmode == "no") {
 +	current_file="/dev/null"
 +	current_arch="nullarch"
@@ -39630,6 +39643,7 @@ index 000000000000..f3349ac4434b
 +
 +/^diff --git/ {
 +    set_current_arch("noarch")
++    is_multiarch=0
 +    print $0 >> current_file
 +    next
 +}
@@ -39640,7 +39654,14 @@ index 000000000000..f3349ac4434b
 +}
 +
 +{
-+    print $0 >> current_file
++    if(is_multiarch) {
++        for(a in multiarch) {
++            set_current_arch(multiarch[a])
++            print $0 >> current_file
++        }
++    } else {
++        print $0 >> current_file
++    }
 +}
 +
 +END {
