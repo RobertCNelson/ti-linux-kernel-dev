@@ -110,7 +110,7 @@ external_git () {
 		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
 	fi
 	${git_bin} describe
-	${git} "${DIR}/patches/stable/patch-4.4.48-49"
+	#${git} "${DIR}/patches/stable/patch-4.4.48-49"
 }
 
 aufs_fail () {
@@ -150,16 +150,10 @@ aufs4 () {
 
 		cd ../
 		if [ ! -d ./aufs4-standalone ] ; then
-			${git_bin} clone https://github.com/sfjro/aufs4-standalone
-			cd ./aufs4-standalone
-			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
-			cd ../
+			${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/aufs4-standalone --depth=1
 		else
 			rm -rf ./aufs4-standalone || true
-			${git_bin} clone https://github.com/sfjro/aufs4-standalone
-			cd ./aufs4-standalone
-			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
-			cd ../
+			${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/aufs4-standalone --depth=1
 		fi
 		cd ./KERNEL/
 
@@ -879,22 +873,27 @@ beaglebone () {
 	fi
 }
 
+###
+lts44_backports
+reverts
+drivers
+pru_rpmsg
+bbb_overlays
+beaglebone
+dir 'x15/fixes'
+dir 'brcmfmac'
+dir 'quieter'
+
 sync_mainline_dtc () {
 	echo "dir: dtc"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./dtc ] ; then
-			${git_bin} clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
-			cd ./dtc
-			${git_bin} checkout origin/master -b tmp
-			cd ../
+			${git_bin} clone -b master https://git.kernel.org/pub/scm/utils/dtc/dtc.git --depth=1
 		else
 			rm -rf ./dtc || true
-			${git_bin} clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
-			cd ./dtc
-			${git_bin} checkout origin/master -b tmp
-			cd ../
+			${git_bin} clone -b master https://git.kernel.org/pub/scm/utils/dtc/dtc.git --depth=1
 		fi
 		cd ./KERNEL/
 
@@ -924,18 +923,6 @@ sync_mainline_dtc () {
 		fi
 	fi
 }
-
-###
-lts44_backports
-reverts
-drivers
-pru_rpmsg
-bbb_overlays
-beaglebone
-dir 'x15/fixes'
-dir 'brcmfmac'
-dir 'quieter'
-sync_mainline_dtc
 
 packaging () {
 	echo "dir: packaging"
@@ -967,6 +954,7 @@ travis () {
 	fi
 }
 
+sync_mainline_dtc
 packaging
 travis
 echo "patch.sh ran successfully"
