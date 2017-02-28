@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2017 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -52,7 +52,20 @@ if [ -e ${DIR}/version.sh ]; then
 	#push tag
 	${git_bin} push -f ${repo} "${KERNEL_TAG}${BUILD}"
 
+	PUSH_BRANCH=${KERNEL_REL}
+
+	if [ "x${build_prefix}" = "x-ti-rt-r" ] ; then
+		PUSH_BRANCH=${KERNEL_REL}-rt
+	fi
+
+	if [ "x${build_prefix}" = "-ti-xenomai-r" ] ; then
+		PUSH_BRANCH=${KERNEL_REL}-xenomai
+	fi
+
+	echo "debug: pushing ${PUSH_BRANCH}"
+
 	${git_bin} branch -D ${KERNEL_REL} || true
+
 	${git_bin} branch -m v${KERNEL_TAG}${BUILD} ${KERNEL_REL}
 
 	#push branch
