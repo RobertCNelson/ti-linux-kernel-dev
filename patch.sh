@@ -459,6 +459,7 @@ reverts () {
 
 drivers () {
 	dir 'drivers/it66121'
+	dir 'drivers/gadget'
 	dir 'drivers/tsl2550'
 	dir 'drivers/ti/pm'
 	dir 'drivers/wireless'
