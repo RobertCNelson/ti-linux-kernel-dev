@@ -321,6 +321,7 @@ reverts () {
 }
 
 drivers () {
+	dir 'drivers/gadget'
 	dir 'drivers/pm_bus'
 	dir 'drivers/spi'
 	dir 'drivers/thumb2'
