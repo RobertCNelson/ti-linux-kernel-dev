@@ -58,7 +58,7 @@ if [ -e ${DIR}/version.sh ]; then
 		PUSH_BRANCH=${KERNEL_REL}-rt
 	fi
 
-	if [ "x${build_prefix}" = "-ti-xenomai-r" ] ; then
+	if [ "x${build_prefix}" = "x-ti-xenomai-r" ] ; then
 		PUSH_BRANCH=${KERNEL_REL}-xenomai
 	fi
 
