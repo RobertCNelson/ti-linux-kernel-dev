@@ -64,13 +64,13 @@ if [ -e ${DIR}/version.sh ]; then
 
 	echo "debug: pushing ${PUSH_BRANCH}"
 
-	${git_bin} branch -D ${KERNEL_REL} || true
+	${git_bin} branch -D ${PUSH_BRANCH} || true
 
-	${git_bin} branch -m v${KERNEL_TAG}${BUILD} ${KERNEL_REL}
+	${git_bin} branch -m v${KERNEL_TAG}${BUILD} ${PUSH_BRANCH}
 
 	#push branch
-	echo "log: git push -f ${repo} ${KERNEL_REL}"
-	${git_bin} push -f ${repo} ${KERNEL_REL}
+	echo "log: git push -f ${repo} ${PUSH_BRANCH}"
+	${git_bin} push -f ${repo} ${PUSH_BRANCH}
 
 	cd ${DIR}/
 fi
