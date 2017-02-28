@@ -235,21 +235,6 @@ rt () {
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
 
-tinydrm () {
-	echo "dir: tinydrm"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/drivers/tinydrm/0001-merge-tinydrm.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="drivers/tinydrm"
-		number=1
-		cleanup
-	fi
-}
-
 local_patch () {
 	echo "dir: dir"
 	${git} "${DIR}/patches/dir/0001-patch.patch"
@@ -259,7 +244,6 @@ external_git
 #sync_cherrypicks
 aufs4
 #rt
-tinydrm
 #local_patch
 
 pre_backports () {
