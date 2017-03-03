@@ -7,6 +7,7 @@ config="omap2plus_defconfig"
 build_prefix="-ti-r"
 branch_prefix="ti-linux-"
 branch_postfix=".y"
+bborg_branch="4.4"
 
 #arm
 KERNEL_ARCH=arm
