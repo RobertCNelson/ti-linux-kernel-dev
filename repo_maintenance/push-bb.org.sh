@@ -52,15 +52,15 @@ if [ -e ${DIR}/version.sh ]; then
 	#push tag
 	${git_bin} push -f ${repo} "${KERNEL_TAG}${BUILD}"
 
-	PUSH_BRANCH=${KERNEL_REL}
+#	PUSH_BRANCH=${KERNEL_REL}
 
-	if [ "x${build_prefix}" = "x-ti-rt-r" ] ; then
-		PUSH_BRANCH=${KERNEL_REL}-rt
-	fi
+#	if [ "x${build_prefix}" = "x-ti-rt-r" ] ; then
+#		PUSH_BRANCH=${KERNEL_REL}-rt
+#	fi
 
-	if [ "x${build_prefix}" = "x-ti-xenomai-r" ] ; then
-		PUSH_BRANCH=${KERNEL_REL}-xenomai
-	fi
+#	if [ "x${build_prefix}" = "x-ti-xenomai-r" ] ; then
+		PUSH_BRANCH="${KERNEL_REL}-xenomai"
+#	fi
 
 	echo "debug: pushing ${PUSH_BRANCH}"
 
