@@ -7,6 +7,7 @@ config="omap2plus_defconfig"
 build_prefix="-ti-xenomai-r"
 branch_prefix="ti-linux-xenomai-"
 branch_postfix=".y"
+bborg_branch="4.4-xenomai"
 
 #arm
 KERNEL_ARCH=arm
