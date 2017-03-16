@@ -1,6 +1,6 @@
-From 988ab73959889d5aea01b2ca4787cf682b6a351e Mon Sep 17 00:00:00 2001
+From 4afb20150e1b2dcb7b5e243badb74bfd64484218 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 28 Feb 2017 13:53:38 -0600
+Date: Thu, 16 Mar 2017 13:16:55 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -181,7 +181,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/dcache.h                             |    5 +-
  include/linux/delay.h                              |    6 +
  include/linux/highmem.h                            |   32 +-
- include/linux/hrtimer.h                            |   27 +-
+ include/linux/hrtimer.h                            |   35 +-
  include/linux/idr.h                                |    4 +
  include/linux/init_task.h                          |    7 +
  include/linux/interrupt.h                          |   70 +-
@@ -195,7 +195,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/list_bl.h                            |   30 +-
  include/linux/locallock.h                          |  278 +++++
  include/linux/mm_types.h                           |    4 +
- include/linux/module.h                             |    1 +
+ include/linux/module.h                             |    6 +
  include/linux/mutex.h                              |   20 +-
  include/linux/mutex_rt.h                           |   89 ++
  include/linux/netdevice.h                          |   54 +-
@@ -282,7 +282,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/locking/rtmutex_common.h                    |   17 +-
  kernel/locking/spinlock.c                          |    7 +
  kernel/locking/spinlock_debug.c                    |    5 +
- kernel/module.c                                    |   31 +-
+ kernel/module.c                                    |   36 +-
  kernel/panic.c                                     |    2 +
  kernel/power/hibernate.c                           |   14 +
  kernel/power/suspend.c                             |    9 +
@@ -376,7 +376,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/sunrpc/svc_xprt.c                              |    6 +-
  scripts/mkcompile_h                                |    4 +-
  sound/core/pcm_native.c                            |    8 +-
- 371 files changed, 10198 insertions(+), 1960 deletions(-)
+ 371 files changed, 10215 insertions(+), 1961 deletions(-)
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 include/linux/locallock.h
  create mode 100644 include/linux/mutex_rt.h
@@ -1143,7 +1143,7 @@ index 4b653a8cb75c..b03d5a922cb1 100644
  }
  #endif
 diff --git a/arch/arm/mach-omap2/omap-smp.c b/arch/arm/mach-omap2/omap-smp.c
-index b4de3da6dffa..b52893319d75 100644
+index 3d0867307127..d0a52825a3e2 100644
 --- a/arch/arm/mach-omap2/omap-smp.c
 +++ b/arch/arm/mach-omap2/omap-smp.c
 @@ -64,7 +64,7 @@ static const struct omap_smp_config omap5_cfg __initconst = {
@@ -5792,7 +5792,7 @@ index a2a529994ba5..0ee7c4c518df 100644
  
  static int __init
 diff --git a/drivers/usb/core/hcd.c b/drivers/usb/core/hcd.c
-index 46cb20f63da9..e8e246c4abdb 100644
+index 47770622c2a1..f21cc3780e39 100644
 --- a/drivers/usb/core/hcd.c
 +++ b/drivers/usb/core/hcd.c
 @@ -1762,9 +1762,9 @@ static void __usb_hcd_giveback_urb(struct urb *urb)
@@ -7163,7 +7163,7 @@ index bb3f3297062a..a117a33ef72c 100644
  }
  
 diff --git a/include/linux/hrtimer.h b/include/linux/hrtimer.h
-index 5e00f80b1535..65d0671f20b4 100644
+index 5e00f80b1535..a34e10b55cde 100644
 --- a/include/linux/hrtimer.h
 +++ b/include/linux/hrtimer.h
 @@ -87,6 +87,9 @@ enum hrtimer_restart {
@@ -7248,15 +7248,24 @@ index 5e00f80b1535..65d0671f20b4 100644
  /* Query timers: */
  extern ktime_t __hrtimer_get_remaining(const struct hrtimer *timer, bool adjust);
  
-@@ -436,7 +453,7 @@ static inline int hrtimer_is_queued(struct hrtimer *timer)
+@@ -436,9 +453,15 @@ static inline int hrtimer_is_queued(struct hrtimer *timer)
   * Helper function to check, whether the timer is running the callback
   * function
   */
 -static inline int hrtimer_callback_running(struct hrtimer *timer)
 +static inline int hrtimer_callback_running(const struct hrtimer *timer)
  {
- 	return timer->base->cpu_base->running == timer;
+-	return timer->base->cpu_base->running == timer;
++	if (timer->base->cpu_base->running == timer)
++		return 1;
++#ifdef CONFIG_PREEMPT_RT_BASE
++	if (timer->base->cpu_base->running_soft == timer)
++		return 1;
++#endif
++	return 0;
  }
+ 
+ /* Forward a hrtimer so it expires after now: */
 diff --git a/include/linux/idr.h b/include/linux/idr.h
 index 083d61e92706..5899796f50cb 100644
 --- a/include/linux/idr.h
@@ -8094,7 +8103,7 @@ index 836f637fb981..7d15294650f3 100644
  	/* address of the bounds directory */
  	void __user *bd_addr;
 diff --git a/include/linux/module.h b/include/linux/module.h
-index 0c3207d26ac0..3d3d2188c7d9 100644
+index 0c3207d26ac0..5944baaa3f28 100644
 --- a/include/linux/module.h
 +++ b/include/linux/module.h
 @@ -496,6 +496,7 @@ static inline int module_is_live(struct module *mod)
@@ -8105,6 +8114,18 @@ index 0c3207d26ac0..3d3d2188c7d9 100644
  bool is_module_percpu_address(unsigned long addr);
  bool is_module_text_address(unsigned long addr);
  
+@@ -663,6 +664,11 @@ static inline bool is_module_percpu_address(unsigned long addr)
+ 	return false;
+ }
+ 
++static inline bool __is_module_percpu_address(unsigned long addr, unsigned long *can_addr)
++{
++	return false;
++}
++
+ static inline bool is_module_text_address(unsigned long addr)
+ {
+ 	return false;
 diff --git a/include/linux/mutex.h b/include/linux/mutex.h
 index 2cb7531e7d7a..b3fdfc820216 100644
 --- a/include/linux/mutex.h
@@ -14729,7 +14750,7 @@ index 0374a596cffa..94970338d518 100644
 +
 +#endif
 diff --git a/kernel/module.c b/kernel/module.c
-index 0e54d5bf0097..289616d8ccfd 100644
+index 0e54d5bf0097..3483a3743b44 100644
 --- a/kernel/module.c
 +++ b/kernel/module.c
 @@ -660,16 +660,7 @@ static void percpu_modcopy(struct module *mod,
@@ -14785,6 +14806,18 @@ index 0e54d5bf0097..289616d8ccfd 100644
  #else /* ... !CONFIG_SMP */
  
  static inline void __percpu *mod_percpu(struct module *mod)
+@@ -727,6 +734,11 @@ bool is_module_percpu_address(unsigned long addr)
+ 	return false;
+ }
+ 
++bool __is_module_percpu_address(unsigned long addr, unsigned long *can_addr)
++{
++	return false;
++}
++
+ #endif /* CONFIG_SMP */
+ 
+ #define MODINFO_ATTR(field)	\
 diff --git a/kernel/panic.c b/kernel/panic.c
 index e6480e20379e..7e9c1918a94e 100644
 --- a/kernel/panic.c
