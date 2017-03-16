@@ -350,8 +350,10 @@ lts44_backports () {
 
 	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 	${git} "${DIR}/patches/backports/iio/0007-staging-iio-ad7606-fix-improper-setting-of-oversampl.patch"
+	${git} "${DIR}/patches/backports/iio/0008-iio-pressure-mpl115-do-not-rely-on-structure-field-o.patch"
+	${git} "${DIR}/patches/backports/iio/0009-iio-pressure-mpl3115-do-not-rely-on-structure-field-.patch"
 
-	backport_tag="v4.9.13"
+	backport_tag="v4.9.15"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
