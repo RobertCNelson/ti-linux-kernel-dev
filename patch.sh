@@ -442,7 +442,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0008-iio-pressure-mpl115-do-not-rely-on-structure-field-o.patch"
 	${git} "${DIR}/patches/backports/iio/0009-iio-pressure-mpl3115-do-not-rely-on-structure-field-.patch"
 
-	backport_tag="v4.9.15"
+	backport_tag="v4.9.16"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
