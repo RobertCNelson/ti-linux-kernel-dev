@@ -353,7 +353,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0008-iio-pressure-mpl115-do-not-rely-on-structure-field-o.patch"
 	${git} "${DIR}/patches/backports/iio/0009-iio-pressure-mpl3115-do-not-rely-on-structure-field-.patch"
 
-	backport_tag="v4.9.16"
+	backport_tag="v4.9.18"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -909,7 +909,7 @@ dir 'quieter'
 remoteproc_by_default
 
 git_clone_dtc () {
-	${git_bin} clone -b master https://git.kernel.org/pub/scm/utils/dtc/dtc.git --depth=10
+	${git_bin} clone -b master https://git.kernel.org/pub/scm/utils/dtc/dtc.git --depth=20
 	#dtc: Bump version to v1.4.4
 	cd ./dtc
 	${git_bin} checkout 558cd81bdd432769b59bff01240c44f82cfb1a9d -b tmp
