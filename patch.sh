@@ -348,12 +348,14 @@ lts44_backports () {
 		patch_backports
 	fi
 
-	${git} "${DIR}/patches/backports/iio/0006-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
-	${git} "${DIR}/patches/backports/iio/0007-staging-iio-ad7606-fix-improper-setting-of-oversampl.patch"
-	${git} "${DIR}/patches/backports/iio/0008-iio-pressure-mpl115-do-not-rely-on-structure-field-o.patch"
-	${git} "${DIR}/patches/backports/iio/0009-iio-pressure-mpl3115-do-not-rely-on-structure-field-.patch"
+	${git} "${DIR}/patches/backports/iio/0002-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
+	${git} "${DIR}/patches/backports/iio/0003-staging-iio-ad7606-fix-improper-setting-of-oversampl.patch"
+	${git} "${DIR}/patches/backports/iio/0004-iio-pressure-mpl115-do-not-rely-on-structure-field-o.patch"
+	${git} "${DIR}/patches/backports/iio/0005-iio-pressure-mpl3115-do-not-rely-on-structure-field-.patch"
+	${git} "${DIR}/patches/backports/iio/0006-iio-adc-ti_am335x_adc-fix-fifo-overrun-recovery.patch"
+	${git} "${DIR}/patches/backports/iio/0007-iio-hid-sensor-trigger-Change-get-poll-value-functio.patch"
 
-	backport_tag="v4.9.16"
+	backport_tag="v4.9.20"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -913,12 +915,12 @@ sync_mainline_dtc () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
-		if [ ! -d ./dtc ] ; then
-			${git_bin} clone -b master https://git.kernel.org/pub/scm/utils/dtc/dtc.git --depth=1
-		else
+		if [ -d ./dtc ] ; then
 			rm -rf ./dtc || true
-			${git_bin} clone -b master https://git.kernel.org/pub/scm/utils/dtc/dtc.git --depth=1
 		fi
+
+		${git_bin} clone -b dtc-v1.4.4 https://github.com/RobertCNelson/dtc --depth=1
+
 		cd ./KERNEL/
 
 		sed -i -e 's:git commit:#git commit:g' ./scripts/dtc/update-dtc-source.sh
