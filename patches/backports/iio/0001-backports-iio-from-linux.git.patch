@@ -1,6 +1,6 @@
-From 79da3e5a473e3b2e20c88eb4c91d636e5db51dd0 Mon Sep 17 00:00:00 2001
+From e9314e24bcf6577fc5bc0a2e62f811a1d78f9b84 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 31 Mar 2017 10:29:21 -0500
+Date: Tue, 4 Apr 2017 09:53:42 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -68,7 +68,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/ti-adc128s052.c                    |   14 +-
  drivers/iio/adc/ti-ads1015.c                       |  713 ++++++++
  drivers/iio/adc/ti-ads8688.c                       |  487 ++++++
- drivers/iio/adc/ti_am335x_adc.c                    |   22 +-
+ drivers/iio/adc/ti_am335x_adc.c                    |   35 +-
  drivers/iio/adc/vf610_adc.c                        |   27 +-
  drivers/iio/adc/xilinx-xadc-core.c                 |    2 +-
  drivers/iio/adc/xilinx-xadc-events.c               |    4 +-
@@ -81,7 +81,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/chemical/ams-iaq-core.c                |  200 +++
  drivers/iio/chemical/atlas-ph-sensor.c             |  663 ++++++++
  drivers/iio/chemical/vz89x.c                       |   66 +-
- .../iio/common/hid-sensors/hid-sensor-trigger.c    |    2 +-
+ .../iio/common/hid-sensors/hid-sensor-trigger.c    |    8 +-
  drivers/iio/common/ms_sensors/ms_sensors_i2c.c     |    2 +-
  drivers/iio/common/st_sensors/st_sensors_buffer.c  |  101 +-
  drivers/iio/common/st_sensors/st_sensors_core.c    |  100 +-
@@ -318,7 +318,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/platform_data/ad5761.h               |   44 +
  include/linux/platform_data/st_sensors_pdata.h     |    2 +
  include/uapi/linux/iio/types.h                     |    4 +
- 313 files changed, 31047 insertions(+), 3245 deletions(-)
+ 313 files changed, 31051 insertions(+), 3260 deletions(-)
  create mode 100644 drivers/iio/accel/bma220_spi.c
  create mode 100644 drivers/iio/accel/mma7455.h
  create mode 100644 drivers/iio/accel/mma7455_core.c
@@ -13632,10 +13632,37 @@ index 000000000000..c400439900af
 +MODULE_DESCRIPTION("Texas Instruments ADS8688 driver");
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/iio/adc/ti_am335x_adc.c b/drivers/iio/adc/ti_am335x_adc.c
-index 0470fc843d4e..c3cfacca2541 100644
+index 9b6854607d73..c3cfacca2541 100644
 --- a/drivers/iio/adc/ti_am335x_adc.c
 +++ b/drivers/iio/adc/ti_am335x_adc.c
-@@ -327,8 +327,7 @@ static int tiadc_channel_init(struct iio_dev *indio_dev, int channels)
+@@ -151,9 +151,7 @@ static irqreturn_t tiadc_irq_h(int irq, void *private)
+ {
+ 	struct iio_dev *indio_dev = private;
+ 	struct tiadc_device *adc_dev = iio_priv(indio_dev);
+-	unsigned int status, config, adc_fsm;
+-	unsigned short count = 0;
+-
++	unsigned int status, config;
+ 	status = tiadc_readl(adc_dev, REG_IRQSTATUS);
+ 
+ 	/*
+@@ -167,15 +165,6 @@ static irqreturn_t tiadc_irq_h(int irq, void *private)
+ 		tiadc_writel(adc_dev, REG_CTRL, config);
+ 		tiadc_writel(adc_dev, REG_IRQSTATUS, IRQENB_FIFO1OVRRUN
+ 				| IRQENB_FIFO1UNDRFLW | IRQENB_FIFO1THRES);
+-
+-		/* wait for idle state.
+-		 * ADC needs to finish the current conversion
+-		 * before disabling the module
+-		 */
+-		do {
+-			adc_fsm = tiadc_readl(adc_dev, REG_ADCFSM);
+-		} while (adc_fsm != 0x10 && count++ < 100);
+-
+ 		tiadc_writel(adc_dev, REG_CTRL, (config | CNTRLREG_TSCSSENB));
+ 		return IRQ_HANDLED;
+ 	} else if (status & IRQENB_FIFO1THRES) {
+@@ -338,8 +327,7 @@ static int tiadc_channel_init(struct iio_dev *indio_dev, int channels)
  	int i;
  
  	indio_dev->num_channels = channels;
@@ -13645,7 +13672,7 @@ index 0470fc843d4e..c3cfacca2541 100644
  	if (chan_array == NULL)
  		return -ENOMEM;
  
-@@ -474,8 +473,7 @@ static int tiadc_probe(struct platform_device *pdev)
+@@ -485,8 +473,7 @@ static int tiadc_probe(struct platform_device *pdev)
  		return -EINVAL;
  	}
  
@@ -13655,7 +13682,7 @@ index 0470fc843d4e..c3cfacca2541 100644
  	if (indio_dev == NULL) {
  		dev_err(&pdev->dev, "failed to allocate iio device\n");
  		return -ENOMEM;
-@@ -539,8 +537,7 @@ static int tiadc_remove(struct platform_device *pdev)
+@@ -550,8 +537,7 @@ static int tiadc_remove(struct platform_device *pdev)
  	return 0;
  }
  
@@ -13665,7 +13692,7 @@ index 0470fc843d4e..c3cfacca2541 100644
  {
  	struct iio_dev *indio_dev = dev_get_drvdata(dev);
  	struct tiadc_device *adc_dev = iio_priv(indio_dev);
-@@ -558,7 +555,7 @@ static int tiadc_suspend(struct device *dev)
+@@ -569,7 +555,7 @@ static int tiadc_suspend(struct device *dev)
  	return 0;
  }
  
@@ -13674,7 +13701,7 @@ index 0470fc843d4e..c3cfacca2541 100644
  {
  	struct iio_dev *indio_dev = dev_get_drvdata(dev);
  	struct tiadc_device *adc_dev = iio_priv(indio_dev);
-@@ -575,14 +572,7 @@ static int tiadc_resume(struct device *dev)
+@@ -586,14 +572,7 @@ static int tiadc_resume(struct device *dev)
  	return 0;
  }
  
@@ -13690,7 +13717,7 @@ index 0470fc843d4e..c3cfacca2541 100644
  
  static const struct of_device_id ti_adc_dt_ids[] = {
  	{ .compatible = "ti,am3359-adc", },
-@@ -593,7 +583,7 @@ MODULE_DEVICE_TABLE(of, ti_adc_dt_ids);
+@@ -604,7 +583,7 @@ MODULE_DEVICE_TABLE(of, ti_adc_dt_ids);
  static struct platform_driver tiadc_driver = {
  	.driver = {
  		.name   = "TI-am335x-adc",
@@ -15757,9 +15784,29 @@ index 11e59a5a5112..652649da500f 100644
  	data->client = client;
  	data->last_update = jiffies - HZ;
 diff --git a/drivers/iio/common/hid-sensors/hid-sensor-trigger.c b/drivers/iio/common/hid-sensors/hid-sensor-trigger.c
-index 595511022795..5b41f9d0d4f3 100644
+index 0a86ef43e781..5b41f9d0d4f3 100644
 --- a/drivers/iio/common/hid-sensors/hid-sensor-trigger.c
 +++ b/drivers/iio/common/hid-sensors/hid-sensor-trigger.c
+@@ -51,6 +51,8 @@ static int _hid_sensor_power_state(struct hid_sensor_common *st, bool state)
+ 			st->report_state.report_id,
+ 			st->report_state.index,
+ 			HID_USAGE_SENSOR_PROP_REPORTING_STATE_ALL_EVENTS_ENUM);
++
++		poll_value = hid_sensor_read_poll_value(st);
+ 	} else {
+ 		int val;
+ 
+@@ -87,9 +89,7 @@ static int _hid_sensor_power_state(struct hid_sensor_common *st, bool state)
+ 	sensor_hub_get_feature(st->hsdev, st->power_state.report_id,
+ 			       st->power_state.index,
+ 			       sizeof(state_val), &state_val);
+-	if (state)
+-		poll_value = hid_sensor_read_poll_value(st);
+-	if (poll_value > 0)
++	if (state && poll_value)
+ 		msleep_interruptible(poll_value * 2);
+ 
+ 	return 0;
 @@ -115,7 +115,7 @@ int hid_sensor_power_state(struct hid_sensor_common *st, bool state)
  		return ret;
  	}
