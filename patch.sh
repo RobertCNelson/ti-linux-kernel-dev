@@ -444,7 +444,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0006-iio-adc-ti_am335x_adc-fix-fifo-overrun-recovery.patch"
 	${git} "${DIR}/patches/backports/iio/0007-iio-hid-sensor-trigger-Change-get-poll-value-functio.patch"
 
-	backport_tag="v4.9.20"
+	backport_tag="v4.9.21"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
