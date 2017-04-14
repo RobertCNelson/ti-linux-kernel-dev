@@ -354,8 +354,9 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0005-iio-pressure-mpl3115-do-not-rely-on-structure-field-.patch"
 	${git} "${DIR}/patches/backports/iio/0006-iio-adc-ti_am335x_adc-fix-fifo-overrun-recovery.patch"
 	${git} "${DIR}/patches/backports/iio/0007-iio-hid-sensor-trigger-Change-get-poll-value-functio.patch"
+	${git} "${DIR}/patches/backports/iio/0008-iio-bmg160-reset-chip-when-probing.patch"
 
-	backport_tag="v4.9.21"
+	backport_tag="v4.9.22"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
