@@ -356,7 +356,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0007-iio-hid-sensor-trigger-Change-get-poll-value-functio.patch"
 	${git} "${DIR}/patches/backports/iio/0008-iio-bmg160-reset-chip-when-probing.patch"
 
-	backport_tag="v4.9.22"
+	backport_tag="v4.9.24"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
