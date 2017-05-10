@@ -1,0 +1,95 @@
+From 25e7ca637154524d9bb86d8d4813faea54be86f9 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Wed, 10 May 2017 12:06:17 -0500
+Subject: [PATCH] xenomai: set_cpus_allowed -> set_cpus_allowed_ptr
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/xenomai/testing/switchtest.c  | 4 ++--
+ kernel/xenomai/arch/generic/hal.c     | 2 +-
+ kernel/xenomai/nucleus/shadow.c       | 6 +++---
+ kernel/xenomai/skins/native/syscall.c | 2 +-
+ 4 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/xenomai/testing/switchtest.c b/drivers/xenomai/testing/switchtest.c
+index 6e437a458dd6..ede001843be6 100644
+--- a/drivers/xenomai/testing/switchtest.c
++++ b/drivers/xenomai/testing/switchtest.c
+@@ -483,7 +483,7 @@ static int rtswitch_create_ktask(rtswitch_context_t *ctx,
+ 	 * use the stack to pass the parameters to the created
+ 	 * task.
+ 	 */
+-	set_cpus_allowed(current, cpumask_of_cpu(ctx->cpu));
++	set_cpus_allowed_ptr(current, &cpumask_of_cpu(ctx->cpu));
+ 
+ 	iattr.tbase = rtdm_tbase;
+ 	iattr.name = name;
+@@ -552,7 +552,7 @@ static int rtswitch_close(struct rtdm_dev_context *context,
+ 	unsigned i;
+ 
+ 	if (ctx->tasks) {
+-		set_cpus_allowed(current, cpumask_of_cpu(ctx->cpu));
++		set_cpus_allowed_ptr(current, &cpumask_of_cpu(ctx->cpu));
+ 
+ 		for (i = 0; i < ctx->next_index; i++) {
+ 			rtswitch_task_t *task = &ctx->tasks[i];
+diff --git a/kernel/xenomai/arch/generic/hal.c b/kernel/xenomai/arch/generic/hal.c
+index cf9f3cbb458b..0d4f0b4ef01c 100644
+--- a/kernel/xenomai/arch/generic/hal.c
++++ b/kernel/xenomai/arch/generic/hal.c
+@@ -372,7 +372,7 @@ static int rthal_apc_thread(void *data)
+ {
+     unsigned cpu = (unsigned)(unsigned long)data;
+ 
+-    set_cpus_allowed(current, cpumask_of_cpu(cpu));
++    set_cpus_allowed_ptr(current, &cpumask_of_cpu(cpu));
+     sigfillset(&current->blocked);
+     current->flags |= PF_NOFREEZE;
+     /* Use highest priority here, since some apc handlers might
+diff --git a/kernel/xenomai/nucleus/shadow.c b/kernel/xenomai/nucleus/shadow.c
+index c93e29f3ea9a..6629e907da16 100644
+--- a/kernel/xenomai/nucleus/shadow.c
++++ b/kernel/xenomai/nucleus/shadow.c
+@@ -865,7 +865,7 @@ static int gatekeeper_thread(void *data)
+ 	this_task->flags |= PF_NOFREEZE;
+ 	sigfillset(&this_task->blocked);
+ 	cpumask = cpumask_of_cpu(cpu);
+-	set_cpus_allowed(this_task, cpumask);
++	set_cpus_allowed_ptr(this_task, &cpumask);
+ 	set_linux_task_priority(this_task, MAX_RT_PRIO - 1);
+ 
+ 	set_current_state(TASK_INTERRUPTIBLE);
+@@ -1185,7 +1185,7 @@ void xnshadow_relax(int notify, int reason)
+ 	   mode available from the nucleus --rpm]. */
+ 	if (xnthread_test_info(curr, XNAFFSET)) {
+ 		xnthread_clear_info(curr, XNAFFSET);
+-		set_cpus_allowed(current, xnthread_affinity(curr));
++		set_cpus_allowed_ptr(current, &xnthread_affinity(curr));
+ 	}
+ #endif /* CONFIG_SMP */
+ 
+@@ -1331,7 +1331,7 @@ int xnshadow_map(xnthread_t *curr, xncompletion_t __user *u_completion,
+ 	/* Restrict affinity to a single CPU of nkaffinity & current set. */
+ 	xnarch_cpus_and(affinity, current->cpus_allowed, nkaffinity);
+ 	affinity = xnarch_cpumask_of_cpu(xnarch_first_cpu(affinity));
+-	set_cpus_allowed(current, affinity);
++	set_cpus_allowed_ptr(current, &affinity);
+ 
+ 	trace_mark(xn_nucleus, shadow_map,
+ 		   "thread %p thread_name %s pid %d priority %d",
+diff --git a/kernel/xenomai/skins/native/syscall.c b/kernel/xenomai/skins/native/syscall.c
+index dff7f4d3a9e1..dc6325c10e6b 100644
+--- a/kernel/xenomai/skins/native/syscall.c
++++ b/kernel/xenomai/skins/native/syscall.c
+@@ -190,7 +190,7 @@ static int __rt_task_create(struct pt_regs *regs)
+ 	}
+ 
+ 	/* Apply CPU affinity */
+-	set_cpus_allowed(p, task->affinity);
++	set_cpus_allowed_ptr(p, &task->affinity);
+ 
+ 	/* Copy back the registry handle to the ph struct. */
+ 	ph.opaque = xnthread_handle(&task->thread_base);
+-- 
+2.11.0
+

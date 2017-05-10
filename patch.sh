@@ -308,6 +308,9 @@ ipipe () {
 	git commit -a -m 'xenomai patchset'
 
 	#exit 2
+
+	${git} "${DIR}/patches/xenomai/0001-xenomai-set_cpus_allowed-set_cpus_allowed_ptr.patch"
+	${git} "${DIR}/patches/xenomai/0002-xenomai-drop-nucleus-jhash.h.patch"
 }
 
 ipipe

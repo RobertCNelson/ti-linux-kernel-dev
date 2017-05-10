@@ -4,10 +4,10 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="-ti-xenomai-r"
-branch_prefix="ti-linux-xenomai-"
+build_prefix="-ti-xenomai-2.6.x-r"
+branch_prefix="ti-linux-xenomai-2.6.x-"
 branch_postfix=".y"
-bborg_branch="4.4-xenomai"
+bborg_branch="4.4-xenomai-2.6.x"
 
 #arm
 KERNEL_ARCH=arm
