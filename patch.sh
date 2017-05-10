@@ -980,6 +980,8 @@ machinekit () {
 	fi
 
 	#sed -i -e 's/\/\* #include \"am33xx-pruss-uio.dtsi\" \*\//#include \"am33xx-pruss-uio.dtsi\"/' arch/arm/boot/dts/am335x-*.dts
+	#sed -i -e 's/#include \"am33xx-pruss-rproc.dtsi\"/\/\* #include \"am33xx-pruss-rproc.dtsi\" \*\//' arch/arm/boot/dts/am335x-boneblack-bbb-exp-c.dts
+	#sed -i -e 's/#include \"am33xx-pruss-rproc.dtsi\"/\/\* #include \"am33xx-pruss-rproc.dtsi\" \*\//' arch/arm/boot/dts/am335x-boneblack-bbb-exp-r.dts
 	${git} "${DIR}/patches/machinekit/0001-machinekit-enable-am33xx-pruss-uio.dtsi.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
