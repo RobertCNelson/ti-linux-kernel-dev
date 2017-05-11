@@ -740,18 +740,8 @@ beaglebone () {
 		cleanup
 	fi
 
-	echo "dir: soc/ti/uboot"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/soc/ti/uboot/0001-add-am335x-boneblack-uboot.dts.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
+	dir 'soc/ti/uboot'
+	dir 'soc/ti/ti_am335x_tsc'
 
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
