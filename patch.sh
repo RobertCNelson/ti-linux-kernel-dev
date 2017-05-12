@@ -900,6 +900,7 @@ dir 'x15/fixes'
 dir 'brcmfmac'
 dir 'quieter'
 remoteproc_by_default
+dir 'soc/ti/am571x'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
