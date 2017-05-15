@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2017 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -218,10 +218,6 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-
-	${git_bin} revert --no-edit e3c7258bb4fe5b509621ce643f096502dceec8a4
-	${git_bin} revert --no-edit e3a55294fc2048136de8a3f9c5154f5e4d3438d8
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
