@@ -1,37 +1,37 @@
-From 939fb974da08da18a9c8b059a3c3386e3abbb0d1 Mon Sep 17 00:00:00 2001
+From 7f764bdba3a7a5d76bd7edf6b566ad2e7a7bad57 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 17 Feb 2017 09:29:59 -0600
+Date: Tue, 16 May 2017 13:42:19 -0500
 Subject: [PATCH] packaging: sync builddeb changes
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- scripts/package/builddeb | 26 ++++++++++++++++++++++----
- 1 file changed, 22 insertions(+), 4 deletions(-)
+ scripts/package/builddeb | 31 +++++++++++++++----------------
+ 1 file changed, 15 insertions(+), 16 deletions(-)
 
 diff --git a/scripts/package/builddeb b/scripts/package/builddeb
-index 6c3b038ef40d..1d46d7dcd6b0 100755
+index 3c575cd07888..29759234a50f 100755
 --- a/scripts/package/builddeb
 +++ b/scripts/package/builddeb
-@@ -26,6 +26,8 @@ create_package() {
- 	# Fix ownership and permissions
- 	chown -R root:root "$pdir"
- 	chmod -R go-w "$pdir"
-+	# in case we are in a restrictive umask environment like 0077
-+	chmod -R a+rX "$pdir"
- 
- 	# Create the package
- 	dpkg-gencontrol $forcearch -Vkernel:debarch="${debarch}" -p$pname -P"$pdir"
-@@ -49,7 +51,7 @@ set_debarch() {
- 		debarch=hppa ;;
- 	mips*)
- 		debarch=mips$(grep -q CPU_LITTLE_ENDIAN=y $KCONFIG_CONFIG && echo el || true) ;;
--	arm64)
-+	aarch64|arm64)
- 		debarch=arm64 ;;
- 	arm*)
- 		if grep -q CONFIG_AEABI=y $KCONFIG_CONFIG; then
-@@ -149,9 +151,18 @@ else
+@@ -69,7 +69,7 @@ set_debarch() {
+ 		echo "" >&2
+ 		echo "** ** **  WARNING  ** ** **" >&2
+ 		echo "" >&2
+-		echo "Your architecture doesn't have it's equivalent" >&2
++		echo "Your architecture doesn't have its equivalent" >&2
+ 		echo "Debian userspace architecture defined!" >&2
+ 		echo "Falling back to using your current userspace instead!" >&2
+ 		echo "Please add support for $UTS_MACHINE to ${0} ..." >&2
+@@ -143,17 +143,21 @@ else
+ 	cp System.map "$tmpdir/boot/System.map-$version"
+ 	cp $KCONFIG_CONFIG "$tmpdir/boot/config-$version"
  fi
+-# Not all arches include the boot path in KBUILD_IMAGE
+-if [ -e $KBUILD_IMAGE ]; then
+-	cp $KBUILD_IMAGE "$tmpdir/$installed_image_path"
+-else
+-	cp arch/$ARCH/boot/$KBUILD_IMAGE "$tmpdir/$installed_image_path"
+-fi
++cp "$($MAKE -s image_name)" "$tmpdir/$installed_image_path"
  
  if grep -q "^CONFIG_OF=y" $KCONFIG_CONFIG ; then
 +	mkdir -p "$tmpdir/boot/dtbs/$version"
@@ -50,34 +50,60 @@ index 6c3b038ef40d..1d46d7dcd6b0 100755
  	fi
  fi
  
-@@ -238,7 +249,8 @@ maintainer="$name <$email>"
- # Try to determine distribution
- if [ -n "$KDEB_CHANGELOG_DIST" ]; then
-         distribution=$KDEB_CHANGELOG_DIST
--elif distribution=$(lsb_release -cs 2>/dev/null) && [ -n "$distribution" ]; then
-+# In some cases lsb_release returns the codename as n/a, which breaks dpkg-parsechangelog
-+elif distribution=$(lsb_release -cs 2>/dev/null) && [ -n "$distribution" ] && [ "$distribution" != "n/a" ]; then
-         : # nothing to do in this case
- else
-         distribution="unstable"
-@@ -322,10 +334,16 @@ fi
+@@ -262,10 +266,10 @@ EOF
+ cat <<EOF > debian/copyright
+ This is a packacked upstream version of the Linux kernel.
  
- # Build kernel header package
- (cd $srctree; find . -name Makefile\* -o -name Kconfig\* -o -name \*.pl) > "$objtree/debian/hdrsrcfiles"
--(cd $srctree; find arch/$SRCARCH/include include scripts -type f) >> "$objtree/debian/hdrsrcfiles"
-+(cd $srctree; find arch/*/include include scripts -type f) >> "$objtree/debian/hdrsrcfiles"
- (cd $srctree; find arch/$SRCARCH -name module.lds -o -name Kbuild.platforms -o -name Platform) >> "$objtree/debian/hdrsrcfiles"
- (cd $srctree; find $(find arch/$SRCARCH -name include -o -name scripts -type d) -type f) >> "$objtree/debian/hdrsrcfiles"
-+if grep -q '^CONFIG_STACK_VALIDATION=y' $KCONFIG_CONFIG ; then
-+	(cd $objtree; find tools/objtool -type f -executable) >> "$objtree/debian/hdrobjfiles"
-+fi
- (cd $objtree; find arch/$SRCARCH/include Module.symvers include scripts -type f) >> "$objtree/debian/hdrobjfiles"
-+if grep -q '^CONFIG_GCC_PLUGINS=y' $KCONFIG_CONFIG ; then
-+	(cd $objtree; find scripts/gcc-plugins -name \*.so -o -name gcc-common.h) >> "$objtree/debian/hdrobjfiles"
-+fi
- destdir=$kernel_headers_dir/usr/src/linux-headers-$version
- mkdir -p "$destdir"
- (cd $srctree; tar -c -f - -T -) < "$objtree/debian/hdrsrcfiles" | (cd $destdir; tar -xf -)
+-The sources may be found at most Linux ftp sites, including:
+-ftp://ftp.kernel.org/pub/linux/kernel
++The sources may be found at most Linux archive sites, including:
++https://www.kernel.org/pub/linux/kernel
+ 
+-Copyright: 1991 - 2015 Linus Torvalds and others.
++Copyright: 1991 - 2017 Linus Torvalds and others.
+ 
+ The git repository for mainline kernel development is at:
+ git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+@@ -288,7 +292,6 @@ Section: kernel
+ Priority: optional
+ Maintainer: $maintainer
+ Build-Depends: $build_depends
+-Standards-Version: 3.8.4
+ Homepage: http://www.kernel.org/
+ EOF
+ 
+@@ -296,7 +299,6 @@ if [ "$ARCH" = "um" ]; then
+ 	cat <<EOF >> debian/control
+ 
+ Package: $packagename
+-Provides: linux-image, linux-image-2.6, linux-modules-$version
+ Architecture: any
+ Description: User Mode Linux kernel, version $version
+  User-mode Linux is a port of the Linux kernel to its own system call
+@@ -313,7 +315,6 @@ else
+ 	cat <<EOF >> debian/control
+ 
+ Package: $packagename
+-Provides: linux-image, linux-image-2.6, linux-modules-$version
+ Suggests: $fwpackagename
+ Architecture: any
+ Description: Linux kernel, version $version
+@@ -346,7 +347,6 @@ rm -f "$objtree/debian/hdrsrcfiles" "$objtree/debian/hdrobjfiles"
+ cat <<EOF >> debian/control
+ 
+ Package: $kernel_headers_packagename
+-Provides: linux-headers, linux-headers-2.6
+ Architecture: any
+ Description: Linux kernel headers for $KERNELRELEASE on \${kernel:debarch}
+  This package provides kernel header files for $KERNELRELEASE on \${kernel:debarch}
+@@ -404,7 +404,6 @@ if [ -n "$BUILD_DEBUG" ] ; then
+ 
+ Package: $dbg_packagename
+ Section: debug
+-Provides: linux-debug, linux-debug-$version
+ Architecture: any
+ Description: Linux kernel debugging symbols for $version
+  This package will come in handy if you need to debug the kernel. It provides
 -- 
 2.11.0
 
