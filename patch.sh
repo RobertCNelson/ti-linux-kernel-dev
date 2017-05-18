@@ -853,6 +853,8 @@ beaglebone () {
 		cleanup
 	fi
 
+	dir 'beaglebone/fixes'
+
 	####
 	#dtb makefile
 	echo "dir: beaglebone/generated"
