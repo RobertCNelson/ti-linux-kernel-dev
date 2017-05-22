@@ -819,6 +819,7 @@ beaglebone () {
 		device="am335x-bonegreen-modio.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 
 		device="am335x-pocketbone.dtb" ; dtb_makefile_append
 
