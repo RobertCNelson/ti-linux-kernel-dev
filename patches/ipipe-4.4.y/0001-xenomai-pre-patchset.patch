@@ -1,17 +1,17 @@
-From 409c9f55dfe6286c9afa2983b1267f6d65096d8e Mon Sep 17 00:00:00 2001
+From 1387d6e667644f8175b428ca570436742a5c7556 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 21 Apr 2017 10:40:42 -0500
+Date: Thu, 25 May 2017 14:35:17 -0500
 Subject: [PATCH 1/2] xenomai pre-patchset
 
 ---
- arch/arm/mach-omap2/timer.c    |  80 +----
- arch/x86/kernel/apic/io_apic.c |   2 -
+ arch/arm/mach-omap2/timer.c    |  86 +-----
+ arch/x86/kernel/apic/io_apic.c |   4 -
  drivers/gpio/gpio-davinci.c    | 122 +++-----
  drivers/memory/omap-gpmc.c     | 662 +++++++++++++++--------------------------
- 4 files changed, 282 insertions(+), 584 deletions(-)
+ 4 files changed, 284 insertions(+), 590 deletions(-)
 
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
-index 25f0eee33869..f86692dbcfd5 100644
+index a67af98e532b..f86692dbcfd5 100644
 --- a/arch/arm/mach-omap2/timer.c
 +++ b/arch/arm/mach-omap2/timer.c
 @@ -68,9 +68,6 @@
@@ -143,7 +143,22 @@ index 25f0eee33869..f86692dbcfd5 100644
  	res = omap_dm_timer_init_one(&clksrc, fck_source, property,
  				     &clocksource_gpt.name,
  				     OMAP_TIMER_NONPOSTED);
-@@ -573,19 +508,16 @@ void __init omap3_secure_sync32k_timer_init(void)
+@@ -561,7 +496,8 @@ void __init omap_init_time(void)
+ 	__omap_sync32k_timer_init(1, "timer_32k_ck", "ti,timer-alwon",
+ 			2, "timer_sys_ck", NULL, false);
+ 
+-	clocksource_probe();
++	if (of_have_populated_dt())
++		clocksource_probe();
+ }
+ 
+ #if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_SOC_AM43XX)
+@@ -569,25 +505,19 @@ void __init omap3_secure_sync32k_timer_init(void)
+ {
+ 	__omap_sync32k_timer_init(12, "secure_32k_fck", "ti,timer-secure",
+ 			2, "timer_sys_ck", NULL, false);
+-
+-	clocksource_probe();
  }
  #endif /* CONFIG_ARCH_OMAP3 */
  
@@ -154,6 +169,7 @@ index 25f0eee33869..f86692dbcfd5 100644
  {
  	__omap_sync32k_timer_init(2, "timer_sys_ck", NULL,
  			1, "timer_sys_ck", "ti,timer-alwon", true);
+-
 -	if (of_have_populated_dt())
 -		clocksource_probe();
  }
@@ -166,10 +182,26 @@ index 25f0eee33869..f86692dbcfd5 100644
  {
  	__omap_sync32k_timer_init(1, "timer_32k_ck", "ti,timer-alwon",
 diff --git a/arch/x86/kernel/apic/io_apic.c b/arch/x86/kernel/apic/io_apic.c
-index 8ca533b8c606..fdb0fbfb1197 100644
+index 1e5d2f07416b..fdb0fbfb1197 100644
 --- a/arch/x86/kernel/apic/io_apic.c
 +++ b/arch/x86/kernel/apic/io_apic.c
-@@ -2115,7 +2115,6 @@ static inline void __init check_timer(void)
+@@ -1875,7 +1875,6 @@ static struct irq_chip ioapic_chip __read_mostly = {
+ 	.irq_ack		= irq_chip_ack_parent,
+ 	.irq_eoi		= ioapic_ack_level,
+ 	.irq_set_affinity	= ioapic_set_affinity,
+-	.irq_retrigger		= irq_chip_retrigger_hierarchy,
+ 	.flags			= IRQCHIP_SKIP_SET_WAKE,
+ };
+ 
+@@ -1887,7 +1886,6 @@ static struct irq_chip ioapic_ir_chip __read_mostly = {
+ 	.irq_ack		= irq_chip_ack_parent,
+ 	.irq_eoi		= ioapic_ir_ack_level,
+ 	.irq_set_affinity	= ioapic_set_affinity,
+-	.irq_retrigger		= irq_chip_retrigger_hierarchy,
+ 	.flags			= IRQCHIP_SKIP_SET_WAKE,
+ };
+ 
+@@ -2117,7 +2115,6 @@ static inline void __init check_timer(void)
  			if (idx != -1 && irq_trigger(idx))
  				unmask_ioapic_irq(irq_get_chip_data(0));
  		}
@@ -177,7 +209,7 @@ index 8ca533b8c606..fdb0fbfb1197 100644
  		irq_domain_activate_irq(irq_data);
  		if (timer_irq_works()) {
  			if (disable_timer_pin_1 > 0)
-@@ -2137,7 +2136,6 @@ static inline void __init check_timer(void)
+@@ -2139,7 +2136,6 @@ static inline void __init check_timer(void)
  		 * legacy devices should be connected to IO APIC #0
  		 */
  		replace_pin_at_irq_node(data, node, apic1, pin1, apic2, pin2);
