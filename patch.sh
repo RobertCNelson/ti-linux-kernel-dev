@@ -268,6 +268,7 @@ ipipe () {
 		cp -v arch/arm/mach-omap2/timer.c ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c
 		cp -v arch/x86/kernel/apic/io_apic.c ../patches/${xenomai_branch}/arch_x86_kernel_apic_io_apic.c
 		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
+		cp -v arch/powerpc/include/asm/mmu_context.h ../patches/${xenomai_branch}/arch_powerpc_include_asm_mmu_context.h
 
 		${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/${xenomai_branch}/${xenomai_branch}.diff
@@ -281,6 +282,7 @@ ipipe () {
 		cp -v ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c arch/arm/mach-omap2/timer.c
 		cp -v ../patches/${xenomai_branch}/arch_x86_kernel_apic_io_apic.c arch/x86/kernel/apic/io_apic.c
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
+		cp -v ../patches/${xenomai_branch}/arch_powerpc_include_asm_mmu_context.h arch/powerpc/include/asm/mmu_context.h
 
 		#exit 2
 
