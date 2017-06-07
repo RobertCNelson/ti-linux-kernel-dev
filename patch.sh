@@ -361,7 +361,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0009-iio-dac-ad7303-fix-channel-description.patch"
 	${git} "${DIR}/patches/backports/iio/0010-iio-proximity-as3935-fix-as3935_write.patch"
 
-	backport_tag="v4.9.30"
+	backport_tag="v4.9.31"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
