@@ -1,13 +1,11 @@
-From f3e56ca1f34b11949f6d668c713e630078495065 Mon Sep 17 00:00:00 2001
+From 619caa3103264aba0633e837ff5c0192e06a70a1 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 2 Jun 2017 11:14:29 -0500
+Date: Fri, 9 Jun 2017 10:05:27 -0500
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
  arch/arm/Kconfig                               |   16 +-
- arch/arm/boot/compressed/decompress.c          |    4 +-
- arch/arm/boot/compressed/head.S                |    9 +
- arch/arm/boot/compressed/string.c              |   17 +
+ arch/arm/boot/compressed/head.S                |    1 +
  arch/arm/boot/dts/Makefile                     |    6 +
  arch/arm/boot/dts/imx6qdl.dtsi                 |    8 +
  arch/arm/boot/dts/omap3-igep0020-3430.dts      |  280 ++++
@@ -20,6 +18,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm/include/asm/bitops.h                  |   24 +-
  arch/arm/include/asm/cacheflush.h              |   75 +-
  arch/arm/include/asm/cmpxchg.h                 |    8 +-
+ arch/arm/include/asm/efi.h                     |    2 +-
  arch/arm/include/asm/entry-macro-multi.S       |    8 +
  arch/arm/include/asm/fcse.h                    |  211 +++
  arch/arm/include/asm/ipipe.h                   |  298 ++++
@@ -55,7 +54,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm/kernel/perf_callchain.c               |    3 +
  arch/arm/kernel/process.c                      |   45 +-
  arch/arm/kernel/ptrace.c                       |    4 +
- arch/arm/kernel/raw_printk.c                   |   32 +
+ arch/arm/kernel/raw_printk.c                   |   34 +
  arch/arm/kernel/setup.c                        |   36 +-
  arch/arm/kernel/signal.c                       |    6 +-
  arch/arm/kernel/smp.c                          |  135 +-
@@ -98,7 +97,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm/mach-omap2/pm34xx.c                   |    4 +
  arch/arm/mach-omap2/pm44xx.c                   |    6 +
  arch/arm/mach-omap2/prm_common.c               |    4 +-
- arch/arm/mach-omap2/timer.c                    |  167 +-
+ arch/arm/mach-omap2/timer.c                    |  169 +-
  arch/arm/mach-pxa/irq.c                        |    7 +-
  arch/arm/mach-pxa/lpd270.c                     |    3 +-
  arch/arm/mach-pxa/pcm990-baseboard.c           |    3 +-
@@ -107,6 +106,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm/mach-s3c24xx/bast-irq.c               |    3 +-
  arch/arm/mach-spear/Kconfig                    |    1 +
  arch/arm/mach-spear/time.c                     |   81 +-
+ arch/arm/mach-sti/Kconfig                      |    1 +
  arch/arm/mm/Kconfig                            |   74 +
  arch/arm/mm/Makefile                           |    1 +
  arch/arm/mm/alignment.c                        |   11 +-
@@ -326,7 +326,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  drivers/clk/imx/clk-imx51-imx53.c              |    4 +
  drivers/clocksource/Makefile                   |    3 +
  drivers/clocksource/arm_arch_timer.c           |   78 +-
- drivers/clocksource/arm_global_timer.c         |   39 +
+ drivers/clocksource/arm_global_timer.c         |   90 +-
  drivers/clocksource/i8253.c                    |   55 +-
  drivers/clocksource/ipipe_i486_tsc_emu.S       |   97 ++
  drivers/clocksource/mxs_timer.c                |   97 +-
@@ -422,7 +422,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  include/uapi/asm-generic/mman-common.h         |    3 +
  include/uapi/asm-generic/resource.h            |    8 +
  include/uapi/linux/resource.h                  |    6 -
- init/Kconfig                                   |   14 +
+ init/Kconfig                                   |   13 +
  init/main.c                                    |    9 +-
  kernel/Makefile                                |    1 +
  kernel/context_tracking.c                      |    4 +-
@@ -430,7 +430,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  kernel/debug/gdbstub.c                         |    6 +-
  kernel/exit.c                                  |    2 +
  kernel/fork.c                                  |    5 +
- kernel/ipipe/Kconfig                           |   65 +
+ kernel/ipipe/Kconfig                           |   70 +
  kernel/ipipe/Kconfig.debug                     |   96 ++
  kernel/ipipe/Makefile                          |    3 +
  kernel/ipipe/compat.c                          |  273 ++++
@@ -478,8 +478,8 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  mm/mmu_context.c                               |    8 +
  mm/mprotect.c                                  |   11 +-
  mm/vmalloc.c                                   |    2 +
- scripts/ipipe/genpatches.sh                    |  219 +++
- 475 files changed, 25151 insertions(+), 1729 deletions(-)
+ scripts/ipipe/genpatches.sh                    |  218 +++
+ 475 files changed, 25179 insertions(+), 1733 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -603,70 +603,18 @@ index b5d529fdffab..82dd47d58522 100644
  	default y if CPU_FEROCEON
  	help
  	  Implement faster copy_to_user and clear_user methods for CPU
-diff --git a/arch/arm/boot/compressed/decompress.c b/arch/arm/boot/compressed/decompress.c
-index a0765e7ed6c7..381ad50246da 100644
---- a/arch/arm/boot/compressed/decompress.c
-+++ b/arch/arm/boot/compressed/decompress.c
-@@ -1,10 +1,8 @@
--#define _LINUX_STRING_H_
--
- #include <linux/compiler.h>	/* for inline */
- #include <linux/types.h>	/* for size_t */
- #include <linux/stddef.h>	/* for NULL */
- #include <linux/linkage.h>
--#include <asm/string.h>
-+#include <linux/string.h>
- 
- extern unsigned long free_mem_ptr;
- extern unsigned long free_mem_end_ptr;
 diff --git a/arch/arm/boot/compressed/head.S b/arch/arm/boot/compressed/head.S
-index fc6d541549a2..7cde550e433f 100644
+index fc6d541549a2..78b70402ec9c 100644
 --- a/arch/arm/boot/compressed/head.S
 +++ b/arch/arm/boot/compressed/head.S
-@@ -1333,6 +1333,15 @@ memdump:	mov	r12, r0
+@@ -1333,6 +1333,7 @@ memdump:	mov	r12, r0
  		mov	pc, r10
  #endif
  
-+#ifdef CONFIG_IPIPE_TRACE_MCOUNT
-+		.text
-+		.align 0
-+		.type mcount %function
-+		.global mcount
-+mcount:
-+		mov pc, lr	@ just return
-+#endif
 +
  		.ltorg
  
  #ifdef CONFIG_ARM_VIRT_EXT
-diff --git a/arch/arm/boot/compressed/string.c b/arch/arm/boot/compressed/string.c
-index 689467448736..b7fa68b95452 100644
---- a/arch/arm/boot/compressed/string.c
-+++ b/arch/arm/boot/compressed/string.c
-@@ -102,6 +102,23 @@ int strcmp(const char *cs, const char *ct)
- 	return res;
- }
- 
-+char *strstr(const char *s1, const char *s2)
-+{
-+	size_t l1, l2;
-+
-+	l2 = strlen(s2);
-+	if (!l2)
-+		return (char *)s1;
-+	l1 = strlen(s1);
-+	while (l1 >= l2) {
-+		l1--;
-+		if (!memcmp(s1, s2, l2))
-+			return (char *)s1;
-+		s1++;
-+	}
-+	return NULL;
-+}
-+
- void *memchr(const void *s, int c, size_t count)
- {
- 	const unsigned char *p = s;
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
 index 43d55088291b..e1dcd2175506 100644
 --- a/arch/arm/boot/dts/Makefile
@@ -1664,6 +1612,19 @@ index 97882f9bad12..09f111f6288a 100644
  		break;
  #else
  	case 1:
+diff --git a/arch/arm/include/asm/efi.h b/arch/arm/include/asm/efi.h
+index 766bf9b78160..2e336c01a390 100644
+--- a/arch/arm/include/asm/efi.h
++++ b/arch/arm/include/asm/efi.h
+@@ -41,7 +41,7 @@ int efi_set_mapping_permissions(struct mm_struct *mm, efi_memory_desc_t *md);
+ 
+ static inline void efi_set_pgd(struct mm_struct *mm)
+ {
+-	check_and_switch_context(mm, NULL);
++	check_and_switch_context(mm, NULL, true);
+ }
+ 
+ void efi_virtmap_load(void);
 diff --git a/arch/arm/include/asm/entry-macro-multi.S b/arch/arm/include/asm/entry-macro-multi.S
 index 609184f522ee..b8e1e316980b 100644
 --- a/arch/arm/include/asm/entry-macro-multi.S
@@ -5217,24 +5178,26 @@ index ae738a6319f6..c00fe6607fd4 100644
  }
 diff --git a/arch/arm/kernel/raw_printk.c b/arch/arm/kernel/raw_printk.c
 new file mode 100644
-index 000000000000..bc9757126176
+index 000000000000..dddfd9021cb8
 --- /dev/null
 +++ b/arch/arm/kernel/raw_printk.c
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,34 @@
 +#include <linux/kernel.h>
 +#include <linux/console.h>
 +#include <linux/init.h>
 +
-+void printch(int);
++void __weak printascii(const char *s)
++{
++	/*
++	 * Allow building if CONFIG_DEBUG_LL is off but keep silent on
++	 * raw_printk().
++	 */
++}
 +
 +static void raw_console_write(struct console *co,
 +			      const char *s, unsigned count)
 +{
-+	while (count-- > 0) {
-+		if (*s == '\n')
-+			printch('\r');
-+		printch(*s++);
-+	}
++	printascii(s);
 +}
 +
 +static struct console raw_console = {
@@ -7940,7 +7903,7 @@ index 5b2f5138d938..f86579c7f200 100644
  	if (chip->irq_ack)
  		chip->irq_ack(&desc->irq_data);
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
-index b2f2448bfa6d..1950a059aa76 100644
+index b2f2448bfa6d..d4fbc96a2339 100644
 --- a/arch/arm/mach-omap2/timer.c
 +++ b/arch/arm/mach-omap2/timer.c
 @@ -42,6 +42,9 @@
@@ -8240,14 +8203,16 @@ index b2f2448bfa6d..1950a059aa76 100644
  
  	/* Enable the use of clocksource="gp_timer" kernel parameter */
  	if (use_gptimer_clksrc || gptimer)
-@@ -490,6 +631,10 @@ static void __init __omap_sync32k_timer_init(int clkev_nr, const char *clkev_src
+@@ -490,6 +631,12 @@ static void __init __omap_sync32k_timer_init(int clkev_nr, const char *clkev_src
  						clksrc_prop);
  	else
  		omap2_sync32k_clocksource_init();
++#ifdef CONFIG_IPIPE
 +	if (cpu_is_omap34xx())
 +		omap3_pic_muter_register();
 +	else if (cpu_is_omap44xx() || soc_is_omap54xx())
 +		omap4_pic_muter_register();
++#endif
  }
  
  void __init omap_init_time(void)
@@ -8781,6 +8746,18 @@ index 9ccffc1d0f28..6a69e978105b 100644
  	gpt_clk = clk_get_sys("gpt0", NULL);
  	if (!gpt_clk) {
  		pr_err("%s:couldn't get clk for gpt\n", __func__);
+diff --git a/arch/arm/mach-sti/Kconfig b/arch/arm/mach-sti/Kconfig
+index 119e1108b1f8..10095ae6561f 100644
+--- a/arch/arm/mach-sti/Kconfig
++++ b/arch/arm/mach-sti/Kconfig
+@@ -17,6 +17,7 @@ menuconfig ARCH_STI
+ 	select PL310_ERRATA_753970 if CACHE_L2X0
+ 	select PL310_ERRATA_769419 if CACHE_L2X0
+ 	select RESET_CONTROLLER
++	select IPIPE_ARM_KUSER_TSC if IPIPE
+ 	help
+ 	  Include support for STMicroelectronics' STiH415/416, STiH407/10 and
+ 	  STiH418 family SoCs using the Device Tree for discovery.  More
 diff --git a/arch/arm/mm/Kconfig b/arch/arm/mm/Kconfig
 index c1799dd1d0d9..4ea891166ade 100644
 --- a/arch/arm/mm/Kconfig
@@ -19946,7 +19923,7 @@ index f81069f79a94..646662f9ab1d 100644
  	chip->irq_eoi(&desc->irq_data);
  }
 diff --git a/arch/powerpc/platforms/cell/spu_base.c b/arch/powerpc/platforms/cell/spu_base.c
-index e84d8fbc2e21..dfef1fdb9988 100644
+index 378c37aa6914..64c5fe1e0c17 100644
 --- a/arch/powerpc/platforms/cell/spu_base.c
 +++ b/arch/powerpc/platforms/cell/spu_base.c
 @@ -59,7 +59,7 @@ EXPORT_SYMBOL_GPL(force_sig_info);
@@ -23811,7 +23788,7 @@ index 4eece91ada37..2ab991914e72 100644
  #else	/* CONFIG_X86_64 */
  
 diff --git a/arch/x86/kernel/cpu/mcheck/mce.c b/arch/x86/kernel/cpu/mcheck/mce.c
-index 22cda29d654e..8a05f4631063 100644
+index 8ca5f8ad008e..b46d6d5eda20 100644
 --- a/arch/x86/kernel/cpu/mcheck/mce.c
 +++ b/arch/x86/kernel/cpu/mcheck/mce.c
 @@ -23,6 +23,7 @@
@@ -23830,7 +23807,7 @@ index 22cda29d654e..8a05f4631063 100644
  
  #include "mce-internal.h"
  
-@@ -1755,6 +1757,16 @@ static void unexpected_machine_check(struct pt_regs *regs, long error_code)
+@@ -1754,6 +1756,16 @@ static void unexpected_machine_check(struct pt_regs *regs, long error_code)
  void (*machine_check_vector)(struct pt_regs *, long error_code) =
  						unexpected_machine_check;
  
@@ -26148,18 +26125,18 @@ index a2503db7e533..d1515099a765 100644
  		clocksource_counter.flags |= CLOCK_SOURCE_SUSPEND_NONSTOP;
  	start_count = arch_timer_read_counter();
 diff --git a/drivers/clocksource/arm_global_timer.c b/drivers/clocksource/arm_global_timer.c
-index 8da03298f844..7d8db612573b 100644
+index 8da03298f844..685088c7dac8 100644
 --- a/drivers/clocksource/arm_global_timer.c
 +++ b/drivers/clocksource/arm_global_timer.c
-@@ -25,6 +25,7 @@
+@@ -23,6 +23,7 @@
+ #include <linux/of_irq.h>
+ #include <linux/of_address.h>
  #include <linux/sched_clock.h>
++#include <linux/ipipe_tickdev.h>
  
  #include <asm/cputype.h>
-+#include <asm/ipipe.h>
  
- #define GT_COUNTER0	0x00
- #define GT_COUNTER1	0x04
-@@ -49,6 +50,8 @@
+@@ -49,10 +50,69 @@
   * the units for all operations.
   */
  static void __iomem *gt_base;
@@ -26168,11 +26145,14 @@ index 8da03298f844..7d8db612573b 100644
  static unsigned long gt_clk_rate;
  static int gt_ppi;
  static struct clock_event_device __percpu *gt_evt;
-@@ -241,8 +244,35 @@ static void __init gt_delay_timer_init(void)
- 	register_current_timer_delay(&gt_delay_timer);
- }
  
 +#ifdef CONFIG_IPIPE
++
++static struct clocksource gt_clocksource;
++
++static int gt_clockevent_ack(struct clock_event_device *evt);
++
++static DEFINE_PER_CPU(struct ipipe_timer, gt_itimer);
 +
 +static unsigned int refresh_gt_freq(void)
 +{
@@ -26183,11 +26163,8 @@ index 8da03298f844..7d8db612573b 100644
 +	return gt_clk_rate;
 +}
 +
-+#endif
-+
- static int __init gt_clocksource_init(void)
- {
-+#ifdef CONFIG_IPIPE
++static inline void gt_ipipe_cs_setup(void)
++{
 +	struct __ipipe_tscinfo tsc_info = {
 +		.type = IPIPE_TSC_TYPE_FREERUNNING,
 +		.freq = gt_clk_rate,
@@ -26200,29 +26177,101 @@ index 8da03298f844..7d8db612573b 100644
 +		},
 +		.refresh_freq = refresh_gt_freq,
 +	};
-+#endif
- 	writel(0, gt_base + GT_CONTROL);
- 	writel(0, gt_base + GT_COUNTER0);
- 	writel(0, gt_base + GT_COUNTER1);
-@@ -252,6 +282,9 @@ static int __init gt_clocksource_init(void)
++
++	__ipipe_tsc_register(&tsc_info);
++}
++
++static void gt_itimer_ack(void)
++{
++	struct clock_event_device *evt = this_cpu_ptr(gt_evt);
++	gt_clockevent_ack(evt);
++}
++
++static inline void gt_ipipe_evt_setup(struct clock_event_device *evt)
++{
++	evt->ipipe_timer = this_cpu_ptr(&gt_itimer);
++	evt->ipipe_timer->irq = evt->irq;
++	evt->ipipe_timer->ack = gt_itimer_ack;
++	evt->ipipe_timer->freq = gt_clk_rate;
++}
++
++#else
++
++static inline void gt_ipipe_cs_setup(void) { }
++
++static inline void gt_ipipe_evt_setup(struct clock_event_device *evt) { }
++
++#endif /* CONFIG_IPIPE */
++
+ /*
+  * To get the value from the Global Timer Counter register proceed as follows:
+  * 1. Read the upper 32-bit timer counter register
+@@ -137,13 +197,11 @@ static int gt_clockevent_set_next_event(unsigned long evt,
+ 	return 0;
+ }
+ 
+-static irqreturn_t gt_clockevent_interrupt(int irq, void *dev_id)
++static int gt_clockevent_ack(struct clock_event_device *evt)
+ {
+-	struct clock_event_device *evt = dev_id;
+-
+ 	if (!(readl_relaxed(gt_base + GT_INT_STATUS) &
+ 				GT_INT_STATUS_EVENT_FLAG))
+-		return IRQ_NONE;
++		return IS_ENABLED(CONFIG_IPIPE);
+ 
+ 	/**
+ 	 * ERRATA 740657( Global Timer can send 2 interrupts for
+@@ -156,10 +214,23 @@ static irqreturn_t gt_clockevent_interrupt(int irq, void *dev_id)
+ 	 *	the Global Timer flag _after_ having incremented
+ 	 *	the Comparator register	value to a higher value.
+ 	 */
+-	if (clockevent_state_oneshot(evt))
++	if (clockevent_ipipe_stolen(evt) || clockevent_state_oneshot(evt))
+ 		gt_compare_set(ULONG_MAX, 0);
+ 
+ 	writel_relaxed(GT_INT_STATUS_EVENT_FLAG, gt_base + GT_INT_STATUS);
++
++	return 1;
++}
++
++static irqreturn_t gt_clockevent_interrupt(int irq, void *dev_id)
++{
++	struct clock_event_device *evt = dev_id;
++
++	if (!clockevent_ipipe_stolen(evt)) {
++		if (!gt_clockevent_ack(evt))
++			return IRQ_NONE;
++	}
++
+ 	evt->event_handler(evt);
+ 
+ 	return IRQ_HANDLED;
+@@ -180,6 +251,7 @@ static int gt_starting_cpu(unsigned int cpu)
+ 	clk->cpumask = cpumask_of(cpu);
+ 	clk->rating = 300;
+ 	clk->irq = gt_ppi;
++	gt_ipipe_evt_setup(clk);
+ 	clockevents_config_and_register(clk, gt_clk_rate,
+ 					1, 0xffffffff);
+ 	enable_percpu_irq(clk->irq, IRQ_TYPE_NONE);
+@@ -252,13 +324,14 @@ static int __init gt_clocksource_init(void)
  #ifdef CONFIG_CLKSRC_ARM_GLOBAL_TIMER_SCHED_CLOCK
  	sched_clock_register(gt_sched_clock_read, 64, gt_clk_rate);
  #endif
-+#ifdef CONFIG_IPIPE
-+	__ipipe_tsc_register(&tsc_info);
-+#endif
++	gt_ipipe_cs_setup();
  	return clocksource_register_hz(&gt_clocksource, gt_clk_rate);
  }
  
-@@ -259,6 +292,7 @@ static int __init global_timer_of_register(struct device_node *np)
+ static int __init global_timer_of_register(struct device_node *np)
  {
- 	struct clk *gt_clk;
+-	struct clk *gt_clk;
  	int err = 0;
 +	struct resource res;
  
  	/*
  	 * In A9 r2p0 the comparators for each processor with the global timer
-@@ -283,6 +317,11 @@ static int __init global_timer_of_register(struct device_node *np)
+@@ -283,6 +356,11 @@ static int __init global_timer_of_register(struct device_node *np)
  		return -ENXIO;
  	}
  
@@ -33216,7 +33265,7 @@ index 36fb3b5fb181..3b5e2dc6e9ed 100644
   * and other sensitive information are never written to disk.
   */
 diff --git a/init/Kconfig b/init/Kconfig
-index 34407f15e6d3..cf379a263316 100644
+index 34407f15e6d3..18bf61578899 100644
 --- a/init/Kconfig
 +++ b/init/Kconfig
 @@ -80,6 +80,7 @@ config COMPILE_TEST
@@ -33227,14 +33276,13 @@ index 34407f15e6d3..cf379a263316 100644
  	help
  	  Append an extra string to the end of your kernel version.
  	  This will show up when you type uname, for example.
-@@ -1509,6 +1510,19 @@ config PRINTK_NMI
+@@ -1509,6 +1510,18 @@ config PRINTK_NMI
  	depends on PRINTK
  	depends on HAVE_NMI
  
 +config RAW_PRINTK
 +       bool "Enable support for raw printk"
 +       default n
-+       select DEBUG_LL if ARM
 +       help
 +         This option enables a printk variant called raw_printk() for
 +         writing all output unmodified to a raw console channel
@@ -33513,10 +33561,10 @@ index b5412de484e7..b611765572fa 100644
  	trace_task_newtask(p, clone_flags);
 diff --git a/kernel/ipipe/Kconfig b/kernel/ipipe/Kconfig
 new file mode 100644
-index 000000000000..218f51da9ea5
+index 000000000000..1708fd370619
 --- /dev/null
 +++ b/kernel/ipipe/Kconfig
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,70 @@
 +config IPIPE
 +	bool "Interrupt pipeline"
 +	default y
@@ -33582,6 +33630,11 @@ index 000000000000..218f51da9ea5
 +
 +config IPIPE_HAVE_VM_NOTIFIER
 +	bool
++
++if IPIPE && ARM && RAW_PRINTK && !DEBUG_LL
++comment "CAUTION: DEBUG_LL must be selected, and properly configured for"
++comment "RAW_PRINTK to work. Otherwise, you will get no output on raw_printk()"
++endif
 diff --git a/kernel/ipipe/Kconfig.debug b/kernel/ipipe/Kconfig.debug
 new file mode 100644
 index 000000000000..cee7fab0ee07
@@ -41972,10 +42025,10 @@ index 150737f0a1dc..d82fa858c433 100644
  
  static struct kmem_cache *page_ptl_cachep;
 diff --git a/mm/mlock.c b/mm/mlock.c
-index 665ab75b5533..37ac7ed46d2a 100644
+index f0505692a5f4..4f1f18465b3f 100644
 --- a/mm/mlock.c
 +++ b/mm/mlock.c
-@@ -864,3 +864,27 @@ void user_shm_unlock(size_t size, struct user_struct *user)
+@@ -865,3 +865,27 @@ void user_shm_unlock(size_t size, struct user_struct *user)
  	spin_unlock(&shmlock_user_lock);
  	free_uid(user);
  }
@@ -42127,10 +42180,10 @@ index f2481cb4e6b2..83fe0dedf8e7 100644
  
 diff --git a/scripts/ipipe/genpatches.sh b/scripts/ipipe/genpatches.sh
 new file mode 100644
-index 000000000000..c32bd92f1797
+index 000000000000..fbde365df594
 --- /dev/null
 +++ b/scripts/ipipe/genpatches.sh
-@@ -0,0 +1,219 @@
+@@ -0,0 +1,218 @@
 +#! /bin/sh
 +
 +me=`basename $0`
@@ -42199,7 +42252,6 @@ index 000000000000..c32bd92f1797
 +    driver_arch["clocksource/arm_global_timer.c"]="arm"
 +    driver_arch["clocksource/pxa_timer.c"]="arm"
 +    driver_arch["clocksource/timer-atmel-pit.c"]="arm"
-+    driver_arch["dma/edma.c"]="arm"
 +    driver_arch["gpio/gpio-davinci.c"]="arm"
 +    driver_arch["gpio/gpio-mxc.c"]="arm"
 +    driver_arch["gpio/gpio-mxs.c"]="arm"
@@ -42236,7 +42288,6 @@ index 000000000000..c32bd92f1797
 +    driver_arch["tty/serial/xilinx_uartps.c"]="arm"
 +    driver_arch["clk/imx/clk-imx51-imx53.c"]="arm"
 +    driver_arch["clocksource/timer-imx-gpt.c"]="arm"
-+    driver_arch["clocksource/timer-sp804.c"]="arm"
 +    driver_arch["irqchip/irq-sa11x0.c"]="arm"
 +    driver_arch["media/platform/vsp1/vsp1_video.c"]="arm"
 +    driver_arch["soc/dove/pmu.c"]="arm"
@@ -42244,14 +42295,15 @@ index 000000000000..c32bd92f1797
 +    driver_arch["irqchip/irq-gic.c"]="arm arm64"
 +    driver_arch["irqchip/irq-gic-v3.c"]="arm arm64"
 +    driver_arch["clocksource/arm_arch_timer.c"]="arm arm64"
-+
-+    driver_arch["tty/serial/amba-pl011.c"]="arm64"
-+    driver_arch["gpio/gpio-pl061.c"]="arm64"
++    driver_arch["clocksource/timer-sp804.c"]="arm arm64"
++    driver_arch["tty/serial/amba-pl011.c"]="arm arm64"
++    driver_arch["gpio/gpio-pl061.c"]="arm arm64"
 +
 +    driver_arch["tty/serial/bfin_uart.c"]="blackfin"
 +
 +    driver_arch["tty/serial/mpc52xx_uart.c"]="powerpc"
 +    driver_arch["gpio/gpio-mpc8xxx.c"]="powerpc"
++    driver_arch["soc/fsl/qe/qe_ic.c"]="powerpc"
 +
 +    driver_arch["clocksource/i8253.c"]="x86"
 +    driver_arch["clocksource/Makefile"]="x86"
