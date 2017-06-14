@@ -478,6 +478,7 @@ soc () {
 	dir 'soc/ti/uboot'
 	dir 'soc/ti/am571x'
 	dir 'soc/ti/pruss_uboot_ripout'
+	dir 'soc/ti/x15'
 }
 
 dtb_makefile_append () {
