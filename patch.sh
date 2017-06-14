@@ -563,7 +563,6 @@ soc () {
 	dir 'soc/ti/beaglebone_capes'
 	dir 'soc/ti/uboot'
 	dir 'soc/ti/am571x'
-	dir 'soc/ti/pruss_uboot_ripout'
 	dir 'soc/ti/x15'
 }
 
