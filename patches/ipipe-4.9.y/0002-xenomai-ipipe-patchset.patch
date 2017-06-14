@@ -1,6 +1,6 @@
-From 619caa3103264aba0633e837ff5c0192e06a70a1 Mon Sep 17 00:00:00 2001
+From 0bfe390cd75ce68b910f3ad767c7ecca1b0ec13a Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 9 Jun 2017 10:05:27 -0500
+Date: Wed, 14 Jun 2017 10:17:49 -0500
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
@@ -298,7 +298,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/x86/kernel/cpu/mtrr/generic.c             |   12 +-
  arch/x86/kernel/fpu/core.c                     |   81 +-
  arch/x86/kernel/fpu/init.c                     |    6 +
- arch/x86/kernel/hpet.c                         |   27 +-
+ arch/x86/kernel/hpet.c                         |   27 +
  arch/x86/kernel/i8253.c                        |    4 +
  arch/x86/kernel/i8259.c                        |   30 +-
  arch/x86/kernel/ipipe.c                        |  518 ++++++
@@ -479,7 +479,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  mm/mprotect.c                                  |   11 +-
  mm/vmalloc.c                                   |    2 +
  scripts/ipipe/genpatches.sh                    |  218 +++
- 475 files changed, 25179 insertions(+), 1733 deletions(-)
+ 475 files changed, 25180 insertions(+), 1732 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -24172,7 +24172,7 @@ index 96d80dfac383..38c0f1a50d85 100644
  }
  
 diff --git a/arch/x86/kernel/fpu/init.c b/arch/x86/kernel/fpu/init.c
-index 6f0ab305dd5e..32b534c836db 100644
+index 6f0ab305dd5e..3eee35d3d6f8 100644
 --- a/arch/x86/kernel/fpu/init.c
 +++ b/arch/x86/kernel/fpu/init.c
 @@ -42,6 +42,9 @@ static void fpu__init_cpu_generic(void)
@@ -24185,18 +24185,18 @@ index 6f0ab305dd5e..32b534c836db 100644
  	/* Flush out any pending x87 state: */
  #ifdef CONFIG_MATH_EMULATION
  	if (!boot_cpu_has(X86_FEATURE_FPU))
-@@ -319,6 +322,9 @@ static void __init fpu__init_system_ctx_switch(void)
- 
- 	WARN_ON_FPU(current->thread.fpu.fpstate_active);
+@@ -325,6 +328,9 @@ static void __init fpu__init_system_ctx_switch(void)
+ 	if (xfeatures_mask & XFEATURE_MASK_EAGER)
+ 		eagerfpu = ENABLE;
  
 +	if (IS_ENABLED(CONFIG_IPIPE))
 +		eagerfpu = DISABLE;
 +
- 	if (boot_cpu_has(X86_FEATURE_XSAVEOPT) && eagerfpu != DISABLE)
- 		eagerfpu = ENABLE;
+ 	if (eagerfpu == ENABLE)
+ 		setup_force_cpu_cap(X86_FEATURE_EAGER_FPU);
  
 diff --git a/arch/x86/kernel/hpet.c b/arch/x86/kernel/hpet.c
-index 932348fbb6ea..a223f3e30579 100644
+index 932348fbb6ea..8ee7db31ef58 100644
 --- a/arch/x86/kernel/hpet.c
 +++ b/arch/x86/kernel/hpet.c
 @@ -11,6 +11,7 @@
@@ -24207,61 +24207,60 @@ index 932348fbb6ea..a223f3e30579 100644
  
  #include <asm/cpufeature.h>
  #include <asm/irqdomain.h>
-@@ -51,6 +52,9 @@ struct hpet_dev {
- 	int				cpu;
- 	unsigned int			irq;
- 	unsigned int			flags;
-+#ifdef CONFIG_IPIPE
-+	struct ipipe_timer		itimer;
-+#endif /* CONFIG_IPIPE */
- 	char				name[10];
- };
- 
-@@ -426,6 +430,12 @@ static int hpet_legacy_next_event(unsigned long delta,
- 	return hpet_next_event(delta, evt, 0);
+@@ -136,6 +137,10 @@ int is_hpet_enabled(void)
  }
+ EXPORT_SYMBOL_GPL(is_hpet_enabled);
  
 +#ifdef CONFIG_IPIPE
-+static struct ipipe_timer hpet_itimer = {
-+	.irq = 0,
-+};
-+#endif /* CONFIG_IPIPE */
++static DEFINE_PER_CPU(struct ipipe_timer, hpet_itimer);
++#endif
 +
- /*
-  * The hpet clock event device
-  */
-@@ -440,6 +450,9 @@ static struct clock_event_device hpet_clockevent = {
- 	.set_next_event		= hpet_legacy_next_event,
- 	.irq			= 0,
- 	.rating			= 50,
+ static void _hpet_print_config(const char *function, int line)
+ {
+ 	u32 i, timers, l, h;
+@@ -285,6 +290,10 @@ static void hpet_legacy_clockevent_register(void)
+ 	 * Start hpet with the boot cpu mask and make it
+ 	 * global after the IO_APIC has been initialized.
+ 	 */
++#if defined(CONFIG_IPIPE) && !defined(CONFIG_SMP)
++	hpet_clockevent.ipipe_timer = this_cpu_ptr(&hpet_itimer);
++	hpet_clockevent.ipipe_timer->irq = hpet_clockevent.irq;
++#endif
+ 	hpet_clockevent.cpumask = cpumask_of(smp_processor_id());
+ 	clockevents_config_and_register(&hpet_clockevent, hpet_freq,
+ 					HPET_MIN_PROG_DELTA, 0x7FFFFFFF);
+@@ -581,6 +590,9 @@ static void init_one_hpet_msi_clockevent(struct hpet_dev *hdev, int cpu)
+ 	evt->tick_resume = hpet_msi_resume;
+ 	evt->set_next_event = hpet_msi_next_event;
+ 	evt->cpumask = cpumask_of(hdev->cpu);
 +#ifdef CONFIG_IPIPE
-+	.ipipe_timer    = &hpet_itimer,
-+#endif /* CONFIG_IPIPE */
- };
++	evt->ipipe_timer = &per_cpu(hpet_itimer, cpu);
++#endif
  
- /*
-@@ -643,8 +656,20 @@ static void hpet_msi_capability_lookup(unsigned int start_timer)
- 		hdev->flags |= HPET_DEV_FSB_CAP;
- 		hdev->flags |= HPET_DEV_VALID;
- 		num_timers_used++;
--		if (num_timers_used == num_possible_cpus())
-+		if (num_timers_used == num_possible_cpus()) {
-+#ifdef CONFIG_IPIPE
-+			/*
-+			 * Only register ipipe_timers if there is one
-+			 * for each cpu
-+			 */
-+			for (i = 0; i < num_timers_used; i++) {
-+				hdev = &hpet_devs[i];
-+				hdev->evt.ipipe_timer = &hdev->itimer;
-+				hdev->itimer.irq = hdev->irq;
-+			}
-+#endif /* CONFIG_IPIPE */
+ 	clockevents_config_and_register(evt, hpet_freq, HPET_MIN_PROG_DELTA,
+ 					0x7FFFFFFF);
+@@ -647,6 +659,21 @@ static void hpet_msi_capability_lookup(unsigned int start_timer)
  			break;
-+		}
  	}
  
++#ifdef CONFIG_IPIPE
++	/*
++	 * Only register ipipe_timers if there is one for each cpu
++	 */
++	if (num_timers_used == num_possible_cpus()) {
++		for (i = start_timer; i < num_timers - RESERVE_TIMERS; i++) {
++			struct hpet_dev *hdev = &hpet_devs[i];
++			if (hdev->flags & HPET_DEV_VALID) {
++				hdev->evt.ipipe_timer = &per_cpu(hpet_itimer, hdev->cpu);
++				hdev->evt.ipipe_timer->irq = hdev->irq;
++			}
++		}
++	}
++#endif /* CONFIG_IPIPE */
++
  	printk(KERN_INFO "HPET: %d timers in total, %d timers will be used for per-cpu timer\n",
+ 		num_timers, num_timers_used);
+ }
 diff --git a/arch/x86/kernel/i8253.c b/arch/x86/kernel/i8253.c
 index 6ebe00cb4a3b..131ddc93ef79 100644
 --- a/arch/x86/kernel/i8253.c
