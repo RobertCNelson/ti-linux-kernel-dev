@@ -544,6 +544,7 @@ drivers () {
 #	dir 'drivers/ti/uio'
 
 	dir 'drivers/ti/gpio'
+	dir 'drivers/ti/beaglelogic'
 }
 
 soc () {
