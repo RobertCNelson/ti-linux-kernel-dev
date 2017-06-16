@@ -202,7 +202,7 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
@@ -361,7 +361,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0009-iio-dac-ad7303-fix-channel-description.patch"
 	${git} "${DIR}/patches/backports/iio/0010-iio-proximity-as3935-fix-as3935_write.patch"
 
-	backport_tag="v4.9.31"
+	backport_tag="v4.9.32"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
