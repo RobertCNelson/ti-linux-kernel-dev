@@ -570,6 +570,7 @@ drivers
 soc
 beaglebone
 dir 'build/gcc'
+dir 'x15_revc'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
