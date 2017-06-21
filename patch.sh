@@ -998,6 +998,7 @@ dir 'brcmfmac'
 dir 'quieter'
 machinekit
 dir 'soc/ti/am571x'
+dir 'x15_revc'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
