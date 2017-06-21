@@ -967,24 +967,20 @@ packaging () {
 	fi
 }
 
-travis () {
-	echo "dir: travis"
+readme () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		cp -v "${DIR}/3rdparty/travis/.travis.yml" "${DIR}/KERNEL/.travis.yml"
-		git add -f .travis.yml
-		cp -v "${DIR}/3rdparty/travis/build_deb_in_arm_chroot.sh" "${DIR}/KERNEL/"
-		cp -v "${DIR}/3rdparty/travis/build_on_x86.sh" "${DIR}/KERNEL/"
-		git add -f build_*.sh
-		git commit -a -m 'enable: travis: https://travis-ci.org/beagleboard/linux' -s
-		git format-patch -1 -o "${DIR}/patches/travis"
+		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
+		git add -f README.md
+		git commit -a -m 'enable: Jenkins: http://rcn-ee.online:8080' -s
+		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
 	else
-		${git} "${DIR}/patches/travis/0001-enable-travis-https-travis-ci.org-beagleboard-linux.patch"
+		dir 'readme'
 	fi
 }
 
 sync_mainline_dtc
 packaging
-travis
+readme
 echo "patch.sh ran successfully"
