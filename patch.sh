@@ -218,11 +218,6 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-
-	${git_bin} revert --no-edit b13b3b706a9dc03dd1a1c31f8268cd5193c1858c
-	${git_bin} revert --no-edit 0ce66ee6aec12f38ab6992233e92b9960b55e0c6
-	${git_bin} revert --no-edit b969a240448bfd8e6b0fb180a405e5cc881bf503
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -274,6 +269,7 @@ ipipe () {
 		cp -v arch/x86/kernel/apic/io_apic.c ../patches/${xenomai_branch}/arch_x86_kernel_apic_io_apic.c
 		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
 		cp -v arch/powerpc/include/asm/mmu_context.h ../patches/${xenomai_branch}/arch_powerpc_include_asm_mmu_context.h
+		cp -v arch/arm/mm/mmap.c ../patches/${xenomai_branch}/arch_arm_mm_mmap.c
 
 		${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/${xenomai_branch}/${xenomai_branch}.diff
@@ -288,6 +284,7 @@ ipipe () {
 		cp -v ../patches/${xenomai_branch}/arch_x86_kernel_apic_io_apic.c arch/x86/kernel/apic/io_apic.c
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
 		cp -v ../patches/${xenomai_branch}/arch_powerpc_include_asm_mmu_context.h arch/powerpc/include/asm/mmu_context.h
+		cp -v ../patches/${xenomai_branch}/arch_arm_mm_mmap.c arch/arm/mm/mmap.c
 
 		#exit 2
 
