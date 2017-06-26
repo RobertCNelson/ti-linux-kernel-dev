@@ -361,7 +361,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0009-iio-dac-ad7303-fix-channel-description.patch"
 	${git} "${DIR}/patches/backports/iio/0010-iio-proximity-as3935-fix-as3935_write.patch"
 
-	backport_tag="v4.9.33"
+	backport_tag="v4.9.34"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -911,6 +911,7 @@ dir 'quieter'
 remoteproc_by_default
 dir 'soc/ti/am571x'
 dir 'x15_revc'
+dir 'drivers/ti/mmc'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
