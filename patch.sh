@@ -218,6 +218,9 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
+
+	${git_bin} revert --no-edit f719f20abe2a52fff61ffc3b230308279b841475
+
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -594,7 +597,6 @@ beaglebone () {
 	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/dtbs"
 		number=1
 		cleanup
 	fi
