@@ -99,7 +99,7 @@ cherrypick () {
 
 external_git () {
 	git_tag="ti-linux-${KERNEL_REL}.y"
-	echo "pulling: ${git_tag}"
+	echo "pulling: [${git_patchset} ${git_tag}]"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
 	top_of_branch=$(${git_bin} describe)
 	if [ ! "x${ti_git_post}" = "x" ] ; then
@@ -218,9 +218,6 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-
-	${git_bin} revert --no-edit f719f20abe2a52fff61ffc3b230308279b841475
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
