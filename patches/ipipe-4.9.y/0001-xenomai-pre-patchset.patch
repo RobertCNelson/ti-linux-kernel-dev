@@ -1,38 +1,58 @@
-From ad2c334cbb2246435f3a3d63ed9ae984cb5afe63 Mon Sep 17 00:00:00 2001
+From de51146e52ded1d13b351dbdc2d3510b8af82920 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 21 Jul 2017 16:56:29 -0500
+Date: Fri, 28 Jul 2017 15:20:21 -0500
 Subject: [PATCH 1/2] xenomai pre-patchset
 
 ---
- arch/arm/mach-omap2/timer.c            |  67 +---------
- arch/arm/mm/mmap.c                     |   4 +-
- arch/powerpc/include/asm/mmu_context.h |  17 +--
- arch/x86/kernel/apic/io_apic.c         |   2 -
- drivers/gpio/gpio-davinci.c            | 218 +++++++++++++++------------------
- 5 files changed, 106 insertions(+), 202 deletions(-)
+ arch/arm/mach-omap2/timer.c |  94 +------------------
+ drivers/gpio/gpio-davinci.c | 218 ++++++++++++++++++++------------------------
+ 2 files changed, 102 insertions(+), 210 deletions(-)
 
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
-index 967fc1ef2f35..b2f2448bfa6d 100644
+index 89f75cd23846..b2f2448bfa6d 100644
 --- a/arch/arm/mach-omap2/timer.c
 +++ b/arch/arm/mach-omap2/timer.c
-@@ -68,9 +68,6 @@
+@@ -68,11 +68,6 @@
  static struct omap_dm_timer clkev;
  static struct clock_event_device clockevent_gpt;
  
 -/* Clockevent hwmod for am335x and am437x suspend */
 -struct omap_hwmod *clockevent_gpt_hwmod;
+-static struct irq_chip *clkev_irq_chip;
+-static struct irq_desc *clkev_irq_desc;
 -
  #ifdef CONFIG_SOC_HAS_REALTIME_COUNTER
  static unsigned long arch_timer_freq;
  
-@@ -128,23 +125,6 @@ static int omap2_gp_timer_set_periodic(struct clock_event_device *evt)
+@@ -130,44 +125,6 @@ static int omap2_gp_timer_set_periodic(struct clock_event_device *evt)
  	return 0;
  }
  
+-static void omap_clkevt_late_ack(void)
+-{
+-	if (!clkev_irq_chip)
+-		return;
+-
+-	if (clkev_irq_chip->irq_ack)
+-		clkev_irq_chip->irq_ack(&clkev_irq_desc->irq_data);
+-	if (clkev_irq_chip->irq_eoi)
+-		clkev_irq_chip->irq_eoi(&clkev_irq_desc->irq_data);
+-
+-	clkev_irq_chip->irq_unmask(&clkev_irq_desc->irq_data);
+-}
+-
 -static void omap_clkevt_idle(struct clock_event_device *unused)
 -{
 -	if (!clockevent_gpt_hwmod)
 -		return;
+-
+-	/*
+-	 * It is possible for a late interrupt to be generated which will
+-	 * cause a suspend failure. Let's ack it here both in the timer
+-	 * and the interrupt controller to avoid this.
+-	 */
+-	__omap_dm_timer_write_status(&clkev, OMAP_TIMER_INT_OVERFLOW);
+-	omap_clkevt_late_ack();
 -
 -	omap_hwmod_idle(clockevent_gpt_hwmod);
 -}
@@ -49,7 +69,7 @@ index 967fc1ef2f35..b2f2448bfa6d 100644
  static struct clock_event_device clockevent_gpt = {
  	.features		= CLOCK_EVT_FEAT_PERIODIC |
  				  CLOCK_EVT_FEAT_ONESHOT,
-@@ -378,14 +358,6 @@ static void __init omap2_gp_clockevent_init(int gptimer_id,
+@@ -401,18 +358,6 @@ static void __init omap2_gp_clockevent_init(int gptimer_id,
  					3, /* Timer internal resynch latency */
  					0xffffffff);
  
@@ -59,12 +79,16 @@ index 967fc1ef2f35..b2f2448bfa6d 100644
 -
 -		clockevent_gpt_hwmod =
 -			omap_hwmod_lookup(clockevent_gpt.name);
+-
+-		clkev_irq_desc = irq_to_desc(clkev.irq);
+-		if (clkev_irq_desc)
+-			clkev_irq_chip = irq_desc_get_chip(clkev_irq_desc);
 -	}
 -
  	pr_info("OMAP clockevent source: %s at %lu Hz\n", clockevent_gpt.name,
  		clkev.rate);
  }
-@@ -404,7 +376,7 @@ static cycle_t clocksource_read_cycles(struct clocksource *cs)
+@@ -431,7 +376,7 @@ static cycle_t clocksource_read_cycles(struct clocksource *cs)
  }
  
  static struct clocksource clocksource_gpt = {
@@ -73,7 +97,7 @@ index 967fc1ef2f35..b2f2448bfa6d 100644
  	.read		= clocksource_read_cycles,
  	.mask		= CLOCKSOURCE_MASK(32),
  	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
-@@ -477,38 +449,6 @@ static int __init __maybe_unused omap2_sync32k_clocksource_init(void)
+@@ -504,38 +449,6 @@ static int __init __maybe_unused omap2_sync32k_clocksource_init(void)
  	return ret;
  }
  
@@ -112,7 +136,7 @@ index 967fc1ef2f35..b2f2448bfa6d 100644
  static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  						  const char *fck_source,
  						  const char *property)
-@@ -518,11 +458,6 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
+@@ -545,11 +458,6 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  	clksrc.id = gptimer_id;
  	clksrc.errata = omap_dm_timer_get_errata();
  
@@ -124,83 +148,6 @@ index 967fc1ef2f35..b2f2448bfa6d 100644
  	res = omap_dm_timer_init_one(&clksrc, fck_source, property,
  				     &clocksource_gpt.name,
  				     OMAP_TIMER_NONPOSTED);
-diff --git a/arch/arm/mm/mmap.c b/arch/arm/mm/mmap.c
-index 641334ebf46d..66353caa35b9 100644
---- a/arch/arm/mm/mmap.c
-+++ b/arch/arm/mm/mmap.c
-@@ -89,7 +89,7 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
- 
- 		vma = find_vma(mm, addr);
- 		if (TASK_SIZE - len >= addr &&
--		    (!vma || addr + len <= vm_start_gap(vma)))
-+		    (!vma || addr + len <= vma->vm_start))
- 			return addr;
- 	}
- 
-@@ -140,7 +140,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
- 			addr = PAGE_ALIGN(addr);
- 		vma = find_vma(mm, addr);
- 		if (TASK_SIZE - len >= addr &&
--				(!vma || addr + len <= vm_start_gap(vma)))
-+				(!vma || addr + len <= vma->vm_start))
- 			return addr;
- 	}
- 
-diff --git a/arch/powerpc/include/asm/mmu_context.h b/arch/powerpc/include/asm/mmu_context.h
-index 0012f0353fd6..b9e3f0aca261 100644
---- a/arch/powerpc/include/asm/mmu_context.h
-+++ b/arch/powerpc/include/asm/mmu_context.h
-@@ -70,9 +70,8 @@ extern void drop_cop(unsigned long acop, struct mm_struct *mm);
-  * switch_mm is the entry point called from the architecture independent
-  * code in kernel/sched/core.c
-  */
--static inline void switch_mm_irqs_off(struct mm_struct *prev,
--				      struct mm_struct *next,
--				      struct task_struct *tsk)
-+static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
-+			     struct task_struct *tsk)
- {
- 	/* Mark this context has been used on the new CPU */
- 	if (!cpumask_test_cpu(smp_processor_id(), mm_cpumask(next)))
-@@ -111,18 +110,6 @@ static inline void switch_mm_irqs_off(struct mm_struct *prev,
- 	switch_mmu_context(prev, next, tsk);
- }
- 
--static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
--			     struct task_struct *tsk)
--{
--	unsigned long flags;
--
--	local_irq_save(flags);
--	switch_mm_irqs_off(prev, next, tsk);
--	local_irq_restore(flags);
--}
--#define switch_mm_irqs_off switch_mm_irqs_off
--
--
- #define deactivate_mm(tsk,mm)	do { } while (0)
- 
- /*
-diff --git a/arch/x86/kernel/apic/io_apic.c b/arch/x86/kernel/apic/io_apic.c
-index 7249f1500bcb..d1e25564b3c1 100644
---- a/arch/x86/kernel/apic/io_apic.c
-+++ b/arch/x86/kernel/apic/io_apic.c
-@@ -1876,7 +1876,6 @@ static struct irq_chip ioapic_chip __read_mostly = {
- 	.irq_ack		= irq_chip_ack_parent,
- 	.irq_eoi		= ioapic_ack_level,
- 	.irq_set_affinity	= ioapic_set_affinity,
--	.irq_retrigger		= irq_chip_retrigger_hierarchy,
- 	.flags			= IRQCHIP_SKIP_SET_WAKE,
- };
- 
-@@ -1888,7 +1887,6 @@ static struct irq_chip ioapic_ir_chip __read_mostly = {
- 	.irq_ack		= irq_chip_ack_parent,
- 	.irq_eoi		= ioapic_ir_ack_level,
- 	.irq_set_affinity	= ioapic_set_affinity,
--	.irq_retrigger		= irq_chip_retrigger_hierarchy,
- 	.flags			= IRQCHIP_SKIP_SET_WAKE,
- };
- 
 diff --git a/drivers/gpio/gpio-davinci.c b/drivers/gpio/gpio-davinci.c
 index e9440de6e7a9..dd262f00295d 100644
 --- a/drivers/gpio/gpio-davinci.c

@@ -250,7 +250,7 @@ aufs4
 #local_patch
 
 ipipe () {
-	kernel_base="v4.9.24"
+	kernel_base="v4.9.38"
 	xenomai_branch="ipipe-4.9.y"
 	echo "dir: ipipe"
 	#regenerate="enable"
@@ -269,10 +269,7 @@ ipipe () {
 		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
 
 		cp -v arch/arm/mach-omap2/timer.c ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c
-		cp -v arch/x86/kernel/apic/io_apic.c ../patches/${xenomai_branch}/arch_x86_kernel_apic_io_apic.c
 		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
-		cp -v arch/powerpc/include/asm/mmu_context.h ../patches/${xenomai_branch}/arch_powerpc_include_asm_mmu_context.h
-		cp -v arch/arm/mm/mmap.c ../patches/${xenomai_branch}/arch_arm_mm_mmap.c
 
 		${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/${xenomai_branch}/${xenomai_branch}.diff
@@ -284,10 +281,7 @@ ipipe () {
 		fi
 
 		cp -v ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c arch/arm/mach-omap2/timer.c
-		cp -v ../patches/${xenomai_branch}/arch_x86_kernel_apic_io_apic.c arch/x86/kernel/apic/io_apic.c
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
-		cp -v ../patches/${xenomai_branch}/arch_powerpc_include_asm_mmu_context.h arch/powerpc/include/asm/mmu_context.h
-		cp -v ../patches/${xenomai_branch}/arch_arm_mm_mmap.c arch/arm/mm/mmap.c
 
 		#exit 2
 

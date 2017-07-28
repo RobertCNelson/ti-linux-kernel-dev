@@ -1,12 +1,15 @@
-From 8cb27e3bfaa2504d9dcfb4f67463e686aaa9dc2f Mon Sep 17 00:00:00 2001
+From b670e8d2a59a611cdf7485a85abab6bac6d2e512 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 21 Jul 2017 16:56:29 -0500
+Date: Fri, 28 Jul 2017 15:20:21 -0500
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
  arch/arm/Kconfig                               |   16 +-
  arch/arm/boot/compressed/head.S                |    1 +
- arch/arm/boot/dts/Makefile                     |    6 +
+ arch/arm/boot/dts/Makefile                     |   10 +-
+ arch/arm/boot/dts/bcm2837-rpi-3-b-cobalt.dts   |   52 +
+ arch/arm/boot/dts/bcm2837-rpi-3-b.dts          |    1 +
+ arch/arm/boot/dts/bcm2837.dtsi                 |    1 +
  arch/arm/boot/dts/imx6qdl.dtsi                 |    8 +
  arch/arm/boot/dts/omap3-igep0020-3430.dts      |  280 ++++
  arch/arm/boot/dts/omap3430-igep.dtsi           |  222 +++
@@ -120,7 +123,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm/mm/flush.c                            |    3 +-
  arch/arm/mm/idmap.c                            |    2 +-
  arch/arm/mm/ioremap.c                          |    1 +
- arch/arm/mm/mmap.c                             |   53 +-
+ arch/arm/mm/mmap.c                             |   51 +-
  arch/arm/mm/pgd.c                              |  184 ++-
  arch/arm/mm/proc-arm920.S                      |    9 +
  arch/arm/mm/proc-arm926.S                      |    9 +
@@ -147,7 +150,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm64/kernel/Makefile                     |    1 +
  arch/arm64/kernel/asm-offsets.c                |    4 +
  arch/arm64/kernel/entry.S                      |  172 +-
- arch/arm64/kernel/fpsimd.c                     |  104 +-
+ arch/arm64/kernel/fpsimd.c                     |  110 +-
  arch/arm64/kernel/ipipe.c                      |  330 ++++
  arch/arm64/kernel/process.c                    |   32 +
  arch/arm64/kernel/ptrace.c                     |    6 +-
@@ -189,7 +192,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/powerpc/include/asm/irqflags.h            |   25 -
  arch/powerpc/include/asm/kvm_ppc.h             |    2 +-
  arch/powerpc/include/asm/livepatch.h           |    2 +-
- arch/powerpc/include/asm/mmu_context.h         |  108 +-
+ arch/powerpc/include/asm/mmu_context.h         |  110 +-
  arch/powerpc/include/asm/mpic.h                |    2 +-
  arch/powerpc/include/asm/paca.h                |    9 +
  arch/powerpc/include/asm/reg.h                 |    5 +
@@ -349,6 +352,8 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  drivers/iommu/irq_remapping.c                  |    2 +-
  drivers/irqchip/irq-atmel-aic.c                |  123 +-
  drivers/irqchip/irq-atmel-aic5.c               |  110 +-
+ drivers/irqchip/irq-bcm2835.c                  |   10 +-
+ drivers/irqchip/irq-bcm2836.c                  |   48 +-
  drivers/irqchip/irq-bcm7120-l2.c               |   15 +-
  drivers/irqchip/irq-brcmstb-l2.c               |   10 +-
  drivers/irqchip/irq-crossbar.c                 |    5 +
@@ -367,7 +372,9 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  drivers/mfd/twl4030-irq.c                      |    1 +
  drivers/mfd/twl6030-irq.c                      |   10 +-
  drivers/misc/Kconfig                           |    2 +-
+ drivers/net/ethernet/freescale/fec_mpc52xx.c   |    9 +-
  drivers/pci/htirq.c                            |    2 +-
+ drivers/pinctrl/bcm/pinctrl-bcm2835.c          |   85 +-
  drivers/pinctrl/pinctrl-at91.c                 |  109 +-
  drivers/pinctrl/pinctrl-rockchip.c             |    8 +-
  drivers/pinctrl/pinctrl-single.c               |   15 +-
@@ -479,7 +486,10 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  mm/mprotect.c                                  |   11 +-
  mm/vmalloc.c                                   |    2 +
  scripts/ipipe/genpatches.sh                    |  218 +++
- 475 files changed, 25180 insertions(+), 1732 deletions(-)
+ 482 files changed, 25362 insertions(+), 1766 deletions(-)
+ create mode 100644 arch/arm/boot/dts/bcm2837-rpi-3-b-cobalt.dts
+ create mode 120000 arch/arm/boot/dts/bcm2837-rpi-3-b.dts
+ create mode 120000 arch/arm/boot/dts/bcm2837.dtsi
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -616,7 +626,7 @@ index fc6d541549a2..78b70402ec9c 100644
  
  #ifdef CONFIG_ARM_VIRT_EXT
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-index 43d55088291b..e1dcd2175506 100644
+index 43d55088291b..e59f14d19a91 100644
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
 @@ -1,3 +1,9 @@
@@ -629,6 +639,91 @@ index 43d55088291b..e1dcd2175506 100644
  ifeq ($(CONFIG_OF),y)
  
  dtb-$(CONFIG_ARCH_ALPINE) += \
+@@ -70,7 +76,9 @@ dtb-$(CONFIG_ARCH_BCM2835) += \
+ 	bcm2835-rpi-b-plus.dtb \
+ 	bcm2835-rpi-a-plus.dtb \
+ 	bcm2836-rpi-2-b.dtb \
+-	bcm2835-rpi-zero.dtb
++	bcm2835-rpi-zero.dtb \
++	bcm2837-rpi-3-b.dtb \
++	bcm2837-rpi-3-b-cobalt.dtb
+ dtb-$(CONFIG_ARCH_BCM_5301X) += \
+ 	bcm4708-asus-rt-ac56u.dtb \
+ 	bcm4708-asus-rt-ac68u.dtb \
+diff --git a/arch/arm/boot/dts/bcm2837-rpi-3-b-cobalt.dts b/arch/arm/boot/dts/bcm2837-rpi-3-b-cobalt.dts
+new file mode 100644
+index 000000000000..467ddba831d6
+--- /dev/null
++++ b/arch/arm/boot/dts/bcm2837-rpi-3-b-cobalt.dts
+@@ -0,0 +1,52 @@
++#include "bcm2837-rpi-3-b.dts"
++
++&gpio {
++	spi0_pins: spi0_pins {
++		brcm,pins = <9 10 11>;
++		brcm,function = <4>; /* alt0 */
++	};
++
++	spi0_cs_pins: spi0_cs_pins {
++		brcm,pins = <8 7>;
++		brcm,function = <1>; /* output */
++	};
++
++	uart0_pins: uart0_pins {
++		brcm,pins = <32 33>;
++		brcm,function = <7>; /* alt3=UART0 */
++		brcm,pull = <0 2>;
++	};
++};
++
++&uart0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_pins>;
++	status = "okay";
++};
++
++&spi {
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi0_pins &spi0_cs_pins>;
++	cs-gpios = <&gpio 8 1>, <&gpio 7 1>;
++	dmas = <&dma 6>, <&dma 7>;
++	dma-names = "tx", "rx";
++	status = "okay";
++
++	rtspi@0 {
++		compatible = "rtdm-spidev";
++		reg = <0>;	/* CE0 */
++		#address-cells = <1>;
++		#size-cells = <0>;
++		spi-max-frequency = <500000>;
++		status = "okay";
++	};
++
++	rtspi@1 {
++		compatible = "rtdm-spidev";
++		reg = <1>;	/* CE1 */
++		#address-cells = <1>;
++		#size-cells = <0>;
++		spi-max-frequency = <500000>;
++		status = "okay";
++	};
++};
+diff --git a/arch/arm/boot/dts/bcm2837-rpi-3-b.dts b/arch/arm/boot/dts/bcm2837-rpi-3-b.dts
+new file mode 120000
+index 000000000000..ceebc0e163fb
+--- /dev/null
++++ b/arch/arm/boot/dts/bcm2837-rpi-3-b.dts
+@@ -0,0 +1 @@
++../../../arm64/boot/dts/broadcom/bcm2837-rpi-3-b.dts
+\ No newline at end of file
+diff --git a/arch/arm/boot/dts/bcm2837.dtsi b/arch/arm/boot/dts/bcm2837.dtsi
+new file mode 120000
+index 000000000000..53f1cd2bba47
+--- /dev/null
++++ b/arch/arm/boot/dts/bcm2837.dtsi
+@@ -0,0 +1 @@
++../../../arm64/boot/dts/broadcom/bcm2837.dtsi
+\ No newline at end of file
 diff --git a/arch/arm/boot/dts/imx6qdl.dtsi b/arch/arm/boot/dts/imx6qdl.dtsi
 index b13b0b2db881..4aeb652e9474 100644
 --- a/arch/arm/boot/dts/imx6qdl.dtsi
@@ -9932,7 +10027,7 @@ index ff0eed23ddf1..b6c77d585dca 100644
  }
  
 diff --git a/arch/arm/mm/mmap.c b/arch/arm/mm/mmap.c
-index 66353caa35b9..b38889adc93c 100644
+index 641334ebf46d..7f67bd4bb11e 100644
 --- a/arch/arm/mm/mmap.c
 +++ b/arch/arm/mm/mmap.c
 @@ -32,6 +32,7 @@ static int mmap_is_legacy(void)
@@ -9974,7 +10069,7 @@ index 66353caa35b9..b38889adc93c 100644
 @@ -90,16 +98,18 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
  		vma = find_vma(mm, addr);
  		if (TASK_SIZE - len >= addr &&
- 		    (!vma || addr + len <= vma->vm_start))
+ 		    (!vma || addr + len <= vm_start_gap(vma)))
 -			return addr;
 +			goto found_addr;
  	}
@@ -10011,13 +10106,10 @@ index 66353caa35b9..b38889adc93c 100644
  	/* requesting a specific address */
  	if (addr) {
  		if (do_align)
-@@ -139,18 +153,31 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
- 		else
- 			addr = PAGE_ALIGN(addr);
+@@ -141,16 +155,29 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
  		vma = find_vma(mm, addr);
--		if (TASK_SIZE - len >= addr &&
-+		if (TASK_SIZE - len > addr &&
- 				(!vma || addr + len <= vma->vm_start))
+ 		if (TASK_SIZE - len >= addr &&
+ 				(!vma || addr + len <= vm_start_gap(vma)))
 -			return addr;
 +			goto found_addr;
  	}
@@ -11994,7 +12086,7 @@ index b4c7db434654..ea9b64838b1d 100644
  
  	ldr	x16, [tsk, #TI_FLAGS]		// check for syscall hooks
 diff --git a/arch/arm64/kernel/fpsimd.c b/arch/arm64/kernel/fpsimd.c
-index 394c61db5566..71ed8e1f1ce9 100644
+index 394c61db5566..948d78c16e11 100644
 --- a/arch/arm64/kernel/fpsimd.c
 +++ b/arch/arm64/kernel/fpsimd.c
 @@ -94,6 +94,9 @@ static DEFINE_PER_CPU(struct fpsimd_state *, fpsimd_last_state);
@@ -12176,7 +12268,7 @@ index 394c61db5566..71ed8e1f1ce9 100644
  		fpsimd_save_partial_state(s, roundup(num_regs, 2));
  	} else {
  		/*
-@@ -242,21 +322,31 @@ void kernel_neon_begin_partial(u32 num_regs)
+@@ -242,21 +322,37 @@ void kernel_neon_begin_partial(u32 num_regs)
  		 * registers.
  		 */
  		preempt_disable();
@@ -12187,7 +12279,9 @@ index 394c61db5566..71ed8e1f1ce9 100644
  		this_cpu_write(fpsimd_last_state, NULL);
  	}
 +
++#ifdef CONFIG_IPIPE
 +	this_cpu_write(fpsimd_kernel_neon, true);
++#endif
 +	hard_local_irq_restore(flags);
  }
  EXPORT_SYMBOL(kernel_neon_begin_partial);
@@ -12201,10 +12295,14 @@ index 394c61db5566..71ed8e1f1ce9 100644
  			in_irq() ? &hardirq_fpsimdstate : &softirq_fpsimdstate);
 +		flags = hard_local_irq_save();
  		fpsimd_load_partial_state(s);
++#ifdef CONFIG_IPIPE
 +		this_cpu_write(fpsimd_kernel_neon, false);
++#endif
 +		hard_local_irq_restore(flags);
  	} else {
++#ifdef CONFIG_IPIPE
 +		this_cpu_write(fpsimd_kernel_neon, false);
++#endif
  		preempt_enable();
  	}
  }
@@ -15859,7 +15957,7 @@ index a402f7f94896..c800a62b08ed 100644
  
  #endif /* _ASM_POWERPC_LIVEPATCH_H */
 diff --git a/arch/powerpc/include/asm/mmu_context.h b/arch/powerpc/include/asm/mmu_context.h
-index b9e3f0aca261..d5a01ec03c3b 100644
+index 0012f0353fd6..15fa8b7ca113 100644
 --- a/arch/powerpc/include/asm/mmu_context.h
 +++ b/arch/powerpc/include/asm/mmu_context.h
 @@ -6,6 +6,7 @@
@@ -15870,7 +15968,7 @@ index b9e3f0aca261..d5a01ec03c3b 100644
  #include <asm/mmu.h>	
  #include <asm/cputable.h>
  #include <asm/cputhreads.h>
-@@ -66,16 +67,40 @@ extern void switch_cop(struct mm_struct *next);
+@@ -66,17 +67,40 @@ extern void switch_cop(struct mm_struct *next);
  extern int use_cop(unsigned long acop, struct mm_struct *mm);
  extern void drop_cop(unsigned long acop, struct mm_struct *mm);
  
@@ -15903,8 +16001,9 @@ index b9e3f0aca261..d5a01ec03c3b 100644
   * switch_mm is the entry point called from the architecture independent
   * code in kernel/sched/core.c
   */
--static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
--			     struct task_struct *tsk)
+-static inline void switch_mm_irqs_off(struct mm_struct *prev,
+-				      struct mm_struct *next,
+-				      struct task_struct *tsk)
 +static inline void __do_switch_mm(struct mm_struct *prev, struct mm_struct *next,
 +				  struct task_struct *tsk, bool irq_sync_p)
  {
@@ -15916,7 +16015,7 @@ index b9e3f0aca261..d5a01ec03c3b 100644
  
  	/* 32-bit keeps track of the current PGDIR in the thread struct */
  #ifdef CONFIG_PPC32
-@@ -90,6 +115,9 @@ static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
+@@ -91,6 +115,9 @@ static inline void switch_mm_irqs_off(struct mm_struct *prev,
  	if (prev == next)
  		return;
  
@@ -15926,7 +16025,7 @@ index b9e3f0aca261..d5a01ec03c3b 100644
  #ifdef CONFIG_PPC_ICSWX
  	/* Switch coprocessor context only if prev or next uses a coprocessor */
  	if (prev->context.acop || next->context.acop)
-@@ -108,6 +136,72 @@ static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
+@@ -109,16 +136,83 @@ static inline void switch_mm_irqs_off(struct mm_struct *prev,
  	 * sub architectures. Out of line for now
  	 */
  	switch_mmu_context(prev, next, tsk);
@@ -15970,6 +16069,17 @@ index b9e3f0aca261..d5a01ec03c3b 100644
 +#endif /* !CONFIG_IPIPE_WANT_PREEMPTIBLE_SWITCH */
 +}
 +
++static inline void switch_mm_irqs_off(struct mm_struct *prev,
++				      struct mm_struct *next,
++				      struct task_struct *tsk)
++{
++	unsigned long flags;
++
++	ipipe_mm_switch_protect(flags);
++	__switch_mm(prev, next, tsk);
++	ipipe_mm_switch_unprotect(flags);
+ }
+ 
 +#ifdef CONFIG_IPIPE
 +/*
 + * ipipe_switch_mm_head() is reserved to the head domain for switching
@@ -15979,39 +16089,35 @@ index b9e3f0aca261..d5a01ec03c3b 100644
 +void ipipe_switch_mm_head(struct mm_struct *prev, struct mm_struct *next,
 +			  struct task_struct *tsk)
 +{
-+	unsigned long flags;
-+
-+	flags = hard_local_irq_save();
 +	__do_switch_mm(prev, next, tsk, false);
-+	hard_local_irq_restore(flags);
 +}
 +
 +#endif /* CONFIG_IPIPE */
 +
-+static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
-+			     struct task_struct *tsk)
-+{
-+	unsigned long flags;
-+
-+	ipipe_mm_switch_protect(flags);
-+	__switch_mm(prev, next, tsk);
-+	ipipe_mm_switch_unprotect(flags);
- }
- 
- #define deactivate_mm(tsk,mm)	do { } while (0)
-@@ -118,11 +212,15 @@ static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
-  */
- static inline void activate_mm(struct mm_struct *prev, struct mm_struct *next)
+ static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
+ 			     struct task_struct *tsk)
  {
 +#ifndef CONFIG_IPIPE
  	unsigned long flags;
  
  	local_irq_save(flags);
 +#endif
- 	switch_mm(prev, next, current);
+ 	switch_mm_irqs_off(prev, next, tsk);
 +#ifndef CONFIG_IPIPE
  	local_irq_restore(flags);
 +#endif
+ }
+ #define switch_mm_irqs_off switch_mm_irqs_off
+ 
+@@ -131,11 +225,7 @@ static inline void switch_mm(struct mm_struct *prev, struct mm_struct *next,
+  */
+ static inline void activate_mm(struct mm_struct *prev, struct mm_struct *next)
+ {
+-	unsigned long flags;
+-
+-	local_irq_save(flags);
+ 	switch_mm(prev, next, current);
+-	local_irq_restore(flags);
  }
  
  /* We don't currently use enter_lazy_tlb() for anything */
@@ -16065,7 +16171,7 @@ index 6a6792bb39fb..1113c857cd35 100644
  	struct cpu_accounting_data accounting;
  	u64 stolen_time;		/* TB ticks taken by hypervisor */
 diff --git a/arch/powerpc/include/asm/reg.h b/arch/powerpc/include/asm/reg.h
-index e7d9eca53af3..4eb3264a0467 100644
+index ceb168cd3b81..3f65b17feb54 100644
 --- a/arch/powerpc/include/asm/reg.h
 +++ b/arch/powerpc/include/asm/reg.h
 @@ -34,6 +34,7 @@
@@ -17848,7 +17954,7 @@ index 000000000000..c2bfa03e3dbf
 +#endif	/* !CONFIG_PPC64 */
 +#endif /* !CONFIG_IPIPE_LEGACY */
 diff --git a/arch/powerpc/kernel/irq.c b/arch/powerpc/kernel/irq.c
-index 3c05c311e35e..5bba33cd4739 100644
+index 3c05c311e35e..c34fa540967a 100644
 --- a/arch/powerpc/kernel/irq.c
 +++ b/arch/powerpc/kernel/irq.c
 @@ -97,6 +97,36 @@ extern int tau_interrupts(int);
@@ -18018,7 +18124,7 @@ index 3c05c311e35e..5bba33cd4739 100644
  	/* We can hard enable interrupts now to allow perf interrupts */
  	may_hard_irq_enable();
  
-@@ -529,9 +530,25 @@ void __do_irq(struct pt_regs *regs)
+@@ -529,6 +530,21 @@ void __do_irq(struct pt_regs *regs)
  	irq_exit();
  }
  
@@ -18035,23 +18141,20 @@ index 3c05c311e35e..5bba33cd4739 100644
 +	___do_irq(irq, regs);
 +}
 +
++#ifndef CONFIG_IPIPE
++
  void do_IRQ(struct pt_regs *regs)
  {
  	struct pt_regs *old_regs = set_irq_regs(regs);
-+#ifdef CONFIG_IPIPE
-+	__do_irq(regs);
-+#else /* !CONFIG_IPIPE */
- 	struct thread_info *curtp, *irqtp, *sirqtp;
- 
- 	/* Switch to the irq stack to handle this */
-@@ -562,6 +579,7 @@ void do_IRQ(struct pt_regs *regs)
- 	/* Copy back updates to the thread_info */
- 	if (irqtp->flags)
- 		set_bits(irqtp->flags, &curtp->flags);
-+#endif /* !CONFIG_IPIPE */
- 
+@@ -566,6 +582,8 @@ void do_IRQ(struct pt_regs *regs)
  	set_irq_regs(old_regs);
  }
+ 
++#endif /* !CONFIG_IPIPE */
++
+ void __init init_IRQ(void)
+ {
+ 	if (ppc_md.init_IRQ)
 @@ -617,6 +635,21 @@ void exc_lvl_ctx_init(void)
  }
  #endif
@@ -18818,19 +18921,19 @@ index bc3f7d0d7b79..7dfcbe016bd0 100644
  }
  
 diff --git a/arch/powerpc/kernel/traps.c b/arch/powerpc/kernel/traps.c
-index 43021f8e47a6..71dfa1e50897 100644
+index 43021f8e47a6..dacc21b545e6 100644
 --- a/arch/powerpc/kernel/traps.c
 +++ b/arch/powerpc/kernel/traps.c
-@@ -737,6 +737,9 @@ void machine_check_exception(struct pt_regs *regs)
+@@ -735,6 +735,9 @@ void machine_check_exception(struct pt_regs *regs)
  
- 	add_taint(TAINT_MACHINE_CHECK, LOCKDEP_NOW_UNRELIABLE);
+ 	__this_cpu_inc(irq_stat.mce_exceptions);
  
 +	if (__ipipe_report_trap(IPIPE_TRAP_MCE, regs))
 +		return;
 +
+ 	add_taint(TAINT_MACHINE_CHECK, LOCKDEP_NOW_UNRELIABLE);
+ 
  	/* See if any machine dependent calls. In theory, we would want
- 	 * to call the CPU first, and call the ppc_md. one if the CPU
- 	 * one returns a positive number. However there is existing code
 @@ -793,6 +796,9 @@ void unknown_exception(struct pt_regs *regs)
  	printk("Bad trap at PC: %lx, SR: %lx, vector=%lx\n",
  	       regs->nip, regs->msr, regs->trap);
@@ -19975,7 +20078,7 @@ index 98f8c3611133..4d954a52ad10 100644
  	u64 thread_id;
  	unsigned long ipi_debug_brk_mask;
 diff --git a/arch/powerpc/platforms/pseries/lpar.c b/arch/powerpc/platforms/pseries/lpar.c
-index f2c98f6c1c9c..80d4951e90e9 100644
+index a7bb872a0dc4..67ff8f013f1f 100644
 --- a/arch/powerpc/platforms/pseries/lpar.c
 +++ b/arch/powerpc/platforms/pseries/lpar.c
 @@ -187,7 +187,7 @@ static long pSeries_lpar_hpte_insert(unsigned long hpte_group,
@@ -23152,7 +23255,7 @@ index ae50d3454d78..2e39774c39d5 100644
  };
  
 diff --git a/arch/x86/kernel/apic/io_apic.c b/arch/x86/kernel/apic/io_apic.c
-index d1e25564b3c1..27df6bdeb9d8 100644
+index cf89928dbd46..7420c52f7a9a 100644
 --- a/arch/x86/kernel/apic/io_apic.c
 +++ b/arch/x86/kernel/apic/io_apic.c
 @@ -76,7 +76,7 @@
@@ -23377,10 +23480,10 @@ index d1e25564b3c1..27df6bdeb9d8 100644
 +	.irq_hold		= hold_ioapic_irq,
 +	.irq_release		= release_ioapic_irq,
 +#endif
+ 	.irq_retrigger		= irq_chip_retrigger_hierarchy,
  	.flags			= IRQCHIP_SKIP_SET_WAKE,
  };
- 
-@@ -1887,6 +1992,13 @@ static struct irq_chip ioapic_ir_chip __read_mostly = {
+@@ -1888,6 +1993,13 @@ static struct irq_chip ioapic_ir_chip __read_mostly = {
  	.irq_ack		= irq_chip_ack_parent,
  	.irq_eoi		= ioapic_ir_ack_level,
  	.irq_set_affinity	= ioapic_set_affinity,
@@ -23391,10 +23494,10 @@ index d1e25564b3c1..27df6bdeb9d8 100644
 +	.irq_hold		= hold_ioapic_irq,
 +	.irq_release		= release_ioapic_irq,
 +#endif
+ 	.irq_retrigger		= irq_chip_retrigger_hierarchy,
  	.flags			= IRQCHIP_SKIP_SET_WAKE,
  };
- 
-@@ -1918,23 +2030,29 @@ static inline void init_IO_APIC_traps(void)
+@@ -1920,23 +2032,29 @@ static inline void init_IO_APIC_traps(void)
  
  static void mask_lapic_irq(struct irq_data *data)
  {
@@ -23427,7 +23530,7 @@ index d1e25564b3c1..27df6bdeb9d8 100644
  }
  
  static struct irq_chip lapic_chip __read_mostly = {
-@@ -1942,6 +2060,9 @@ static struct irq_chip lapic_chip __read_mostly = {
+@@ -1944,6 +2062,9 @@ static struct irq_chip lapic_chip __read_mostly = {
  	.irq_mask	= mask_lapic_irq,
  	.irq_unmask	= unmask_lapic_irq,
  	.irq_ack	= ack_lapic_irq,
@@ -23437,7 +23540,7 @@ index d1e25564b3c1..27df6bdeb9d8 100644
  };
  
  static void lapic_register_intr(int irq)
-@@ -2061,7 +2182,7 @@ static inline void __init check_timer(void)
+@@ -2063,7 +2184,7 @@ static inline void __init check_timer(void)
  	/*
  	 * get/set the timer IRQ vector:
  	 */
@@ -23446,7 +23549,7 @@ index d1e25564b3c1..27df6bdeb9d8 100644
  
  	/*
  	 * As IRQ0 is to be enabled in the 8259A, the virtual
-@@ -2158,6 +2279,10 @@ static inline void __init check_timer(void)
+@@ -2160,6 +2281,10 @@ static inline void __init check_timer(void)
  		    "...trying to set up timer as Virtual Wire IRQ...\n");
  
  	lapic_register_intr(0);
@@ -23457,7 +23560,7 @@ index d1e25564b3c1..27df6bdeb9d8 100644
  	apic_write(APIC_LVT0, APIC_DM_FIXED | cfg->vector);	/* Fixed mode */
  	legacy_pic->unmask(0);
  
-@@ -2166,7 +2291,7 @@ static inline void __init check_timer(void)
+@@ -2168,7 +2293,7 @@ static inline void __init check_timer(void)
  		goto out;
  	}
  	local_irq_disable();
@@ -23466,7 +23569,7 @@ index d1e25564b3c1..27df6bdeb9d8 100644
  	apic_write(APIC_LVT0, APIC_LVT_MASKED | APIC_DM_FIXED | cfg->vector);
  	apic_printk(APIC_QUIET, KERN_INFO "..... failed.\n");
  
-@@ -2514,6 +2639,18 @@ int acpi_get_override_irq(u32 gsi, int *trigger, int *polarity)
+@@ -2516,6 +2641,18 @@ int acpi_get_override_irq(u32 gsi, int *trigger, int *polarity)
  	return 0;
  }
  
@@ -23485,7 +23588,7 @@ index d1e25564b3c1..27df6bdeb9d8 100644
  /*
   * This function currently is only a helper for the i386 smp boot process where
   * we need to reprogram the ioredtbls to cater for the cpus which have come online
-@@ -2951,7 +3088,7 @@ int mp_irqdomain_alloc(struct irq_domain *domain, unsigned int virq,
+@@ -2953,7 +3090,7 @@ int mp_irqdomain_alloc(struct irq_domain *domain, unsigned int virq,
  		mp_setup_entry(cfg, data, info->ioapic_entry);
  	mp_register_handler(virq, data->trigger);
  	if (virq < nr_legacy_irqs())
@@ -27335,7 +27438,7 @@ index ee1724806f46..cc5f32984a77 100644
  #define MXS_SET		0x4
  #define MXS_CLR		0x8
 diff --git a/drivers/gpio/gpio-omap.c b/drivers/gpio/gpio-omap.c
-index 990e2712089d..15893c5a6198 100644
+index 2b9e6fa3d671..c85eae4a1f37 100644
 --- a/drivers/gpio/gpio-omap.c
 +++ b/drivers/gpio/gpio-omap.c
 @@ -27,6 +27,7 @@
@@ -28423,6 +28526,153 @@ index 2a624d87a035..f492f7779462 100644
  	return 0;
  }
  
+diff --git a/drivers/irqchip/irq-bcm2835.c b/drivers/irqchip/irq-bcm2835.c
+index 44d7c38dde47..904e9fbddafb 100644
+--- a/drivers/irqchip/irq-bcm2835.c
++++ b/drivers/irqchip/irq-bcm2835.c
+@@ -110,7 +110,11 @@ static void armctrl_unmask_irq(struct irq_data *d)
+ static struct irq_chip armctrl_chip = {
+ 	.name = "ARMCTRL-level",
+ 	.irq_mask = armctrl_mask_irq,
+-	.irq_unmask = armctrl_unmask_irq
++	.irq_unmask = armctrl_unmask_irq,
++#ifdef CONFIG_IPIPE
++	.irq_hold = armctrl_mask_irq,
++	.irq_release = armctrl_unmask_irq,
++#endif
+ };
+ 
+ static int armctrl_xlate(struct irq_domain *d, struct device_node *ctrlr,
+@@ -241,7 +245,7 @@ static void __exception_irq_entry bcm2835_handle_irq(
+ 	u32 hwirq;
+ 
+ 	while ((hwirq = get_next_armctrl_hwirq()) != ~0)
+-		handle_domain_irq(intc.domain, hwirq, regs);
++		ipipe_handle_domain_irq(intc.domain, hwirq, regs);
+ }
+ 
+ static void bcm2836_chained_handle_irq(struct irq_desc *desc)
+@@ -249,7 +253,7 @@ static void bcm2836_chained_handle_irq(struct irq_desc *desc)
+ 	u32 hwirq;
+ 
+ 	while ((hwirq = get_next_armctrl_hwirq()) != ~0)
+-		generic_handle_irq(irq_linear_revmap(intc.domain, hwirq));
++		ipipe_handle_demuxed_irq(irq_linear_revmap(intc.domain, hwirq));
+ }
+ 
+ IRQCHIP_DECLARE(bcm2835_armctrl_ic, "brcm,bcm2835-armctrl-ic",
+diff --git a/drivers/irqchip/irq-bcm2836.c b/drivers/irqchip/irq-bcm2836.c
+index d96b2c947e74..8f26ef75cd09 100644
+--- a/drivers/irqchip/irq-bcm2836.c
++++ b/drivers/irqchip/irq-bcm2836.c
+@@ -101,40 +101,66 @@ static void bcm2836_arm_irqchip_unmask_per_cpu_irq(unsigned int reg_offset,
+ 	writel(readl(reg) | BIT(bit), reg);
+ }
+ 
+-static void bcm2836_arm_irqchip_mask_timer_irq(struct irq_data *d)
++static void __bcm2836_arm_irqchip_mask_timer_irq(struct irq_data *d)
+ {
+ 	bcm2836_arm_irqchip_mask_per_cpu_irq(LOCAL_TIMER_INT_CONTROL0,
+ 					     d->hwirq - LOCAL_IRQ_CNTPSIRQ,
+-					     smp_processor_id());
++					     raw_smp_processor_id());
+ }
+ 
+-static void bcm2836_arm_irqchip_unmask_timer_irq(struct irq_data *d)
++static void bcm2836_arm_irqchip_mask_timer_irq(struct irq_data *d)
++{
++	unsigned long flags;
++
++	flags = hard_local_irq_save();
++	__bcm2836_arm_irqchip_mask_timer_irq(d);
++	hard_local_irq_restore(flags);
++}
++
++static void __bcm2836_arm_irqchip_unmask_timer_irq(struct irq_data *d)
+ {
+ 	bcm2836_arm_irqchip_unmask_per_cpu_irq(LOCAL_TIMER_INT_CONTROL0,
+ 					       d->hwirq - LOCAL_IRQ_CNTPSIRQ,
+-					       smp_processor_id());
++					       raw_smp_processor_id());
++}
++
++static void bcm2836_arm_irqchip_unmask_timer_irq(struct irq_data *d)
++{
++	unsigned long flags;
++
++	flags = hard_local_irq_save();
++	__bcm2836_arm_irqchip_unmask_timer_irq(d);
++	hard_local_irq_restore(flags);
+ }
+ 
+ static struct irq_chip bcm2836_arm_irqchip_timer = {
+ 	.name		= "bcm2836-timer",
+ 	.irq_mask	= bcm2836_arm_irqchip_mask_timer_irq,
+ 	.irq_unmask	= bcm2836_arm_irqchip_unmask_timer_irq,
++#ifdef CONFIG_IPIPE
++	.irq_hold	= __bcm2836_arm_irqchip_mask_timer_irq,
++	.irq_release	= __bcm2836_arm_irqchip_unmask_timer_irq,
++#endif
+ };
+ 
+ static void bcm2836_arm_irqchip_mask_pmu_irq(struct irq_data *d)
+ {
+-	writel(1 << smp_processor_id(), intc.base + LOCAL_PM_ROUTING_CLR);
++	writel(1 << raw_smp_processor_id(), intc.base + LOCAL_PM_ROUTING_CLR);
+ }
+ 
+ static void bcm2836_arm_irqchip_unmask_pmu_irq(struct irq_data *d)
+ {
+-	writel(1 << smp_processor_id(), intc.base + LOCAL_PM_ROUTING_SET);
++	writel(1 << raw_smp_processor_id(), intc.base + LOCAL_PM_ROUTING_SET);
+ }
+ 
+ static struct irq_chip bcm2836_arm_irqchip_pmu = {
+ 	.name		= "bcm2836-pmu",
+ 	.irq_mask	= bcm2836_arm_irqchip_mask_pmu_irq,
+ 	.irq_unmask	= bcm2836_arm_irqchip_unmask_pmu_irq,
++#ifdef CONFIG_IPIPE
++	.irq_hold	= bcm2836_arm_irqchip_mask_pmu_irq,
++	.irq_release	= bcm2836_arm_irqchip_unmask_pmu_irq,
++#endif
+ };
+ 
+ static void bcm2836_arm_irqchip_mask_gpu_irq(struct irq_data *d)
+@@ -149,6 +175,10 @@ static struct irq_chip bcm2836_arm_irqchip_gpu = {
+ 	.name		= "bcm2836-gpu",
+ 	.irq_mask	= bcm2836_arm_irqchip_mask_gpu_irq,
+ 	.irq_unmask	= bcm2836_arm_irqchip_unmask_gpu_irq,
++#ifdef CONFIG_IPIPE
++	.irq_hold	= bcm2836_arm_irqchip_mask_gpu_irq,
++	.irq_release	= bcm2836_arm_irqchip_unmask_gpu_irq,
++#endif
+ };
+ 
+ static void bcm2836_arm_irqchip_register_irq(int hwirq, struct irq_chip *chip)
+@@ -163,7 +193,7 @@ static void bcm2836_arm_irqchip_register_irq(int hwirq, struct irq_chip *chip)
+ static void
+ __exception_irq_entry bcm2836_arm_irqchip_handle_irq(struct pt_regs *regs)
+ {
+-	int cpu = smp_processor_id();
++	int cpu = raw_smp_processor_id();
+ 	u32 stat;
+ 
+ 	stat = readl_relaxed(intc.base + LOCAL_IRQ_PENDING0 + 4 * cpu);
+@@ -175,12 +205,12 @@ __exception_irq_entry bcm2836_arm_irqchip_handle_irq(struct pt_regs *regs)
+ 		u32 ipi = ffs(mbox_val) - 1;
+ 
+ 		writel(1 << ipi, mailbox0);
+-		handle_IPI(ipi, regs);
++		ipipe_handle_multi_ipi(ipi, regs);
+ #endif
+ 	} else if (stat) {
+ 		u32 hwirq = ffs(stat) - 1;
+ 
+-		handle_domain_irq(intc.domain, hwirq, regs);
++		ipipe_handle_domain_irq(intc.domain, hwirq, regs);
+ 	}
+ }
+ 
 diff --git a/drivers/irqchip/irq-bcm7120-l2.c b/drivers/irqchip/irq-bcm7120-l2.c
 index 64c2692070ef..88631721301d 100644
 --- a/drivers/irqchip/irq-bcm7120-l2.c
@@ -29240,6 +29490,40 @@ index 0463f1b27221..8b0a529260b4 100644
  	default y
  	help
  	  Select this to get a high precision clocksource based on a
+diff --git a/drivers/net/ethernet/freescale/fec_mpc52xx.c b/drivers/net/ethernet/freescale/fec_mpc52xx.c
+index 446ae9d60c71..39cee50ca607 100644
+--- a/drivers/net/ethernet/freescale/fec_mpc52xx.c
++++ b/drivers/net/ethernet/freescale/fec_mpc52xx.c
+@@ -628,6 +628,9 @@ static void mpc52xx_fec_hw_init(struct net_device *dev)
+ 	 * this can't be done in phy driver, since it needs to be called
+ 	 * before fec stuff (even on resume) */
+ 	out_be32(&fec->mii_speed, priv->mdio_speed);
++
++	/* Clear any outstanding interrupt. */
++	out_be32(&fec->ievent, 0xffffffff);
+ }
+ 
+ /**
+@@ -675,9 +678,6 @@ static void mpc52xx_fec_start(struct net_device *dev)
+ 	out_be32(&fec->r_cntrl, rcntrl);
+ 	out_be32(&fec->x_cntrl, tcntrl);
+ 
+-	/* Clear any outstanding interrupt. */
+-	out_be32(&fec->ievent, 0xffffffff);
+-
+ 	/* Enable interrupts we wish to service. */
+ 	out_be32(&fec->imask, FEC_IMASK_ENABLE);
+ 
+@@ -701,6 +701,9 @@ static void mpc52xx_fec_stop(struct net_device *dev)
+ 	/* disable all interrupts */
+ 	out_be32(&fec->imask, 0);
+ 
++	/* Clear any outstanding interrupt. */
++	out_be32(&fec->ievent, 0xffffffff);
++
+ 	/* Disable the rx task. */
+ 	bcom_disable(priv->rx_dmatsk);
+ 
 diff --git a/drivers/pci/htirq.c b/drivers/pci/htirq.c
 index 7eb4109a3df4..09b3d540174a 100644
 --- a/drivers/pci/htirq.c
@@ -29253,6 +29537,175 @@ index 7eb4109a3df4..09b3d540174a 100644
  
  void write_ht_irq_msg(unsigned int irq, struct ht_irq_msg *msg)
  {
+diff --git a/drivers/pinctrl/bcm/pinctrl-bcm2835.c b/drivers/pinctrl/bcm/pinctrl-bcm2835.c
+index fa77165fab2c..271a82598d4f 100644
+--- a/drivers/pinctrl/bcm/pinctrl-bcm2835.c
++++ b/drivers/pinctrl/bcm/pinctrl-bcm2835.c
+@@ -29,6 +29,7 @@
+ #include <linux/irq.h>
+ #include <linux/irqdesc.h>
+ #include <linux/irqdomain.h>
++#include <linux/ipipe.h>
+ #include <linux/module.h>
+ #include <linux/of_address.h>
+ #include <linux/of.h>
+@@ -106,7 +107,11 @@ struct bcm2835_pinctrl {
+ 	struct pinctrl_gpio_range gpio_range;
+ 
+ 	struct bcm2835_gpio_irqdata irq_data[BCM2835_NUM_BANKS];
+-	spinlock_t irq_lock[BCM2835_NUM_BANKS];
++#ifdef CONFIG_IPIPE
++	ipipe_spinlock_t irq_lock[BCM2835_NUM_BANKS];
++#else
++	raw_spinlock_t irq_lock[BCM2835_NUM_BANKS];
++#endif
+ };
+ 
+ static struct lock_class_key gpio_lock_class;
+@@ -407,11 +412,19 @@ static irqreturn_t bcm2835_gpio_irq_handler(int irq, void *dev_id)
+ 		gpio = (32 * bank) + offset;
+ 		type = pc->irq_type[gpio];
+ 
+-		generic_handle_irq(irq_linear_revmap(pc->irq_domain, gpio));
++		ipipe_handle_demuxed_irq(irq_linear_revmap(pc->irq_domain, gpio));
+ 	}
+ 	return events ? IRQ_HANDLED : IRQ_NONE;
+ }
+ 
++static void gpio_irq_cascade(struct irq_desc *desc)
++{
++#ifdef CONFIG_IPIPE
++	unsigned int irq = irq_desc_get_irq(desc);
++	bcm2835_gpio_irq_handler(irq, irq_get_handler_data(irq));
++#endif
++}
++
+ static inline void __bcm2835_gpio_irq_config(struct bcm2835_pinctrl *pc,
+ 	unsigned reg, unsigned offset, bool enable)
+ {
+@@ -461,10 +474,11 @@ static void bcm2835_gpio_irq_enable(struct irq_data *data)
+ 	unsigned bank = GPIO_REG_OFFSET(gpio);
+ 	unsigned long flags;
+ 
+-	spin_lock_irqsave(&pc->irq_lock[bank], flags);
++	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
+ 	set_bit(offset, &pc->enabled_irq_map[bank]);
+ 	bcm2835_gpio_irq_config(pc, gpio, true);
+-	spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
++	ipipe_unlock_irq(data->irq);
++	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
+ }
+ 
+ static void bcm2835_gpio_irq_disable(struct irq_data *data)
+@@ -475,12 +489,13 @@ static void bcm2835_gpio_irq_disable(struct irq_data *data)
+ 	unsigned bank = GPIO_REG_OFFSET(gpio);
+ 	unsigned long flags;
+ 
+-	spin_lock_irqsave(&pc->irq_lock[bank], flags);
++	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
+ 	bcm2835_gpio_irq_config(pc, gpio, false);
+ 	/* Clear events that were latched prior to clearing event sources */
+ 	bcm2835_gpio_set_bit(pc, GPEDS0, gpio);
+ 	clear_bit(offset, &pc->enabled_irq_map[bank]);
+-	spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
++	ipipe_lock_irq(data->irq);
++	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
+ }
+ 
+ static int __bcm2835_gpio_irq_set_type_disabled(struct bcm2835_pinctrl *pc,
+@@ -582,7 +597,7 @@ static int bcm2835_gpio_irq_set_type(struct irq_data *data, unsigned int type)
+ 	unsigned long flags;
+ 	int ret;
+ 
+-	spin_lock_irqsave(&pc->irq_lock[bank], flags);
++	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
+ 
+ 	if (test_bit(offset, &pc->enabled_irq_map[bank]))
+ 		ret = __bcm2835_gpio_irq_set_type_enabled(pc, gpio, type);
+@@ -594,7 +609,7 @@ static int bcm2835_gpio_irq_set_type(struct irq_data *data, unsigned int type)
+ 	else
+ 		irq_set_handler_locked(data, handle_level_irq);
+ 
+-	spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
++	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
+ 
+ 	return ret;
+ }
+@@ -607,6 +622,39 @@ static void bcm2835_gpio_irq_ack(struct irq_data *data)
+ 	bcm2835_gpio_set_bit(pc, GPEDS0, gpio);
+ }
+ 
++#ifdef CONFIG_IPIPE
++
++static void bcm2835_gpio_irq_hold(struct irq_data *data)
++{
++	struct bcm2835_pinctrl *pc = irq_data_get_irq_chip_data(data);
++	unsigned gpio = irqd_to_hwirq(data);
++	unsigned offset = GPIO_REG_SHIFT(gpio);
++	unsigned bank = GPIO_REG_OFFSET(gpio);
++	unsigned long flags;
++
++	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
++	bcm2835_gpio_irq_config(pc, gpio, false);
++	bcm2835_gpio_set_bit(pc, GPEDS0, gpio);
++	clear_bit(offset, &pc->enabled_irq_map[bank]);
++	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
++}
++
++static void bcm2835_gpio_irq_release(struct irq_data *data)
++{
++	struct bcm2835_pinctrl *pc = irq_data_get_irq_chip_data(data);
++	unsigned gpio = irqd_to_hwirq(data);
++	unsigned offset = GPIO_REG_SHIFT(gpio);
++	unsigned bank = GPIO_REG_OFFSET(gpio);
++	unsigned long flags;
++
++	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
++	set_bit(offset, &pc->enabled_irq_map[bank]);
++	bcm2835_gpio_irq_config(pc, gpio, true);
++	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
++}
++
++#endif
++
+ static struct irq_chip bcm2835_gpio_irq_chip = {
+ 	.name = MODULE_NAME,
+ 	.irq_enable = bcm2835_gpio_irq_enable,
+@@ -615,6 +663,10 @@ static struct irq_chip bcm2835_gpio_irq_chip = {
+ 	.irq_ack = bcm2835_gpio_irq_ack,
+ 	.irq_mask = bcm2835_gpio_irq_disable,
+ 	.irq_unmask = bcm2835_gpio_irq_enable,
++#ifdef CONFIG_IPIPE
++	.irq_hold = bcm2835_gpio_irq_hold,
++	.irq_release = bcm2835_gpio_irq_release,
++#endif
+ };
+ 
+ static int bcm2835_pctl_get_groups_count(struct pinctrl_dev *pctldev)
+@@ -1025,12 +1077,17 @@ static int bcm2835_pinctrl_probe(struct platform_device *pdev)
+ 			return -ENOMEM;
+ 		snprintf(name, len, "%s:bank%d", dev_name(pc->dev), i);
+ 
+-		err = devm_request_irq(dev, pc->irq[i],
+-			bcm2835_gpio_irq_handler, IRQF_SHARED,
+-			name, &pc->irq_data[i]);
+-		if (err) {
+-			dev_err(dev, "unable to request IRQ %d\n", pc->irq[i]);
+-			return err;
++		if (IS_ENABLED(CONFIG_IPIPE)) {
++			irq_set_chained_handler(pc->irq[i], gpio_irq_cascade);
++			irq_set_handler_data(pc->irq[i], &pc->irq_data[i]);
++		} else {
++			err = devm_request_irq(dev, pc->irq[i],
++					       bcm2835_gpio_irq_handler, IRQF_SHARED,
++					       name, &pc->irq_data[i]);
++			if (err) {
++				dev_err(dev, "unable to request IRQ %d\n", pc->irq[i]);
++				return err;
++			}
+ 		}
+ 	}
+ 
 diff --git a/drivers/pinctrl/pinctrl-at91.c b/drivers/pinctrl/pinctrl-at91.c
 index 9f0904185909..c3a142446bb6 100644
 --- a/drivers/pinctrl/pinctrl-at91.c
@@ -41349,7 +41802,7 @@ index 2a96b063d659..6358ecae8fcc 100644
  	help
  	  This option will modify all the calls to function tracing
 diff --git a/kernel/trace/ftrace.c b/kernel/trace/ftrace.c
-index 221eb59272e1..0cfedc57e5c7 100644
+index 4f7ea8446bb5..d060d9332d48 100644
 --- a/kernel/trace/ftrace.c
 +++ b/kernel/trace/ftrace.c
 @@ -32,6 +32,7 @@
@@ -41502,7 +41955,7 @@ index f5c016e8fc88..45d5c68d1718 100644
  
  /**
 diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
-index 52ee2c51f4b3..43259c3b1f6b 100644
+index 53c308068e39..bb1b33b09637 100644
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
 @@ -2471,8 +2471,9 @@ int trace_vbprintk(unsigned long ip, const char *fmt, va_list args)
