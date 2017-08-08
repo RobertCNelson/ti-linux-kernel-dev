@@ -350,6 +350,8 @@ lts44_backports () {
 	else
 		patch_backports
 	fi
+
+	${git} "${DIR}/patches/backports/iio/0001-regulator-tps65917-Add-support-for-SMPS12.patch"
 	${git} "${DIR}/patches/backports/iio/0002-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 	${git} "${DIR}/patches/backports/iio/0003-staging-iio-ad7606-fix-improper-setting-of-oversampl.patch"
 	${git} "${DIR}/patches/backports/iio/0004-iio-pressure-mpl115-do-not-rely-on-structure-field-o.patch"
