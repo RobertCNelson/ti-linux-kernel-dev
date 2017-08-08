@@ -227,7 +227,7 @@ aufs4
 #local_patch
 
 ipipe () {
-	kernel_base="v4.4.43"
+	kernel_base="v4.4.71"
 	xenomai_branch="ipipe-4.4.y"
 	echo "dir: ipipe"
 	#regenerate="enable"
@@ -246,9 +246,9 @@ ipipe () {
 		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
 
 		cp -v arch/arm/mach-omap2/timer.c ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c
+		cp -v arch/arm/mm/mmap.c ../patches/${xenomai_branch}/arch_arm_mm_mmap.c
 		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
 		cp -v drivers/memory/omap-gpmc.c ../patches/${xenomai_branch}/drivers_memory_omap-gpmc.c
-		cp -v arch/x86/kernel/apic/io_apic.c ../patches/${xenomai_branch}/arch_x86_kernel_apic_io_apic.c
 
 		${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/${xenomai_branch}/${xenomai_branch}.diff
@@ -260,9 +260,9 @@ ipipe () {
 		fi
 
 		cp -v ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c arch/arm/mach-omap2/timer.c
+		cp -v ../patches/${xenomai_branch}/arch_arm_mm_mmap.c arch/arm/mm/mmap.c
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
 		cp -v ../patches/${xenomai_branch}/drivers_memory_omap-gpmc.c drivers/memory/omap-gpmc.c
-		cp -v ../patches/${xenomai_branch}/arch_x86_kernel_apic_io_apic.c arch/x86/kernel/apic/io_apic.c
 
 		#exit 2
 
@@ -436,7 +436,6 @@ lts44_backports () {
 	else
 		patch_backports
 	fi
-
 	${git} "${DIR}/patches/backports/iio/0002-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 	${git} "${DIR}/patches/backports/iio/0003-staging-iio-ad7606-fix-improper-setting-of-oversampl.patch"
 	${git} "${DIR}/patches/backports/iio/0004-iio-pressure-mpl115-do-not-rely-on-structure-field-o.patch"
@@ -446,8 +445,11 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0008-iio-bmg160-reset-chip-when-probing.patch"
 	${git} "${DIR}/patches/backports/iio/0009-iio-dac-ad7303-fix-channel-description.patch"
 	${git} "${DIR}/patches/backports/iio/0010-iio-proximity-as3935-fix-as3935_write.patch"
+	${git} "${DIR}/patches/backports/iio/0011-iio-light-ltr501-Fix-interchanged-als-ps-register-fi.patch"
+	${git} "${DIR}/patches/backports/iio/0012-iio-proximity-as3935-fix-AS3935_INT-mask.patch"
+	${git} "${DIR}/patches/backports/iio/0013-iio-proximity-as3935-recalibrate-RCO-after-resume.patch"
 
-	backport_tag="v4.9.40"
+	backport_tag="v4.9.41"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
