@@ -365,7 +365,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0012-iio-proximity-as3935-fix-AS3935_INT-mask.patch"
 	${git} "${DIR}/patches/backports/iio/0013-iio-proximity-as3935-recalibrate-RCO-after-resume.patch"
 
-	backport_tag="v4.9.41"
+	backport_tag="v4.9.43"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
