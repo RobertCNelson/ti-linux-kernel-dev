@@ -436,6 +436,8 @@ lts44_backports () {
 	else
 		patch_backports
 	fi
+
+	${git} "${DIR}/patches/backports/iio/0001-regulator-tps65917-Add-support-for-SMPS12.patch"
 	${git} "${DIR}/patches/backports/iio/0002-kernel-time-timekeeping.c-get_monotonic_coarse64.patch"
 	${git} "${DIR}/patches/backports/iio/0003-staging-iio-ad7606-fix-improper-setting-of-oversampl.patch"
 	${git} "${DIR}/patches/backports/iio/0004-iio-pressure-mpl115-do-not-rely-on-structure-field-o.patch"
@@ -449,7 +451,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0012-iio-proximity-as3935-fix-AS3935_INT-mask.patch"
 	${git} "${DIR}/patches/backports/iio/0013-iio-proximity-as3935-recalibrate-RCO-after-resume.patch"
 
-	backport_tag="v4.9.41"
+	backport_tag="v4.9.43"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
