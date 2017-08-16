@@ -1,6 +1,6 @@
-From 177a81e88510fa15ac2fe44d50cd22e57765990a Mon Sep 17 00:00:00 2001
+From 4d60645f6464b6e3bb8d87c9fe6616932f8ecfec Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 14 Aug 2017 10:36:25 -0500
+Date: Tue, 15 Aug 2017 20:21:10 -0500
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
@@ -277,7 +277,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/x86/kernel/apic/apic.c                    |   46 +-
  arch/x86/kernel/apic/apic_flat_64.c            |    4 +-
  arch/x86/kernel/apic/htirq.c                   |    3 +
- arch/x86/kernel/apic/io_apic.c                 |  169 +-
+ arch/x86/kernel/apic/io_apic.c                 |  179 ++-
  arch/x86/kernel/apic/ipi.c                     |   20 +-
  arch/x86/kernel/apic/msi.c                     |   12 +
  arch/x86/kernel/apic/vector.c                  |   13 +-
@@ -467,7 +467,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  mm/mprotect.c                                  |   10 +-
  mm/vmalloc.c                                   |    2 +
  scripts/ipipe/genpatches.sh                    |  219 +++
- 463 files changed, 23577 insertions(+), 1691 deletions(-)
+ 463 files changed, 23587 insertions(+), 1691 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -20948,7 +20948,7 @@ index ae50d3454d78..2e39774c39d5 100644
  };
  
 diff --git a/arch/x86/kernel/apic/io_apic.c b/arch/x86/kernel/apic/io_apic.c
-index fc91c98bee01..8b99f35509ff 100644
+index fc91c98bee01..9aac7547ce8b 100644
 --- a/arch/x86/kernel/apic/io_apic.c
 +++ b/arch/x86/kernel/apic/io_apic.c
 @@ -76,7 +76,7 @@
@@ -21102,7 +21102,7 @@ index fc91c98bee01..8b99f35509ff 100644
  	eoi_ioapic_pin(data->entry.vector, data);
  }
  
-@@ -1867,6 +1912,59 @@ static int ioapic_set_affinity(struct irq_data *irq_data,
+@@ -1867,6 +1912,69 @@ static int ioapic_set_affinity(struct irq_data *irq_data,
  	return ret;
  }
  
@@ -21147,6 +21147,16 @@ index fc91c98bee01..8b99f35509ff 100644
 +	ioapic_ack_level(irq_data);
 +}
 +
++static void hold_ioapic_ir_irq(struct irq_data *irq_data)
++{
++	struct mp_chip_data *data = irq_data->chip_data;
++
++	raw_spin_lock(&ioapic_lock);
++	__mask_ioapic(data);
++	raw_spin_unlock(&ioapic_lock);
++	ioapic_ir_ack_level(irq_data);
++}
++
 +static void release_ioapic_irq(struct irq_data *irq_data)
 +{
 +	struct mp_chip_data *data = irq_data->chip_data;
@@ -21162,7 +21172,7 @@ index fc91c98bee01..8b99f35509ff 100644
  static struct irq_chip ioapic_chip __read_mostly = {
  	.name			= "IO-APIC",
  	.irq_startup		= startup_ioapic_irq,
-@@ -1876,6 +1974,13 @@ static struct irq_chip ioapic_chip __read_mostly = {
+@@ -1876,6 +1984,13 @@ static struct irq_chip ioapic_chip __read_mostly = {
  	.irq_eoi		= ioapic_ack_level,
  	.irq_set_affinity	= ioapic_set_affinity,
  	.irq_retrigger		= irq_chip_retrigger_hierarchy,
@@ -21176,7 +21186,7 @@ index fc91c98bee01..8b99f35509ff 100644
  	.flags			= IRQCHIP_SKIP_SET_WAKE,
  };
  
-@@ -1888,6 +1993,13 @@ static struct irq_chip ioapic_ir_chip __read_mostly = {
+@@ -1888,6 +2003,13 @@ static struct irq_chip ioapic_ir_chip __read_mostly = {
  	.irq_eoi		= ioapic_ir_ack_level,
  	.irq_set_affinity	= ioapic_set_affinity,
  	.irq_retrigger		= irq_chip_retrigger_hierarchy,
@@ -21184,13 +21194,13 @@ index fc91c98bee01..8b99f35509ff 100644
 +#ifdef CONFIG_SMP
 +	.irq_move		= move_xxapic_irq,
 +#endif
-+	.irq_hold		= hold_ioapic_irq,
++	.irq_hold		= hold_ioapic_ir_irq,
 +	.irq_release		= release_ioapic_irq,
 +#endif
  	.flags			= IRQCHIP_SKIP_SET_WAKE,
  };
  
-@@ -1919,23 +2031,29 @@ static inline void init_IO_APIC_traps(void)
+@@ -1919,23 +2041,29 @@ static inline void init_IO_APIC_traps(void)
  
  static void mask_lapic_irq(struct irq_data *data)
  {
@@ -21223,7 +21233,7 @@ index fc91c98bee01..8b99f35509ff 100644
  }
  
  static struct irq_chip lapic_chip __read_mostly = {
-@@ -1943,6 +2061,9 @@ static struct irq_chip lapic_chip __read_mostly = {
+@@ -1943,6 +2071,9 @@ static struct irq_chip lapic_chip __read_mostly = {
  	.irq_mask	= mask_lapic_irq,
  	.irq_unmask	= unmask_lapic_irq,
  	.irq_ack	= ack_lapic_irq,
@@ -21233,7 +21243,7 @@ index fc91c98bee01..8b99f35509ff 100644
  };
  
  static void lapic_register_intr(int irq)
-@@ -2062,7 +2183,7 @@ static inline void __init check_timer(void)
+@@ -2062,7 +2193,7 @@ static inline void __init check_timer(void)
  	/*
  	 * get/set the timer IRQ vector:
  	 */
@@ -21242,7 +21252,7 @@ index fc91c98bee01..8b99f35509ff 100644
  
  	/*
  	 * As IRQ0 is to be enabled in the 8259A, the virtual
-@@ -2159,6 +2280,10 @@ static inline void __init check_timer(void)
+@@ -2159,6 +2290,10 @@ static inline void __init check_timer(void)
  		    "...trying to set up timer as Virtual Wire IRQ...\n");
  
  	lapic_register_intr(0);
@@ -21253,7 +21263,7 @@ index fc91c98bee01..8b99f35509ff 100644
  	apic_write(APIC_LVT0, APIC_DM_FIXED | cfg->vector);	/* Fixed mode */
  	legacy_pic->unmask(0);
  
-@@ -2167,7 +2292,7 @@ static inline void __init check_timer(void)
+@@ -2167,7 +2302,7 @@ static inline void __init check_timer(void)
  		goto out;
  	}
  	local_irq_disable();
@@ -21262,7 +21272,7 @@ index fc91c98bee01..8b99f35509ff 100644
  	apic_write(APIC_LVT0, APIC_LVT_MASKED | APIC_DM_FIXED | cfg->vector);
  	apic_printk(APIC_QUIET, KERN_INFO "..... failed.\n");
  
-@@ -2515,6 +2640,18 @@ int acpi_get_override_irq(u32 gsi, int *trigger, int *polarity)
+@@ -2515,6 +2650,18 @@ int acpi_get_override_irq(u32 gsi, int *trigger, int *polarity)
  	return 0;
  }
  
@@ -21281,7 +21291,7 @@ index fc91c98bee01..8b99f35509ff 100644
  /*
   * This function currently is only a helper for the i386 smp boot process where
   * we need to reprogram the ioredtbls to cater for the cpus which have come online
-@@ -2956,7 +3093,7 @@ int mp_irqdomain_alloc(struct irq_domain *domain, unsigned int virq,
+@@ -2956,7 +3103,7 @@ int mp_irqdomain_alloc(struct irq_domain *domain, unsigned int virq,
  		mp_setup_entry(cfg, data, info->ioapic_entry);
  	mp_register_handler(virq, data->trigger);
  	if (virq < nr_legacy_irqs())

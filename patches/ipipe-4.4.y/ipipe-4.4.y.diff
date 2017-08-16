@@ -20435,7 +20435,7 @@ index ae50d3454d78..2e39774c39d5 100644
  };
  
 diff --git a/arch/x86/kernel/apic/io_apic.c b/arch/x86/kernel/apic/io_apic.c
-index 1e5d2f07416b..605e9c04138a 100644
+index 1e5d2f07416b..939914a7dafb 100644
 --- a/arch/x86/kernel/apic/io_apic.c
 +++ b/arch/x86/kernel/apic/io_apic.c
 @@ -76,7 +76,7 @@
@@ -20589,7 +20589,7 @@ index 1e5d2f07416b..605e9c04138a 100644
  	eoi_ioapic_pin(data->entry.vector, data);
  }
  
-@@ -1867,6 +1912,59 @@ static int ioapic_set_affinity(struct irq_data *irq_data,
+@@ -1867,6 +1912,69 @@ static int ioapic_set_affinity(struct irq_data *irq_data,
  	return ret;
  }
  
@@ -20634,6 +20634,16 @@ index 1e5d2f07416b..605e9c04138a 100644
 +	ioapic_ack_level(irq_data);
 +}
 +
++static void hold_ioapic_ir_irq(struct irq_data *irq_data)
++{
++	struct mp_chip_data *data = irq_data->chip_data;
++
++	raw_spin_lock(&ioapic_lock);
++	__mask_ioapic(data);
++	raw_spin_unlock(&ioapic_lock);
++	ioapic_ir_ack_level(irq_data);
++}
++
 +static void release_ioapic_irq(struct irq_data *irq_data)
 +{
 +	struct mp_chip_data *data = irq_data->chip_data;
@@ -20649,7 +20659,7 @@ index 1e5d2f07416b..605e9c04138a 100644
  static struct irq_chip ioapic_chip __read_mostly = {
  	.name			= "IO-APIC",
  	.irq_startup		= startup_ioapic_irq,
-@@ -1876,6 +1974,13 @@ static struct irq_chip ioapic_chip __read_mostly = {
+@@ -1876,6 +1984,13 @@ static struct irq_chip ioapic_chip __read_mostly = {
  	.irq_eoi		= ioapic_ack_level,
  	.irq_set_affinity	= ioapic_set_affinity,
  	.irq_retrigger		= irq_chip_retrigger_hierarchy,
@@ -20663,7 +20673,7 @@ index 1e5d2f07416b..605e9c04138a 100644
  	.flags			= IRQCHIP_SKIP_SET_WAKE,
  };
  
-@@ -1888,6 +1993,13 @@ static struct irq_chip ioapic_ir_chip __read_mostly = {
+@@ -1888,6 +2003,13 @@ static struct irq_chip ioapic_ir_chip __read_mostly = {
  	.irq_eoi		= ioapic_ir_ack_level,
  	.irq_set_affinity	= ioapic_set_affinity,
  	.irq_retrigger		= irq_chip_retrigger_hierarchy,
@@ -20671,13 +20681,13 @@ index 1e5d2f07416b..605e9c04138a 100644
 +#ifdef CONFIG_SMP
 +	.irq_move		= move_xxapic_irq,
 +#endif
-+	.irq_hold		= hold_ioapic_irq,
++	.irq_hold		= hold_ioapic_ir_irq,
 +	.irq_release		= release_ioapic_irq,
 +#endif
  	.flags			= IRQCHIP_SKIP_SET_WAKE,
  };
  
-@@ -1919,23 +2031,29 @@ static inline void init_IO_APIC_traps(void)
+@@ -1919,23 +2041,29 @@ static inline void init_IO_APIC_traps(void)
  
  static void mask_lapic_irq(struct irq_data *data)
  {
@@ -20710,7 +20720,7 @@ index 1e5d2f07416b..605e9c04138a 100644
  }
  
  static struct irq_chip lapic_chip __read_mostly = {
-@@ -1943,6 +2061,9 @@ static struct irq_chip lapic_chip __read_mostly = {
+@@ -1943,6 +2071,9 @@ static struct irq_chip lapic_chip __read_mostly = {
  	.irq_mask	= mask_lapic_irq,
  	.irq_unmask	= unmask_lapic_irq,
  	.irq_ack	= ack_lapic_irq,
@@ -20720,7 +20730,7 @@ index 1e5d2f07416b..605e9c04138a 100644
  };
  
  static void lapic_register_intr(int irq)
-@@ -2062,7 +2183,7 @@ static inline void __init check_timer(void)
+@@ -2062,7 +2193,7 @@ static inline void __init check_timer(void)
  	/*
  	 * get/set the timer IRQ vector:
  	 */
@@ -20729,7 +20739,7 @@ index 1e5d2f07416b..605e9c04138a 100644
  
  	/*
  	 * As IRQ0 is to be enabled in the 8259A, the virtual
-@@ -2159,6 +2280,10 @@ static inline void __init check_timer(void)
+@@ -2159,6 +2290,10 @@ static inline void __init check_timer(void)
  		    "...trying to set up timer as Virtual Wire IRQ...\n");
  
  	lapic_register_intr(0);
@@ -20740,7 +20750,7 @@ index 1e5d2f07416b..605e9c04138a 100644
  	apic_write(APIC_LVT0, APIC_DM_FIXED | cfg->vector);	/* Fixed mode */
  	legacy_pic->unmask(0);
  
-@@ -2167,7 +2292,7 @@ static inline void __init check_timer(void)
+@@ -2167,7 +2302,7 @@ static inline void __init check_timer(void)
  		goto out;
  	}
  	local_irq_disable();
@@ -20749,7 +20759,7 @@ index 1e5d2f07416b..605e9c04138a 100644
  	apic_write(APIC_LVT0, APIC_LVT_MASKED | APIC_DM_FIXED | cfg->vector);
  	apic_printk(APIC_QUIET, KERN_INFO "..... failed.\n");
  
-@@ -2515,6 +2640,18 @@ int acpi_get_override_irq(u32 gsi, int *trigger, int *polarity)
+@@ -2515,6 +2650,18 @@ int acpi_get_override_irq(u32 gsi, int *trigger, int *polarity)
  	return 0;
  }
  
@@ -20768,7 +20778,7 @@ index 1e5d2f07416b..605e9c04138a 100644
  /*
   * This function currently is only a helper for the i386 smp boot process where
   * we need to reprogram the ioredtbls to cater for the cpus which have come online
-@@ -2956,7 +3093,7 @@ int mp_irqdomain_alloc(struct irq_domain *domain, unsigned int virq,
+@@ -2956,7 +3103,7 @@ int mp_irqdomain_alloc(struct irq_domain *domain, unsigned int virq,
  		mp_setup_entry(cfg, data, info->ioapic_entry);
  	mp_register_handler(virq, data->trigger);
  	if (virq < nr_legacy_irqs())
