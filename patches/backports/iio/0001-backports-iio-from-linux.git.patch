@@ -1,6 +1,6 @@
-From 505b8b6b4688eedae8e181605fc24bcc8b58824d Mon Sep 17 00:00:00 2001
+From b921e04b507adb5be02a6dda04ee0a1d3a71d12f Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 15 Aug 2017 20:17:22 -0500
+Date: Wed, 16 Aug 2017 20:49:54 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -11,7 +11,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/accel/Makefile                         |    9 +
  drivers/iio/accel/bma180.c                         |    2 +-
  drivers/iio/accel/bma220_spi.c                     |  338 ++++
- drivers/iio/accel/bmc150-accel-core.c              |  149 +-
+ drivers/iio/accel/bmc150-accel-core.c              |  158 +-
  drivers/iio/accel/bmc150-accel-i2c.c               |    7 +-
  drivers/iio/accel/bmc150-accel-spi.c               |    8 +-
  drivers/iio/accel/bmc150-accel.h                   |    1 +
@@ -69,7 +69,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/ti-ads1015.c                       |  713 ++++++++
  drivers/iio/adc/ti-ads8688.c                       |  487 ++++++
  drivers/iio/adc/ti_am335x_adc.c                    |   35 +-
- drivers/iio/adc/vf610_adc.c                        |   27 +-
+ drivers/iio/adc/vf610_adc.c                        |   29 +-
  drivers/iio/adc/xilinx-xadc-core.c                 |    2 +-
  drivers/iio/adc/xilinx-xadc-events.c               |    4 +-
  drivers/iio/buffer/Kconfig                         |   20 +
@@ -186,7 +186,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/light/stk3310.c                        |    3 +-
  drivers/iio/light/tcs3414.c                        |   14 +-
  drivers/iio/light/tcs3472.c                        |   15 +-
- drivers/iio/light/tsl2563.c                        |    5 +-
+ drivers/iio/light/tsl2563.c                        |    7 +-
  drivers/iio/light/us5182d.c                        |  609 ++++++-
  drivers/iio/light/veml6070.c                       |  218 +++
  drivers/iio/magnetometer/Kconfig                   |   68 +-
@@ -298,7 +298,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/iio/meter/ade7854-spi.c            |    7 -
  drivers/staging/iio/meter/ade7854.c                |   28 +-
  drivers/staging/iio/resolver/ad2s1200.c            |   12 +-
- drivers/staging/iio/resolver/ad2s1210.c            |   39 +-
+ drivers/staging/iio/resolver/ad2s1210.c            |   41 +-
  drivers/staging/iio/resolver/ad2s1210.h            |    8 +-
  drivers/staging/iio/trigger/Kconfig                |   10 -
  drivers/staging/iio/trigger/Makefile               |    1 -
@@ -319,7 +319,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/linux/platform_data/ad5761.h               |   44 +
  include/linux/platform_data/st_sensors_pdata.h     |    2 +
  include/uapi/linux/iio/types.h                     |    4 +
- 314 files changed, 31064 insertions(+), 3284 deletions(-)
+ 314 files changed, 31075 insertions(+), 3288 deletions(-)
  create mode 100644 drivers/iio/accel/bma220_spi.c
  create mode 100644 drivers/iio/accel/mma7455.h
  create mode 100644 drivers/iio/accel/mma7455_core.c
@@ -987,7 +987,7 @@ index 000000000000..5099f295dd37
 +MODULE_DESCRIPTION("BMA220 acceleration sensor driver");
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/iio/accel/bmc150-accel-core.c b/drivers/iio/accel/bmc150-accel-core.c
-index fa24d5196615..59b380dbf27f 100644
+index c7122919a8c0..59b380dbf27f 100644
 --- a/drivers/iio/accel/bmc150-accel-core.c
 +++ b/drivers/iio/accel/bmc150-accel-core.c
 @@ -25,7 +25,6 @@
@@ -1006,15 +1006,18 @@ index fa24d5196615..59b380dbf27f 100644
  };
  
  enum bmc150_power_modes {
-@@ -191,7 +191,6 @@ enum bmc150_accel_trigger_id {
+@@ -191,9 +191,9 @@ enum bmc150_accel_trigger_id {
  
  struct bmc150_accel_data {
  	struct regmap *regmap;
 -	struct device *dev;
  	int irq;
  	struct bmc150_accel_interrupt interrupts[BMC150_ACCEL_INTERRUPTS];
- 	atomic_t active_intr;
-@@ -249,16 +248,18 @@ static const struct {
++	atomic_t active_intr;
+ 	struct bmc150_accel_trigger triggers[BMC150_ACCEL_TRIGGERS];
+ 	struct mutex mutex;
+ 	u8 fifo_mode, watermark;
+@@ -248,16 +248,18 @@ static const struct {
  				       {500000, BMC150_ACCEL_SLEEP_500_MS},
  				       {1000000, BMC150_ACCEL_SLEEP_1_SEC} };
  
@@ -1034,7 +1037,7 @@ index fa24d5196615..59b380dbf27f 100644
  	int i;
  	int ret;
  	u8 lpw_bits;
-@@ -282,11 +283,11 @@ static int bmc150_accel_set_mode(struct bmc150_accel_data *data,
+@@ -281,11 +283,11 @@ static int bmc150_accel_set_mode(struct bmc150_accel_data *data,
  	lpw_bits = mode << BMC150_ACCEL_PMU_MODE_SHIFT;
  	lpw_bits |= (dur_val << BMC150_ACCEL_PMU_BIT_SLEEP_DUR_SHIFT);
  
@@ -1048,7 +1051,7 @@ index fa24d5196615..59b380dbf27f 100644
  		return ret;
  	}
  
-@@ -319,23 +320,24 @@ static int bmc150_accel_set_bw(struct bmc150_accel_data *data, int val,
+@@ -318,23 +320,24 @@ static int bmc150_accel_set_bw(struct bmc150_accel_data *data, int val,
  
  static int bmc150_accel_update_slope(struct bmc150_accel_data *data)
  {
@@ -1076,7 +1079,7 @@ index fa24d5196615..59b380dbf27f 100644
  		data->slope_dur);
  
  	return ret;
-@@ -381,20 +383,21 @@ static int bmc150_accel_get_startup_times(struct bmc150_accel_data *data)
+@@ -380,20 +383,21 @@ static int bmc150_accel_get_startup_times(struct bmc150_accel_data *data)
  
  static int bmc150_accel_set_power_state(struct bmc150_accel_data *data, bool on)
  {
@@ -1103,7 +1106,7 @@ index fa24d5196615..59b380dbf27f 100644
  
  		return ret;
  	}
-@@ -448,6 +451,7 @@ static void bmc150_accel_interrupts_setup(struct iio_dev *indio_dev,
+@@ -447,6 +451,7 @@ static void bmc150_accel_interrupts_setup(struct iio_dev *indio_dev,
  static int bmc150_accel_set_interrupt(struct bmc150_accel_data *data, int i,
  				      bool state)
  {
@@ -1111,7 +1114,7 @@ index fa24d5196615..59b380dbf27f 100644
  	struct bmc150_accel_interrupt *intr = &data->interrupts[i];
  	const struct bmc150_accel_interrupt_info *info = intr->info;
  	int ret;
-@@ -477,7 +481,7 @@ static int bmc150_accel_set_interrupt(struct bmc150_accel_data *data, int i,
+@@ -476,7 +481,7 @@ static int bmc150_accel_set_interrupt(struct bmc150_accel_data *data, int i,
  	ret = regmap_update_bits(data->regmap, info->map_reg, info->map_bitmask,
  				 (state ? info->map_bitmask : 0));
  	if (ret < 0) {
@@ -1120,7 +1123,7 @@ index fa24d5196615..59b380dbf27f 100644
  		goto out_fix_power_state;
  	}
  
-@@ -485,7 +489,7 @@ static int bmc150_accel_set_interrupt(struct bmc150_accel_data *data, int i,
+@@ -484,10 +489,15 @@ static int bmc150_accel_set_interrupt(struct bmc150_accel_data *data, int i,
  	ret = regmap_update_bits(data->regmap, info->en_reg, info->en_bitmask,
  				 (state ? info->en_bitmask : 0));
  	if (ret < 0) {
@@ -1129,7 +1132,15 @@ index fa24d5196615..59b380dbf27f 100644
  		goto out_fix_power_state;
  	}
  
-@@ -503,6 +507,7 @@ out_fix_power_state:
++	if (state)
++		atomic_inc(&data->active_intr);
++	else
++		atomic_dec(&data->active_intr);
++
+ 	return 0;
+ 
+ out_fix_power_state:
+@@ -497,6 +507,7 @@ out_fix_power_state:
  
  static int bmc150_accel_set_scale(struct bmc150_accel_data *data, int val)
  {
@@ -1137,7 +1148,7 @@ index fa24d5196615..59b380dbf27f 100644
  	int ret, i;
  
  	for (i = 0; i < ARRAY_SIZE(data->chip_info->scale_table); ++i) {
-@@ -511,8 +516,7 @@ static int bmc150_accel_set_scale(struct bmc150_accel_data *data, int val)
+@@ -505,8 +516,7 @@ static int bmc150_accel_set_scale(struct bmc150_accel_data *data, int val)
  				     BMC150_ACCEL_REG_PMU_RANGE,
  				     data->chip_info->scale_table[i].reg_range);
  			if (ret < 0) {
@@ -1147,7 +1158,7 @@ index fa24d5196615..59b380dbf27f 100644
  				return ret;
  			}
  
-@@ -526,6 +530,7 @@ static int bmc150_accel_set_scale(struct bmc150_accel_data *data, int val)
+@@ -520,6 +530,7 @@ static int bmc150_accel_set_scale(struct bmc150_accel_data *data, int val)
  
  static int bmc150_accel_get_temp(struct bmc150_accel_data *data, int *val)
  {
@@ -1155,7 +1166,7 @@ index fa24d5196615..59b380dbf27f 100644
  	int ret;
  	unsigned int value;
  
-@@ -533,7 +538,7 @@ static int bmc150_accel_get_temp(struct bmc150_accel_data *data, int *val)
+@@ -527,7 +538,7 @@ static int bmc150_accel_get_temp(struct bmc150_accel_data *data, int *val)
  
  	ret = regmap_read(data->regmap, BMC150_ACCEL_REG_TEMP, &value);
  	if (ret < 0) {
@@ -1164,7 +1175,7 @@ index fa24d5196615..59b380dbf27f 100644
  		mutex_unlock(&data->mutex);
  		return ret;
  	}
-@@ -548,6 +553,7 @@ static int bmc150_accel_get_axis(struct bmc150_accel_data *data,
+@@ -542,6 +553,7 @@ static int bmc150_accel_get_axis(struct bmc150_accel_data *data,
  				 struct iio_chan_spec const *chan,
  				 int *val)
  {
@@ -1172,7 +1183,7 @@ index fa24d5196615..59b380dbf27f 100644
  	int ret;
  	int axis = chan->scan_index;
  	__le16 raw_val;
-@@ -562,7 +568,7 @@ static int bmc150_accel_get_axis(struct bmc150_accel_data *data,
+@@ -556,7 +568,7 @@ static int bmc150_accel_get_axis(struct bmc150_accel_data *data,
  	ret = regmap_bulk_read(data->regmap, BMC150_ACCEL_AXIS_TO_REG(axis),
  			       &raw_val, sizeof(raw_val));
  	if (ret < 0) {
@@ -1181,7 +1192,7 @@ index fa24d5196615..59b380dbf27f 100644
  		bmc150_accel_set_power_state(data, false);
  		mutex_unlock(&data->mutex);
  		return ret;
-@@ -834,6 +840,7 @@ static int bmc150_accel_set_watermark(struct iio_dev *indio_dev, unsigned val)
+@@ -828,6 +840,7 @@ static int bmc150_accel_set_watermark(struct iio_dev *indio_dev, unsigned val)
  static int bmc150_accel_fifo_transfer(struct bmc150_accel_data *data,
  				      char *buffer, int samples)
  {
@@ -1189,7 +1200,7 @@ index fa24d5196615..59b380dbf27f 100644
  	int sample_length = 3 * 2;
  	int ret;
  	int total_length = samples * sample_length;
-@@ -857,7 +864,8 @@ static int bmc150_accel_fifo_transfer(struct bmc150_accel_data *data,
+@@ -851,7 +864,8 @@ static int bmc150_accel_fifo_transfer(struct bmc150_accel_data *data,
  	}
  
  	if (ret)
@@ -1199,7 +1210,7 @@ index fa24d5196615..59b380dbf27f 100644
  			step);
  
  	return ret;
-@@ -867,6 +875,7 @@ static int __bmc150_accel_fifo_flush(struct iio_dev *indio_dev,
+@@ -861,6 +875,7 @@ static int __bmc150_accel_fifo_flush(struct iio_dev *indio_dev,
  				     unsigned samples, bool irq)
  {
  	struct bmc150_accel_data *data = iio_priv(indio_dev);
@@ -1207,7 +1218,7 @@ index fa24d5196615..59b380dbf27f 100644
  	int ret, i;
  	u8 count;
  	u16 buffer[BMC150_ACCEL_FIFO_LENGTH * 3];
-@@ -876,7 +885,7 @@ static int __bmc150_accel_fifo_flush(struct iio_dev *indio_dev,
+@@ -870,7 +885,7 @@ static int __bmc150_accel_fifo_flush(struct iio_dev *indio_dev,
  
  	ret = regmap_read(data->regmap, BMC150_ACCEL_REG_FIFO_STATUS, &val);
  	if (ret < 0) {
@@ -1216,7 +1227,7 @@ index fa24d5196615..59b380dbf27f 100644
  		return ret;
  	}
  
-@@ -895,7 +904,7 @@ static int __bmc150_accel_fifo_flush(struct iio_dev *indio_dev,
+@@ -889,7 +904,7 @@ static int __bmc150_accel_fifo_flush(struct iio_dev *indio_dev,
  	 */
  	if (!irq) {
  		data->old_timestamp = data->timestamp;
@@ -1225,7 +1236,7 @@ index fa24d5196615..59b380dbf27f 100644
  	}
  
  	/*
-@@ -1108,27 +1117,23 @@ static const struct iio_info bmc150_accel_info_fifo = {
+@@ -1102,27 +1117,23 @@ static const struct iio_info bmc150_accel_info_fifo = {
  	.driver_module		= THIS_MODULE,
  };
  
@@ -1262,7 +1273,7 @@ index fa24d5196615..59b380dbf27f 100644
  
  	iio_push_to_buffers_with_timestamp(indio_dev, data->buffer,
  					   pf->timestamp);
-@@ -1142,6 +1147,7 @@ static int bmc150_accel_trig_try_reen(struct iio_trigger *trig)
+@@ -1136,6 +1147,7 @@ static int bmc150_accel_trig_try_reen(struct iio_trigger *trig)
  {
  	struct bmc150_accel_trigger *t = iio_trigger_get_drvdata(trig);
  	struct bmc150_accel_data *data = t->data;
@@ -1270,7 +1281,7 @@ index fa24d5196615..59b380dbf27f 100644
  	int ret;
  
  	/* new data interrupts don't need ack */
-@@ -1155,8 +1161,7 @@ static int bmc150_accel_trig_try_reen(struct iio_trigger *trig)
+@@ -1149,8 +1161,7 @@ static int bmc150_accel_trig_try_reen(struct iio_trigger *trig)
  			   BMC150_ACCEL_INT_MODE_LATCH_RESET);
  	mutex_unlock(&data->mutex);
  	if (ret < 0) {
@@ -1280,7 +1291,7 @@ index fa24d5196615..59b380dbf27f 100644
  		return ret;
  	}
  
-@@ -1207,13 +1212,14 @@ static const struct iio_trigger_ops bmc150_accel_trigger_ops = {
+@@ -1201,13 +1212,14 @@ static const struct iio_trigger_ops bmc150_accel_trigger_ops = {
  static int bmc150_accel_handle_roc_event(struct iio_dev *indio_dev)
  {
  	struct bmc150_accel_data *data = iio_priv(indio_dev);
@@ -1296,7 +1307,7 @@ index fa24d5196615..59b380dbf27f 100644
  		return ret;
  	}
  
-@@ -1256,6 +1262,7 @@ static irqreturn_t bmc150_accel_irq_thread_handler(int irq, void *private)
+@@ -1250,6 +1262,7 @@ static irqreturn_t bmc150_accel_irq_thread_handler(int irq, void *private)
  {
  	struct iio_dev *indio_dev = private;
  	struct bmc150_accel_data *data = iio_priv(indio_dev);
@@ -1304,7 +1315,7 @@ index fa24d5196615..59b380dbf27f 100644
  	bool ack = false;
  	int ret;
  
-@@ -1279,7 +1286,7 @@ static irqreturn_t bmc150_accel_irq_thread_handler(int irq, void *private)
+@@ -1273,7 +1286,7 @@ static irqreturn_t bmc150_accel_irq_thread_handler(int irq, void *private)
  				   BMC150_ACCEL_INT_MODE_LATCH_INT |
  				   BMC150_ACCEL_INT_MODE_LATCH_RESET);
  		if (ret)
@@ -1313,7 +1324,7 @@ index fa24d5196615..59b380dbf27f 100644
  
  		ret = IRQ_HANDLED;
  	} else {
-@@ -1299,7 +1306,7 @@ static irqreturn_t bmc150_accel_irq_handler(int irq, void *private)
+@@ -1293,7 +1306,7 @@ static irqreturn_t bmc150_accel_irq_handler(int irq, void *private)
  	int i;
  
  	data->old_timestamp = data->timestamp;
@@ -1322,7 +1333,7 @@ index fa24d5196615..59b380dbf27f 100644
  
  	for (i = 0; i < BMC150_ACCEL_TRIGGERS; i++) {
  		if (data->triggers[i].enabled) {
-@@ -1350,13 +1357,14 @@ static void bmc150_accel_unregister_triggers(struct bmc150_accel_data *data,
+@@ -1344,13 +1357,14 @@ static void bmc150_accel_unregister_triggers(struct bmc150_accel_data *data,
  static int bmc150_accel_triggers_setup(struct iio_dev *indio_dev,
  				       struct bmc150_accel_data *data)
  {
@@ -1339,7 +1350,7 @@ index fa24d5196615..59b380dbf27f 100644
  						       indio_dev->name,
  						       indio_dev->id);
  		if (!t->indio_trig) {
-@@ -1364,7 +1372,7 @@ static int bmc150_accel_triggers_setup(struct iio_dev *indio_dev,
+@@ -1358,7 +1372,7 @@ static int bmc150_accel_triggers_setup(struct iio_dev *indio_dev,
  			break;
  		}
  
@@ -1348,7 +1359,7 @@ index fa24d5196615..59b380dbf27f 100644
  		t->indio_trig->ops = &bmc150_accel_trigger_ops;
  		t->intr = bmc150_accel_triggers[i].intr;
  		t->data = data;
-@@ -1388,12 +1396,13 @@ static int bmc150_accel_triggers_setup(struct iio_dev *indio_dev,
+@@ -1382,12 +1396,13 @@ static int bmc150_accel_triggers_setup(struct iio_dev *indio_dev,
  
  static int bmc150_accel_fifo_set_mode(struct bmc150_accel_data *data)
  {
@@ -1363,7 +1374,7 @@ index fa24d5196615..59b380dbf27f 100644
  		return ret;
  	}
  
-@@ -1403,7 +1412,7 @@ static int bmc150_accel_fifo_set_mode(struct bmc150_accel_data *data)
+@@ -1397,7 +1412,7 @@ static int bmc150_accel_fifo_set_mode(struct bmc150_accel_data *data)
  	ret = regmap_write(data->regmap, BMC150_ACCEL_REG_FIFO_CONFIG0,
  			   data->watermark);
  	if (ret < 0)
@@ -1372,7 +1383,7 @@ index fa24d5196615..59b380dbf27f 100644
  
  	return ret;
  }
-@@ -1487,6 +1496,7 @@ static const struct iio_buffer_setup_ops bmc150_accel_buffer_ops = {
+@@ -1481,6 +1496,7 @@ static const struct iio_buffer_setup_ops bmc150_accel_buffer_ops = {
  
  static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
  {
@@ -1380,7 +1391,7 @@ index fa24d5196615..59b380dbf27f 100644
  	int ret, i;
  	unsigned int val;
  
-@@ -1500,12 +1510,11 @@ static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
+@@ -1494,12 +1510,11 @@ static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
  
  	ret = regmap_read(data->regmap, BMC150_ACCEL_REG_CHIP_ID, &val);
  	if (ret < 0) {
@@ -1395,7 +1406,7 @@ index fa24d5196615..59b380dbf27f 100644
  	for (i = 0; i < ARRAY_SIZE(bmc150_accel_chip_info_tbl); i++) {
  		if (bmc150_accel_chip_info_tbl[i].chip_id == val) {
  			data->chip_info = &bmc150_accel_chip_info_tbl[i];
-@@ -1514,7 +1523,7 @@ static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
+@@ -1508,7 +1523,7 @@ static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
  	}
  
  	if (!data->chip_info) {
@@ -1404,7 +1415,7 @@ index fa24d5196615..59b380dbf27f 100644
  		return -ENODEV;
  	}
  
-@@ -1531,8 +1540,7 @@ static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
+@@ -1525,8 +1540,7 @@ static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
  	ret = regmap_write(data->regmap, BMC150_ACCEL_REG_PMU_RANGE,
  			   BMC150_ACCEL_DEF_RANGE_4G);
  	if (ret < 0) {
@@ -1414,7 +1425,7 @@ index fa24d5196615..59b380dbf27f 100644
  		return ret;
  	}
  
-@@ -1550,8 +1558,7 @@ static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
+@@ -1544,8 +1558,7 @@ static int bmc150_accel_chip_init(struct bmc150_accel_data *data)
  			   BMC150_ACCEL_INT_MODE_LATCH_INT |
  			   BMC150_ACCEL_INT_MODE_LATCH_RESET);
  	if (ret < 0) {
@@ -1424,7 +1435,7 @@ index fa24d5196615..59b380dbf27f 100644
  		return ret;
  	}
  
-@@ -1571,7 +1578,6 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
+@@ -1565,7 +1578,6 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
  
  	data = iio_priv(indio_dev);
  	dev_set_drvdata(dev, indio_dev);
@@ -1432,7 +1443,7 @@ index fa24d5196615..59b380dbf27f 100644
  	data->irq = irq;
  
  	data->regmap = regmap;
-@@ -1586,6 +1592,7 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
+@@ -1580,6 +1592,7 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
  	indio_dev->channels = data->chip_info->channels;
  	indio_dev->num_channels = data->chip_info->num_channels;
  	indio_dev->name = name ? name : data->chip_info->name;
@@ -1440,7 +1451,7 @@ index fa24d5196615..59b380dbf27f 100644
  	indio_dev->modes = INDIO_DIRECT_MODE;
  	indio_dev->info = &bmc150_accel_info;
  
-@@ -1594,13 +1601,13 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
+@@ -1588,13 +1601,13 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
  					 bmc150_accel_trigger_handler,
  					 &bmc150_accel_buffer_ops);
  	if (ret < 0) {
@@ -1456,7 +1467,7 @@ index fa24d5196615..59b380dbf27f 100644
  						bmc150_accel_irq_handler,
  						bmc150_accel_irq_thread_handler,
  						IRQF_TRIGGER_RISING,
-@@ -1618,7 +1625,7 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
+@@ -1612,7 +1625,7 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
  		ret = regmap_write(data->regmap, BMC150_ACCEL_REG_INT_RST_LATCH,
  				   BMC150_ACCEL_INT_MODE_LATCH_RESET);
  		if (ret < 0) {
@@ -1465,7 +1476,7 @@ index fa24d5196615..59b380dbf27f 100644
  			goto err_buffer_cleanup;
  		}
  
-@@ -1635,24 +1642,22 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
+@@ -1629,24 +1642,22 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
  		}
  	}
  
@@ -1497,7 +1508,7 @@ index fa24d5196615..59b380dbf27f 100644
  err_trigger_unregister:
  	bmc150_accel_unregister_triggers(data, BMC150_ACCEL_TRIGGERS - 1);
  err_buffer_cleanup:
-@@ -1667,12 +1672,12 @@ int bmc150_accel_core_remove(struct device *dev)
+@@ -1661,12 +1672,12 @@ int bmc150_accel_core_remove(struct device *dev)
  	struct iio_dev *indio_dev = dev_get_drvdata(dev);
  	struct bmc150_accel_data *data = iio_priv(indio_dev);
  
@@ -1514,7 +1525,17 @@ index fa24d5196615..59b380dbf27f 100644
  	bmc150_accel_unregister_triggers(data, BMC150_ACCEL_TRIGGERS - 1);
  
  	iio_triggered_buffer_cleanup(indio_dev);
-@@ -1720,7 +1725,7 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
+@@ -1698,7 +1709,8 @@ static int bmc150_accel_resume(struct device *dev)
+ 	struct bmc150_accel_data *data = iio_priv(indio_dev);
+ 
+ 	mutex_lock(&data->mutex);
+-	bmc150_accel_set_mode(data, BMC150_ACCEL_SLEEP_MODE_NORMAL, 0);
++	if (atomic_read(&data->active_intr))
++		bmc150_accel_set_mode(data, BMC150_ACCEL_SLEEP_MODE_NORMAL, 0);
+ 	bmc150_accel_fifo_set_mode(data);
+ 	mutex_unlock(&data->mutex);
+ 
+@@ -1713,7 +1725,7 @@ static int bmc150_accel_runtime_suspend(struct device *dev)
  	struct bmc150_accel_data *data = iio_priv(indio_dev);
  	int ret;
  
@@ -1523,7 +1544,7 @@ index fa24d5196615..59b380dbf27f 100644
  	ret = bmc150_accel_set_mode(data, BMC150_ACCEL_SLEEP_MODE_SUSPEND, 0);
  	if (ret < 0)
  		return -EAGAIN;
-@@ -1735,7 +1740,7 @@ static int bmc150_accel_runtime_resume(struct device *dev)
+@@ -1728,7 +1740,7 @@ static int bmc150_accel_runtime_resume(struct device *dev)
  	int ret;
  	int sleep_val;
  
@@ -13731,9 +13752,18 @@ index 9b6854607d73..c3cfacca2541 100644
  	},
  	.probe	= tiadc_probe,
 diff --git a/drivers/iio/adc/vf610_adc.c b/drivers/iio/adc/vf610_adc.c
-index b10f629cc44b..228a003adeed 100644
+index 1dbc2143cdfc..228a003adeed 100644
 --- a/drivers/iio/adc/vf610_adc.c
 +++ b/drivers/iio/adc/vf610_adc.c
+@@ -77,7 +77,7 @@
+ #define VF610_ADC_ADSTS_MASK		0x300
+ #define VF610_ADC_ADLPC_EN		0x80
+ #define VF610_ADC_ADHSC_EN		0x400
+-#define VF610_ADC_REFSEL_VALT		0x800
++#define VF610_ADC_REFSEL_VALT		0x100
+ #define VF610_ADC_REFSEL_VBG		0x1000
+ #define VF610_ADC_ADTRG_HARD		0x2000
+ #define VF610_ADC_AVGS_8		0x4000
 @@ -594,7 +594,8 @@ static irqreturn_t vf610_adc_isr(int irq, void *dev_id)
  		if (iio_buffer_enabled(indio_dev)) {
  			info->buffer[0] = info->value;
@@ -31069,10 +31099,15 @@ index 1b530bf04c89..3aa71e34ae28 100644
  	indio_dev->dev.parent = &client->dev;
  	indio_dev->info = &tcs3472_info;
 diff --git a/drivers/iio/light/tsl2563.c b/drivers/iio/light/tsl2563.c
-index 12731d6b89ec..04598ae993d4 100644
+index ec1b2e798cc1..04598ae993d4 100644
 --- a/drivers/iio/light/tsl2563.c
 +++ b/drivers/iio/light/tsl2563.c
-@@ -630,7 +630,7 @@ static irqreturn_t tsl2563_event_handler(int irq, void *private)
+@@ -626,11 +626,11 @@ static irqreturn_t tsl2563_event_handler(int irq, void *private)
+ 	struct tsl2563_chip *chip = iio_priv(dev_info);
+ 
+ 	iio_push_event(dev_info,
+-		       IIO_UNMOD_EVENT_CODE(IIO_INTENSITY,
++		       IIO_UNMOD_EVENT_CODE(IIO_LIGHT,
  					    0,
  					    IIO_EV_TYPE_THRESH,
  					    IIO_EV_DIR_EITHER),
@@ -45785,7 +45820,7 @@ index 595e711d35a6..82b2d88ca942 100644
  		}
  	}
 diff --git a/drivers/staging/iio/resolver/ad2s1210.c b/drivers/staging/iio/resolver/ad2s1210.c
-index d97aa2827412..6b992634f009 100644
+index 8eb7179da342..6b992634f009 100644
 --- a/drivers/staging/iio/resolver/ad2s1210.c
 +++ b/drivers/staging/iio/resolver/ad2s1210.c
 @@ -67,7 +67,7 @@
@@ -45900,6 +45935,15 @@ index d97aa2827412..6b992634f009 100644
  {
  	struct ad2s1210_state *st = iio_priv(dev_to_iio_dev(dev));
  	unsigned char data;
+@@ -468,7 +472,7 @@ static int ad2s1210_read_raw(struct iio_dev *indio_dev,
+ 			     long m)
+ {
+ 	struct ad2s1210_state *st = iio_priv(indio_dev);
+-	u16 negative;
++	bool negative;
+ 	int ret = 0;
+ 	u16 pos;
+ 	s16 vel;
 @@ -497,7 +501,7 @@ static int ad2s1210_read_raw(struct iio_dev *indio_dev,
  
  	switch (chan->type) {
