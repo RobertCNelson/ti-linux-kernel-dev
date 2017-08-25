@@ -1,18 +1,36 @@
-From 9f6aa9ff092d70195d32aeebcd886a553bb1752e Mon Sep 17 00:00:00 2001
+From 678aab551a4cb4cb352a261057abb38200ed421e Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 21 Aug 2017 11:28:25 -0500
+Date: Fri, 25 Aug 2017 09:48:39 -0500
 Subject: [PATCH 1/2] xenomai pre-patchset
 
 ---
- arch/arm/mach-omap2/timer.c |  94 +------------------
- drivers/gpio/gpio-davinci.c | 218 ++++++++++++++++++++------------------------
- 2 files changed, 102 insertions(+), 210 deletions(-)
+ arch/arm/mach-omap2/timer.c   | 121 +----------------------
+ arch/powerpc/kernel/process.c |   5 +-
+ drivers/gpio/gpio-davinci.c   | 218 +++++++++++++++++++-----------------------
+ 3 files changed, 104 insertions(+), 240 deletions(-)
 
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
-index 89f75cd23846..b2f2448bfa6d 100644
+index 7aed750a341a..b2f2448bfa6d 100644
 --- a/arch/arm/mach-omap2/timer.c
 +++ b/arch/arm/mach-omap2/timer.c
-@@ -68,11 +68,6 @@
+@@ -33,7 +33,6 @@
+ #include <linux/clk.h>
+ #include <linux/delay.h>
+ #include <linux/irq.h>
+-#include <linux/irqchip/arm-gic.h>
+ #include <linux/clocksource.h>
+ #include <linux/clockchips.h>
+ #include <linux/slab.h>
+@@ -64,20 +63,11 @@
+ #define INCREMENTER_DENUMERATOR_RELOAD_OFFSET		0x14
+ #define NUMERATOR_DENUMERATOR_MASK			0xfffff000
+ 
+-#define AM43XX_GIC_CPU_BASE				0x48240100
+-
+-static void __iomem *gic_cpu_base;
+-
+ /* Clockevent code */
+ 
  static struct omap_dm_timer clkev;
  static struct clock_event_device clockevent_gpt;
  
@@ -24,15 +42,33 @@ index 89f75cd23846..b2f2448bfa6d 100644
  #ifdef CONFIG_SOC_HAS_REALTIME_COUNTER
  static unsigned long arch_timer_freq;
  
-@@ -130,44 +125,6 @@ static int omap2_gp_timer_set_periodic(struct clock_event_device *evt)
+@@ -135,62 +125,6 @@ static int omap2_gp_timer_set_periodic(struct clock_event_device *evt)
  	return 0;
  }
  
+-static int omap_clkevt_late_ack_init(void)
+-{
+-	gic_cpu_base = ioremap(AM43XX_GIC_CPU_BASE, SZ_4K);
+-
+-	if (!gic_cpu_base)
+-		return -ENOMEM;
+-
+-	return 0;
+-}
+-
 -static void omap_clkevt_late_ack(void)
 -{
+-	u32 val;
+-
 -	if (!clkev_irq_chip)
 -		return;
 -
+-	/*
+-	 * For the gic to properly clear an interrupt it must be read
+-	 * from INTACK register
+-	 */
+-	if (gic_cpu_base)
+-		val = readl_relaxed(gic_cpu_base + GIC_CPU_INTACK);
 -	if (clkev_irq_chip->irq_ack)
 -		clkev_irq_chip->irq_ack(&clkev_irq_desc->irq_data);
 -	if (clkev_irq_chip->irq_eoi)
@@ -69,7 +105,7 @@ index 89f75cd23846..b2f2448bfa6d 100644
  static struct clock_event_device clockevent_gpt = {
  	.features		= CLOCK_EVT_FEAT_PERIODIC |
  				  CLOCK_EVT_FEAT_ONESHOT,
-@@ -401,18 +358,6 @@ static void __init omap2_gp_clockevent_init(int gptimer_id,
+@@ -424,22 +358,6 @@ static void __init omap2_gp_clockevent_init(int gptimer_id,
  					3, /* Timer internal resynch latency */
  					0xffffffff);
  
@@ -83,12 +119,16 @@ index 89f75cd23846..b2f2448bfa6d 100644
 -		clkev_irq_desc = irq_to_desc(clkev.irq);
 -		if (clkev_irq_desc)
 -			clkev_irq_chip = irq_desc_get_chip(clkev_irq_desc);
+-
 -	}
+-
+-	if (soc_is_am437x())
+-		omap_clkevt_late_ack_init();
 -
  	pr_info("OMAP clockevent source: %s at %lu Hz\n", clockevent_gpt.name,
  		clkev.rate);
  }
-@@ -431,7 +376,7 @@ static cycle_t clocksource_read_cycles(struct clocksource *cs)
+@@ -458,7 +376,7 @@ static cycle_t clocksource_read_cycles(struct clocksource *cs)
  }
  
  static struct clocksource clocksource_gpt = {
@@ -97,7 +137,7 @@ index 89f75cd23846..b2f2448bfa6d 100644
  	.read		= clocksource_read_cycles,
  	.mask		= CLOCKSOURCE_MASK(32),
  	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
-@@ -504,38 +449,6 @@ static int __init __maybe_unused omap2_sync32k_clocksource_init(void)
+@@ -531,38 +449,6 @@ static int __init __maybe_unused omap2_sync32k_clocksource_init(void)
  	return ret;
  }
  
@@ -136,7 +176,7 @@ index 89f75cd23846..b2f2448bfa6d 100644
  static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  						  const char *fck_source,
  						  const char *property)
-@@ -545,11 +458,6 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
+@@ -572,11 +458,6 @@ static void __init omap2_gptimer_clocksource_init(int gptimer_id,
  	clksrc.id = gptimer_id;
  	clksrc.errata = omap_dm_timer_get_errata();
  
@@ -148,6 +188,29 @@ index 89f75cd23846..b2f2448bfa6d 100644
  	res = omap_dm_timer_init_one(&clksrc, fck_source, property,
  				     &clocksource_gpt.name,
  				     OMAP_TIMER_NONPOSTED);
+diff --git a/arch/powerpc/kernel/process.c b/arch/powerpc/kernel/process.c
+index 1c141d50fbc6..b249c2fb99c8 100644
+--- a/arch/powerpc/kernel/process.c
++++ b/arch/powerpc/kernel/process.c
+@@ -359,8 +359,7 @@ void enable_kernel_vsx(void)
+ 
+ 	cpumsr = msr_check_and_set(MSR_FP|MSR_VEC|MSR_VSX);
+ 
+-	if (current->thread.regs &&
+-	    (current->thread.regs->msr & (MSR_VSX|MSR_VEC|MSR_FP))) {
++	if (current->thread.regs && (current->thread.regs->msr & MSR_VSX)) {
+ 		check_if_tm_restore_required(current);
+ 		/*
+ 		 * If a thread has already been reclaimed then the
+@@ -384,7 +383,7 @@ void flush_vsx_to_thread(struct task_struct *tsk)
+ {
+ 	if (tsk->thread.regs) {
+ 		preempt_disable();
+-		if (tsk->thread.regs->msr & (MSR_VSX|MSR_VEC|MSR_FP)) {
++		if (tsk->thread.regs->msr & MSR_VSX) {
+ 			BUG_ON(tsk != current);
+ 			giveup_vsx(tsk);
+ 		}
 diff --git a/drivers/gpio/gpio-davinci.c b/drivers/gpio/gpio-davinci.c
 index e9440de6e7a9..dd262f00295d 100644
 --- a/drivers/gpio/gpio-davinci.c
