@@ -367,7 +367,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0014-iio-accel-bmc150-Always-restore-device-to-normal-mod.patch"
 	${git} "${DIR}/patches/backports/iio/0015-iio-light-tsl2563-use-correct-event-code.patch"
 
-	backport_tag="v4.9.44"
+	backport_tag="v4.9.45"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
