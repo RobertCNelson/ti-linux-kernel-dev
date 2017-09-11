@@ -110,7 +110,6 @@ external_git () {
 		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
 	fi
 	${git_bin} describe
-	#${git} "${DIR}/patches/stable/patch-4.4.48-49"
 }
 
 aufs_fail () {
@@ -366,8 +365,10 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0013-iio-proximity-as3935-recalibrate-RCO-after-resume.patch"
 	${git} "${DIR}/patches/backports/iio/0014-iio-accel-bmc150-Always-restore-device-to-normal-mod.patch"
 	${git} "${DIR}/patches/backports/iio/0015-iio-light-tsl2563-use-correct-event-code.patch"
+	${git} "${DIR}/patches/backports/iio/0016-iio-imu-adis16480-Fix-acceleration-scale-factor-for-.patch"
+	${git} "${DIR}/patches/backports/iio/0017-iio-hid-sensor-trigger-Fix-the-race-with-user-space-.patch"
 
-	backport_tag="v4.9.45"
+	backport_tag="v4.9.49"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
