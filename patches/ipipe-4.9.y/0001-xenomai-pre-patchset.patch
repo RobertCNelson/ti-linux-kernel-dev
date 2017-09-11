@@ -1,13 +1,15 @@
-From 678aab551a4cb4cb352a261057abb38200ed421e Mon Sep 17 00:00:00 2001
+From 42756967750a327f942648013bc5254163476fe5 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 25 Aug 2017 09:48:39 -0500
+Date: Mon, 11 Sep 2017 11:01:02 -0500
 Subject: [PATCH 1/2] xenomai pre-patchset
 
 ---
- arch/arm/mach-omap2/timer.c   | 121 +----------------------
- arch/powerpc/kernel/process.c |   5 +-
- drivers/gpio/gpio-davinci.c   | 218 +++++++++++++++++++-----------------------
- 3 files changed, 104 insertions(+), 240 deletions(-)
+ arch/arm/mach-omap2/timer.c            | 121 +-----------------
+ arch/arm64/mm/fault.c                  |  13 +-
+ arch/powerpc/include/asm/mmu_context.h |  20 +--
+ arch/powerpc/kernel/process.c          |   5 +-
+ drivers/gpio/gpio-davinci.c            | 218 +++++++++++++++------------------
+ 5 files changed, 110 insertions(+), 267 deletions(-)
 
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
 index 7aed750a341a..b2f2448bfa6d 100644
@@ -188,6 +190,82 @@ index 7aed750a341a..b2f2448bfa6d 100644
  	res = omap_dm_timer_init_one(&clksrc, fck_source, property,
  				     &clocksource_gpt.name,
  				     OMAP_TIMER_NONPOSTED);
+diff --git a/arch/arm64/mm/fault.c b/arch/arm64/mm/fault.c
+index fec5b1ce97f8..8b8ac3db4092 100644
+--- a/arch/arm64/mm/fault.c
++++ b/arch/arm64/mm/fault.c
+@@ -101,21 +101,21 @@ void show_pte(struct mm_struct *mm, unsigned long addr)
+ 			break;
+ 
+ 		pud = pud_offset(pgd, addr);
+-		pr_cont(", *pud=%016llx", pud_val(*pud));
++		printk(", *pud=%016llx", pud_val(*pud));
+ 		if (pud_none(*pud) || pud_bad(*pud))
+ 			break;
+ 
+ 		pmd = pmd_offset(pud, addr);
+-		pr_cont(", *pmd=%016llx", pmd_val(*pmd));
++		printk(", *pmd=%016llx", pmd_val(*pmd));
+ 		if (pmd_none(*pmd) || pmd_bad(*pmd))
+ 			break;
+ 
+ 		pte = pte_offset_map(pmd, addr);
+-		pr_cont(", *pte=%016llx", pte_val(*pte));
++		printk(", *pte=%016llx", pte_val(*pte));
+ 		pte_unmap(pte);
+ 	} while(0);
+ 
+-	pr_cont("\n");
++	printk("\n");
+ }
+ 
+ #ifdef CONFIG_ARM64_HW_AFDBM
+@@ -373,11 +373,8 @@ static int __kprobes do_page_fault(unsigned long addr, unsigned int esr,
+ 	 * signal first. We do not need to release the mmap_sem because it
+ 	 * would already be released in __lock_page_or_retry in mm/filemap.c.
+ 	 */
+-	if ((fault & VM_FAULT_RETRY) && fatal_signal_pending(current)) {
+-		if (!user_mode(regs))
+-			goto no_context;
++	if ((fault & VM_FAULT_RETRY) && fatal_signal_pending(current))
+ 		return 0;
+-	}
+ 
+ 	/*
+ 	 * Major/minor page fault accounting is only done on the initial
+diff --git a/arch/powerpc/include/asm/mmu_context.h b/arch/powerpc/include/asm/mmu_context.h
+index fe208b70b8b1..0012f0353fd6 100644
+--- a/arch/powerpc/include/asm/mmu_context.h
++++ b/arch/powerpc/include/asm/mmu_context.h
+@@ -75,27 +75,9 @@ static inline void switch_mm_irqs_off(struct mm_struct *prev,
+ 				      struct task_struct *tsk)
+ {
+ 	/* Mark this context has been used on the new CPU */
+-	if (!cpumask_test_cpu(smp_processor_id(), mm_cpumask(next))) {
++	if (!cpumask_test_cpu(smp_processor_id(), mm_cpumask(next)))
+ 		cpumask_set_cpu(smp_processor_id(), mm_cpumask(next));
+ 
+-		/*
+-		 * This full barrier orders the store to the cpumask above vs
+-		 * a subsequent operation which allows this CPU to begin loading
+-		 * translations for next.
+-		 *
+-		 * When using the radix MMU that operation is the load of the
+-		 * MMU context id, which is then moved to SPRN_PID.
+-		 *
+-		 * For the hash MMU it is either the first load from slb_cache
+-		 * in switch_slb(), and/or the store of paca->mm_ctx_id in
+-		 * copy_mm_to_paca().
+-		 *
+-		 * On the read side the barrier is in pte_xchg(), which orders
+-		 * the store to the PTE vs the load of mm_cpumask.
+-		 */
+-		smp_mb();
+-	}
+-
+ 	/* 32-bit keeps track of the current PGDIR in the thread struct */
+ #ifdef CONFIG_PPC32
+ 	tsk->thread.pgdir = next->pgd;
 diff --git a/arch/powerpc/kernel/process.c b/arch/powerpc/kernel/process.c
 index 1c141d50fbc6..b249c2fb99c8 100644
 --- a/arch/powerpc/kernel/process.c
