@@ -4,7 +4,7 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="ti-r"
+build_prefix="-ti-r"
 branch_prefix="ti-linux-"
 branch_postfix=".y"
 
@@ -13,18 +13,26 @@ KERNEL_ARCH=arm
 #toolchain="gcc_linaro_eabi_4_8"
 #toolchain="gcc_linaro_eabi_4_9"
 #toolchain="gcc_linaro_eabi_5"
+#toolchain="gcc_linaro_eabi_6"
+#toolchain="gcc_linaro_eabi_7"
 #toolchain="gcc_linaro_gnueabi_4_6"
 toolchain="gcc_linaro_gnueabihf_4_7"
 #toolchain="gcc_linaro_gnueabihf_4_8"
 #toolchain="gcc_linaro_gnueabihf_4_9"
 #toolchain="gcc_linaro_gnueabihf_5"
+#toolchain="gcc_linaro_gnueabihf_6"
+#toolchain="gcc_linaro_gnueabihf_7"
 #arm64
 #KERNEL_ARCH=arm64
 #toolchain="gcc_linaro_aarch64_gnu_5"
+#toolchain="gcc_linaro_aarch64_gnu_6"
+#toolchain="gcc_linaro_aarch64_gnu_7"
 
-#Kernel/Build
+#Kernel
 KERNEL_REL=3.8
 KERNEL_TAG=${KERNEL_REL}.13
+kernel_rt=".X-rtY"
+#Kernel Build
 BUILD=${build_prefix}3
 
 #v4.X-rcX + upto SHA
@@ -38,6 +46,6 @@ DISTRO=cross
 DEBARCH=armhf
 
 ti_git_old_release="4f116c97e84d0a35f29977a6f4d1e3dd9e438eae"
-ti_git_pre="4f116c97e84d0a35f29977a6f4d1e3dd9e438eae"
-ti_git_post="4f116c97e84d0a35f29977a6f4d1e3dd9e438eae"
+        ti_git_pre="4f116c97e84d0a35f29977a6f4d1e3dd9e438eae"
+       ti_git_post="4f116c97e84d0a35f29977a6f4d1e3dd9e438eae"
 #
