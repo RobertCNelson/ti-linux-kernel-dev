@@ -368,7 +368,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0016-iio-imu-adis16480-Fix-acceleration-scale-factor-for-.patch"
 	${git} "${DIR}/patches/backports/iio/0017-iio-hid-sensor-trigger-Fix-the-race-with-user-space-.patch"
 
-	backport_tag="v4.9.49"
+	backport_tag="v4.9.50"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -666,9 +666,10 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/0037-of-Support-hashtable-lookups-for-phandles.patch"
 
 	${git} "${DIR}/patches/bbb_overlays/0038-bone_capemgr-uboot_capemgr_enabled-flag.patch"
+	${git} "${DIR}/patches/bbb_overlays/0039-bone_capemgr-kill-with-uboot-flag.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=38
+		number=39
 		cleanup
 	fi
 }
