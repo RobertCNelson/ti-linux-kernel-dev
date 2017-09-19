@@ -481,6 +481,7 @@ soc () {
 	dir 'soc/ti/uboot'
 	dir 'soc/ti/am571x'
 	dir 'soc/ti/x15'
+	dir 'soc/ti/audio'
 }
 
 dtb_makefile_append () {

@@ -1,0 +1,651 @@
+From 4354af3a0e6517fb00c18ee40e27b4fab2dab997 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Tue, 19 Sep 2017 10:34:41 -0500
+Subject: [PATCH] bb-justboom
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ sound/soc/davinci/Kconfig         |  18 ++
+ sound/soc/davinci/Makefile        |   8 +
+ sound/soc/davinci/justboom-dac.c  | 348 ++++++++++++++++++++++++++++++++++++++
+ sound/soc/davinci/justboom-digi.c | 228 +++++++++++++++++++++++++
+ 4 files changed, 602 insertions(+)
+ create mode 100644 sound/soc/davinci/justboom-dac.c
+ create mode 100644 sound/soc/davinci/justboom-digi.c
+
+diff --git a/sound/soc/davinci/Kconfig b/sound/soc/davinci/Kconfig
+index c93aac0c5888..88f31b677891 100644
+--- a/sound/soc/davinci/Kconfig
++++ b/sound/soc/davinci/Kconfig
+@@ -61,6 +61,24 @@ config SND_DAVINCI_SOC_EVM
+ 	  Say Y if you want to add support for SoC audio on TI
+ 	  DaVinci DM6446, DM355 or DM365 EVM platforms.
+ 
++config SND_AM33XX_SOC_JUSTBOOM_DAC
++	tristate "SoC Audio support for JustBoom DAC"
++	depends on SND_EDMA_SOC && I2C
++	select SND_SOC_PCM512x
++	select SND_DAVINCI_SOC_MCASP
++	help
++	  Say Y if you want to add support for SoC audio on
++	  JustBoom DAC
++
++config SND_AM33XX_SOC_JUSTBOOM_DIGI
++	tristate "SoC Audio support for JustBoom Digi"
++	depends on SND_EDMA_SOC && I2C
++	select SND_SOC_WM8804
++	select SND_DAVINCI_SOC_MCASP
++	help
++	  Say Y if you want to add support for SoC audio on
++	  JustBoom Digi
++
+ choice
+ 	prompt "DM365 codec select"
+ 	depends on SND_DAVINCI_SOC_EVM
+diff --git a/sound/soc/davinci/Makefile b/sound/soc/davinci/Makefile
+index 75e218ef11fb..ee89c50c28cd 100644
+--- a/sound/soc/davinci/Makefile
++++ b/sound/soc/davinci/Makefile
+@@ -15,3 +15,11 @@ obj-$(CONFIG_SND_DAVINCI_SOC_CTAG_FACE_2_4) += snd-soc-davinci-ctag-face-2-4.o
+ snd-soc-evm-objs := davinci-evm.o
+ 
+ obj-$(CONFIG_SND_DAVINCI_SOC_GENERIC_EVM) += snd-soc-evm.o
++
++# JustBomm dac support
++snd-soc-justboom-dac-objs := justboom-dac.o
++obj-$(CONFIG_SND_AM33XX_SOC_JUSTBOOM_DAC) += snd-soc-justboom-dac.o
++
++# JustBomm digi support
++snd-soc-justboom-digi-objs := justboom-digi.o
++obj-$(CONFIG_SND_AM33XX_SOC_JUSTBOOM_DIGI) += snd-soc-justboom-digi.o
+diff --git a/sound/soc/davinci/justboom-dac.c b/sound/soc/davinci/justboom-dac.c
+new file mode 100644
+index 000000000000..4f1e53d757e6
+--- /dev/null
++++ b/sound/soc/davinci/justboom-dac.c
+@@ -0,0 +1,348 @@
++/*
++ * ASoC Driver for JustBoom DAC Sound Card
++ *
++ * Author:	Milan Neskovic
++ *		Copyright 2017
++ *		based on code by Vladimir Barinov, <vbarinov@embeddedalley.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * version 2 as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/module.h>
++#include <linux/platform_device.h>
++
++#include <linux/of_platform.h>
++#include <linux/clk.h>
++#include <sound/core.h>
++#include <sound/pcm.h>
++#include <sound/pcm_params.h>
++#include <sound/soc.h>
++#include <sound/jack.h>
++
++#include "../codecs/pcm512x.h"
++
++#define JUSTBOOM_MCLK_SEL_NOCLOCK 			0
++#define JUSTBOOM_MCLK_SEL_CLK44K1_RATE 		1
++#define JUSTBOOM_MCLK_SEL_CLK48K_RATE 		2
++
++#define JUSTBOOM_PCM512x_GPIO_MASK(n) 		(0x01<<(n-1))
++
++struct justboom_dac_drvdata {
++	struct clk *mclk_48k;
++	struct clk *mclk_44k1;
++	unsigned sysclk;
++	unsigned char mclk_select;
++	int clk_44k1_en_gpio;
++	int led_gpio;
++};
++
++static bool digital_gain_0db_limit = true;
++
++static int justboom_dac_init(struct snd_soc_pcm_runtime *rtd)
++{
++	struct snd_soc_codec *codec = rtd->codec;
++	struct snd_soc_card *soc_card = rtd->card;
++	struct justboom_dac_drvdata *drvdata =
++		snd_soc_card_get_drvdata(soc_card);
++	int ret;
++	
++	unsigned char clk_44k1_en_gpio_mask = 0;
++	unsigned char led_gpio_mask = 
++			JUSTBOOM_PCM512x_GPIO_MASK(drvdata->led_gpio);
++	
++	if (drvdata->mclk_44k1) 
++		clk_44k1_en_gpio_mask = 
++				JUSTBOOM_PCM512x_GPIO_MASK(drvdata->clk_44k1_en_gpio);
++	/* initialize to low */
++	snd_soc_update_bits(codec, PCM512x_GPIO_CONTROL_1, 
++			clk_44k1_en_gpio_mask | led_gpio_mask, 0x00); 
++	/* enable led gpio, clock gpio */
++	snd_soc_update_bits(codec, PCM512x_GPIO_EN, 
++			clk_44k1_en_gpio_mask | led_gpio_mask, 
++			clk_44k1_en_gpio_mask | led_gpio_mask); 
++	/* set clock enable gpio signal to register output */
++	snd_soc_update_bits(codec, 
++			PCM512x_GPIO_OUTPUT_1 + drvdata->clk_44k1_en_gpio - 1, 
++			0x1f, 0x02); 
++	/* set led gpio signal to register output */
++	snd_soc_update_bits(codec, 
++			PCM512x_GPIO_OUTPUT_1 + drvdata->led_gpio - 1,
++			0x1f, 0x02);
++			   
++	drvdata->mclk_select = JUSTBOOM_MCLK_SEL_NOCLOCK;
++
++	if (digital_gain_0db_limit)
++	{
++		ret = snd_soc_limit_volume(soc_card, "Digital Playback Volume", 207);
++		if (ret < 0)
++			dev_warn(soc_card->dev, "Failed to set volume limit: %d\n", ret);
++	}
++
++	return 0;
++}
++
++
++static int justboom_dac_hw_params(struct snd_pcm_substream *substream,
++				       struct snd_pcm_hw_params *params)
++{
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_card *soc_card = rtd->card;
++	struct snd_soc_codec *codec = rtd->codec;
++	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
++	struct snd_pcm_runtime *runtime = substream->runtime;
++	struct justboom_dac_drvdata *drvdata =
++		snd_soc_card_get_drvdata(soc_card);
++	unsigned sysclk = ((struct justboom_dac_drvdata *)
++			   snd_soc_card_get_drvdata(soc_card))->sysclk;
++	struct snd_mask *fmt = constrs_mask(&runtime->hw_constraints,
++					    SNDRV_PCM_HW_PARAM_FORMAT);
++	int bclk_div, bclk_fs_div;
++	unsigned int sample_bits =
++		snd_pcm_format_physical_width(params_format(params));
++	int rate = params_rate(params);
++	int ret;
++
++	snd_mask_none(fmt);
++	switch (sample_bits) {
++		case 16: 
++			snd_mask_set(fmt, SNDRV_PCM_FORMAT_S16_LE);
++			break;
++		case 24:
++			snd_mask_set(fmt, SNDRV_PCM_FORMAT_S24_LE);
++			break;
++		default:
++			snd_mask_set(fmt, SNDRV_PCM_FORMAT_S32_LE);
++			break;
++	}
++	
++	if ((rate % 8000) == 0) {
++		drvdata->mclk_select = JUSTBOOM_MCLK_SEL_CLK48K_RATE;
++		sysclk = clk_get_rate(drvdata->mclk_48k);
++	} else if ((rate % 11025) == 0) {
++		drvdata->mclk_select = JUSTBOOM_MCLK_SEL_CLK44K1_RATE;
++		sysclk = clk_get_rate(drvdata->mclk_44k1);
++	} else {
++		drvdata->mclk_select = JUSTBOOM_MCLK_SEL_NOCLOCK;
++		sysclk = 0;
++		dev_err(soc_card->dev, "Rate %d is not supported\n", rate);	
++		return -EINVAL;
++	}
++	
++	bclk_fs_div = 64;
++	bclk_div = sysclk / (rate * bclk_fs_div);
++	
++	ret = snd_soc_dai_set_clkdiv(cpu_dai, 1, bclk_div); /* set bclk */
++	if (ret < 0)
++		return ret;
++	
++	/* set BCLK/FS ratio */
++	ret = snd_soc_dai_set_clkdiv(cpu_dai, 2, bclk_fs_div);
++	if (ret < 0)
++		return ret;
++		
++	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, sysclk, SND_SOC_CLOCK_IN);
++	if (ret < 0)
++		return ret;
++		
++	/* enable system clock */
++	if (drvdata->mclk_select == JUSTBOOM_MCLK_SEL_CLK48K_RATE) {
++		if (drvdata->mclk_48k) 
++			ret = clk_prepare_enable(drvdata->mclk_48k);
++	} else if (drvdata->mclk_select == JUSTBOOM_MCLK_SEL_CLK44K1_RATE) {
++		/* set enable gpio high to enable 44100 rate oscillator */
++		if (drvdata->mclk_44k1) {
++			unsigned char clk_44k1_en_gpio_mask = 
++					JUSTBOOM_PCM512x_GPIO_MASK(drvdata->clk_44k1_en_gpio);
++			snd_soc_update_bits(codec, PCM512x_GPIO_CONTROL_1, 
++					clk_44k1_en_gpio_mask, clk_44k1_en_gpio_mask); 
++		}
++	}
++
++	return 0;
++
++}
++
++static int justboom_dac_startup(struct snd_pcm_substream *substream) {
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_codec *codec = rtd->codec;
++	struct snd_soc_card *soc_card = rtd->card;
++	
++	struct justboom_dac_drvdata *drvdata =
++		snd_soc_card_get_drvdata(soc_card);
++		
++	/* turn on LED */
++	snd_soc_update_bits(codec, PCM512x_GPIO_CONTROL_1, 
++		JUSTBOOM_PCM512x_GPIO_MASK(drvdata->led_gpio), 
++		JUSTBOOM_PCM512x_GPIO_MASK(drvdata->led_gpio));
++		
++	return 0;
++}
++
++static void justboom_dac_shutdown(struct snd_pcm_substream *substream) {
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_codec *codec = rtd->codec;
++	struct snd_soc_card *soc_card = rtd->card;
++	struct justboom_dac_drvdata *drvdata =
++		snd_soc_card_get_drvdata(soc_card);
++		
++	if (drvdata->mclk_select == JUSTBOOM_MCLK_SEL_CLK48K_RATE) {
++		 /* disable 48000 rate oscillator */
++		clk_disable_unprepare(drvdata->mclk_48k);
++	} else if (drvdata->mclk_select == JUSTBOOM_MCLK_SEL_CLK44K1_RATE) {
++		/* disable 44100 rate oscillator */
++		if (drvdata->mclk_44k1) {
++			snd_soc_update_bits(codec, PCM512x_GPIO_CONTROL_1, 
++				   JUSTBOOM_PCM512x_GPIO_MASK(drvdata->clk_44k1_en_gpio), 
++				   0x00);
++		}
++	}
++	drvdata->mclk_select = JUSTBOOM_MCLK_SEL_NOCLOCK;
++	
++	/* turn off LED */
++	snd_soc_update_bits(codec, PCM512x_GPIO_CONTROL_1, 
++			JUSTBOOM_PCM512x_GPIO_MASK(drvdata->led_gpio), 0x00);
++}
++
++/* machine stream operations */
++static struct snd_soc_ops justboom_dac_ops = {
++	.hw_params = justboom_dac_hw_params,
++	.startup = justboom_dac_startup,
++	.shutdown = justboom_dac_shutdown,
++};
++
++static struct snd_soc_dai_link justboom_dac_dai[] = {
++{
++	.name		= "JustBoom DAC",
++	.stream_name	= "JustBoom HiFi",
++	.codec_dai_name	= "pcm512x-hifi",
++	.dai_fmt	= SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
++				SND_SOC_DAIFMT_CBS_CFS,
++	.ops		= &justboom_dac_ops,
++	.init		= justboom_dac_init,
++},
++};
++
++static const struct of_device_id justboom_dac_of_match[] = {
++	{
++		.compatible = "justboom,justboom-dac",
++		.data = (void *) &justboom_dac_dai,
++	},
++	{},
++};
++
++/* audio machine driver */
++static struct snd_soc_card justboom_dac = {
++	.name         = "justboom_dac",
++	.driver_name  = "JustBoomDac",
++	.owner        = THIS_MODULE,
++	.dai_link     = justboom_dac_dai,
++	.num_links    = ARRAY_SIZE(justboom_dac_dai),
++};
++
++static int justboom_dac_probe(struct platform_device *pdev)
++{
++	struct device_node *np = pdev->dev.of_node;
++	const struct of_device_id *match =
++		of_match_device(of_match_ptr(justboom_dac_of_match), &pdev->dev);
++	struct snd_soc_dai_link *dai = (struct snd_soc_dai_link *)match->data;
++	struct justboom_dac_drvdata *drvdata = NULL;
++	struct clk *mclk_48k, *mclk_44k1;
++	int ret = 0;
++
++	justboom_dac.dai_link = dai;
++
++	dai->codec_of_node = of_parse_phandle(np, "audio-codec", 0);
++	if (!dai->codec_of_node) {
++		dev_err(&pdev->dev,"No codec dt node.\n");
++		return -EINVAL;
++	} 
++
++	dai->cpu_of_node = of_parse_phandle(np, "mcasp-controller", 0);
++	if (!dai->cpu_of_node)
++		return -EINVAL;
++
++	dai->platform_of_node = dai->cpu_of_node;
++
++	justboom_dac.dev = &pdev->dev;
++	ret = snd_soc_of_parse_card_name(&justboom_dac, "model");
++	if (ret)
++		return ret;
++
++	mclk_48k = devm_clk_get(&pdev->dev, "mclk_48k");
++	if (PTR_ERR(mclk_48k) == -EPROBE_DEFER) {
++		return -EPROBE_DEFER;
++	} else if (IS_ERR(mclk_48k)) {
++		dev_dbg(&pdev->dev, "mclk_48k not found.\n");
++		mclk_48k = NULL;
++	}
++	
++	mclk_44k1 = devm_clk_get(&pdev->dev, "mclk_44k1");
++	if (PTR_ERR(mclk_44k1) == -EPROBE_DEFER) {
++		return -EPROBE_DEFER;
++	} else if (IS_ERR(mclk_44k1)) {
++		dev_dbg(&pdev->dev, "mclk_44k1 not found.\n");
++		mclk_44k1 = NULL;
++	}
++
++	drvdata = devm_kzalloc(&pdev->dev, sizeof(*drvdata), GFP_KERNEL);
++	if (!drvdata)
++		return -ENOMEM;
++
++	drvdata->mclk_48k = mclk_48k;
++	drvdata->mclk_44k1 = mclk_44k1;
++
++	ret = of_property_read_u32(np, "clk-44k1-rate-en-gpio", 
++			&drvdata->clk_44k1_en_gpio);
++	if (ret) {
++		drvdata->clk_44k1_en_gpio = 5;
++		dev_dbg(&pdev->dev, 
++				"clk-44k1-rate-en-gpio not defined, using default.\n");
++	} 
++	
++	ret = of_property_read_u32(np, "led-gpio", &drvdata->led_gpio);
++	if (ret) {
++		drvdata->clk_44k1_en_gpio = 4;
++		dev_dbg(&pdev->dev, "led-gpio not defined, using default.\n");
++	} 
++	
++	snd_soc_card_set_drvdata(&justboom_dac, drvdata);
++	
++	digital_gain_0db_limit = !of_property_read_bool(np, 
++			"justboom,24db_digital_gain");
++			
++	ret = devm_snd_soc_register_card(&pdev->dev, &justboom_dac);
++	if (ret)
++		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
++
++	return ret;
++}
++
++static int justboom_dac_remove(struct platform_device *pdev)
++{
++	return snd_soc_unregister_card(&justboom_dac);
++}
++
++MODULE_DEVICE_TABLE(of, justboom_dac_of_match);
++
++static struct platform_driver justboom_dac_driver = {
++	.driver = {
++		.name   = "justboom-dac",
++		.owner  = THIS_MODULE,
++		.of_match_table = justboom_dac_of_match,
++	},
++	.probe          = justboom_dac_probe,
++	.remove         = justboom_dac_remove,
++};
++
++module_platform_driver(justboom_dac_driver);
++
++MODULE_AUTHOR("Milan Neskovic <info@justboom.co>");
++MODULE_DESCRIPTION("ASoC Driver for JustBoom DAC Sound Card");
++MODULE_LICENSE("GPL v2");
+diff --git a/sound/soc/davinci/justboom-digi.c b/sound/soc/davinci/justboom-digi.c
+new file mode 100644
+index 000000000000..dd7c871287b0
+--- /dev/null
++++ b/sound/soc/davinci/justboom-digi.c
+@@ -0,0 +1,228 @@
++/*
++ * ASoC Driver for JustBoom Digi Sound Card
++ *
++ * Author:	Milan Neskovic
++ *		Copyright 2017
++ *		based on code by Daniel Matuschek <info@crazy-audio.com>
++ *		based on code by Florian Meier <florian.meier@koalo.de>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * version 2 as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/module.h>
++#include <linux/platform_device.h>
++
++#include <sound/core.h>
++#include <sound/pcm.h>
++#include <sound/pcm_params.h>
++#include <sound/soc.h>
++#include <sound/jack.h>
++
++#include "../codecs/wm8804.h"
++
++static int justboom_digi_init(struct snd_soc_pcm_runtime *rtd)
++{
++	struct snd_soc_codec *codec = rtd->codec;
++
++	/* enable TX output */
++	snd_soc_update_bits(codec, WM8804_PWRDN, 0x4, 0x0);
++
++	return 0;
++}
++
++static int justboom_digi_startup(struct snd_pcm_substream *substream) {
++	/* turn on digital output */
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_codec *codec = rtd->codec;
++	snd_soc_update_bits(codec, WM8804_PWRDN, 0x3c, 0x00);
++	return 0;
++}
++
++static void justboom_digi_shutdown(struct snd_pcm_substream *substream) {
++	/* turn off output */
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_codec *codec = rtd->codec;
++	snd_soc_update_bits(codec, WM8804_PWRDN, 0x3c, 0x3c);
++}
++
++static int justboom_digi_hw_params(struct snd_pcm_substream *substream,
++				       struct snd_pcm_hw_params *params)
++{
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_dai *codec_dai = rtd->codec_dai;
++	struct snd_soc_codec *codec = rtd->codec;
++	struct snd_pcm_runtime *runtime = substream->runtime;
++	struct snd_mask *fmt = constrs_mask(&runtime->hw_constraints,
++					    SNDRV_PCM_HW_PARAM_FORMAT);
++	int sysclk = 27000000; /* This is fixed on this board */
++
++	long mclk_freq=0;
++	int mclk_div=1;
++	int sampling_freq=1;
++	int samplerate;
++	int ret;
++	
++	snd_mask_none(fmt);
++	snd_mask_set(fmt, SNDRV_PCM_FORMAT_S24_LE);
++
++	samplerate = params_rate(params);
++	
++	if (samplerate<=96000) {
++		mclk_freq=samplerate*256;
++		mclk_div=WM8804_MCLKDIV_256FS;
++	} else {
++		mclk_freq=samplerate*128;
++		mclk_div=WM8804_MCLKDIV_128FS;
++	}
++
++	switch (samplerate) {
++		case 32000:
++			sampling_freq=0x03;
++			break;
++		case 44100:
++			sampling_freq=0x00;
++			break;
++		case 48000:
++			sampling_freq=0x02;
++			break;
++		case 88200:
++			sampling_freq=0x08;
++			break;
++		case 96000:
++			sampling_freq=0x0a;
++			break;
++		case 176400:
++			sampling_freq=0x0c;
++			break;
++		case 192000:
++			sampling_freq=0x0e;
++			break;
++		default:
++			dev_err(codec->dev,
++			"Failed to set WM8804 SYSCLK, unsupported samplerate %d\n",
++			samplerate);
++	}
++
++	snd_soc_dai_set_clkdiv(codec_dai, WM8804_MCLK_DIV, mclk_div);
++	snd_soc_dai_set_pll(codec_dai, 0, 0, sysclk, mclk_freq);
++
++	ret = snd_soc_dai_set_sysclk(codec_dai, WM8804_TX_CLKSRC_PLL,
++					sysclk, SND_SOC_CLOCK_OUT);
++	if (ret < 0) {
++		dev_err(codec->dev,
++		"Failed to set WM8804 SYSCLK: %d\n", ret);
++		return ret;
++	}
++
++	/* Enable TX output */
++	snd_soc_update_bits(codec, WM8804_PWRDN, 0x4, 0x0);
++
++	/* Power on */
++	snd_soc_update_bits(codec, WM8804_PWRDN, 0x9, 0);
++
++	/* set sampling frequency status bits */
++	snd_soc_update_bits(codec, WM8804_SPDTX4, 0x0f, sampling_freq);
++
++	return 0;
++}
++
++/* machine stream operations */
++static struct snd_soc_ops justboom_digi_ops = {
++	.hw_params = justboom_digi_hw_params,
++        .startup = justboom_digi_startup,
++        .shutdown = justboom_digi_shutdown,
++};
++
++static struct snd_soc_dai_link justboom_digi_dai[] = {
++{
++	.name		= "JustBoom Digi",
++	.stream_name	= "JustBoom Digi HiFi", 
++	.codec_dai_name	= "wm8804-spdif",
++	.dai_fmt	= SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
++				SND_SOC_DAIFMT_CBM_CFM,
++	.ops		= &justboom_digi_ops,
++	.init		= justboom_digi_init,
++},
++};
++
++/* audio machine driver */
++static struct snd_soc_card justboom_digi = {
++	.name         = "justboom_digi",
++	.driver_name  = "JustBoomDigi",
++	.owner        = THIS_MODULE,
++	.dai_link     = justboom_digi_dai,
++	.num_links    = ARRAY_SIZE(justboom_digi_dai),
++};
++
++static int justboom_digi_probe(struct platform_device *pdev)
++{
++	int ret = 0;
++
++	justboom_digi.dev = &pdev->dev;
++
++	if (pdev->dev.of_node) {
++	    struct device_node *i2s_node;
++	    struct snd_soc_dai_link *dai = &justboom_digi_dai[0];
++	    i2s_node = of_parse_phandle(pdev->dev.of_node,
++					"i2s-controller", 0);
++
++	    if (i2s_node) {
++			dai->cpu_dai_name = NULL;
++			dai->cpu_of_node = i2s_node;
++			dai->platform_name = NULL;
++			dai->platform_of_node = i2s_node;
++	    }
++	    
++	    dai->codec_of_node = of_parse_phandle(pdev->dev.of_node, "audio-codec", 0);
++		if (!dai->codec_of_node) {
++			dev_err(&pdev->dev,"No codec dt node.\n");
++			return -EINVAL;
++		}
++		
++		justboom_digi.dev = &pdev->dev;
++		ret = snd_soc_of_parse_card_name(&justboom_digi, "model");
++		if (ret)
++			return ret;
++	}
++
++	ret = snd_soc_register_card(&justboom_digi);
++	if (ret && ret != -EPROBE_DEFER)
++		dev_err(&pdev->dev,
++			"snd_soc_register_card() failed: %d\n", ret);
++
++	return ret;
++}
++
++static int justboom_digi_remove(struct platform_device *pdev)
++{
++	return snd_soc_unregister_card(&justboom_digi);
++}
++
++static const struct of_device_id justboom_digi_of_match[] = {
++	{ .compatible = "justboom,justboom-digi", },
++	{},
++};
++MODULE_DEVICE_TABLE(of, justboom_digi_of_match);
++
++static struct platform_driver justboom_digi_driver = {
++	.driver = {
++		.name   = "justboom-digi",
++		.owner  = THIS_MODULE,
++		.of_match_table = justboom_digi_of_match,
++	},
++	.probe          = justboom_digi_probe,
++	.remove         = justboom_digi_remove,
++};
++
++module_platform_driver(justboom_digi_driver);
++
++MODULE_AUTHOR("Milan Neskovic <info@justboom.co>");
++MODULE_DESCRIPTION("ASoC Driver for JustBoom Digi Sound Card");
++MODULE_LICENSE("GPL v2");
+-- 
+2.14.1
+
