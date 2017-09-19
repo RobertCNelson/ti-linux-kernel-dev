@@ -34,7 +34,7 @@ KERNEL_REL=4.4
 KERNEL_TAG=${KERNEL_REL}.88
 kernel_rt=".86-rt99"
 #Kernel Build
-BUILD=${build_prefix}122
+BUILD=${build_prefix}122.1
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -46,8 +46,8 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=cross
 DEBARCH=armhf
 
-ti_git_old_release="b23ed92436ee4346ab4ca7945a7c1ff9d5b1e970"
-        ti_git_pre="b23ed92436ee4346ab4ca7945a7c1ff9d5b1e970"
+ti_git_old_release="1e84dccca7bbc01eda4f31a04972acd3dfee4cad"
+        ti_git_pre="1e84dccca7bbc01eda4f31a04972acd3dfee4cad"
        ti_git_post="1e84dccca7bbc01eda4f31a04972acd3dfee4cad"
 #
 

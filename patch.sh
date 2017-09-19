@@ -756,6 +756,7 @@ beaglebone () {
 
 	dir 'soc/ti/uboot'
 	dir 'soc/ti/ti_am335x_tsc'
+	dir 'soc/ti/audio'
 
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
