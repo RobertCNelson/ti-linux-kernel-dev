@@ -571,6 +571,7 @@ drivers
 soc
 beaglebone
 dir 'build/gcc'
+dir 'pocketbeagle'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
