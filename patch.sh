@@ -198,6 +198,9 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
+
+	${git_bin} revert --no-edit 30e81e7fe197dd14d5b7653c75140ea75fe5c3d4
+
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -368,7 +371,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0016-iio-imu-adis16480-Fix-acceleration-scale-factor-for-.patch"
 	${git} "${DIR}/patches/backports/iio/0017-iio-hid-sensor-trigger-Fix-the-race-with-user-space-.patch"
 
-	backport_tag="v4.9.50"
+	backport_tag="v4.9.52"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
