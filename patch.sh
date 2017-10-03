@@ -120,19 +120,6 @@ external_git () {
 	fi
 }
 
-sync_cherrypicks () {
-	echo "dir: ti_4.9.x/pm_opp"
-	cherrypick_dir="ti_4.9.x/pm_opp"; num="1";
-	SHA="b3ba20b199ddd8bbb77c03bef1ad854da9cffec2"; cherrypick
-	SHA="14f6b0371f49d044f7b7f4384f528cf64e0b2977"; cherrypick
-	SHA="78ff54d5f5f159532ba8dd2db4018f5f401796bd"; cherrypick
-	SHA="d4bca0c2d8c315c0aa4f7c15207a26d12974f929"; cherrypick
-	SHA="c5d004835f2d162a04be591419d17864b477a789"; cherrypick
-	SHA="85fd3abebe7191cfcf70f4fbf9b1c7e31369129b"; cherrypick
-	SHA="d99c96b19e5d2821689c4c3ba97479289dbe9f79"; cherrypick
-	SHA="3bf60fbfab08b34cead5549b414fb2ed47e512b9"; cherrypick
-}
-
 aufs_fail () {
 	echo "aufs4 failed"
 	exit 2
@@ -218,9 +205,6 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-
-	${git_bin} revert --no-edit 120ec1e4cdddfc16c31581c2c30511c6c16fe0fd
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -244,8 +228,7 @@ local_patch () {
 }
 
 external_git
-#sync_cherrypicks
-aufs4
+#aufs4
 #rt
 #local_patch
 
@@ -317,29 +300,20 @@ reverts () {
 
 	${git} "${DIR}/patches/reverts/0001-Revert-eeprom-at24-check-if-the-chip-is-functional-i.patch"
 
-	#https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/log/drivers/net/wireless/ti
-	${git} "${DIR}/patches/reverts/0002-Revert-wlcore-sdio-drop-kfree-for-memory-allocated-w.patch"
-	${git} "${DIR}/patches/reverts/0003-Revert-wlcore-wl18xx-Use-chip-specific-configuration.patch"
-	${git} "${DIR}/patches/reverts/0004-Revert-wlcore-Fix-config-firmware-loading-issues.patch"
-	${git} "${DIR}/patches/reverts/0005-Revert-wlcore-spi-Populate-config-firmware-data.patch"
-	${git} "${DIR}/patches/reverts/0006-Revert-wlcore-sdio-Populate-config-firmware-data.patch"
-	${git} "${DIR}/patches/reverts/0007-Revert-wlcore-Prepare-family-to-fix-nvs-file-handlin.patch"
-
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
-		number=7
+		number=1
 		cleanup
 	fi
 }
 
 drivers () {
 	dir 'drivers/gadget'
-	dir 'drivers/pm_bus'
+	dir 'drivers/pwm'
 	dir 'drivers/spi'
-	dir 'drivers/thumb2'
 	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
-	dir 'drivers/broadcom'
+	dir 'drivers/opp'
 
 	#https://github.com/pantoniou/linux-beagle-track-mainline/tree/bbb-overlays
 	echo "dir: drivers/ti/bbb_overlays"
@@ -348,60 +322,58 @@ drivers () {
 		start_cleanup
 	fi
 
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0001-scripts-dtc-Update-to-upstream-version-1.4.1-Overlay.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0002-gitignore-Ignore-DTB-files.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0001-gitignore-Ignore-DTB-files.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0003-add-PM-firmware.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0004-ARM-CUSTOM-Build-a-uImage-with-dtb-already-appended.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0002-add-PM-firmware.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0003-ARM-CUSTOM-Build-a-uImage-with-dtb-already-appended.patch"
 	fi
 
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0005-omap-Fix-crash-when-omap-device-is-disabled.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0006-serial-omap-Fix-port-line-number-without-aliases.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0007-tty-omap-serial-Fix-up-platform-data-alloc.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0008-of-Custom-printk-format-specifier-for-device-node.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0009-of-overlay-kobjectify-overlay-objects.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0010-of-overlay-global-sysfs-enable-attribute.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0011-Documentation-ABI-overlays-global-attributes.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0012-Documentation-document-of_overlay_disable-parameter.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0013-of-overlay-add-per-overlay-sysfs-attributes.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0014-Documentation-ABI-overlays-per-overlay-docs.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0015-of-dynamic-Add-__of_node_dupv.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0016-of-changesets-Introduce-changeset-helper-methods.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0017-of-changeset-Add-of_changeset_node_move-method.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0018-of-unittest-changeset-helpers.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0019-OF-DT-Overlay-configfs-interface-v7.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0020-ARM-DT-Enable-symbols-when-CONFIG_OF_OVERLAY-is-used.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0021-misc-Beaglebone-capemanager.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0022-doc-misc-Beaglebone-capemanager-documentation.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0023-doc-dt-beaglebone-cape-manager-bindings.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0024-doc-ABI-bone_capemgr-sysfs-API.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0025-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0026-arm-dts-Enable-beaglebone-cape-manager.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0027-of-overlay-Implement-target-index-support.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0028-of-unittest-Add-indirect-overlay-target-test.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0029-doc-dt-Document-the-indirect-overlay-method.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0030-of-overlay-Introduce-target-root-capability.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0031-of-unittest-Unit-tests-for-target-root-overlays.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0032-doc-dt-Document-the-target-root-overlay-method.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0033-RFC-Device-overlay-manager-PCI-USB-DT.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0034-of-rename-_node_sysfs-to-_node_post.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0035-of-Support-hashtable-lookups-for-phandles.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0036-of-unittest-hashed-phandles-unitest.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0037-of-overlay-Pick-up-label-symbols-from-overlays.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0004-omap-Fix-crash-when-omap-device-is-disabled.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0005-serial-omap-Fix-port-line-number-without-aliases.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0006-tty-omap-serial-Fix-up-platform-data-alloc.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0007-of-overlay-kobjectify-overlay-objects.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0008-of-overlay-global-sysfs-enable-attribute.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0009-Documentation-ABI-overlays-global-attributes.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0010-Documentation-document-of_overlay_disable-parameter.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0011-of-overlay-add-per-overlay-sysfs-attributes.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0012-Documentation-ABI-overlays-per-overlay-docs.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0013-of-dynamic-Add-__of_node_dupv.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0014-of-changesets-Introduce-changeset-helper-methods.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0015-of-changeset-Add-of_changeset_node_move-method.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0016-of-unittest-changeset-helpers.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0017-OF-DT-Overlay-configfs-interface-v7.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0018-ARM-DT-Enable-symbols-when-CONFIG_OF_OVERLAY-is-used.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0019-misc-Beaglebone-capemanager.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0020-doc-misc-Beaglebone-capemanager-documentation.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0021-doc-dt-beaglebone-cape-manager-bindings.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0022-doc-ABI-bone_capemgr-sysfs-API.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0023-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0024-arm-dts-Enable-beaglebone-cape-manager.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0025-of-overlay-Implement-target-index-support.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0026-of-unittest-Add-indirect-overlay-target-test.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0027-doc-dt-Document-the-indirect-overlay-method.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0028-of-overlay-Introduce-target-root-capability.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0029-of-unittest-Unit-tests-for-target-root-overlays.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0030-doc-dt-Document-the-target-root-overlay-method.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0031-RFC-Device-overlay-manager-PCI-USB-DT.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0032-of-rename-_node_sysfs-to-_node_post.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0033-of-Support-hashtable-lookups-for-phandles.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0034-of-unittest-hashed-phandles-unitest.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0035-of-overlay-Pick-up-label-symbols-from-overlays.patch"
 
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0038-of-Portable-Device-Tree-connector.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0039-boneblack-defconfig.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0036-of-Portable-Device-Tree-connector.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0037-boneblack-defconfig.patch"
 	fi
 
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0040-bone_capemgr-uboot_capemgr_enabled-flag.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0041-bone_capemgr-kill-with-uboot-flag.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0038-bone_capemgr-uboot_capemgr_enabled-flag.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0039-bone_capemgr-kill-with-uboot-flag.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="drivers/ti/bbb_overlays"
-		number=41
+		number=39
 		cleanup
 	fi
 
@@ -453,38 +425,22 @@ drivers () {
 	dir 'drivers/ti/etnaviv'
 	dir 'drivers/ti/eqep'
 	dir 'drivers/ti/mcasp'
-	dir 'drivers/ti/mmc'
-	dir 'drivers/ti/pru'
 	dir 'drivers/ti/rpmsg'
-	dir 'drivers/ti/rtc'
 	dir 'drivers/ti/serial'
-#	dir 'drivers/ti/spi'
-#	dir 'drivers/ti/uio'
-	dir 'drivers/ti/wireless'
-
+	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
-	dir 'drivers/ti/beaglelogic'
 }
 
 soc () {
-#	dir 'soc/exynos'
-#	dir 'soc/imx/udoo'
-#	dir 'soc/imx/wandboard'
-#	dir 'soc/imx'
-#	dir 'soc/sunxi'
+	dir 'soc/ti'
 	dir 'soc/ti/bone_common'
-	dir 'soc/ti/bbg'
-	dir 'soc/ti/bbgw'
-	dir 'soc/ti/bbbw'
+	dir 'soc/ti/uboot'
 	dir 'soc/ti/blue'
 	dir 'soc/ti/sancloud'
 	dir 'soc/ti/abbbi'
 	dir 'soc/ti/am335x_olimex_som'
 	dir 'soc/ti/beaglebone_capes'
-	dir 'soc/ti/uboot'
-	dir 'soc/ti/am571x'
-	dir 'soc/ti/x15'
-	dir 'soc/ti/audio'
+	dir 'soc/ti/pocketbeagle'
 }
 
 dtb_makefile_append () {
@@ -522,39 +478,27 @@ beaglebone () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 
-		device="am335x-boneblack-emmc-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-hdmi-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
-		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
+
+#		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
+#		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
+
+		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
 		device="am335x-olimex-som.dtb" ; dtb_makefile_append
 
-		device="am335x-bone-cape-bone-argus.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-cape-bone-argus.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+
 		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
+
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
+
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
 
-		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblue.dtb" ; dtb_makefile_append
-		device="am335x-boneblue-ArduPilot.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
-
-		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
-
-		device="am571x-sndrblock.dtb" ; dtb_makefile_append_am57xx
+		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
@@ -571,45 +515,6 @@ drivers
 soc
 beaglebone
 dir 'build/gcc'
-dir 'pocketbeagle'
-
-sync_mainline_dtc () {
-	echo "dir: dtc"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		cd ../
-		if [ -d ./dtc ] ; then
-			rm -rf ./dtc || true
-		fi
-
-		${git_bin} clone -b dtc-v1.4.4 https://github.com/RobertCNelson/dtc --depth=1
-
-		cd ./KERNEL/
-
-		sed -i -e 's:git commit:#git commit:g' ./scripts/dtc/update-dtc-source.sh
-		./scripts/dtc/update-dtc-source.sh
-		sed -i -e 's:#git commit:git commit:g' ./scripts/dtc/update-dtc-source.sh
-		git commit -a -m "scripts/dtc: Update to upstream version overlays" -s
-		git format-patch -1 -o ../patches/dtc/
-
-		rm -rf ../dtc/ || true
-
-		exit 2
-	else
-		#regenerate="enable"
-		if [ "x${regenerate}" = "xenable" ] ; then
-			start_cleanup
-		fi
-
-		${git} "${DIR}/patches/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
-
-		if [ "x${regenerate}" = "xenable" ] ; then
-			wdir="dtc"
-			number=1
-			cleanup
-		fi
-	fi
-}
 
 packaging () {
 	echo "dir: packaging"
@@ -617,7 +522,7 @@ packaging () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
 		#Needed for v4.11.x and less
-		patch -p1 < "${DIR}/patches/packaging/0002-Revert-deb-pkg-Remove-the-KBUILD_IMAGE-workaround.patch"
+		#patch -p1 < "${DIR}/patches/packaging/0002-Revert-deb-pkg-Remove-the-KBUILD_IMAGE-workaround.patch"
 		${git_bin} commit -a -m 'packaging: sync builddeb changes' -s
 		${git_bin} format-patch -1 -o "${DIR}/patches/packaging"
 		exit 2
@@ -639,7 +544,6 @@ readme () {
 	fi
 }
 
-sync_mainline_dtc
 packaging
 readme
 echo "patch.sh ran successfully"
