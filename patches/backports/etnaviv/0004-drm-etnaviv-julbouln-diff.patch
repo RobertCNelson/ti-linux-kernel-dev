@@ -1,22 +1,22 @@
-From f78c7461b1e982ff6e94bb9f3bb0a123bb759d44 Mon Sep 17 00:00:00 2001
+From 968769d4b9ebce1c98e4f0b175b9f01858cab539 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 2 Dec 2016 16:09:27 -0600
+Date: Fri, 6 Oct 2017 13:43:56 -0500
 Subject: [PATCH 4/4] drm: etnaviv: julbouln diff
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/gpu/drm/etnaviv/etnaviv_drv.c        | 25 ++++++++++++++++---------
- drivers/gpu/drm/etnaviv/etnaviv_gem.c        | 12 +++++++++++-
+ drivers/gpu/drm/etnaviv/etnaviv_gem.c        |  9 ++++++++-
  drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c |  7 +++++++
  drivers/gpu/drm/etnaviv/etnaviv_gpu.c        | 12 ++++++++----
  drivers/gpu/drm/etnaviv/etnaviv_iommu.c      |  2 +-
  drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c   |  2 +-
  drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h   | 24 ++++++++++++++++++++++++
- 7 files changed, 68 insertions(+), 16 deletions(-)
+ 7 files changed, 65 insertions(+), 16 deletions(-)
  create mode 100644 drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h
 
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_drv.c b/drivers/gpu/drm/etnaviv/etnaviv_drv.c
-index aa68766..0aa8cb8 100644
+index aa687669e22b..0aa8cb85c12f 100644
 --- a/drivers/gpu/drm/etnaviv/etnaviv_drv.c
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_drv.c
 @@ -91,8 +91,10 @@ static void load_gpu(struct drm_device *dev)
@@ -106,28 +106,26 @@ index aa68766..0aa8cb8 100644
  };
  MODULE_DEVICE_TABLE(of, dt_match);
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_gem.c b/drivers/gpu/drm/etnaviv/etnaviv_gem.c
-index 0370b84..53488e1 100644
+index 82dd57d4843c..7008d961fcc2 100644
 --- a/drivers/gpu/drm/etnaviv/etnaviv_gem.c
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_gem.c
-@@ -550,12 +550,17 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
- {
+@@ -551,6 +551,7 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
  	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
+ 	struct etnaviv_drm_private *priv = obj->dev->dev_private;
  	struct etnaviv_vram_mapping *mapping, *tmp;
 +	struct drm_device *dev = etnaviv_obj->base.dev;
-+	struct etnaviv_drm_private *priv = dev->dev_private;
  
  	/* object should not be active */
  	WARN_ON(is_active(etnaviv_obj));
- 
-+	mutex_lock(&priv->gem_lock);
+@@ -559,6 +560,7 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
  	list_del(&etnaviv_obj->gem_node);
-+	mutex_unlock(&priv->gem_lock);
+ 	mutex_unlock(&priv->gem_lock);
  
 +	mutex_lock(&etnaviv_obj->lock);
  	list_for_each_entry_safe(mapping, tmp, &etnaviv_obj->vram_list,
  				 obj_node) {
  		struct etnaviv_iommu *mmu = mapping->mmu;
-@@ -568,6 +573,7 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
+@@ -571,6 +573,7 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
  		list_del(&mapping->obj_node);
  		kfree(mapping);
  	}
@@ -135,7 +133,7 @@ index 0370b84..53488e1 100644
  
  	drm_gem_free_mmap_offset(obj);
  	etnaviv_obj->ops->release(etnaviv_obj);
-@@ -762,8 +768,12 @@ static struct page **etnaviv_gem_userptr_do_get_pages(
+@@ -765,8 +768,12 @@ static struct page **etnaviv_gem_userptr_do_get_pages(
  
  	down_read(&mm->mmap_sem);
  	while (pinned < npages) {
@@ -150,7 +148,7 @@ index 0370b84..53488e1 100644
  			break;
  
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c b/drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c
-index afdd55d..44454c5 100644
+index 1ac9a95e1d78..b94ce970dc42 100644
 --- a/drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_gem_submit.c
 @@ -19,6 +19,13 @@
@@ -168,7 +166,7 @@ index afdd55d..44454c5 100644
   * Cmdstream submission:
   */
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_gpu.c b/drivers/gpu/drm/etnaviv/etnaviv_gpu.c
-index b1254f8..b430f30 100644
+index a336754698f8..cd5adae291ed 100644
 --- a/drivers/gpu/drm/etnaviv/etnaviv_gpu.c
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_gpu.c
 @@ -27,6 +27,8 @@
@@ -198,7 +196,7 @@ index b1254f8..b430f30 100644
  		    cmdbuf->paddr);
  	kfree(cmdbuf);
  }
-@@ -1561,9 +1563,11 @@ static int etnaviv_gpu_bind(struct device *dev, struct device *master,
+@@ -1562,9 +1564,11 @@ static int etnaviv_gpu_bind(struct device *dev, struct device *master,
  	INIT_WORK(&gpu->recover_work, recover_worker);
  	init_waitqueue_head(&gpu->fence_event);
  
@@ -213,7 +211,7 @@ index b1254f8..b430f30 100644
  
  	pm_runtime_mark_last_busy(gpu->dev);
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu.c
-index 81f1583..f769af7 100644
+index 81f1583a7946..f769af7a4b21 100644
 --- a/drivers/gpu/drm/etnaviv/etnaviv_iommu.c
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu.c
 @@ -232,7 +232,7 @@ struct iommu_domain *etnaviv_iommuv1_domain_alloc(struct etnaviv_gpu *gpu)
@@ -226,7 +224,7 @@ index 81f1583..f769af7 100644
  	etnaviv_domain->domain.geometry.aperture_end = GPU_MEM_START + PT_ENTRIES * SZ_4K - 1;
  
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
-index 7e9c4d2..f557f2a 100644
+index 7e9c4d210a84..f557f2aa908a 100644
 --- a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.c
 @@ -272,7 +272,7 @@ struct iommu_domain *etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu)
@@ -240,7 +238,7 @@ index 7e9c4d2..f557f2a 100644
  
 diff --git a/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h
 new file mode 100644
-index 0000000..60c77b3
+index 000000000000..60c77b35b824
 --- /dev/null
 +++ b/drivers/gpu/drm/etnaviv/etnaviv_iommu_v2.h
 @@ -0,0 +1,24 @@
@@ -269,5 +267,5 @@ index 0000000..60c77b3
 +struct iommu_domain *etnaviv_iommuv2_domain_alloc(struct etnaviv_gpu *gpu);
 +#endif /* __ETNAVIV_IOMMU_V2_H__ */
 -- 
-2.10.2
+2.14.2
 

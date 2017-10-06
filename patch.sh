@@ -371,7 +371,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0016-iio-imu-adis16480-Fix-acceleration-scale-factor-for-.patch"
 	${git} "${DIR}/patches/backports/iio/0017-iio-hid-sensor-trigger-Fix-the-race-with-user-space-.patch"
 
-	backport_tag="v4.9.52"
+	backport_tag="v4.9.53"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
