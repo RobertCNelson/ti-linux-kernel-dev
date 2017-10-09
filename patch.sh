@@ -331,6 +331,17 @@ lts44_backports () {
 	fi
 	${git} "${DIR}/patches/backports/i2c/0001-i2c-print-correct-device-invalid-address.patch"
 
+	subsystem="wiznet"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v  ~/linux-src/drivers/net/ethernet/wiznet/* ./drivers/net/ethernet/wiznet/
+
+		post_backports
+	else
+		patch_backports
+	fi
+
 	backport_tag="v4.8.17"
 	subsystem="iio"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -484,6 +495,7 @@ drivers () {
 	dir 'drivers/ti/iio'
 	dir 'drivers/ti/pm'
 	dir 'drivers/wireless'
+	dir 'drivers/wiznet'
 }
 
 pru_rpmsg () {
