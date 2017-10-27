@@ -573,6 +573,7 @@ soc
 beaglebone
 dir 'build/gcc'
 dir 'pocketbeagle'
+dir 'config_pin'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
