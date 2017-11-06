@@ -382,7 +382,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0016-iio-imu-adis16480-Fix-acceleration-scale-factor-for-.patch"
 	${git} "${DIR}/patches/backports/iio/0017-iio-hid-sensor-trigger-Fix-the-race-with-user-space-.patch"
 
-	backport_tag="v4.9.59"
+	backport_tag="v4.9.60"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -404,7 +404,25 @@ lts44_backports () {
 		cp -v ~/linux-src/drivers/input/touchscreen/of_touchscreen.c ./drivers/input/touchscreen/
 		cp -v ~/linux-src/drivers/input/touchscreen/pixcir_i2c_ts.c ./drivers/input/touchscreen/
 		cp -v ~/linux-src/drivers/input/touchscreen/tsc200x-core.c ./drivers/input/touchscreen/
+		cp -v ~/linux-src/drivers/input/touchscreen/silead.c ./drivers/input/touchscreen/
 		cp -v ~/linux-src/include/linux/input/touchscreen.h ./include/linux/input/
+
+		echo "obj-\$(CONFIG_TOUCHSCREEN_SILEAD)	+= silead.o" >> ./drivers/input/touchscreen/Makefile
+
+		sed -i -e 's:endif:config TOUCHSCREEN_SILEAD:g' ./drivers/input/touchscreen/Kconfig
+
+		echo "	tristate \"Silead I2C touchscreen\"" >> ./drivers/input/touchscreen/Kconfig
+		echo "	depends on I2C" >> ./drivers/input/touchscreen/Kconfig
+		echo "	help" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  Say Y here if you have the Silead touchscreen connected to" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  your system." >> ./drivers/input/touchscreen/Kconfig
+		echo "" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  If unsure, say N." >> ./drivers/input/touchscreen/Kconfig
+		echo "" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  To compile this driver as a module, choose M here: the" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  module will be called silead." >> ./drivers/input/touchscreen/Kconfig
+		echo "" >> ./drivers/input/touchscreen/Kconfig
+		echo "endif" >> ./drivers/input/touchscreen/Kconfig
 
 		post_backports
 	else
