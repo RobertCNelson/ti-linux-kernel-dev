@@ -1,6 +1,6 @@
-From a4a8b1e5fc461789d0b12304bce427ffad684036 Mon Sep 17 00:00:00 2001
+From 0a420f6583d336e94c5e0dd6aedbba17cb7163b6 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 20 Nov 2017 10:52:27 -0600
+Date: Tue, 21 Nov 2017 15:08:54 -0600
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -130,7 +130,6 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/net/ethernet/3com/3c59x.c                  |    8 +-
  drivers/net/ethernet/realtek/8139too.c             |    2 +-
  .../net/wireless/intersil/orinoco/orinoco_usb.c    |    2 +-
- drivers/pci/access.c                               |    2 +-
  drivers/pinctrl/qcom/pinctrl-msm.c                 |   48 +-
  drivers/scsi/fcoe/fcoe.c                           |   16 +-
  drivers/scsi/fcoe/fcoe_ctlr.c                      |    4 +-
@@ -384,7 +383,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/sunrpc/svc_xprt.c                              |    6 +-
  scripts/mkcompile_h                                |    4 +-
  sound/core/pcm_native.c                            |    8 +-
- 379 files changed, 11108 insertions(+), 2464 deletions(-)
+ 378 files changed, 11107 insertions(+), 2463 deletions(-)
  create mode 100644 Documentation/trace/histograms.txt
  create mode 100644 include/linux/locallock.h
  create mode 100644 include/linux/mutex_rt.h
@@ -3364,7 +3363,7 @@ index b333fc45f9ec..8b85916e6986 100644
  
  /*
 diff --git a/block/blk-core.c b/block/blk-core.c
-index d1f2801ce836..6f945bb0fa1a 100644
+index 95379fc83805..e531da0c9232 100644
 --- a/block/blk-core.c
 +++ b/block/blk-core.c
 @@ -125,6 +125,9 @@ void blk_rq_init(struct request_queue *q, struct request *rq)
@@ -3381,8 +3380,8 @@ index d1f2801ce836..6f945bb0fa1a 100644
   **/
  void blk_start_queue(struct request_queue *q)
  {
--	WARN_ON(!irqs_disabled());
-+	WARN_ON_NONRT(!irqs_disabled());
+-	WARN_ON(!in_interrupt() && !irqs_disabled());
++	WARN_ON_NONRT(!in_interrupt() && !irqs_disabled());
  
  	queue_flag_clear(QUEUE_FLAG_STOPPED, q);
  	__blk_run_queue(q);
@@ -5289,19 +5288,6 @@ index bca6935a94db..d7a35ee34d03 100644
  						 ctx->done.done);
  		}
  		break;
-diff --git a/drivers/pci/access.c b/drivers/pci/access.c
-index d11cdbb8fba3..223bbb9acb03 100644
---- a/drivers/pci/access.c
-+++ b/drivers/pci/access.c
-@@ -672,7 +672,7 @@ void pci_cfg_access_unlock(struct pci_dev *dev)
- 	WARN_ON(!dev->block_cfg_access);
- 
- 	dev->block_cfg_access = 0;
--	wake_up_all(&pci_cfg_wait);
-+	wake_up_all_locked(&pci_cfg_wait);
- 	raw_spin_unlock_irqrestore(&pci_lock, flags);
- }
- EXPORT_SYMBOL_GPL(pci_cfg_access_unlock);
 diff --git a/drivers/pinctrl/qcom/pinctrl-msm.c b/drivers/pinctrl/qcom/pinctrl-msm.c
 index bedce3453dd3..faf038978650 100644
 --- a/drivers/pinctrl/qcom/pinctrl-msm.c
@@ -24314,10 +24300,10 @@ index 296dcca77f33..beee8ad4b9ea 100644
  	return written;
  }
 diff --git a/kernel/workqueue_internal.h b/kernel/workqueue_internal.h
-index 8635417c587b..f000c4d6917e 100644
+index 29fa81f0f51a..42d1e3974554 100644
 --- a/kernel/workqueue_internal.h
 +++ b/kernel/workqueue_internal.h
-@@ -43,6 +43,7 @@ struct worker {
+@@ -44,6 +44,7 @@ struct worker {
  	unsigned long		last_active;	/* L: last active timestamp */
  	unsigned int		flags;		/* X: flags */
  	int			id;		/* I: worker id */
@@ -24325,7 +24311,7 @@ index 8635417c587b..f000c4d6917e 100644
  
  	/*
  	 * Opaque string set with work_set_desc().  Printed out with task
-@@ -68,7 +69,7 @@ static inline struct worker *current_wq_worker(void)
+@@ -69,7 +70,7 @@ static inline struct worker *current_wq_worker(void)
   * Scheduler hooks for concurrency managed workqueue.  Only to be used from
   * sched/core.c and workqueue.c.
   */
