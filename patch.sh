@@ -334,6 +334,7 @@ reverts () {
 }
 
 drivers () {
+	dir 'drivers/ar1021_i2c'
 	dir 'drivers/gadget'
 	dir 'drivers/pm_bus'
 	dir 'drivers/spi'
