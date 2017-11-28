@@ -430,6 +430,7 @@ drivers () {
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
+	dir 'drivers/ti/iio_pulse_ti_ecap'
 }
 
 soc () {
