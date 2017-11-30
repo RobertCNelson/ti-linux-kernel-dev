@@ -206,6 +206,10 @@ rt_cleanup () {
 rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
+
+#4.14.3
+	${git_bin} revert --no-edit f17c786b28a3060a566a170c2cf3bd7441fc30a3
+
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz

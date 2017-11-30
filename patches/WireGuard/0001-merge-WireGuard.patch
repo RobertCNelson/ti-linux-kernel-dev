@@ -1,6 +1,6 @@
-From 6bd5216dbc3d5b997bdc0036df0021e34a3fda3b Mon Sep 17 00:00:00 2001
+From c7148a73c8b62814824b83af09366143d9299ab8 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 28 Nov 2017 15:29:05 -0600
+Date: Thu, 30 Nov 2017 11:36:01 -0600
 Subject: [PATCH] merge: WireGuard
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -12,9 +12,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/allowedips.c                         |  323 ++
  net/wireguard/allowedips.h                         |   41 +
  net/wireguard/compat/Makefile.include              |   62 +
- .../compat/checksum/checksum_partial_compat.h      |  201 ++
+ .../compat/checksum/checksum_partial_compat.h      |  203 ++
  net/wireguard/compat/compat-asm.h                  |   15 +
- net/wireguard/compat/compat.h                      |  601 ++++
+ net/wireguard/compat/compat.h                      |  625 ++++
  net/wireguard/compat/dst_cache/dst_cache.c         |  175 ++
  .../compat/dst_cache/include/net/dst_cache.h       |   97 +
  net/wireguard/compat/fpu/include/asm/fpu/api.h     |    1 +
@@ -45,7 +45,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/crypto/poly1305-arm64.S              |  846 +++++
  net/wireguard/crypto/poly1305-mips64.S             |  383 +++
  net/wireguard/crypto/poly1305-x86_64.S             | 2830 +++++++++++++++++
- net/wireguard/device.c                             |  411 +++
+ net/wireguard/device.c                             |  412 +++
  net/wireguard/device.h                             |   61 +
  net/wireguard/hashtables.c                         |  165 +
  net/wireguard/hashtables.h                         |   49 +
@@ -55,7 +55,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/netlink.h                            |    9 +
  net/wireguard/noise.c                              |  632 ++++
  net/wireguard/noise.h                              |  116 +
- net/wireguard/peer.c                               |  132 +
+ net/wireguard/peer.c                               |  133 +
  net/wireguard/peer.h                               |   70 +
  net/wireguard/queueing.c                           |   43 +
  net/wireguard/queueing.h                           |  139 +
@@ -75,7 +75,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/timers.h                             |   18 +
  net/wireguard/uapi/wireguard.h                     |  199 ++
  net/wireguard/version.h                            |    1 +
- 70 files changed, 29994 insertions(+)
+ 70 files changed, 30022 insertions(+)
  create mode 100644 net/wireguard/Kconfig
  create mode 100644 net/wireguard/Makefile
  create mode 100644 net/wireguard/allowedips.c
@@ -146,7 +146,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 net/wireguard/version.h
 
 diff --git a/net/Kconfig b/net/Kconfig
-index 9dba2715919d..05afe1616292 100644
+index 9c7b38379c09..45766da98a1c 100644
 --- a/net/Kconfig
 +++ b/net/Kconfig
 @@ -85,6 +85,7 @@ config INET
@@ -672,14 +672,16 @@ index 000000000000..2bbe9e96a90a
 +endif
 diff --git a/net/wireguard/compat/checksum/checksum_partial_compat.h b/net/wireguard/compat/checksum/checksum_partial_compat.h
 new file mode 100644
-index 000000000000..5175d840e57a
+index 000000000000..147b0a6efac4
 --- /dev/null
 +++ b/net/wireguard/compat/checksum/checksum_partial_compat.h
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,203 @@
 +#include <net/route.h>
 +#include <net/esp.h>
 +#include <net/ip.h>
 +#include <net/ipv6.h>
++#include <net/ip6_checksum.h>
++
 +#define IP6_MF          0x0001
 +#define IP6_OFFSET      0xFFF8
 +static inline int skb_maybe_pull_tail(struct sk_buff *skb, unsigned int len, unsigned int max)
@@ -900,10 +902,10 @@ index 000000000000..548841d061a8
 +#endif /* _WG_COMPATASM_H */
 diff --git a/net/wireguard/compat/compat.h b/net/wireguard/compat/compat.h
 new file mode 100644
-index 000000000000..16e792354a17
+index 000000000000..042e9874807c
 --- /dev/null
 +++ b/net/wireguard/compat/compat.h
-@@ -0,0 +1,601 @@
+@@ -0,0 +1,625 @@
 +/* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 +
 +#ifndef _WG_COMPAT_H
@@ -1121,18 +1123,42 @@ index 000000000000..16e792354a17
 +#endif
 +
 +#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 75) && !defined(ISRHEL7)
++#ifndef U8_MAX
 +#define U8_MAX ((u8)~0U)
++#endif
++#ifndef S8_MAX
 +#define S8_MAX ((s8)(U8_MAX >> 1))
++#endif
++#ifndef S8_MIN
 +#define S8_MIN ((s8)(-S8_MAX - 1))
++#endif
++#ifndef U16_MAX
 +#define U16_MAX ((u16)~0U)
++#endif
++#ifndef S16_MAX
 +#define S16_MAX ((s16)(U16_MAX >> 1))
++#endif
++#ifndef S16_MIN
 +#define S16_MIN ((s16)(-S16_MAX - 1))
++#endif
++#ifndef U32_MAX
 +#define U32_MAX ((u32)~0U)
++#endif
++#ifndef S32_MAX
 +#define S32_MAX ((s32)(U32_MAX >> 1))
++#endif
++#ifndef S32_MIN
 +#define S32_MIN ((s32)(-S32_MAX - 1))
++#endif
++#ifndef U64_MAX
 +#define U64_MAX ((u64)~0ULL)
++#endif
++#ifndef S64_MAX
 +#define S64_MAX ((s64)(U64_MAX >> 1))
++#endif
++#ifndef S64_MIN
 +#define S64_MIN ((s64)(-S64_MAX - 1))
++#endif
 +#endif
 +
 +#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 60) && !defined(ISRHEL7)
@@ -24271,10 +24297,10 @@ index 000000000000..bff1d0e53e55
 +#endif /* CONFIG_AS_AVX512 */
 diff --git a/net/wireguard/device.c b/net/wireguard/device.c
 new file mode 100644
-index 000000000000..d585c56d4b63
+index 000000000000..d5dc93cde8b7
 --- /dev/null
 +++ b/net/wireguard/device.c
-@@ -0,0 +1,411 @@
+@@ -0,0 +1,412 @@
 +/* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 +
 +#include "queueing.h"
@@ -24379,6 +24405,7 @@ index 000000000000..d585c56d4b63
 +		timers_stop(peer);
 +		noise_handshake_clear(&peer->handshake);
 +		noise_keypairs_clear(&peer->keypairs);
++		peer->last_sent_handshake = get_jiffies_64() - REKEY_TIMEOUT - HZ;
 +	}
 +	mutex_unlock(&wg->device_update_lock);
 +	skb_queue_purge(&wg->incoming_handshakes);
@@ -24981,7 +25008,7 @@ index 000000000000..55f608a908dc
 +#endif /* _WG_HASHTABLES_H */
 diff --git a/net/wireguard/main.c b/net/wireguard/main.c
 new file mode 100644
-index 000000000000..be5a42bf9486
+index 000000000000..fea8c652e6e1
 --- /dev/null
 +++ b/net/wireguard/main.c
 @@ -0,0 +1,66 @@
@@ -25021,7 +25048,7 @@ index 000000000000..be5a42bf9486
 +	if (ret < 0)
 +		goto err_packet;
 +
-+	ret = netlink_init();
++	ret = genetlink_init();
 +	if (ret < 0)
 +		goto err_netlink;
 +
@@ -25038,7 +25065,7 @@ index 000000000000..be5a42bf9486
 +
 +static void __exit mod_exit(void)
 +{
-+	netlink_uninit();
++	genetlink_uninit();
 +	device_uninit();
 +	pr_debug("WireGuard unloaded\n");
 +}
@@ -25187,7 +25214,7 @@ index 000000000000..927b487043bf
 +#endif /* _WG_MESSAGES_H */
 diff --git a/net/wireguard/netlink.c b/net/wireguard/netlink.c
 new file mode 100644
-index 000000000000..43e5ce099bb8
+index 000000000000..7faaa1a74d3c
 --- /dev/null
 +++ b/net/wireguard/netlink.c
 @@ -0,0 +1,509 @@
@@ -25691,18 +25718,18 @@ index 000000000000..43e5ce099bb8
 +	.netnsok = true
 +};
 +
-+int __init netlink_init(void)
++int __init genetlink_init(void)
 +{
 +	return genl_register_family(&genl_family);
 +}
 +
-+void __exit netlink_uninit(void)
++void __exit genetlink_uninit(void)
 +{
 +	genl_unregister_family(&genl_family);
 +}
 diff --git a/net/wireguard/netlink.h b/net/wireguard/netlink.h
 new file mode 100644
-index 000000000000..9fe2c78045cc
+index 000000000000..750b87452542
 --- /dev/null
 +++ b/net/wireguard/netlink.h
 @@ -0,0 +1,9 @@
@@ -25711,8 +25738,8 @@ index 000000000000..9fe2c78045cc
 +#ifndef _WG_NETLINK_H
 +#define _WG_NETLINK_H
 +
-+int netlink_init(void);
-+void netlink_uninit(void);
++int genetlink_init(void);
++void genetlink_uninit(void);
 +
 +#endif /* _WG_NETLINK_H */
 diff --git a/net/wireguard/noise.c b/net/wireguard/noise.c
@@ -26477,10 +26504,10 @@ index 000000000000..01026a4aee3b
 +#endif /* _WG_NOISE_H */
 diff --git a/net/wireguard/peer.c b/net/wireguard/peer.c
 new file mode 100644
-index 000000000000..6ff14f446e49
+index 000000000000..78ba5b0eb08b
 --- /dev/null
 +++ b/net/wireguard/peer.c
-@@ -0,0 +1,132 @@
+@@ -0,0 +1,133 @@
 +/* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 +
 +#include "peer.h"
@@ -26535,6 +26562,7 @@ index 000000000000..6ff14f446e49
 +	skb_queue_head_init(&peer->staged_packet_queue);
 +	list_add_tail(&peer->peer_list, &wg->peer_list);
 +	pubkey_hashtable_add(&wg->peer_hashtable, peer);
++	peer->last_sent_handshake = get_jiffies_64() - REKEY_TIMEOUT - HZ;
 +	pr_debug("%s: Peer %llu created\n", wg->dev->name, peer->internal_id);
 +	return peer;
 +}
