@@ -382,7 +382,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0016-iio-imu-adis16480-Fix-acceleration-scale-factor-for-.patch"
 	${git} "${DIR}/patches/backports/iio/0017-iio-hid-sensor-trigger-Fix-the-race-with-user-space-.patch"
 
-	backport_tag="v4.9.67"
+	backport_tag="v4.9.68"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -872,6 +872,7 @@ beaglebone () {
 
 		device="am335x-pocketbone.dtb" ; dtb_makefile_append
 		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
