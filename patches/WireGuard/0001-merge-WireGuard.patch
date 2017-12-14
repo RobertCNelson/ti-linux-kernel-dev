@@ -1,6 +1,6 @@
-From 3b2c15cc15710525cbfff2ddc8dbdf5af45b7c5c Mon Sep 17 00:00:00 2001
+From 44a17d3b7aadb0108b06d48b54fa18e322e10062 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 11 Dec 2017 11:08:58 -0600
+Date: Thu, 14 Dec 2017 10:27:44 -0600
 Subject: [PATCH] merge: WireGuard
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -31,16 +31,16 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/cookie.c                             |  195 ++
  net/wireguard/cookie.h                             |   52 +
  net/wireguard/crypto/blake2s-x86_64.S              |  685 ++++
- net/wireguard/crypto/blake2s.c                     |  294 ++
+ net/wireguard/crypto/blake2s.c                     |  296 ++
  net/wireguard/crypto/blake2s.h                     |   94 +
  net/wireguard/crypto/chacha20-arm.S                | 1471 +++++++++
  net/wireguard/crypto/chacha20-arm64.S              | 1940 ++++++++++++
  net/wireguard/crypto/chacha20-x86_64.S             | 2630 ++++++++++++++++
- net/wireguard/crypto/chacha20poly1305.c            |  838 +++++
+ net/wireguard/crypto/chacha20poly1305.c            |  840 +++++
  net/wireguard/crypto/chacha20poly1305.h            |   92 +
  net/wireguard/crypto/curve25519-arm.S              | 2110 +++++++++++++
  net/wireguard/crypto/curve25519-x86_64.S           | 3261 ++++++++++++++++++++
- net/wireguard/crypto/curve25519.c                  | 1689 ++++++++++
+ net/wireguard/crypto/curve25519.c                  | 1691 ++++++++++
  net/wireguard/crypto/curve25519.h                  |   25 +
  net/wireguard/crypto/poly1305-arm.S                | 1115 +++++++
  net/wireguard/crypto/poly1305-arm64.S              |  820 +++++
@@ -76,7 +76,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/timers.h                             |   21 +
  net/wireguard/uapi/wireguard.h                     |  182 ++
  net/wireguard/version.h                            |    1 +
- 71 files changed, 30550 insertions(+)
+ 71 files changed, 30556 insertions(+)
  create mode 100644 net/wireguard/Kconfig
  create mode 100644 net/wireguard/Makefile
  create mode 100644 net/wireguard/allowedips.c
@@ -5141,10 +5141,10 @@ index 000000000000..4a8ab75f43e3
 +#endif /* CONFIG_AS_AVX512 */
 diff --git a/net/wireguard/crypto/blake2s.c b/net/wireguard/crypto/blake2s.c
 new file mode 100644
-index 000000000000..c0b95be17251
+index 000000000000..5c3f8f03f91a
 --- /dev/null
 +++ b/net/wireguard/crypto/blake2s.c
-@@ -0,0 +1,294 @@
+@@ -0,0 +1,296 @@
 +/* SPDX-License-Identifier: GPL-2.0
 + *
 + * Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
@@ -5266,9 +5266,11 @@ index 000000000000..c0b95be17251
 +static bool blake2s_use_avx512 __read_mostly;
 +void __init blake2s_fpu_init(void)
 +{
++#ifndef CONFIG_UML
 +	blake2s_use_avx = boot_cpu_has(X86_FEATURE_AVX) && cpu_has_xfeatures(XFEATURE_MASK_SSE | XFEATURE_MASK_YMM, NULL);
 +#ifndef COMPAT_CANNOT_USE_AVX512
 +	blake2s_use_avx512 = boot_cpu_has(X86_FEATURE_AVX) && boot_cpu_has(X86_FEATURE_AVX2) && boot_cpu_has(X86_FEATURE_AVX512F) && boot_cpu_has(X86_FEATURE_AVX512VL) && cpu_has_xfeatures(XFEATURE_MASK_SSE | XFEATURE_MASK_YMM | XFEATURE_MASK_AVX512, NULL);
++#endif
 +#endif
 +}
 +#ifdef CONFIG_AS_AVX
@@ -11600,10 +11602,10 @@ index 000000000000..39d7080f11a6
 +#endif /* CONFIG_AS_AVX512 */
 diff --git a/net/wireguard/crypto/chacha20poly1305.c b/net/wireguard/crypto/chacha20poly1305.c
 new file mode 100644
-index 000000000000..417397318c8f
+index 000000000000..6be96f619f89
 --- /dev/null
 +++ b/net/wireguard/crypto/chacha20poly1305.c
-@@ -0,0 +1,838 @@
+@@ -0,0 +1,840 @@
 +/* SPDX-License-Identifier: OpenSSL OR (BSD-3-Clause OR GPL-2.0)
 + *
 + * Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
@@ -11652,6 +11654,7 @@ index 000000000000..417397318c8f
 +
 +void __init chacha20poly1305_fpu_init(void)
 +{
++#ifndef CONFIG_UML
 +	chacha20poly1305_use_ssse3 = boot_cpu_has(X86_FEATURE_SSSE3);
 +	chacha20poly1305_use_avx = boot_cpu_has(X86_FEATURE_AVX) &&
 +				   cpu_has_xfeatures(XFEATURE_MASK_SSE | XFEATURE_MASK_YMM, NULL);
@@ -11663,6 +11666,7 @@ index 000000000000..417397318c8f
 +				      boot_cpu_data.x86_model != INTEL_FAM6_SKYLAKE_X;
 +	chacha20poly1305_use_avx512vl = boot_cpu_has(X86_FEATURE_AVX) && boot_cpu_has(X86_FEATURE_AVX2) && boot_cpu_has(X86_FEATURE_AVX512F) && boot_cpu_has(X86_FEATURE_AVX512VL) &&
 +					cpu_has_xfeatures(XFEATURE_MASK_SSE | XFEATURE_MASK_YMM | XFEATURE_MASK_AVX512, NULL);
++#endif
 +#endif
 +}
 +#elif defined(CONFIG_ARM) || defined(CONFIG_ARM64)
@@ -12444,7 +12448,7 @@ index 000000000000..417397318c8f
 +#include "../selftest/chacha20poly1305.h"
 diff --git a/net/wireguard/crypto/chacha20poly1305.h b/net/wireguard/crypto/chacha20poly1305.h
 new file mode 100644
-index 000000000000..1e5459477352
+index 000000000000..8e7b886ca123
 --- /dev/null
 +++ b/net/wireguard/crypto/chacha20poly1305.h
 @@ -0,0 +1,92 @@
@@ -12508,7 +12512,7 @@ index 000000000000..1e5459477352
 +static inline bool chacha20poly1305_init_simd(void)
 +{
 +	bool have_simd = false;
-+#if defined(CONFIG_X86_64)
++#if defined(CONFIG_X86_64) && !defined(CONFIG_UML)
 +	have_simd = irq_fpu_usable();
 +	if (have_simd)
 +		kernel_fpu_begin();
@@ -12526,7 +12530,7 @@ index 000000000000..1e5459477352
 +
 +static inline void chacha20poly1305_deinit_simd(bool was_on)
 +{
-+#if defined(CONFIG_X86_64)
++#if defined(CONFIG_X86_64) && !defined(CONFIG_UML)
 +	if (was_on)
 +		kernel_fpu_end();
 +#elif IS_ENABLED(CONFIG_KERNEL_MODE_NEON)
@@ -17925,10 +17929,10 @@ index 000000000000..4d269269804b
 +#endif /* CONFIG_AS_AVX */
 diff --git a/net/wireguard/crypto/curve25519.c b/net/wireguard/crypto/curve25519.c
 new file mode 100644
-index 000000000000..adf6a0b262ac
+index 000000000000..1daebfe46c63
 --- /dev/null
 +++ b/net/wireguard/crypto/curve25519.c
-@@ -0,0 +1,1689 @@
+@@ -0,0 +1,1691 @@
 +/* SPDX-License-Identifier: GPL-2.0
 + *
 + * Copyright (C) 2008 Google Inc. All Rights Reserved.
@@ -17964,7 +17968,9 @@ index 000000000000..adf6a0b262ac
 +static bool curve25519_use_avx __read_mostly;
 +void __init curve25519_fpu_init(void)
 +{
++#ifndef CONFIG_UML
 +	curve25519_use_avx = boot_cpu_has(X86_FEATURE_AVX) && cpu_has_xfeatures(XFEATURE_MASK_SSE | XFEATURE_MASK_YMM, NULL);
++#endif
 +}
 +
 +typedef u64 fe[10];
