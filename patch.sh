@@ -220,7 +220,7 @@ rt () {
 	echo "dir: rt"
 
 #v4.9.66
-	${git_bin} revert --no-edit 1c37ff78298a6b6063649123356a312e1cce12ca
+#	${git_bin} revert --no-edit 1c37ff78298a6b6063649123356a312e1cce12ca
 
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 	#regenerate="enable"
@@ -599,6 +599,7 @@ beaglebone () {
 		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblue.dtb" ; dtb_makefile_append
+		device="am335x-boneblue-mmap.dtb" ; dtb_makefile_append
 		device="am335x-boneblue-ArduPilot.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
