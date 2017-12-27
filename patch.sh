@@ -207,14 +207,16 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-#4.14.8
-	${git_bin} revert --no-edit 3df23f7ce7255d1ef2a616071cac359a245fb6de
-	${git_bin} revert --no-edit 282e4b259d4f9429f7813efc8076dd601ed59f45
+#4.14.9
+	${git_bin} revert --no-edit 16e1626e54f835cb009de675d1f6b5a0ff9183d9
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
-		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
+#		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
+		xzcat patch-${rt_patch}.patch.xz | patch -p1 || true
+		rm -f arch/x86/kernel/asm-offsets.c.orig
+		rm -f arch/x86/kernel/asm-offsets.c.rej
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
 		${git_bin} add .
