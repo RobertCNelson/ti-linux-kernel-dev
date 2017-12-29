@@ -207,6 +207,9 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
+#4.14.10
+	${git_bin} revert --no-edit 88990591f0b0e7d4aedf0255fc26a09a2f899212
+
 #4.14.9
 	${git_bin} revert --no-edit 16e1626e54f835cb009de675d1f6b5a0ff9183d9
 
@@ -227,6 +230,7 @@ rt () {
 	fi
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
+	${git} "${DIR}/patches/rt/0002-rt-fix-missing-types.h-in-spinlock_types.h.patch"
 }
 
 wireguard_fail () {
