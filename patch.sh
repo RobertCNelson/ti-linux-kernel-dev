@@ -627,6 +627,7 @@ soc
 beaglebone
 dir 'build/gcc'
 dir 'pocketbeagle'
+exit
 dir 'config_pin'
 
 sync_mainline_dtc () {
