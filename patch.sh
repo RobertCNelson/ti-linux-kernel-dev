@@ -597,6 +597,7 @@ beaglebone () {
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
 
 		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
