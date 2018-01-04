@@ -381,6 +381,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0015-iio-light-tsl2563-use-correct-event-code.patch"
 	${git} "${DIR}/patches/backports/iio/0016-iio-imu-adis16480-Fix-acceleration-scale-factor-for-.patch"
 	${git} "${DIR}/patches/backports/iio/0017-iio-hid-sensor-trigger-Fix-the-race-with-user-space-.patch"
+	${git} "${DIR}/patches/backports/iio/0018-ti_am335x_tsc.c-driver.patch"
 
 	backport_tag="v4.9.70"
 
