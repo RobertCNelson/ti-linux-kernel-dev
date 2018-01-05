@@ -20,7 +20,8 @@ binary="bin/${target}-"
 
 if [ ! -d ${directory}/ ] ; then
 	rm -rf ./gcc-* || true
-	wget -c ${site}/${version}/${filename}
+	#wget -c ${site}/${version}/${filename}
+	wget -c http://rcn-ee.online/builds/jenkins-dl/${filename}
 	tar xf ${filename}
 fi
 
