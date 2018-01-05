@@ -245,10 +245,6 @@ rt () {
 		#quilt push -a
 		#git add .
 		#git commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
-		#quilt pop
-		#quilt delete -r localversion.patch
-		#quilt pop -a
-		#while quilt push; do quilt refresh; done
 
 		exit 2
 	fi
@@ -525,6 +521,7 @@ drivers () {
 	dir 'drivers/ti/mcasp'
 	dir 'drivers/ti/rpmsg'
 	dir 'drivers/ti/serial'
+	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
 }
@@ -634,7 +631,9 @@ readme () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
+		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
 		git add -f README.md
+		git add -f jenkins_build.sh
 		git commit -a -m 'enable: Jenkins: http://rcn-ee.online:8080' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2

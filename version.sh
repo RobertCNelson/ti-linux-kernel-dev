@@ -31,7 +31,7 @@ toolchain="gcc_linaro_gnueabihf_7"
 
 #Kernel
 KERNEL_REL=4.14
-KERNEL_TAG=${KERNEL_REL}.11
+KERNEL_TAG=${KERNEL_REL}.12
 kernel_rt=".8-rt9"
 #Kernel Build
 BUILD=${build_prefix}22.1
@@ -48,5 +48,5 @@ DEBARCH=armhf
 
 ti_git_old_release="e543160191a5d09b3fb229e4862425c116b5a39d"
         ti_git_pre="e543160191a5d09b3fb229e4862425c116b5a39d"
-       ti_git_post="e543160191a5d09b3fb229e4862425c116b5a39d"
+       ti_git_post="47ac33c482d9fd19d4ca6a34aa696f902e8e4151"
 #
