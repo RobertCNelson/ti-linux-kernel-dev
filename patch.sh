@@ -98,9 +98,10 @@ cherrypick () {
 }
 
 external_git () {
-	git_tag="ti-linux-4.4.y"
-	echo "pulling: ${git_tag}"
+	git_tag="ti-linux-${KERNEL_REL}.y"
+	echo "pulling: [${git_patchset} ${git_tag}]"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
+	top_of_branch=$(${git_bin} describe)
 	if [ ! "x${ti_git_post}" = "x" ] ; then
 		${git_bin} checkout master -f
 		test_for_branch=$(${git_bin} branch --list "v${KERNEL_TAG}${BUILD}")
@@ -108,8 +109,15 @@ external_git () {
 			${git_bin} branch "v${KERNEL_TAG}${BUILD}" -D
 		fi
 		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
+		current_git=$(${git_bin} describe)
+		echo "${current_git}"
+
+		if [ ! "x${top_of_branch}" = "x${current_git}" ] ; then
+			echo "INFO: external git repo has updates..."
+		fi
+	else
+		echo "${top_of_branch}"
 	fi
-	${git_bin} describe
 }
 
 aufs_fail () {
@@ -198,13 +206,54 @@ rt_cleanup () {
 
 rt () {
 	echo "dir: rt"
-
-	${git_bin} revert --no-edit 30e81e7fe197dd14d5b7653c75140ea75fe5c3d4
-
 	rt_patch="${KERNEL_REL}${kernel_rt}"
+
+	#un-matched kernel
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
+
+		cd ../
+		if [ ! -d ./linux-rt-devel ] ; then
+			${git_bin} clone -b linux-4.4.y-rt-patches https://git.kernel.org/pub/scm/linux/kernel/git/rt/linux-rt-devel.git --depth=1
+		else
+			rm -rf ./linux-rt-devel || true
+			${git_bin} clone -b linux-4.4.y-rt-patches https://git.kernel.org/pub/scm/linux/kernel/git/rt/linux-rt-devel.git --depth=1
+		fi
+
+		cd ./KERNEL/
+
+		exit 2
+
+		#https://raphaelhertzog.com/2012/08/08/how-to-use-quilt-to-manage-patches-in-debian-packages/
+
+		#export QUILT_PATCHES=`pwd`/linux-rt-devel/patches
+		#export QUILT_REFRESH_ARGS="-p ab --no-timestamps --no-index"
+
+		#quilt push -a
+
+		quilt delete -r localversion.patch
+
+		#fix...
+		#quilt push -f
+		#quilt refresh
+
+		#final...
+		#quilt pop -a
+		#quilt push -a
+		#git add .
+		#git commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
+
+		exit 2
+	fi
+
+	if [ -d ../linux-rt-devel ] ; then
+		rm -rf ../linux-rt-devel || true
+	fi
+
+	#matched kernel
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
@@ -218,6 +267,49 @@ rt () {
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
 
+wireguard_fail () {
+	echo "WireGuard failed"
+	exit 2
+}
+
+wireguard () {
+	echo "dir: WireGuard"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./WireGuard ] ; then
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+		else
+			rm -rf ./WireGuard || true
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+		fi
+		cd ./KERNEL/
+
+		../WireGuard/contrib/kernel-tree/create-patch.sh | patch -p1 || wireguard_fail
+
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: WireGuard' -s
+		${git_bin} format-patch -1 -o ../patches/WireGuard/
+
+		rm -rf ../WireGuard/ || true
+
+		exit 2
+	fi
+
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		start_cleanup
+	fi
+
+	${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		wdir="WireGuard"
+		number=1
+		cleanup
+	fi
+}
+
 local_patch () {
 	echo "dir: dir"
 	${git} "${DIR}/patches/dir/0001-patch.patch"
@@ -226,6 +318,7 @@ local_patch () {
 external_git
 aufs4
 rt
+#wireguard
 #local_patch
 
 pre_backports () {
@@ -382,7 +475,23 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0016-iio-imu-adis16480-Fix-acceleration-scale-factor-for-.patch"
 	${git} "${DIR}/patches/backports/iio/0017-iio-hid-sensor-trigger-Fix-the-race-with-user-space-.patch"
 
-	backport_tag="v4.9.70"
+	${git} "${DIR}/patches/backports/iio/0018-ti_am335x_tsc.c-driver.patch"
+
+#v4.4.91
+	${git} "${DIR}/patches/backports/iio/0018-iio-adc-twl4030-Fix-an-error-handling-path-in-twl403.patch"
+	${git} "${DIR}/patches/backports/iio/0019-iio-adc-twl4030-Disable-the-vusb3v1-rugulator-in-the.patch"
+	${git} "${DIR}/patches/backports/iio/0020-iio-ad_sigma_delta-Implement-a-dedicated-reset-funct.patch"
+	${git} "${DIR}/patches/backports/iio/0021-staging-iio-ad7192-Fix-use-the-dedicated-reset-funct.patch"
+	${git} "${DIR}/patches/backports/iio/0022-iio-core-Return-error-for-failed-read_reg.patch"
+	${git} "${DIR}/patches/backports/iio/0023-iio-ad7793-Fix-the-serial-interface-reset.patch"
+	${git} "${DIR}/patches/backports/iio/0024-iio-adc-mcp320x-Fix-readout-of-negative-voltages.patch"
+	${git} "${DIR}/patches/backports/iio/0025-iio-adc-mcp320x-Fix-oops-on-module-unload.patch"
+#v4.4.93
+	${git} "${DIR}/patches/backports/iio/0026-iio-adc-xilinx-Fix-error-handling.patch"
+#v4.4.97
+	${git} "${DIR}/patches/backports/iio/0027-iio-trigger-free-trigger-resource-correctly.patch"
+
+	backport_tag="v4.9.75"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -507,6 +616,7 @@ reverts () {
 }
 
 drivers () {
+	dir 'drivers/btrfs'
 	dir 'drivers/it66121'
 	dir 'drivers/gadget'
 	dir 'drivers/tsl2550'
@@ -1020,7 +1130,11 @@ readme () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
+		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
+		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
 		git add -f README.md
+		git add -f jenkins_build.sh
+		git add -f Jenkinsfile
 		git commit -a -m 'enable: Jenkins: http://rcn-ee.online:8080' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
