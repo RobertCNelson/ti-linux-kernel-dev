@@ -611,6 +611,7 @@ drivers
 soc
 beaglebone
 dir 'build/gcc'
+dir 'dtc'
 
 packaging () {
 	echo "dir: packaging"
