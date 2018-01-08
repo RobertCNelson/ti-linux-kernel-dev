@@ -611,6 +611,7 @@ drivers
 soc
 beaglebone
 dir 'build/gcc'
+dir 'dtc'
 
 packaging () {
 	echo "dir: packaging"
@@ -632,8 +633,10 @@ readme () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
 		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
+		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
 		git add -f README.md
 		git add -f jenkins_build.sh
+		git add -f Jenkinsfile
 		git commit -a -m 'enable: Jenkins: http://rcn-ee.online:8080' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
