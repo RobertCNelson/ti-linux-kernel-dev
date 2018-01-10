@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2017 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2018 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -177,12 +177,19 @@ aufs4 () {
 
 		rm -rf ../aufs4-standalone/ || true
 
-		exit 2
-	fi
+		git reset --hard HEAD~5
 
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
+
+		${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
+		${git} "${DIR}/patches/aufs4/0002-merge-aufs4-base.patch"
+		${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
+		${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
+		${git} "${DIR}/patches/aufs4/0005-merge-aufs4.patch"
+
+		wdir="aufs4"
+		number=5
+		cleanup
 	fi
 
 	${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
@@ -190,12 +197,6 @@ aufs4 () {
 	${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
 	${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
 	${git} "${DIR}/patches/aufs4/0005-merge-aufs4.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="aufs4"
-		number=5
-		cleanup
-	fi
 }
 
 rt_cleanup () {
@@ -230,10 +231,6 @@ rt () {
 
 		#quilt push -a
 
-		quilt delete -r 0001-timer-Use-deferrable-base-independent-of-base-nohz_a.patch
-		quilt delete -r 0003-timer-Invoke-timer_start_debug-where-it-makes-sense.patch
-		quilt delete -r crypto-mcryptd-protect-the-per-CPU-queue-with-a-lock.patch
-		quilt delete -r 0003-tracing-Exclude-generic-fields-from-histograms.patch
 		quilt delete -r localversion.patch
 
 		#fix...
@@ -268,7 +265,6 @@ rt () {
 	fi
 
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
-	${git} "${DIR}/patches/rt/0002-rt-fix-missing-types.h-in-spinlock_types.h.patch"
 }
 
 wireguard_fail () {
@@ -297,21 +293,18 @@ wireguard () {
 
 		rm -rf ../WireGuard/ || true
 
-		exit 2
-	fi
+		git reset --hard HEAD^
 
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
-	fi
 
-	${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
+		${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
 
-	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="WireGuard"
 		number=1
 		cleanup
 	fi
+
+	${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
 }
 
 local_patch () {
