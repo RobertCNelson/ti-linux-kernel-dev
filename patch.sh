@@ -490,7 +490,7 @@ lts44_backports () {
 #v4.4.97
 	${git} "${DIR}/patches/backports/iio/0027-iio-trigger-free-trigger-resource-correctly.patch"
 
-	backport_tag="v4.9.75"
+	backport_tag="v4.9.77"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
