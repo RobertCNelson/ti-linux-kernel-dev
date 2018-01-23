@@ -255,7 +255,7 @@ rt () {
 	#matched kernel
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
@@ -490,19 +490,7 @@ lts44_backports () {
 #v4.4.97
 	${git} "${DIR}/patches/backports/iio/0027-iio-trigger-free-trigger-resource-correctly.patch"
 
-	backport_tag="v4.9.77"
-
-	subsystem="fbtft"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
-		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
-
-		post_backports
-	else
-		patch_backports
-	fi
+	backport_tag="v4.9.78"
 
 	subsystem="touchscreen"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -548,7 +536,6 @@ lts44_backports () {
 		cp -v ~/linux-src/include/uapi/drm/etnaviv_drm.h ./include/uapi/drm/etnaviv_drm.h
 
 		post_backports
-		exit 2
 	else
 		patch_backports
 	fi
@@ -556,6 +543,21 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/etnaviv/0002-drm-etnaviv-add-initial-etnaviv-DRM-driver.patch"
 	${git} "${DIR}/patches/backports/etnaviv/0003-etnaviv-enable-for-ARCH_OMAP2PLUS.patch"
 	${git} "${DIR}/patches/backports/etnaviv/0004-drm-etnaviv-julbouln-diff.patch"
+
+	backport_tag="v4.14.15"
+
+	subsystem="fbtft"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
+		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 
 	dir 'lts44_backports/dmtimer'
 }
@@ -618,6 +620,7 @@ drivers () {
 	dir 'drivers/btrfs'
 	dir 'drivers/it66121'
 	dir 'drivers/gadget'
+	dir 'drivers/ssd1306'
 	dir 'drivers/tsl2550'
 	dir 'drivers/ti/iio'
 	dir 'drivers/ti/pm'
