@@ -221,6 +221,8 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
+	${git_bin} revert --no-edit ca2d736867200b931ca61383af2fd68bb5fd2ecb
+
 	#un-matched kernel
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -366,15 +368,14 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.x-y"
+	backport_tag="v4.14.15"
 
-	subsystem="xyz"
+	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		mkdir -p ./x/
-		cp -v ~/linux-src/x/* ./x/
+		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
 
 		post_backports
 		exit 2
@@ -427,6 +428,7 @@ drivers () {
 	dir 'drivers/gadget'
 	dir 'drivers/pm_bus'
 	dir 'drivers/spi'
+	dir 'drivers/ssd1306'
 	dir 'drivers/thumb2'
 	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
@@ -659,7 +661,7 @@ beaglebone () {
 }
 
 ###
-#backports
+backports
 reverts
 drivers
 soc
