@@ -397,6 +397,7 @@ drivers () {
 	dir 'drivers/pwm'
 	dir 'drivers/btrfs'
 	dir 'drivers/spi'
+	dir 'drivers/ssd1306'
 	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
 	dir 'drivers/opp'
