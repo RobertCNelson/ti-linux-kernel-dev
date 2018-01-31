@@ -221,6 +221,7 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
+	${git_bin} revert --no-edit c98ff7299b404f110167883695f81080723e6e15
 	${git_bin} revert --no-edit ca2d736867200b931ca61383af2fd68bb5fd2ecb
 
 	#un-matched kernel
@@ -368,7 +369,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.15"
+	backport_tag="v4.14.16"
 
 	subsystem="fbtft"
 	#regenerate="enable"
