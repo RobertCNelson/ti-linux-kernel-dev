@@ -369,7 +369,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.16"
+	backport_tag="v4.14.17"
 
 	subsystem="fbtft"
 	#regenerate="enable"
@@ -428,6 +428,7 @@ drivers () {
 	dir 'drivers/btrfs'
 	dir 'drivers/gadget'
 	dir 'drivers/pm_bus'
+	dir 'drivers/pwm'
 	dir 'drivers/spi'
 	dir 'drivers/ssd1306'
 	dir 'drivers/thumb2'
