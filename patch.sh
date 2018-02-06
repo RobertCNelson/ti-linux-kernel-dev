@@ -427,6 +427,7 @@ drivers () {
 	dir 'drivers/ar1021_i2c'
 	dir 'drivers/btrfs'
 	dir 'drivers/gadget'
+	dir 'drivers/mmc'
 	dir 'drivers/pm_bus'
 	dir 'drivers/pwm'
 	dir 'drivers/spi'
