@@ -34,7 +34,7 @@ KERNEL_REL=4.14
 KERNEL_TAG=${KERNEL_REL}.17
 kernel_rt=".15-rt13"
 #Kernel Build
-BUILD=${build_prefix}31.1
+BUILD=${build_prefix}31.2
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -48,5 +48,5 @@ DEBARCH=armhf
 
 ti_git_old_release="4e4fa96300eaf9ef760ca6219d7df873937ec913"
         ti_git_pre="4e4fa96300eaf9ef760ca6219d7df873937ec913"
-       ti_git_post="4e4fa96300eaf9ef760ca6219d7df873937ec913"
+       ti_git_post="7e894b0a952e5a3417a69c75ef7a8f22a679da38"
 #
