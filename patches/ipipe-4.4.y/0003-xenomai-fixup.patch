@@ -1,0 +1,52 @@
+From 65b4218e8f5c22b3befa37b6b8482a2217e34045 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Thu, 8 Feb 2018 15:05:59 -0600
+Subject: [PATCH 3/3] xenomai fixup
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ arch/arm/include/asm/mmu_context.h | 3 +++
+ arch/arm/mm/fault.c                | 5 ++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/include/asm/mmu_context.h b/arch/arm/include/asm/mmu_context.h
+index 697ac1efae1a..df03baf09de8 100644
+--- a/arch/arm/include/asm/mmu_context.h
++++ b/arch/arm/include/asm/mmu_context.h
+@@ -78,6 +78,7 @@ static inline void deferred_switch_mm(struct mm_struct *next)
+ }
+ #endif /* !I-pipe */
+ 
++#ifndef MODULE
+ #define finish_arch_post_lock_switch \
+ 	finish_arch_post_lock_switch
+ static inline void finish_arch_post_lock_switch(void)
+@@ -102,6 +103,8 @@ static inline void finish_arch_post_lock_switch(void)
+ 		preempt_enable_no_resched();
+ 	}
+ }
++#endif /* !MODULE */
++
+ #endif	/* CONFIG_MMU */
+ 
+ static inline int
+diff --git a/arch/arm/mm/fault.c b/arch/arm/mm/fault.c
+index 91c27d195506..fb2c800f9316 100644
+--- a/arch/arm/mm/fault.c
++++ b/arch/arm/mm/fault.c
+@@ -361,8 +361,11 @@ retry:
+ 	 * signal first. We do not need to release the mmap_sem because
+ 	 * it would already be released in __lock_page_or_retry in
+ 	 * mm/filemap.c. */
+-	if ((fault & VM_FAULT_RETRY) && fatal_signal_pending(current))
++	if ((fault & VM_FAULT_RETRY) && fatal_signal_pending(current)) {
++		if (!user_mode(regs))
++			goto no_context;
+ 		goto out;
++	};
+ 
+ 	/*
+ 	 * Major/minor page fault accounting is only done on the
+-- 
+2.15.1
+

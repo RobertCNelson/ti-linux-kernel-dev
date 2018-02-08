@@ -321,6 +321,10 @@ aufs4
 #local_patch
 
 ipipe () {
+
+	${git_bin} revert --no-edit 84478477d0b8572c6d267492aaaf49acd6fc4db5
+	${git_bin} revert --no-edit c22d4b4d1c7fcc0d9eb4d8618d86c554c48ed9c0
+
 	kernel_base="v4.4.71"
 	xenomai_branch="ipipe-4.4.y"
 	echo "dir: ipipe"
@@ -343,6 +347,10 @@ ipipe () {
 		cp -v arch/arm/mm/mmap.c ../patches/${xenomai_branch}/arch_arm_mm_mmap.c
 		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
 		cp -v drivers/memory/omap-gpmc.c ../patches/${xenomai_branch}/drivers_memory_omap-gpmc.c
+		cp -v arch/powerpc/kernel/align.c ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c
+		cp -v arch/x86/entry/entry_32.S ../patches/${xenomai_branch}/arch_x86_entry_entry_32.S
+		cp -v arch/x86/entry/entry_64.S ../patches/${xenomai_branch}/arch_x86_entry_entry_64.S
+		cp -v arch/x86/include/asm/mmu_context.h ../patches/${xenomai_branch}/arch_x86_include_asm_mmu_context.h
 
 		${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/${xenomai_branch}/${xenomai_branch}.diff
@@ -357,6 +365,10 @@ ipipe () {
 		cp -v ../patches/${xenomai_branch}/arch_arm_mm_mmap.c arch/arm/mm/mmap.c
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
 		cp -v ../patches/${xenomai_branch}/drivers_memory_omap-gpmc.c drivers/memory/omap-gpmc.c
+		cp -v ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c arch/powerpc/kernel/align.c
+		cp -v ../patches/${xenomai_branch}/arch_x86_entry_entry_32.S arch/x86/entry/entry_32.S
+		cp -v ../patches/${xenomai_branch}/arch_x86_entry_entry_64.S arch/x86/entry/entry_64.S
+		cp -v ../patches/${xenomai_branch}/arch_x86_include_asm_mmu_context.h arch/x86/include/asm/mmu_context.h
 
 		#exit 2
 
@@ -400,6 +412,8 @@ ipipe () {
 
 	git add .
 	git commit -a -m 'xenomai patchset'
+
+	${git} "${DIR}/patches/${xenomai_branch}/0003-xenomai-fixup.patch"
 
 	#exit 2
 }
@@ -509,6 +523,17 @@ lts44_backports () {
 	fi
 	${git} "${DIR}/patches/backports/i2c/0001-i2c-print-correct-device-invalid-address.patch"
 
+	subsystem="wiznet"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v  ~/linux-src/drivers/net/ethernet/wiznet/* ./drivers/net/ethernet/wiznet/
+
+		post_backports
+	else
+		patch_backports
+	fi
+
 	backport_tag="v4.8.17"
 	subsystem="iio"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -549,19 +574,26 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0016-iio-imu-adis16480-Fix-acceleration-scale-factor-for-.patch"
 	${git} "${DIR}/patches/backports/iio/0017-iio-hid-sensor-trigger-Fix-the-race-with-user-space-.patch"
 
-	backport_tag="v4.9.49"
+	${git} "${DIR}/patches/backports/iio/0018-ti_am335x_tsc.c-driver.patch"
 
-	subsystem="fbtft"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
+#v4.4.91
+	${git} "${DIR}/patches/backports/iio/0018-iio-adc-twl4030-Fix-an-error-handling-path-in-twl403.patch"
+	${git} "${DIR}/patches/backports/iio/0019-iio-adc-twl4030-Disable-the-vusb3v1-rugulator-in-the.patch"
+	${git} "${DIR}/patches/backports/iio/0020-iio-ad_sigma_delta-Implement-a-dedicated-reset-funct.patch"
+	${git} "${DIR}/patches/backports/iio/0021-staging-iio-ad7192-Fix-use-the-dedicated-reset-funct.patch"
+	${git} "${DIR}/patches/backports/iio/0022-iio-core-Return-error-for-failed-read_reg.patch"
+	${git} "${DIR}/patches/backports/iio/0023-iio-ad7793-Fix-the-serial-interface-reset.patch"
+	${git} "${DIR}/patches/backports/iio/0024-iio-adc-mcp320x-Fix-readout-of-negative-voltages.patch"
+	${git} "${DIR}/patches/backports/iio/0025-iio-adc-mcp320x-Fix-oops-on-module-unload.patch"
+#v4.4.93
+	${git} "${DIR}/patches/backports/iio/0026-iio-adc-xilinx-Fix-error-handling.patch"
+#v4.4.97
+	${git} "${DIR}/patches/backports/iio/0027-iio-trigger-free-trigger-resource-correctly.patch"
 
-		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
-		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
+#fix, ti merged in v4.9.x:
+	${git} "${DIR}/patches/backports/iio/0028-mfd-palmas-Assign-the-right-powerhold-mask-for-tps65.patch"
 
-		post_backports
-	else
-		patch_backports
-	fi
+	backport_tag="v4.9.78"
 
 	subsystem="touchscreen"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -571,7 +603,25 @@ lts44_backports () {
 		cp -v ~/linux-src/drivers/input/touchscreen/of_touchscreen.c ./drivers/input/touchscreen/
 		cp -v ~/linux-src/drivers/input/touchscreen/pixcir_i2c_ts.c ./drivers/input/touchscreen/
 		cp -v ~/linux-src/drivers/input/touchscreen/tsc200x-core.c ./drivers/input/touchscreen/
+		cp -v ~/linux-src/drivers/input/touchscreen/silead.c ./drivers/input/touchscreen/
 		cp -v ~/linux-src/include/linux/input/touchscreen.h ./include/linux/input/
+
+		echo "obj-\$(CONFIG_TOUCHSCREEN_SILEAD)	+= silead.o" >> ./drivers/input/touchscreen/Makefile
+
+		sed -i -e 's:endif:config TOUCHSCREEN_SILEAD:g' ./drivers/input/touchscreen/Kconfig
+
+		echo "	tristate \"Silead I2C touchscreen\"" >> ./drivers/input/touchscreen/Kconfig
+		echo "	depends on I2C" >> ./drivers/input/touchscreen/Kconfig
+		echo "	help" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  Say Y here if you have the Silead touchscreen connected to" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  your system." >> ./drivers/input/touchscreen/Kconfig
+		echo "" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  If unsure, say N." >> ./drivers/input/touchscreen/Kconfig
+		echo "" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  To compile this driver as a module, choose M here: the" >> ./drivers/input/touchscreen/Kconfig
+		echo "	  module will be called silead." >> ./drivers/input/touchscreen/Kconfig
+		echo "" >> ./drivers/input/touchscreen/Kconfig
+		echo "endif" >> ./drivers/input/touchscreen/Kconfig
 
 		post_backports
 	else
@@ -580,6 +630,7 @@ lts44_backports () {
 
 	${git} "${DIR}/patches/backports/touchscreen/0002-edt-ft5x06-we-need-these-in-v4.4.x.patch"
 	${git} "${DIR}/patches/backports/touchscreen/0003-ar1021_i2c-invert-swap.patch"
+	${git} "${DIR}/patches/backports/touchscreen/0004-ar1021_i2c.c-introduce-offsets-to-manually-re-calbra.patch"
 
 	subsystem="etnaviv"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -589,7 +640,6 @@ lts44_backports () {
 		cp -v ~/linux-src/include/uapi/drm/etnaviv_drm.h ./include/uapi/drm/etnaviv_drm.h
 
 		post_backports
-		exit 2
 	else
 		patch_backports
 	fi
@@ -597,6 +647,21 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/etnaviv/0002-drm-etnaviv-add-initial-etnaviv-DRM-driver.patch"
 	${git} "${DIR}/patches/backports/etnaviv/0003-etnaviv-enable-for-ARCH_OMAP2PLUS.patch"
 	${git} "${DIR}/patches/backports/etnaviv/0004-drm-etnaviv-julbouln-diff.patch"
+
+	backport_tag="v4.14.15"
+
+	subsystem="fbtft"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
+		cp -v ~/linux-src/include/video/mipi_display.h ./include/video/mipi_display.h
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 
 	dir 'lts44_backports/dmtimer'
 }
@@ -656,12 +721,15 @@ reverts () {
 }
 
 drivers () {
+	dir 'drivers/btrfs'
 	dir 'drivers/it66121'
 	dir 'drivers/gadget'
+#	dir 'drivers/ssd1306'
 	dir 'drivers/tsl2550'
 #	dir 'drivers/ti/iio'
 	dir 'drivers/ti/pm'
 	dir 'drivers/wireless'
+#	dir 'drivers/wiznet'
 }
 
 pru_rpmsg () {
@@ -847,9 +915,10 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/0037-of-Support-hashtable-lookups-for-phandles.patch"
 
 	${git} "${DIR}/patches/bbb_overlays/0038-bone_capemgr-uboot_capemgr_enabled-flag.patch"
+	${git} "${DIR}/patches/bbb_overlays/0039-bone_capemgr-kill-with-uboot-flag.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
-		number=38
+		number=39
 		cleanup
 	fi
 }
@@ -878,6 +947,7 @@ beaglebone () {
 	dir 'beaglebone/wl18xx'
 	dir 'beaglebone/pru'
 	dir 'beaglebone/pocketbone'
+	dir 'beaglebone/pocketbeagle'
 
 	echo "dir: beaglebone/vsc8531bbb"
 	#regenerate="enable"
@@ -936,6 +1006,7 @@ beaglebone () {
 
 	dir 'soc/ti/uboot'
 	dir 'soc/ti/ti_am335x_tsc'
+	dir 'soc/ti/audio'
 
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
@@ -991,6 +1062,7 @@ beaglebone () {
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblue.dtb" ; dtb_makefile_append
+		device="am335x-boneblue-mmap.dtb" ; dtb_makefile_append
 		device="am335x-boneblue-ArduPilot.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
@@ -1016,6 +1088,8 @@ beaglebone () {
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 
 		device="am335x-pocketbone.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
@@ -1070,17 +1144,15 @@ beaglebone () {
 	fi
 }
 
-machinekit () {
-	echo "dir: machinekit"
+remoteproc_by_default () {
+	echo "dir: remoteproc_by_default"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
 	fi
 
-	#sed -i -e 's/\/\* #include \"am33xx-pruss-uio.dtsi\" \*\//#include \"am33xx-pruss-uio.dtsi\"/' arch/arm/boot/dts/am335x-*.dts
-	#sed -i -e 's/#include \"am33xx-pruss-rproc.dtsi\"/\/\* #include \"am33xx-pruss-rproc.dtsi\" \*\//' arch/arm/boot/dts/am335x-boneblack-bbb-exp-c.dts
-	#sed -i -e 's/#include \"am33xx-pruss-rproc.dtsi\"/\/\* #include \"am33xx-pruss-rproc.dtsi\" \*\//' arch/arm/boot/dts/am335x-boneblack-bbb-exp-r.dts
-	${git} "${DIR}/patches/machinekit/0001-machinekit-enable-am33xx-pruss-uio.dtsi.patch"
+	#sed -i -e 's/\/\* #include \"am33xx-pruss-rproc.dtsi\" \*\//#include \"am33xx-pruss-rproc.dtsi\"/' arch/arm/boot/dts/am335x-*.dts
+	${git} "${DIR}/patches/remoteproc_by_default/0001-enable-am33xx-pruss-rproc.dtsi-by-default.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
@@ -1098,10 +1170,12 @@ beaglebone
 dir 'x15/fixes'
 dir 'brcmfmac'
 dir 'quieter'
-machinekit
+remoteproc_by_default
 dir 'soc/ti/am571x'
 dir 'x15_revc'
 dir 'drivers/ti/mmc'
+dir 'config_pin'
+dir 'drivers/snd_pwmsp'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
