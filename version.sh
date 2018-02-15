@@ -34,7 +34,7 @@ KERNEL_REL=4.14
 KERNEL_TAG=${KERNEL_REL}.19
 kernel_rt=".18-rt15"
 #Kernel Build
-BUILD=${build_prefix}34
+BUILD=${build_prefix}34.1
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
