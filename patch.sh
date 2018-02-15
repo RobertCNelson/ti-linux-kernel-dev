@@ -531,6 +531,7 @@ soc () {
 	dir 'soc/ti/am335x_olimex_som'
 	dir 'soc/ti/beaglebone_capes'
 	dir 'soc/ti/pocketbeagle'
+	dir 'soc/ti/undo_uio_pruss'
 }
 
 dtb_makefile_append () {
