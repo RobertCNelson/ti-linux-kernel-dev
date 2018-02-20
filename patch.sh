@@ -402,6 +402,7 @@ lts44_backports () {
 
 	${git} "${DIR}/patches/backports/tty/0002-rt-Improve-the-serial-console-PASS_LIMIT.patch"
 	${git} "${DIR}/patches/backports/tty/0003-serial-8250-omap-Enable-UART-module-wakeup-based-on-.patch"
+	${git} "${DIR}/patches/backports/tty/0004-serial-8250-omap-Disable-DMA-for-console-UART.patch"
 
 	backport_tag="v4.7.10"
 	subsystem="i2c"
@@ -493,7 +494,7 @@ lts44_backports () {
 #fix, ti merged in v4.9.x:
 	${git} "${DIR}/patches/backports/iio/0028-mfd-palmas-Assign-the-right-powerhold-mask-for-tps65.patch"
 
-	backport_tag="v4.9.78"
+	backport_tag="v4.9.82"
 
 	subsystem="touchscreen"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -548,7 +549,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/etnaviv/0003-etnaviv-enable-for-ARCH_OMAP2PLUS.patch"
 	${git} "${DIR}/patches/backports/etnaviv/0004-drm-etnaviv-julbouln-diff.patch"
 
-	backport_tag="v4.14.15"
+	backport_tag="v4.14.20"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
