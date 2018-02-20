@@ -1,0 +1,46 @@
+From 19284f8ce3b746b16912bbfbea1126ea5760aeb3 Mon Sep 17 00:00:00 2001
+From: Vignesh R <vigneshr@ti.com>
+Date: Wed, 14 Feb 2018 15:38:59 -0600
+Subject: [PATCH 4/4] serial: 8250: omap: Disable DMA for console UART
+
+commit 84b40e3b57eef1417479c00490dd4c9f6e5ffdbc upstream.
+
+Kernel always writes log messages to console via
+serial8250_console_write()->serial8250_console_putchar() which directly
+accesses UART_TX register _without_ using DMA.
+
+But, if other processes like systemd using same UART port, then these
+writes are handled by a different code flow using 8250_omap driver where
+there is provision to use DMA.
+
+It seems that it is possible that both DMA and CPU might simultaneously
+put data to UART FIFO and lead to potential loss of data due to FIFO
+overflow and weird data corruption. This happens when both kernel
+console and userspace tries to write simultaneously to the same UART
+port. Therefore, disable DMA on kernel console port to avoid potential
+race between CPU and DMA.
+
+Signed-off-by: Vignesh R <vigneshr@ti.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/serial/8250/8250_omap.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/tty/serial/8250/8250_omap.c b/drivers/tty/serial/8250/8250_omap.c
+index 5b2d92ce7c55..ae01748027e8 100644
+--- a/drivers/tty/serial/8250/8250_omap.c
++++ b/drivers/tty/serial/8250/8250_omap.c
+@@ -609,6 +609,10 @@ static int omap_8250_startup(struct uart_port *port)
+ 	up->lsr_saved_flags = 0;
+ 	up->msr_saved_flags = 0;
+ 
++	/* Disable DMA for console UART */
++	if (uart_console(port))
++		up->dma = NULL;
++
+ 	if (up->dma) {
+ 		ret = serial8250_request_dma(up);
+ 		if (ret) {
+-- 
+2.16.1
+

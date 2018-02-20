@@ -177,7 +177,7 @@ aufs4 () {
 
 		rm -rf ../aufs4-standalone/ || true
 
-		git reset --hard HEAD~6
+		${git_bin} reset --hard HEAD~6
 
 		start_cleanup
 
@@ -295,7 +295,7 @@ wireguard () {
 
 		rm -rf ../WireGuard/ || true
 
-		git reset --hard HEAD^
+		${git_bin} reset --hard HEAD^
 
 		start_cleanup
 
@@ -379,25 +379,22 @@ ipipe () {
 
 		${git_bin} add --all
 		${git_bin} commit -a -m 'xenomai ipipe patchset'
+		${git_bin} format-patch -2 -o ../patches/${xenomai_branch}/
+
+		${git_bin} reset --hard HEAD~2
+
+		start_cleanup
+
+		${git} "${DIR}/patches/${xenomai_branch}/0001-xenomai-pre-patchset.patch"
+		${git} "${DIR}/patches/${xenomai_branch}/0002-xenomai-ipipe-patchset.patch"
 
 		wdir="${xenomai_branch}"
 		number=2
 		cleanup
-	fi
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
 	fi
 
 	${git} "${DIR}/patches/${xenomai_branch}/0001-xenomai-pre-patchset.patch"
 	${git} "${DIR}/patches/${xenomai_branch}/0002-xenomai-ipipe-patchset.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="${xenomai_branch}"
-		number=2
-		cleanup
-	fi
 
 	echo "dir: xenomai - prepare_kernel"
 	# Add the rest of xenomai to the kernel
@@ -408,10 +405,10 @@ ipipe () {
 	${DIR}/ignore/xenomai/scripts/prepare-kernel.sh --linux=./ --arch=arm --outpatch="${OUTPATCH}"
 
 	# and apply it
-	git apply "${OUTPATCH}"
+	${git_bin} apply "${OUTPATCH}"
 
-	git add .
-	git commit -a -m 'xenomai patchset'
+	${git_bin} add .
+	${git_bin} commit -a -m 'xenomai patchset'
 
 	${git} "${DIR}/patches/${xenomai_branch}/0003-xenomai-fixup.patch"
 
@@ -502,6 +499,7 @@ lts44_backports () {
 
 	${git} "${DIR}/patches/backports/tty/0002-rt-Improve-the-serial-console-PASS_LIMIT.patch"
 	${git} "${DIR}/patches/backports/tty/0003-serial-8250-omap-Enable-UART-module-wakeup-based-on-.patch"
+	${git} "${DIR}/patches/backports/tty/0004-serial-8250-omap-Disable-DMA-for-console-UART.patch"
 
 	backport_tag="v4.7.10"
 	subsystem="i2c"
@@ -593,7 +591,7 @@ lts44_backports () {
 #fix, ti merged in v4.9.x:
 	${git} "${DIR}/patches/backports/iio/0028-mfd-palmas-Assign-the-right-powerhold-mask-for-tps65.patch"
 
-	backport_tag="v4.9.78"
+	backport_tag="v4.9.82"
 
 	subsystem="touchscreen"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -648,7 +646,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/etnaviv/0003-etnaviv-enable-for-ARCH_OMAP2PLUS.patch"
 	${git} "${DIR}/patches/backports/etnaviv/0004-drm-etnaviv-julbouln-diff.patch"
 
-	backport_tag="v4.14.15"
+	backport_tag="v4.14.20"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
