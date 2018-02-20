@@ -1174,6 +1174,7 @@ dir 'x15_revc'
 dir 'drivers/ti/mmc'
 dir 'config_pin'
 dir 'drivers/snd_pwmsp'
+dir 'fixes'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
