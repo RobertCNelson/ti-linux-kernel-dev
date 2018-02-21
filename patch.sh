@@ -190,7 +190,7 @@ aufs4 () {
 
 		rm -rf ../aufs4-standalone/ || true
 
-		git reset --hard HEAD~5
+		${git_bin} reset --hard HEAD~5
 
 		start_cleanup
 
@@ -311,7 +311,7 @@ wireguard () {
 
 		rm -rf ../WireGuard/ || true
 
-		git reset --hard HEAD^
+		${git_bin} reset --hard HEAD^
 
 		start_cleanup
 
