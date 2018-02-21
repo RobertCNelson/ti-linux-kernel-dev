@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2017 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2018 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -190,12 +190,19 @@ aufs4 () {
 
 		rm -rf ../aufs4-standalone/ || true
 
-		exit 2
-	fi
+		${git_bin} reset --hard HEAD~5
 
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
+
+		${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
+		${git} "${DIR}/patches/aufs4/0002-merge-aufs4-base.patch"
+		${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
+		${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
+		${git} "${DIR}/patches/aufs4/0005-merge-aufs4.patch"
+
+		wdir="aufs4"
+		number=5
+		cleanup
 	fi
 
 	${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
@@ -203,12 +210,6 @@ aufs4 () {
 	${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
 	${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
 	${git} "${DIR}/patches/aufs4/0005-merge-aufs4.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="aufs4"
-		number=5
-		cleanup
-	fi
 }
 
 rt_cleanup () {
@@ -219,6 +220,55 @@ rt_cleanup () {
 rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
+
+	${git_bin} revert --no-edit 0b376535ad5493d2fcf70ab5f6539551aadb493e
+	${git_bin} revert --no-edit f03d00ba0b478963fc96c975d3b27fc1b9bc3a43
+	${git_bin} revert --no-edit c98ff7299b404f110167883695f81080723e6e15
+	${git_bin} revert --no-edit ca2d736867200b931ca61383af2fd68bb5fd2ecb
+
+	#un-matched kernel
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+
+		cd ../
+		if [ ! -d ./linux-rt-devel ] ; then
+			${git_bin} clone -b linux-4.9.y-rt-patches https://git.kernel.org/pub/scm/linux/kernel/git/rt/linux-rt-devel.git --depth=1
+		else
+			rm -rf ./linux-rt-devel || true
+			${git_bin} clone -b linux-4.9.y-rt-patches https://git.kernel.org/pub/scm/linux/kernel/git/rt/linux-rt-devel.git --depth=1
+		fi
+
+		cd ./KERNEL/
+
+		exit 2
+
+		#https://raphaelhertzog.com/2012/08/08/how-to-use-quilt-to-manage-patches-in-debian-packages/
+
+		#export QUILT_PATCHES=`pwd`/linux-rt-devel/patches
+		#export QUILT_REFRESH_ARGS="-p ab --no-timestamps --no-index"
+
+		#quilt push -a
+
+		quilt delete -r localversion.patch
+
+		#fix...
+		#quilt push -f
+		#quilt refresh
+
+		#final...
+		#quilt pop -a
+		#quilt push -a
+		#git add .
+		#git commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
+
+		exit 2
+	fi
+
+	if [ -d ../linux-rt-devel ] ; then
+		rm -rf ../linux-rt-devel || true
+	fi
+
+	#matched kernel
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
@@ -235,6 +285,46 @@ rt () {
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
 
+wireguard_fail () {
+	echo "WireGuard failed"
+	exit 2
+}
+
+wireguard () {
+	echo "dir: WireGuard"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./WireGuard ] ; then
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+		else
+			rm -rf ./WireGuard || true
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+		fi
+		cd ./KERNEL/
+
+		../WireGuard/contrib/kernel-tree/create-patch.sh | patch -p1 || wireguard_fail
+
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: WireGuard' -s
+		${git_bin} format-patch -1 -o ../patches/WireGuard/
+
+		rm -rf ../WireGuard/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
+
+		wdir="WireGuard"
+		number=1
+		cleanup
+	fi
+
+	${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
+}
+
 local_patch () {
 	echo "dir: dir"
 	${git} "${DIR}/patches/dir/0001-patch.patch"
@@ -244,10 +334,11 @@ external_git
 #sync_cherrypicks
 aufs4
 #rt
+wireguard
 #local_patch
 
 ipipe () {
-	kernel_base="v4.9.38"
+	kernel_base="v4.9.51"
 	xenomai_branch="ipipe-4.9.y"
 	echo "dir: ipipe"
 	#regenerate="enable"
@@ -266,10 +357,13 @@ ipipe () {
 		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
 
 		cp -v arch/arm/mach-omap2/timer.c ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c
+		cp -v arch/powerpc/kernel/align.c ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c
+		cp -v arch/x86/entry/common.c ../patches/${xenomai_branch}/arch_x86_entry_common.c
+		cp -v arch/x86/entry/entry_32.S ../patches/${xenomai_branch}/arch_x86_entry_entry_32.S
+		cp -v arch/x86/entry/entry_64.S ../patches/${xenomai_branch}/arch_x86_entry_entry_64.S
+		cp -v arch/powerpc/kernel/align.c ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c
+		cp -v arch/x86/include/asm/thread_info.h ../patches/${xenomai_branch}/arch_x86_include_asm_thread_info.h
 		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
-		cp -v arch/powerpc/kernel/process.c ../patches/${xenomai_branch}/arch_powerpc_kernel_process.c
-		cp -v arch/powerpc/include/asm/mmu_context.h ../patches/${xenomai_branch}/arch_powerpc_include_asm_mmu_context.h
-		cp -v arch/arm64/mm/fault.c ../patches/${xenomai_branch}/arch_arm64_mm_fault.c
 
 		${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/${xenomai_branch}/${xenomai_branch}.diff
@@ -281,10 +375,13 @@ ipipe () {
 		fi
 
 		cp -v ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c arch/arm/mach-omap2/timer.c
+		cp -v ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c arch/powerpc/kernel/align.c
+		cp -v ../patches/${xenomai_branch}/arch_x86_entry_common.c arch/x86/entry/common.c
+		cp -v ../patches/${xenomai_branch}/arch_x86_entry_entry_32.S arch/x86/entry/entry_32.S
+		cp -v ../patches/${xenomai_branch}/arch_x86_entry_entry_64.S arch/x86/entry/entry_64.S
+		cp -v ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c arch/powerpc/kernel/align.c
+		cp -v ../patches/${xenomai_branch}/arch_x86_include_asm_thread_info.h arch/x86/include/asm/thread_info.h
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
-		cp -v ../patches/${xenomai_branch}/arch_powerpc_kernel_process.c arch/powerpc/kernel/process.c
-		cp -v ../patches/${xenomai_branch}/arch_powerpc_include_asm_mmu_context.h arch/powerpc/include/asm/mmu_context.h
-		cp -v ../patches/${xenomai_branch}/arch_arm64_mm_fault.c arch/arm64/mm/fault.c
 
 		#exit 2
 
@@ -295,25 +392,22 @@ ipipe () {
 
 		${git_bin} add --all
 		${git_bin} commit -a -m 'xenomai ipipe patchset'
+		${git_bin} format-patch -2 -o ../patches/${xenomai_branch}/
+
+		${git_bin} reset --hard HEAD~2
+
+		start_cleanup
+
+		${git} "${DIR}/patches/${xenomai_branch}/0001-xenomai-pre-patchset.patch"
+		${git} "${DIR}/patches/${xenomai_branch}/0002-xenomai-ipipe-patchset.patch"
 
 		wdir="${xenomai_branch}"
 		number=2
 		cleanup
-	fi
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
 	fi
 
 	${git} "${DIR}/patches/${xenomai_branch}/0001-xenomai-pre-patchset.patch"
 	${git} "${DIR}/patches/${xenomai_branch}/0002-xenomai-ipipe-patchset.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="${xenomai_branch}"
-		number=2
-		cleanup
-	fi
 
 	echo "dir: xenomai - prepare_kernel"
 	# Add the rest of xenomai to the kernel
@@ -324,10 +418,10 @@ ipipe () {
 	${DIR}/ignore/xenomai/scripts/prepare-kernel.sh --linux=./ --arch=arm --outpatch="${OUTPATCH}"
 
 	# and apply it
-	git apply "${OUTPATCH}"
+	${git_bin} apply "${OUTPATCH}"
 
-	git add .
-	git commit -a -m 'xenomai patchset'
+	${git_bin} add .
+	${git_bin} commit -a -m 'xenomai patchset'
 
 	#exit 2
 }
@@ -368,15 +462,14 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.x-y"
+	backport_tag="v4.14.20"
 
-	subsystem="xyz"
+	subsystem="fbtft"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		mkdir -p ./x/
-		cp -v ~/linux-src/x/* ./x/
+		cp -v ~/linux-src/drivers/staging/fbtft/* ./drivers/staging/fbtft/
 
 		post_backports
 		exit 2
@@ -402,29 +495,41 @@ reverts () {
 
 	${git} "${DIR}/patches/reverts/0001-Revert-eeprom-at24-check-if-the-chip-is-functional-i.patch"
 
+
+#should now be fixed via:
+#http://git.ti.com/gitweb/?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=9225d7bbdafb9fd1797161b8034b9abbe5fe6eee
+
 	#https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/log/drivers/net/wireless/ti
-	${git} "${DIR}/patches/reverts/0002-Revert-wlcore-sdio-drop-kfree-for-memory-allocated-w.patch"
-	${git} "${DIR}/patches/reverts/0003-Revert-wlcore-wl18xx-Use-chip-specific-configuration.patch"
-	${git} "${DIR}/patches/reverts/0004-Revert-wlcore-Fix-config-firmware-loading-issues.patch"
-	${git} "${DIR}/patches/reverts/0005-Revert-wlcore-spi-Populate-config-firmware-data.patch"
-	${git} "${DIR}/patches/reverts/0006-Revert-wlcore-sdio-Populate-config-firmware-data.patch"
-	${git} "${DIR}/patches/reverts/0007-Revert-wlcore-Prepare-family-to-fix-nvs-file-handlin.patch"
+#	${git} "${DIR}/patches/reverts/0002-Revert-wlcore-sdio-drop-kfree-for-memory-allocated-w.patch"
+#	${git} "${DIR}/patches/reverts/0003-Revert-wlcore-wl18xx-Use-chip-specific-configuration.patch"
+#	${git} "${DIR}/patches/reverts/0004-Revert-wlcore-Fix-config-firmware-loading-issues.patch"
+#	${git} "${DIR}/patches/reverts/0005-Revert-wlcore-spi-Populate-config-firmware-data.patch"
+#	${git} "${DIR}/patches/reverts/0006-Revert-wlcore-sdio-Populate-config-firmware-data.patch"
+#	${git} "${DIR}/patches/reverts/0007-Revert-wlcore-Prepare-family-to-fix-nvs-file-handlin.patch"
+
+	${git} "${DIR}/patches/reverts/0009-Revert-workqueue-Fix-NULL-pointer-dereference.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
-		number=7
+		number=8
 		cleanup
 	fi
 }
 
 drivers () {
+	dir 'drivers/ar1021_i2c'
+	dir 'drivers/btrfs'
 	dir 'drivers/gadget'
+	dir 'drivers/mmc'
 	dir 'drivers/pm_bus'
+	dir 'drivers/pwm'
 	dir 'drivers/spi'
+	dir 'drivers/ssd1306'
 	dir 'drivers/thumb2'
 	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
 	dir 'drivers/broadcom'
+	dir 'drivers/wiznet'
 
 	#https://github.com/pantoniou/linux-beagle-track-mainline/tree/bbb-overlays
 	echo "dir: drivers/ti/bbb_overlays"
@@ -482,10 +587,11 @@ drivers () {
 	fi
 
 	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0040-bone_capemgr-uboot_capemgr_enabled-flag.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0041-bone_capemgr-kill-with-uboot-flag.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="drivers/ti/bbb_overlays"
-		number=40
+		number=41
 		cleanup
 	fi
 
@@ -542,8 +648,10 @@ drivers () {
 	dir 'drivers/ti/rpmsg'
 	dir 'drivers/ti/rtc'
 	dir 'drivers/ti/serial'
+	dir 'drivers/ti/tsc'
 #	dir 'drivers/ti/spi'
 #	dir 'drivers/ti/uio'
+	dir 'drivers/ti/wireless'
 
 	dir 'drivers/ti/gpio'
 	dir 'drivers/ti/beaglelogic'
@@ -567,6 +675,7 @@ soc () {
 	dir 'soc/ti/uboot'
 	dir 'soc/ti/am571x'
 	dir 'soc/ti/x15'
+	dir 'soc/ti/audio'
 }
 
 dtb_makefile_append () {
@@ -627,6 +736,7 @@ beaglebone () {
 		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblue.dtb" ; dtb_makefile_append
+		device="am335x-boneblue-mmap.dtb" ; dtb_makefile_append
 		device="am335x-boneblue-ArduPilot.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
@@ -647,13 +757,15 @@ beaglebone () {
 }
 
 ###
-#backports
+backports
 reverts
 drivers
 soc
 beaglebone
 dir 'build/gcc'
-dir 'x15_revc'
+dir 'pocketbeagle'
+dir 'config_pin'
+#dir 'pruss'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
@@ -712,7 +824,11 @@ readme () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
+		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
+		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
 		git add -f README.md
+		git add -f jenkins_build.sh
+		git add -f Jenkinsfile
 		git commit -a -m 'enable: Jenkins: http://rcn-ee.online:8080' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2

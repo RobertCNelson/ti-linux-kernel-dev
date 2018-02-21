@@ -1,0 +1,2390 @@
+From 8f931d87aa81f7f9b1120af076d6ed79ff4248c1 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Mon, 19 Feb 2018 13:30:29 -0600
+Subject: [PATCH] backports: fbtft: from: linux.git
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/staging/fbtft/Kconfig          |   6 +
+ drivers/staging/fbtft/Makefile         |   2 +
+ drivers/staging/fbtft/fb_agm1264k-fl.c |  88 +++----
+ drivers/staging/fbtft/fb_hx8340bn.c    |   6 +-
+ drivers/staging/fbtft/fb_hx8347d.c     |   2 +-
+ drivers/staging/fbtft/fb_hx8353d.c     |   2 +-
+ drivers/staging/fbtft/fb_ili9163.c     |   4 +-
+ drivers/staging/fbtft/fb_ili9320.c     |   2 +-
+ drivers/staging/fbtft/fb_ili9325.c     |  23 +-
+ drivers/staging/fbtft/fb_ili9341.c     |   2 +-
+ drivers/staging/fbtft/fb_ili9481.c     |   2 +-
+ drivers/staging/fbtft/fb_ili9486.c     |   2 +-
+ drivers/staging/fbtft/fb_pcd8544.c     |   6 +-
+ drivers/staging/fbtft/fb_ra8875.c      |  16 +-
+ drivers/staging/fbtft/fb_s6d02a1.c     |   2 +-
+ drivers/staging/fbtft/fb_s6d1121.c     |   2 +-
+ drivers/staging/fbtft/fb_sh1106.c      | 195 ++++++++++++++++
+ drivers/staging/fbtft/fb_ssd1289.c     |   6 +-
+ drivers/staging/fbtft/fb_ssd1305.c     |   2 +-
+ drivers/staging/fbtft/fb_ssd1306.c     |  41 +++-
+ drivers/staging/fbtft/fb_ssd1325.c     |   2 +-
+ drivers/staging/fbtft/fb_ssd1331.c     |  30 +--
+ drivers/staging/fbtft/fb_ssd1351.c     |   6 +-
+ drivers/staging/fbtft/fb_st7735r.c     |   4 +-
+ drivers/staging/fbtft/fb_st7789v.c     |   4 +-
+ drivers/staging/fbtft/fb_tls8204.c     |   4 +-
+ drivers/staging/fbtft/fb_uc1611.c      |  12 +-
+ drivers/staging/fbtft/fb_watterott.c   |   8 +-
+ drivers/staging/fbtft/fbtft-bus.c      |  34 +--
+ drivers/staging/fbtft/fbtft-core.c     | 129 ++++++-----
+ drivers/staging/fbtft/fbtft-io.c       |   7 +-
+ drivers/staging/fbtft/fbtft-sysfs.c    |  32 ++-
+ drivers/staging/fbtft/fbtft.h          |  10 +-
+ drivers/staging/fbtft/fbtft_device.c   |  63 ++---
+ drivers/staging/fbtft/flexfb.c         | 405 ++++++++++++++++++++++++++-------
+ drivers/staging/fbtft/internal.h       |   2 +-
+ 36 files changed, 805 insertions(+), 358 deletions(-)
+ create mode 100644 drivers/staging/fbtft/fb_sh1106.c
+
+diff --git a/drivers/staging/fbtft/Kconfig b/drivers/staging/fbtft/Kconfig
+index 6f5e82464d78..dba676761d72 100644
+--- a/drivers/staging/fbtft/Kconfig
++++ b/drivers/staging/fbtft/Kconfig
+@@ -111,6 +111,12 @@ config FB_TFT_S6D1121
+ 	help
+ 	  Generic Framebuffer support for S6D1121
+ 
++config FB_TFT_SH1106
++	tristate "FB driver for the SH1106 OLED Controller"
++	depends on FB_TFT
++	help
++	  Framebuffer support for SH1106
++
+ config FB_TFT_SSD1289
+ 	tristate "FB driver for the SSD1289 LCD Controller"
+ 	depends on FB_TFT
+diff --git a/drivers/staging/fbtft/Makefile b/drivers/staging/fbtft/Makefile
+index 2725ea9a4afc..6bc03311c9c7 100644
+--- a/drivers/staging/fbtft/Makefile
++++ b/drivers/staging/fbtft/Makefile
+@@ -1,3 +1,4 @@
++# SPDX-License-Identifier: GPL-2.0
+ # Core module
+ obj-$(CONFIG_FB_TFT)             += fbtft.o
+ fbtft-y                          += fbtft-core.o fbtft-sysfs.o fbtft-bus.o fbtft-io.o
+@@ -20,6 +21,7 @@ obj-$(CONFIG_FB_TFT_PCD8544)     += fb_pcd8544.o
+ obj-$(CONFIG_FB_TFT_RA8875)      += fb_ra8875.o
+ obj-$(CONFIG_FB_TFT_S6D02A1)     += fb_s6d02a1.o
+ obj-$(CONFIG_FB_TFT_S6D1121)     += fb_s6d1121.o
++obj-$(CONFIG_FB_TFT_SH1106)      += fb_sh1106.o
+ obj-$(CONFIG_FB_TFT_SSD1289)     += fb_ssd1289.o
+ obj-$(CONFIG_FB_TFT_SSD1305)     += fb_ssd1305.o
+ obj-$(CONFIG_FB_TFT_SSD1306)     += fb_ssd1306.o
+diff --git a/drivers/staging/fbtft/fb_agm1264k-fl.c b/drivers/staging/fbtft/fb_agm1264k-fl.c
+index 7561385761e9..456a8dd65caf 100644
+--- a/drivers/staging/fbtft/fb_agm1264k-fl.c
++++ b/drivers/staging/fbtft/fb_agm1264k-fl.c
+@@ -185,9 +185,9 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
+ 			buf[i] = (u8)va_arg(args, unsigned int);
+ 
+ 		va_end(args);
+-		fbtft_par_dbg_hex(DEBUG_WRITE_REGISTER, par,
+-			par->info->device, u8, buf, len, "%s: ", __func__);
+-	}
++		fbtft_par_dbg_hex(DEBUG_WRITE_REGISTER, par, par->info->device,
++				  u8, buf, len, "%s: ", __func__);
++}
+ 
+ 	va_start(args, len);
+ 
+@@ -246,7 +246,7 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+ 
+ static void
+ construct_line_bitmap(struct fbtft_par *par, u8 *dest, signed short *src,
+-						int xs, int xe, int y)
++		      int xs, int xe, int y)
+ {
+ 	int x, i;
+ 
+@@ -264,6 +264,39 @@ construct_line_bitmap(struct fbtft_par *par, u8 *dest, signed short *src,
+ 	}
+ }
+ 
++static void iterate_diffusion_matrix(u32 xres, u32 yres, int x,
++				     int y, signed short *convert_buf,
++				     signed short pixel, signed short error)
++{
++	u16 i, j;
++
++	/* diffusion matrix row */
++	for (i = 0; i < DIFFUSING_MATRIX_WIDTH; ++i)
++		/* diffusion matrix column */
++		for (j = 0; j < DIFFUSING_MATRIX_HEIGHT; ++j) {
++			signed short *write_pos;
++			signed char coeff;
++
++			/* skip pixels out of zone */
++			if (x + i < 0 || x + i >= xres || y + j >= yres)
++				continue;
++			write_pos = &convert_buf[(y + j) * xres + x + i];
++			coeff = diffusing_matrix[i][j];
++			if (-1 == coeff) {
++				/* pixel itself */
++				*write_pos = pixel;
++			} else {
++				signed short p = *write_pos + error * coeff;
++
++				if (p > WHITE)
++					p = WHITE;
++				if (p < BLACK)
++					p = BLACK;
++				*write_pos = p;
++			}
++		}
++}
++
+ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ {
+ 	u16 *vmem16 = (u16 *)par->info->screen_buffer;
+@@ -303,7 +336,6 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ 			signed short error_b = pixel - BLACK;
+ 			signed short error_w = pixel - WHITE;
+ 			signed short error;
+-			u16 i, j;
+ 
+ 			/* what color close? */
+ 			if (abs(error_b) >= abs(error_w)) {
+@@ -318,36 +350,10 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ 
+ 			error /= 8;
+ 
+-			/* diffusion matrix row */
+-			for (i = 0; i < DIFFUSING_MATRIX_WIDTH; ++i)
+-				/* diffusion matrix column */
+-				for (j = 0; j < DIFFUSING_MATRIX_HEIGHT; ++j) {
+-					signed short *write_pos;
+-					signed char coeff;
+-
+-					/* skip pixels out of zone */
+-					if (x + i < 0 ||
+-						x + i >= par->info->var.xres
+-						|| y + j >= par->info->var.yres)
+-						continue;
+-					write_pos = &convert_buf[
+-						(y + j) * par->info->var.xres +
+-						x + i];
+-					coeff = diffusing_matrix[i][j];
+-					if (coeff == -1)
+-						/* pixel itself */
+-						*write_pos = pixel;
+-					else {
+-						signed short p = *write_pos +
+-							error * coeff;
+-
+-						if (p > WHITE)
+-							p = WHITE;
+-						if (p < BLACK)
+-							p = BLACK;
+-						*write_pos = p;
+-					}
+-				}
++			iterate_diffusion_matrix(par->info->var.xres,
++						 par->info->var.yres,
++						 x, y, convert_buf,
++						 pixel, error);
+ 		}
+ 
+ 	/* 1 string = 2 pages */
+@@ -355,14 +361,15 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ 		/* left half of display */
+ 		if (addr_win.xs < par->info->var.xres / 2) {
+ 			construct_line_bitmap(par, buf, convert_buf,
+-				addr_win.xs, par->info->var.xres / 2, y);
++					      addr_win.xs,
++					      par->info->var.xres / 2, y);
+ 
+ 			len = par->info->var.xres / 2 - addr_win.xs;
+ 
+ 			/* select left side (sc0)
+ 			 * set addr
+ 			 */
+-			write_reg(par, 0x00, (1 << 6) | (u8)addr_win.xs);
++			write_reg(par, 0x00, BIT(6) | (u8)addr_win.xs);
+ 			write_reg(par, 0x00, (0x17 << 3) | (u8)y);
+ 
+ 			/* write bitmap */
+@@ -376,8 +383,9 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ 		/* right half of display */
+ 		if (addr_win.xe >= par->info->var.xres / 2) {
+ 			construct_line_bitmap(par, buf,
+-				convert_buf, par->info->var.xres / 2,
+-				addr_win.xe + 1, y);
++					      convert_buf,
++					      par->info->var.xres / 2,
++					      addr_win.xe + 1, y);
+ 
+ 			len = addr_win.xe + 1 - par->info->var.xres / 2;
+ 
+@@ -407,7 +415,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ static int write(struct fbtft_par *par, void *buf, size_t len)
+ {
+ 	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
+-		"%s(len=%d): ", __func__, len);
++			  "%s(len=%d): ", __func__, len);
+ 
+ 	gpio_set_value(par->RW, 0); /* set write mode */
+ 
+diff --git a/drivers/staging/fbtft/fb_hx8340bn.c b/drivers/staging/fbtft/fb_hx8340bn.c
+index 9970ed74bb38..fbd5ef525243 100644
+--- a/drivers/staging/fbtft/fb_hx8340bn.c
++++ b/drivers/staging/fbtft/fb_hx8340bn.c
+@@ -37,7 +37,7 @@
+ 			"3 3 17 8 4 7 05 7 6 0 3 1 6 0 0 "
+ 
+ static bool emulate;
+-module_param(emulate, bool, 0);
++module_param(emulate, bool, 0000);
+ MODULE_PARM_DESC(emulate, "Force emulation in 9-bit mode");
+ 
+ static int init_display(struct fbtft_par *par)
+@@ -157,8 +157,8 @@ static int set_var(struct fbtft_par *par)
+  *   OP0 OP1 CP0 CP1 CP2 CP3 CP4 MP0 MP1 MP2 MP3 MP4 MP5 CGM0 CGM1
+  *   ON0 ON1 CN0 CN1 CN2 CN3 CN4 MN0 MN1 MN2 MN3 MN4 MN5 XXXX  GC
+  */
+-#define CURVE(num, idx)  curves[num * par->gamma.num_values + idx]
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++#define CURVE(num, idx)  curves[(num) * par->gamma.num_values + (idx)]
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	unsigned long mask[] = {
+ 		0x0f, 0x0f, 0x1f, 0x0f, 0x0f, 0x0f, 0x1f, 0x07, 0x07, 0x07,
+diff --git a/drivers/staging/fbtft/fb_hx8347d.c b/drivers/staging/fbtft/fb_hx8347d.c
+index 450a61e3f99c..bbf78f8644a8 100644
+--- a/drivers/staging/fbtft/fb_hx8347d.c
++++ b/drivers/staging/fbtft/fb_hx8347d.c
+@@ -102,7 +102,7 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+  *   VRN0 VRN1 VRN2 VRN3 VRN4 VRN5 PRN0 PRN1 PKN0 PKN1 PKN2 PKN3 PKN4 CGM
+  */
+ #define CURVE(num, idx)  curves[num * par->gamma.num_values + idx]
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	unsigned long mask[] = {
+ 		0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x7f, 0x7f, 0x1f, 0x1f,
+diff --git a/drivers/staging/fbtft/fb_hx8353d.c b/drivers/staging/fbtft/fb_hx8353d.c
+index 72e4ff8c5553..2c18051a44b3 100644
+--- a/drivers/staging/fbtft/fb_hx8353d.c
++++ b/drivers/staging/fbtft/fb_hx8353d.c
+@@ -118,7 +118,7 @@ static int set_var(struct fbtft_par *par)
+ }
+ 
+ /* gamma string format: */
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	write_reg(par, 0xE0,
+ 		  curves[0], curves[1], curves[2], curves[3],
+diff --git a/drivers/staging/fbtft/fb_ili9163.c b/drivers/staging/fbtft/fb_ili9163.c
+index 6b8f8b17e9a3..045cadc3bc65 100644
+--- a/drivers/staging/fbtft/fb_ili9163.c
++++ b/drivers/staging/fbtft/fb_ili9163.c
+@@ -194,7 +194,7 @@ static int set_var(struct fbtft_par *par)
+ 
+ 	/* Colorspcae */
+ 	if (par->bgr)
+-		mactrl_data |= (1 << 2);
++		mactrl_data |= BIT(2);
+ 	write_reg(par, MIPI_DCS_SET_ADDRESS_MODE, mactrl_data);
+ 	write_reg(par, MIPI_DCS_WRITE_MEMORY_START);
+ 	return 0;
+@@ -202,7 +202,7 @@ static int set_var(struct fbtft_par *par)
+ 
+ #ifdef GAMMA_ADJ
+ #define CURVE(num, idx)  curves[num * par->gamma.num_values + idx]
+-static int gamma_adj(struct fbtft_par *par, unsigned long *curves)
++static int gamma_adj(struct fbtft_par *par, u32 *curves)
+ {
+ 	unsigned long mask[] = {
+ 		0x3F, 0x3F, 0x3F, 0x3F, 0x3F,
+diff --git a/drivers/staging/fbtft/fb_ili9320.c b/drivers/staging/fbtft/fb_ili9320.c
+index 278e4c7e95e5..20ba86da028b 100644
+--- a/drivers/staging/fbtft/fb_ili9320.c
++++ b/drivers/staging/fbtft/fb_ili9320.c
+@@ -221,7 +221,7 @@ static int set_var(struct fbtft_par *par)
+  *  VRN0 VRN1 RN0 RN1 KN0 KN1 KN2 KN3 KN4 KN5
+  */
+ #define CURVE(num, idx)  curves[num * par->gamma.num_values + idx]
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	unsigned long mask[] = {
+ 		0x1f, 0x1f, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+diff --git a/drivers/staging/fbtft/fb_ili9325.c b/drivers/staging/fbtft/fb_ili9325.c
+index c31e2e051d4a..7f9e9b25490e 100644
+--- a/drivers/staging/fbtft/fb_ili9325.c
++++ b/drivers/staging/fbtft/fb_ili9325.c
+@@ -33,26 +33,23 @@
+ 			"04 16 2 7 6 3 2 1 7 7"
+ 
+ static unsigned int bt = 6; /* VGL=Vci*4 , VGH=Vci*4 */
+-module_param(bt, uint, 0);
++module_param(bt, uint, 0000);
+ MODULE_PARM_DESC(bt, "Sets the factor used in the step-up circuits");
+ 
+ static unsigned int vc = 0x03; /* Vci1=Vci*0.80 */
+-module_param(vc, uint, 0);
+-MODULE_PARM_DESC(vc,
+-"Sets the ratio factor of Vci to generate the reference voltages Vci1");
++module_param(vc, uint, 0000);
++MODULE_PARM_DESC(vc, "Sets the ratio factor of Vci to generate the reference voltages Vci1");
+ 
+ static unsigned int vrh = 0x0d; /* VREG1OUT=Vci*1.85 */
+-module_param(vrh, uint, 0);
+-MODULE_PARM_DESC(vrh,
+-"Set the amplifying rate (1.6 ~ 1.9) of Vci applied to output the VREG1OUT");
++module_param(vrh, uint, 0000);
++MODULE_PARM_DESC(vrh, "Set the amplifying rate (1.6 ~ 1.9) of Vci applied to output the VREG1OUT");
+ 
+ static unsigned int vdv = 0x12; /* VCOMH amplitude=VREG1OUT*0.98 */
+-module_param(vdv, uint, 0);
+-MODULE_PARM_DESC(vdv,
+-"Select the factor of VREG1OUT to set the amplitude of Vcom");
++module_param(vdv, uint, 0000);
++MODULE_PARM_DESC(vdv, "Select the factor of VREG1OUT to set the amplitude of Vcom");
+ 
+ static unsigned int vcm = 0x0a; /* VCOMH=VREG1OUT*0.735 */
+-module_param(vcm, uint, 0);
++module_param(vcm, uint, 0000);
+ MODULE_PARM_DESC(vcm, "Set the internal VcomH voltage");
+ 
+ /*
+@@ -129,7 +126,7 @@ static int init_display(struct fbtft_par *par)
+ 	write_reg(par, 0x0013, 0x0000); /* VDV[4:0] for VCOM amplitude */
+ 	mdelay(200); /* Dis-charge capacitor power voltage */
+ 	write_reg(par, 0x0010, /* SAP, BT[3:0], AP, DSTB, SLP, STB */
+-		(1 << 12) | (bt << 8) | (1 << 7) | (0x01 << 4));
++		BIT(12) | (bt << 8) | BIT(7) | BIT(4));
+ 	write_reg(par, 0x0011, 0x220 | vc); /* DC1[2:0], DC0[2:0], VC[2:0] */
+ 	mdelay(50); /* Delay 50ms */
+ 	write_reg(par, 0x0012, vrh); /* Internal reference voltage= Vci; */
+@@ -218,7 +215,7 @@ static int set_var(struct fbtft_par *par)
+  *  VRN0 VRN1 RN0 RN1 KN0 KN1 KN2 KN3 KN4 KN5
+  */
+ #define CURVE(num, idx)  curves[num * par->gamma.num_values + idx]
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	unsigned long mask[] = {
+ 		0x1f, 0x1f, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+diff --git a/drivers/staging/fbtft/fb_ili9341.c b/drivers/staging/fbtft/fb_ili9341.c
+index ff35c8624ca3..21a98e9e1a14 100644
+--- a/drivers/staging/fbtft/fb_ili9341.c
++++ b/drivers/staging/fbtft/fb_ili9341.c
+@@ -121,7 +121,7 @@ static int set_var(struct fbtft_par *par)
+  *  Negative: Par1 Par2 [...] Par15
+  */
+ #define CURVE(num, idx)  curves[num * par->gamma.num_values + idx]
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	int i;
+ 
+diff --git a/drivers/staging/fbtft/fb_ili9481.c b/drivers/staging/fbtft/fb_ili9481.c
+index 242adb3859bd..7f182a1c084c 100644
+--- a/drivers/staging/fbtft/fb_ili9481.c
++++ b/drivers/staging/fbtft/fb_ili9481.c
+@@ -27,7 +27,7 @@
+ #define WIDTH		320
+ #define HEIGHT		480
+ 
+-static int default_init_sequence[] = {
++static const s16 default_init_sequence[] = {
+ 	/* SLP_OUT - Sleep out */
+ 	-1, MIPI_DCS_EXIT_SLEEP_MODE,
+ 	-2, 50,
+diff --git a/drivers/staging/fbtft/fb_ili9486.c b/drivers/staging/fbtft/fb_ili9486.c
+index fa38d8885f0b..ddd07a64c48a 100644
+--- a/drivers/staging/fbtft/fb_ili9486.c
++++ b/drivers/staging/fbtft/fb_ili9486.c
+@@ -26,7 +26,7 @@
+ #define HEIGHT		480
+ 
+ /* this init sequence matches PiScreen */
+-static int default_init_sequence[] = {
++static const s16 default_init_sequence[] = {
+ 	/* Interface Mode Control */
+ 	-1, 0xb0, 0x0,
+ 	-1, MIPI_DCS_EXIT_SLEEP_MODE,
+diff --git a/drivers/staging/fbtft/fb_pcd8544.c b/drivers/staging/fbtft/fb_pcd8544.c
+index a4710dc067ef..87f678a314cc 100644
+--- a/drivers/staging/fbtft/fb_pcd8544.c
++++ b/drivers/staging/fbtft/fb_pcd8544.c
+@@ -33,11 +33,11 @@
+ #define DEFAULT_GAMMA  "40" /* gamma controls the contrast in this driver */
+ 
+ static unsigned int tc;
+-module_param(tc, uint, 0);
++module_param(tc, uint, 0000);
+ MODULE_PARM_DESC(tc, "TC[1:0] Temperature coefficient: 0-3 (default: 0)");
+ 
+ static unsigned int bs = 4;
+-module_param(bs, uint, 0);
++module_param(bs, uint, 0000);
+ MODULE_PARM_DESC(bs, "BS[2:0] Bias voltage level: 0-7 (default: 4)");
+ 
+ static int init_display(struct fbtft_par *par)
+@@ -137,7 +137,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ 	return ret;
+ }
+ 
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	/* apply mask */
+ 	curves[0] &= 0x7F;
+diff --git a/drivers/staging/fbtft/fb_ra8875.c b/drivers/staging/fbtft/fb_ra8875.c
+index 308a244972aa..a899614ce829 100644
+--- a/drivers/staging/fbtft/fb_ra8875.c
++++ b/drivers/staging/fbtft/fb_ra8875.c
+@@ -33,7 +33,7 @@ static int write_spi(struct fbtft_par *par, void *buf, size_t len)
+ 	struct spi_message m;
+ 
+ 	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
+-		"%s(len=%d): ", __func__, len);
++			  "%s(len=%d): ", __func__, len);
+ 
+ 	if (!par->spi) {
+ 		dev_err(par->info->device,
+@@ -42,10 +42,6 @@ static int write_spi(struct fbtft_par *par, void *buf, size_t len)
+ 	}
+ 
+ 	spi_message_init(&m);
+-	if (par->txbuf.dma && buf == par->txbuf.buf) {
+-		t.tx_dma = par->txbuf.dma;
+-		m.is_dma_mapped = 1;
+-	}
+ 	spi_message_add_tail(&t, &m);
+ 	return spi_sync(par->spi, &m);
+ }
+@@ -55,9 +51,9 @@ static int init_display(struct fbtft_par *par)
+ 	gpio_set_value(par->gpio.dc, 1);
+ 
+ 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+-		"%s()\n", __func__);
++		      "%s()\n", __func__);
+ 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+-		"display size %dx%d\n",
++		      "display size %dx%d\n",
+ 		par->info->var.xres,
+ 		par->info->var.yres);
+ 
+@@ -215,7 +211,7 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
+ 			buf[i] = (u8)va_arg(args, unsigned int);
+ 		va_end(args);
+ 		fbtft_par_dbg_hex(DEBUG_WRITE_REGISTER, par, par->info->device,
+-			u8, buf, len, "%s: ", __func__);
++				  u8, buf, len, "%s: ", __func__);
+ 	}
+ 
+ 	va_start(args, len);
+@@ -257,7 +253,7 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
+ static int write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
+ {
+ 	u16 *vmem16;
+-	u16 *txbuf16 = par->txbuf.buf;
++	__be16 *txbuf16 = par->txbuf.buf;
+ 	size_t remain;
+ 	size_t to_copy;
+ 	size_t tx_array_size;
+@@ -266,7 +262,7 @@ static int write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
+ 	size_t startbyte_size = 0;
+ 
+ 	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s(offset=%zu, len=%zu)\n",
+-		__func__, offset, len);
++		      __func__, offset, len);
+ 
+ 	remain = len / 2;
+ 	vmem16 = (u16 *)(par->info->screen_buffer + offset);
+diff --git a/drivers/staging/fbtft/fb_s6d02a1.c b/drivers/staging/fbtft/fb_s6d02a1.c
+index 774b0ff69e6d..c12855bb6891 100644
+--- a/drivers/staging/fbtft/fb_s6d02a1.c
++++ b/drivers/staging/fbtft/fb_s6d02a1.c
+@@ -24,7 +24,7 @@
+ 
+ #define DRVNAME "fb_s6d02a1"
+ 
+-static int default_init_sequence[] = {
++static const s16 default_init_sequence[] = {
+ 
+ 	-1, 0xf0, 0x5a, 0x5a,
+ 
+diff --git a/drivers/staging/fbtft/fb_s6d1121.c b/drivers/staging/fbtft/fb_s6d1121.c
+index 9b1d70b218df..3b36ed50d491 100644
+--- a/drivers/staging/fbtft/fb_s6d1121.c
++++ b/drivers/staging/fbtft/fb_s6d1121.c
+@@ -130,7 +130,7 @@ static int set_var(struct fbtft_par *par)
+  * PKN0 PKN1 PKN2 PKN3 PKN4 PKN5 PKN6 PKN7 PRN8 PRN9 PRN10 PRN11 VRN0 VRN1
+  */
+ #define CURVE(num, idx)  curves[num * par->gamma.num_values + idx]
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	unsigned long mask[] = {
+ 		0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f,
+diff --git a/drivers/staging/fbtft/fb_sh1106.c b/drivers/staging/fbtft/fb_sh1106.c
+new file mode 100644
+index 000000000000..89c27a440305
+--- /dev/null
++++ b/drivers/staging/fbtft/fb_sh1106.c
+@@ -0,0 +1,195 @@
++/*
++ * FB driver for the SH1106 OLED Controller
++ * Based on the SSD1306 driver by Noralf Tronnes
++ *
++ * Copyright (C) 2017 Heiner Kallweit
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/gpio.h>
++#include <linux/delay.h>
++
++#include "fbtft.h"
++
++#define DRVNAME		"fb_sh1106"
++#define WIDTH		128
++#define HEIGHT		64
++
++/* Init sequence based on the Adafruit SSD1306 Arduino library */
++static int init_display(struct fbtft_par *par)
++{
++	if (!par->info->var.xres || par->info->var.xres > WIDTH ||
++	    !par->info->var.yres || par->info->var.yres > HEIGHT ||
++	    par->info->var.yres % 8) {
++		dev_err(par->info->device, "Invalid screen size\n");
++		return -EINVAL;
++	}
++
++	if (par->info->var.rotate) {
++		dev_err(par->info->device, "Display rotation not supported\n");
++		return -EINVAL;
++	}
++
++	par->fbtftops.reset(par);
++
++	/* Set Display OFF */
++	write_reg(par, 0xAE);
++
++	/* Set Display Clock Divide Ratio/ Oscillator Frequency */
++	write_reg(par, 0xD5, 0x80);
++
++	/* Set Multiplex Ratio */
++	write_reg(par, 0xA8, par->info->var.yres - 1);
++
++	/* Set Display Offset */
++	write_reg(par, 0xD3, 0x00);
++
++	/* Set Display Start Line */
++	write_reg(par, 0x40 | 0x0);
++
++	/* Set Segment Re-map */
++	/* column address 127 is mapped to SEG0 */
++	write_reg(par, 0xA0 | 0x1);
++
++	/* Set COM Output Scan Direction */
++	/* remapped mode. Scan from COM[N-1] to COM0 */
++	write_reg(par, 0xC8);
++
++	/* Set COM Pins Hardware Configuration */
++	if (par->info->var.yres == 64)
++		/* A[4]=1b, Alternative COM pin configuration */
++		write_reg(par, 0xDA, 0x12);
++	else if (par->info->var.yres == 48)
++		/* A[4]=1b, Alternative COM pin configuration */
++		write_reg(par, 0xDA, 0x12);
++	else
++		/* A[4]=0b, Sequential COM pin configuration */
++		write_reg(par, 0xDA, 0x02);
++
++	/* Set Pre-charge Period */
++	write_reg(par, 0xD9, 0xF1);
++
++	/* Set VCOMH Deselect Level */
++	write_reg(par, 0xDB, 0x40);
++
++	/* Set Display ON */
++	write_reg(par, 0xAF);
++
++	msleep(150);
++
++	return 0;
++}
++
++static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
++{
++}
++
++static int blank(struct fbtft_par *par, bool on)
++{
++	fbtft_par_dbg(DEBUG_BLANK, par, "%s(blank=%s)\n",
++		      __func__, on ? "true" : "false");
++
++	write_reg(par, on ? 0xAE : 0xAF);
++
++	return 0;
++}
++
++/* Gamma is used to control Contrast */
++static int set_gamma(struct fbtft_par *par, u32 *curves)
++{
++	/* apply mask */
++	curves[0] &= 0xFF;
++
++	/* Set Contrast Control for BANK0 */
++	write_reg(par, 0x81, curves[0]);
++
++	return 0;
++}
++
++static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
++{
++	u16 *vmem16 = (u16 *)par->info->screen_buffer;
++	u32 xres = par->info->var.xres;
++	int page, page_start, page_end, x, i, ret;
++	u8 *buf = par->txbuf.buf;
++
++	/* offset refers to vmem with 2 bytes element size */
++	page_start = offset / (8 * 2 * xres);
++	page_end = DIV_ROUND_UP(offset + len, 8 * 2 * xres);
++
++	for (page = page_start; page < page_end; page++) {
++		/* set page and set column to 2 because of vidmem width 132 */
++		write_reg(par, 0xb0 | page, 0x00 | 2, 0x10 | 0);
++
++		memset(buf, 0, xres);
++		for (x = 0; x < xres; x++)
++			for (i = 0; i < 8; i++)
++				if (vmem16[(page * 8 + i) * xres + x])
++					buf[x] |= BIT(i);
++
++		/* Write data */
++		ret = fbtft_write_buf_dc(par, buf, xres, 1);
++		if (ret < 0)
++			return ret;
++	}
++
++	return 0;
++}
++
++static void write_register(struct fbtft_par *par, int len, ...)
++{
++	va_list args;
++	int i;
++
++	va_start(args, len);
++
++	for (i = 0; i < len; i++)
++		par->buf[i] = va_arg(args, unsigned int);
++
++	/* keep DC low for all command bytes to transfer */
++	fbtft_write_buf_dc(par, par->buf, len, 0);
++
++	va_end(args);
++}
++
++static struct fbtft_display display = {
++	.regwidth = 8,
++	.width = WIDTH,
++	.height = HEIGHT,
++	.txbuflen = WIDTH,
++	.gamma_num = 1,
++	.gamma_len = 1,
++	/* set default contrast to 0xcd = 80% */
++	.gamma = "cd",
++	.fbtftops = {
++		.write_vmem = write_vmem,
++		.write_register = write_register,
++		.init_display = init_display,
++		.set_addr_win = set_addr_win,
++		.blank = blank,
++		.set_gamma = set_gamma,
++	},
++};
++
++FBTFT_REGISTER_DRIVER(DRVNAME, "sinowealth,sh1106", &display);
++
++MODULE_ALIAS("spi:" DRVNAME);
++MODULE_ALIAS("platform:" DRVNAME);
++MODULE_ALIAS("spi:sh1106");
++MODULE_ALIAS("platform:sh1106");
++
++MODULE_DESCRIPTION("SH1106 OLED Driver");
++MODULE_AUTHOR("Heiner Kallweit");
++MODULE_LICENSE("GPL");
+diff --git a/drivers/staging/fbtft/fb_ssd1289.c b/drivers/staging/fbtft/fb_ssd1289.c
+index 25f9fbe1e76f..129e175fcd7e 100644
+--- a/drivers/staging/fbtft/fb_ssd1289.c
++++ b/drivers/staging/fbtft/fb_ssd1289.c
+@@ -30,7 +30,7 @@
+ 			"02 03 2 5 7 5 4 2 4 2"
+ 
+ static unsigned int reg11 = 0x6040;
+-module_param(reg11, uint, 0);
++module_param(reg11, uint, 0000);
+ MODULE_PARM_DESC(reg11, "Register 11h value");
+ 
+ static int init_display(struct fbtft_par *par)
+@@ -47,7 +47,7 @@ static int init_display(struct fbtft_par *par)
+ 	write_reg(par, 0x0E, 0x2B00);
+ 	write_reg(par, 0x1E, 0x00B7);
+ 	write_reg(par, 0x01,
+-		(1 << 13) | (par->bgr << 11) | (1 << 9) | (HEIGHT - 1));
++		BIT(13) | (par->bgr << 11) | BIT(9) | (HEIGHT - 1));
+ 	write_reg(par, 0x02, 0x0600);
+ 	write_reg(par, 0x10, 0x0000);
+ 	write_reg(par, 0x05, 0x0000);
+@@ -136,7 +136,7 @@ static int set_var(struct fbtft_par *par)
+  * VRN0 VRN1 PRN0 PRN1 PKN0 PKN1 PKN2 PKN3 PKN4 PKN5
+  */
+ #define CURVE(num, idx)  curves[num * par->gamma.num_values + idx]
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	unsigned long mask[] = {
+ 		0x1f, 0x1f, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+diff --git a/drivers/staging/fbtft/fb_ssd1305.c b/drivers/staging/fbtft/fb_ssd1305.c
+index 4b38c3fadd60..33c03872ca84 100644
+--- a/drivers/staging/fbtft/fb_ssd1305.c
++++ b/drivers/staging/fbtft/fb_ssd1305.c
+@@ -148,7 +148,7 @@ static int blank(struct fbtft_par *par, bool on)
+ }
+ 
+ /* Gamma is used to control Contrast */
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	curves[0] &= 0xFF;
+ 	/* Set Contrast Control for BANK0 */
+diff --git a/drivers/staging/fbtft/fb_ssd1306.c b/drivers/staging/fbtft/fb_ssd1306.c
+index 80fc57029fee..96c58de85288 100644
+--- a/drivers/staging/fbtft/fb_ssd1306.c
++++ b/drivers/staging/fbtft/fb_ssd1306.c
+@@ -62,6 +62,8 @@ static int init_display(struct fbtft_par *par)
+ 	write_reg(par, 0xA8);
+ 	if (par->info->var.yres == 64)
+ 		write_reg(par, 0x3F);
++	else if (par->info->var.yres == 48)
++		write_reg(par, 0x2F);
+ 	else
+ 		write_reg(par, 0x1F);
+ 
+@@ -82,7 +84,7 @@ static int init_display(struct fbtft_par *par)
+ 	/* Vertical addressing mode  */
+ 	write_reg(par, 0x01);
+ 
+-	/*Set Segment Re-map */
++	/* Set Segment Re-map */
+ 	/* column address 127 is mapped to SEG0 */
+ 	write_reg(par, 0xA0 | 0x1);
+ 
+@@ -95,6 +97,9 @@ static int init_display(struct fbtft_par *par)
+ 	if (par->info->var.yres == 64)
+ 		/* A[4]=1b, Alternative COM pin configuration */
+ 		write_reg(par, 0x12);
++	else if (par->info->var.yres == 48)
++		/* A[4]=1b, Alternative COM pin configuration */
++		write_reg(par, 0x12);
+ 	else
+ 		/* A[4]=0b, Sequential COM pin configuration */
+ 		write_reg(par, 0x02);
+@@ -124,6 +129,19 @@ static int init_display(struct fbtft_par *par)
+ 	return 0;
+ }
+ 
++static void set_addr_win_64x48(struct fbtft_par *par)
++{
++	/* Set Column Address */
++	write_reg(par, 0x21);
++	write_reg(par, 0x20);
++	write_reg(par, 0x5F);
++
++	/* Set Page Address */
++	write_reg(par, 0x22);
++	write_reg(par, 0x0);
++	write_reg(par, 0x5);
++}
++
+ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+ {
+ 	/* Set Lower Column Start Address for Page Addressing Mode */
+@@ -132,12 +150,15 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+ 	write_reg(par, 0x10 | 0x0);
+ 	/* Set Display Start Line */
+ 	write_reg(par, 0x40 | 0x0);
++
++	if (par->info->var.xres == 64 && par->info->var.yres == 48)
++		set_addr_win_64x48(par);
+ }
+ 
+ static int blank(struct fbtft_par *par, bool on)
+ {
+ 	fbtft_par_dbg(DEBUG_BLANK, par, "%s(blank=%s)\n",
+-		__func__, on ? "true" : "false");
++		      __func__, on ? "true" : "false");
+ 
+ 	if (on)
+ 		write_reg(par, 0xAE);
+@@ -147,7 +168,7 @@ static int blank(struct fbtft_par *par, bool on)
+ }
+ 
+ /* Gamma is used to control Contrast */
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	/* apply mask */
+ 	curves[0] &= 0xFF;
+@@ -162,26 +183,24 @@ static int set_gamma(struct fbtft_par *par, unsigned long *curves)
+ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ {
+ 	u16 *vmem16 = (u16 *)par->info->screen_buffer;
++	u32 xres = par->info->var.xres;
++	u32 yres = par->info->var.yres;
+ 	u8 *buf = par->txbuf.buf;
+ 	int x, y, i;
+ 	int ret = 0;
+ 
+-	for (x = 0; x < par->info->var.xres; x++) {
+-		for (y = 0; y < par->info->var.yres/8; y++) {
++	for (x = 0; x < xres; x++) {
++		for (y = 0; y < yres / 8; y++) {
+ 			*buf = 0x00;
+ 			for (i = 0; i < 8; i++)
+-				*buf |= (vmem16[(y * 8 + i) *
+-						par->info->var.xres + x] ?
+-					 1 : 0) << i;
++				*buf |= (vmem16[(y * 8 + i) * xres + x] ? 1 : 0) << i;
+ 			buf++;
+ 		}
+ 	}
+ 
+ 	/* Write data */
+ 	gpio_set_value(par->gpio.dc, 1);
+-	ret = par->fbtftops.write(par, par->txbuf.buf,
+-				  par->info->var.xres * par->info->var.yres /
+-				  8);
++	ret = par->fbtftops.write(par, par->txbuf.buf, xres * yres / 8);
+ 	if (ret < 0)
+ 		dev_err(par->info->device, "write failed and returned: %d\n",
+ 			ret);
+diff --git a/drivers/staging/fbtft/fb_ssd1325.c b/drivers/staging/fbtft/fb_ssd1325.c
+index 15078bf2aa4b..b7e40c24f58e 100644
+--- a/drivers/staging/fbtft/fb_ssd1325.c
++++ b/drivers/staging/fbtft/fb_ssd1325.c
+@@ -116,7 +116,7 @@ static int blank(struct fbtft_par *par, bool on)
+  * 0 = Setting of GS1 < Setting of GS2 < Setting of GS3.....<
+  * Setting of GS14 < Setting of GS15
+  */
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	int i;
+ 
+diff --git a/drivers/staging/fbtft/fb_ssd1331.c b/drivers/staging/fbtft/fb_ssd1331.c
+index 1d74ac1343a8..9aa9864fcf30 100644
+--- a/drivers/staging/fbtft/fb_ssd1331.c
++++ b/drivers/staging/fbtft/fb_ssd1331.c
+@@ -122,7 +122,7 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
+  * Setting of GS63 has to be > Setting of GS62 +1
+  *
+  */
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	unsigned long tmp[GAMMA_NUM * GAMMA_LEN];
+ 	int i, acc = 0;
+@@ -130,29 +130,31 @@ static int set_gamma(struct fbtft_par *par, unsigned long *curves)
+ 	for (i = 0; i < 63; i++) {
+ 		if (i > 0 && curves[i] < 2) {
+ 			dev_err(par->info->device,
+-				"Illegal value in Grayscale Lookup Table at index %d. " \
+-				"Must be greater than 1\n", i);
++				"Illegal value in Grayscale Lookup Table at index %d. Must be greater than 1\n",
++				i);
+ 			return -EINVAL;
+ 		}
+ 		acc += curves[i];
+ 		tmp[i] = acc;
+ 		if (acc > 180) {
+ 			dev_err(par->info->device,
+-				"Illegal value(s) in Grayscale Lookup Table. " \
+-				"At index=%d, the accumulated value has exceeded 180\n", i);
++				"Illegal value(s) in Grayscale Lookup Table. At index=%d, the accumulated value has exceeded 180\n",
++				i);
+ 			return -EINVAL;
+ 		}
+ 	}
+ 
+ 	write_reg(par, 0xB8,
+-	tmp[0], tmp[1], tmp[2], tmp[3], tmp[4], tmp[5], tmp[6], tmp[7],
+-	tmp[8], tmp[9], tmp[10], tmp[11], tmp[12], tmp[13], tmp[14], tmp[15],
+-	tmp[16], tmp[17], tmp[18], tmp[19], tmp[20], tmp[21], tmp[22], tmp[23],
+-	tmp[24], tmp[25], tmp[26], tmp[27], tmp[28], tmp[29], tmp[30], tmp[31],
+-	tmp[32], tmp[33], tmp[34], tmp[35], tmp[36], tmp[37], tmp[38], tmp[39],
+-	tmp[40], tmp[41], tmp[42], tmp[43], tmp[44], tmp[45], tmp[46], tmp[47],
+-	tmp[48], tmp[49], tmp[50], tmp[51], tmp[52], tmp[53], tmp[54], tmp[55],
+-	tmp[56], tmp[57], tmp[58], tmp[59], tmp[60], tmp[61], tmp[62]);
++		  tmp[0], tmp[1], tmp[2], tmp[3], tmp[4], tmp[5], tmp[6],
++		  tmp[7], tmp[8], tmp[9], tmp[10], tmp[11], tmp[12], tmp[13],
++		  tmp[14], tmp[15], tmp[16], tmp[17], tmp[18], tmp[19], tmp[20],
++		  tmp[21], tmp[22], tmp[23], tmp[24], tmp[25], tmp[26],	tmp[27],
++		  tmp[28], tmp[29], tmp[30], tmp[31], tmp[32], tmp[33], tmp[34],
++		  tmp[35], tmp[36], tmp[37], tmp[38], tmp[39], tmp[40], tmp[41],
++		  tmp[42], tmp[43], tmp[44], tmp[45], tmp[46], tmp[47], tmp[48],
++		  tmp[49], tmp[50], tmp[51], tmp[52], tmp[53], tmp[54], tmp[55],
++		  tmp[56], tmp[57], tmp[58], tmp[59], tmp[60], tmp[61],
++		  tmp[62]);
+ 
+ 	return 0;
+ }
+@@ -160,7 +162,7 @@ static int set_gamma(struct fbtft_par *par, unsigned long *curves)
+ static int blank(struct fbtft_par *par, bool on)
+ {
+ 	fbtft_par_dbg(DEBUG_BLANK, par, "%s(blank=%s)\n",
+-		__func__, on ? "true" : "false");
++		      __func__, on ? "true" : "false");
+ 	if (on)
+ 		write_reg(par, 0xAE);
+ 	else
+diff --git a/drivers/staging/fbtft/fb_ssd1351.c b/drivers/staging/fbtft/fb_ssd1351.c
+index 200aa9ba98f9..e62235d4d9e7 100644
+--- a/drivers/staging/fbtft/fb_ssd1351.c
++++ b/drivers/staging/fbtft/fb_ssd1351.c
+@@ -71,8 +71,8 @@ static int set_var(struct fbtft_par *par)
+ 	if (par->fbtftops.init_display != init_display) {
+ 		/* don't risk messing up register A0h */
+ 		fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+-			"%s: skipping since custom init_display() is used\n",
+-			__func__);
++			      "%s: skipping since custom init_display() is used\n",
++			       __func__);
+ 		return 0;
+ 	}
+ 
+@@ -117,7 +117,7 @@ static int set_var(struct fbtft_par *par)
+  *		Setting of GS63 has to be > Setting of GS62 +1
+  *
+  */
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	unsigned long tmp[GAMMA_NUM * GAMMA_LEN];
+ 	int i, acc = 0;
+diff --git a/drivers/staging/fbtft/fb_st7735r.c b/drivers/staging/fbtft/fb_st7735r.c
+index 6670f2bb62ec..d98522a39344 100644
+--- a/drivers/staging/fbtft/fb_st7735r.c
++++ b/drivers/staging/fbtft/fb_st7735r.c
+@@ -25,7 +25,7 @@
+ #define DEFAULT_GAMMA   "0F 1A 0F 18 2F 28 20 22 1F 1B 23 37 00 07 02 10\n" \
+ 			"0F 1B 0F 17 33 2C 29 2E 30 30 39 3F 00 07 03 10"
+ 
+-static int default_init_sequence[] = {
++static const s16 default_init_sequence[] = {
+ 	-1, MIPI_DCS_SOFT_RESET,
+ 	-2, 150,                               /* delay */
+ 
+@@ -143,7 +143,7 @@ static int set_var(struct fbtft_par *par)
+  * VRF0N VOS0N PK0N PK1N PK2N PK3N PK4N PK5N PK6N PK7N PK8N PK9N SELV0N SELV1N SELV62N SELV63N
+  */
+ #define CURVE(num, idx)  curves[num * par->gamma.num_values + idx]
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	int i, j;
+ 
+diff --git a/drivers/staging/fbtft/fb_st7789v.c b/drivers/staging/fbtft/fb_st7789v.c
+index 085e9872c46d..a5d7c87557f8 100644
+--- a/drivers/staging/fbtft/fb_st7789v.c
++++ b/drivers/staging/fbtft/fb_st7789v.c
+@@ -178,7 +178,7 @@ static int set_var(struct fbtft_par *par)
+  *
+  * Return: 0 on success, < 0 if error occurred.
+  */
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	int i;
+ 	int j;
+@@ -189,7 +189,7 @@ static int set_gamma(struct fbtft_par *par, unsigned long *curves)
+ 	 * The masks are the same for both positive and negative voltage
+ 	 * gamma curves.
+ 	 */
+-	const u8 gamma_par_mask[] = {
++	static const u8 gamma_par_mask[] = {
+ 		0xFF, /* V63[3:0], V0[3:0]*/
+ 		0x3F, /* V1[5:0] */
+ 		0x3F, /* V2[5:0] */
+diff --git a/drivers/staging/fbtft/fb_tls8204.c b/drivers/staging/fbtft/fb_tls8204.c
+index ea2ddacb9468..4302e822de3b 100644
+--- a/drivers/staging/fbtft/fb_tls8204.c
++++ b/drivers/staging/fbtft/fb_tls8204.c
+@@ -36,7 +36,7 @@
+ #define DEFAULT_GAMMA	"40"
+ 
+ static unsigned int bs = 4;
+-module_param(bs, uint, 0);
++module_param(bs, uint, 0000);
+ MODULE_PARM_DESC(bs, "BS[2:0] Bias voltage level: 0-7 (default: 4)");
+ 
+ static int init_display(struct fbtft_par *par)
+@@ -130,7 +130,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ 	return ret;
+ }
+ 
+-static int set_gamma(struct fbtft_par *par, unsigned long *curves)
++static int set_gamma(struct fbtft_par *par, u32 *curves)
+ {
+ 	/* apply mask */
+ 	curves[0] &= 0x7F;
+diff --git a/drivers/staging/fbtft/fb_uc1611.c b/drivers/staging/fbtft/fb_uc1611.c
+index b33b73f17da4..48e3b3fd9fed 100644
+--- a/drivers/staging/fbtft/fb_uc1611.c
++++ b/drivers/staging/fbtft/fb_uc1611.c
+@@ -42,30 +42,30 @@
+ 
+ /* BR -> actual ratio: 0-3 -> 5, 10, 11, 13 */
+ static unsigned int ratio = 2;
+-module_param(ratio, uint, 0);
++module_param(ratio, uint, 0000);
+ MODULE_PARM_DESC(ratio, "BR[1:0] Bias voltage ratio: 0-3 (default: 2)");
+ 
+ static unsigned int gain = 3;
+-module_param(gain, uint, 0);
++module_param(gain, uint, 0000);
+ MODULE_PARM_DESC(gain, "GN[1:0] Bias voltage gain: 0-3 (default: 3)");
+ 
+ static unsigned int pot = 16;
+-module_param(pot, uint, 0);
++module_param(pot, uint, 0000);
+ MODULE_PARM_DESC(pot, "PM[6:0] Bias voltage pot.: 0-63 (default: 16)");
+ 
+ /* TC -> % compensation per deg C: 0-3 -> -.05, -.10, -.015, -.20 */
+ static unsigned int temp;
+-module_param(temp, uint, 0);
++module_param(temp, uint, 0000);
+ MODULE_PARM_DESC(temp, "TC[1:0] Temperature compensation: 0-3 (default: 0)");
+ 
+ /* PC[1:0] -> LCD capacitance: 0-3 -> <20nF, 20-28 nF, 29-40 nF, 40-56 nF */
+ static unsigned int load = 1;
+-module_param(load, uint, 0);
++module_param(load, uint, 0000);
+ MODULE_PARM_DESC(load, "PC[1:0] Panel Loading: 0-3 (default: 1)");
+ 
+ /* PC[3:2] -> V_LCD: 0, 1, 3 -> ext., int. with ratio = 5, int. standard */
+ static unsigned int pump = 3;
+-module_param(pump, uint, 0);
++module_param(pump, uint, 0000);
+ MODULE_PARM_DESC(pump, "PC[3:2] Pump control: 0,1,3 (default: 3)");
+ 
+ static int init_display(struct fbtft_par *par)
+diff --git a/drivers/staging/fbtft/fb_watterott.c b/drivers/staging/fbtft/fb_watterott.c
+index a52e28a48825..180e5be6fa4f 100644
+--- a/drivers/staging/fbtft/fb_watterott.c
++++ b/drivers/staging/fbtft/fb_watterott.c
+@@ -40,7 +40,7 @@
+ #define COLOR_RGB565		16
+ 
+ static short mode = 565;
+-module_param(mode, short, 0);
++module_param(mode, short, 0000);
+ MODULE_PARM_DESC(mode, "RGB color transfer mode: 332, 565 (default)");
+ 
+ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
+@@ -69,8 +69,8 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+ {
+ 	unsigned int start_line, end_line;
+ 	u16 *vmem16 = (u16 *)(par->info->screen_buffer + offset);
+-	u16 *pos = par->txbuf.buf + 1;
+-	u16 *buf16 = par->txbuf.buf + 10;
++	__be16 *pos = par->txbuf.buf + 1;
++	__be16 *buf16 = par->txbuf.buf + 10;
+ 	int i, j;
+ 	int ret = 0;
+ 
+@@ -106,7 +106,7 @@ static int write_vmem_8bit(struct fbtft_par *par, size_t offset, size_t len)
+ {
+ 	unsigned int start_line, end_line;
+ 	u16 *vmem16 = (u16 *)(par->info->screen_buffer + offset);
+-	u16 *pos = par->txbuf.buf + 1;
++	__be16 *pos = par->txbuf.buf + 1;
+ 	u8 *buf8 = par->txbuf.buf + 10;
+ 	int i, j;
+ 	int ret = 0;
+diff --git a/drivers/staging/fbtft/fbtft-bus.c b/drivers/staging/fbtft/fbtft-bus.c
+index ec45043c0830..2a8eef15c439 100644
+--- a/drivers/staging/fbtft/fbtft-bus.c
++++ b/drivers/staging/fbtft/fbtft-bus.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ #include <linux/export.h>
+ #include <linux/errno.h>
+ #include <linux/gpio.h>
+@@ -36,14 +37,9 @@ void func(struct fbtft_par *par, int len, ...)                                \
+ 	}                                                                     \
+ 									      \
+ 	*buf = modifier((type)va_arg(args, unsigned int));                    \
+-	if (par->gpio.dc != -1)                                               \
+-		gpio_set_value(par->gpio.dc, 0);                              \
+-	ret = par->fbtftops.write(par, par->buf, sizeof(type) + offset);      \
+-	if (ret < 0) {                                                        \
+-		va_end(args);                                                 \
+-		dev_err(par->info->device, "%s: write() failed and returned %d\n", __func__, ret); \
+-		return;                                                       \
+-	}                                                                     \
++	ret = fbtft_write_buf_dc(par, par->buf, sizeof(type) + offset, 0);    \
++	if (ret < 0)							      \
++		goto out;						      \
+ 	len--;                                                                \
+ 									      \
+ 	if (par->startbyte)                                                   \
+@@ -51,19 +47,12 @@ void func(struct fbtft_par *par, int len, ...)                                \
+ 									      \
+ 	if (len) {                                                            \
+ 		i = len;                                                      \
+-		while (i--) {                                                 \
++		while (i--)						      \
+ 			*buf++ = modifier((type)va_arg(args, unsigned int));  \
+-		}                                                             \
+-		if (par->gpio.dc != -1)                                       \
+-			gpio_set_value(par->gpio.dc, 1);                      \
+-		ret = par->fbtftops.write(par, par->buf,		      \
+-					  len * (sizeof(type) + offset));     \
+-		if (ret < 0) {                                                \
+-			va_end(args);                                         \
+-			dev_err(par->info->device, "%s: write() failed and returned %d\n", __func__, ret); \
+-			return;                                               \
+-		}                                                             \
++		fbtft_write_buf_dc(par, par->buf,			      \
++				   len * (sizeof(type) + offset), 1);	      \
+ 	}                                                                     \
++out:									      \
+ 	va_end(args);                                                         \
+ }                                                                             \
+ EXPORT_SYMBOL(func);
+@@ -126,7 +115,7 @@ EXPORT_SYMBOL(fbtft_write_reg8_bus9);
+ int fbtft_write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
+ {
+ 	u16 *vmem16;
+-	u16 *txbuf16 = par->txbuf.buf;
++	__be16 *txbuf16 = par->txbuf.buf;
+ 	size_t remain;
+ 	size_t to_copy;
+ 	size_t tx_array_size;
+@@ -243,10 +232,7 @@ int fbtft_write_vmem16_bus16(struct fbtft_par *par, size_t offset, size_t len)
+ 
+ 	vmem16 = (u16 *)(par->info->screen_buffer + offset);
+ 
+-	if (par->gpio.dc != -1)
+-		gpio_set_value(par->gpio.dc, 1);
+-
+ 	/* no need for buffered write with 16-bit bus */
+-	return par->fbtftops.write(par, vmem16, len);
++	return fbtft_write_buf_dc(par, vmem16, len, 1);
+ }
+ EXPORT_SYMBOL(fbtft_write_vmem16_bus16);
+diff --git a/drivers/staging/fbtft/fbtft-core.c b/drivers/staging/fbtft/fbtft-core.c
+index 587f68aa466c..6d0363deba61 100644
+--- a/drivers/staging/fbtft/fbtft-core.c
++++ b/drivers/staging/fbtft/fbtft-core.c
+@@ -32,7 +32,6 @@
+ #include <linux/backlight.h>
+ #include <linux/platform_device.h>
+ #include <linux/spinlock.h>
+-#include <linux/dma-mapping.h>
+ #include <linux/of.h>
+ #include <linux/of_gpio.h>
+ #include <video/mipi_display.h>
+@@ -41,17 +40,26 @@
+ #include "internal.h"
+ 
+ static unsigned long debug;
+-module_param(debug, ulong, 0);
++module_param(debug, ulong, 0000);
+ MODULE_PARM_DESC(debug, "override device debug level");
+ 
+-#ifdef CONFIG_HAS_DMA
+-static bool dma = true;
+-module_param(dma, bool, 0);
+-MODULE_PARM_DESC(dma, "Use DMA buffer");
+-#endif
++int fbtft_write_buf_dc(struct fbtft_par *par, void *buf, size_t len, int dc)
++{
++	int ret;
++
++	if (gpio_is_valid(par->gpio.dc))
++		gpio_set_value(par->gpio.dc, dc);
++
++	ret = par->fbtftops.write(par, buf, len);
++	if (ret < 0)
++		dev_err(par->info->device,
++			"write() failed and returned %d\n", ret);
++	return ret;
++}
++EXPORT_SYMBOL(fbtft_write_buf_dc);
+ 
+ void fbtft_dbg_hex(const struct device *dev, int groupsize,
+-			void *buf, size_t len, const char *fmt, ...)
++		   void *buf, size_t len, const char *fmt, ...)
+ {
+ 	va_list args;
+ 	static char textbuf[512];
+@@ -63,7 +71,7 @@ void fbtft_dbg_hex(const struct device *dev, int groupsize,
+ 	va_end(args);
+ 
+ 	hex_dump_to_buffer(buf, len, 32, groupsize, text + text_len,
+-				512 - text_len, false);
++			   512 - text_len, false);
+ 
+ 	if (len > 32)
+ 		dev_info(dev, "%s ...\n", text);
+@@ -73,13 +81,13 @@ void fbtft_dbg_hex(const struct device *dev, int groupsize,
+ EXPORT_SYMBOL(fbtft_dbg_hex);
+ 
+ static unsigned long fbtft_request_gpios_match(struct fbtft_par *par,
+-					const struct fbtft_gpio *gpio)
++					       const struct fbtft_gpio *gpio)
+ {
+ 	int ret;
+-	long val;
++	unsigned int val;
+ 
+ 	fbtft_par_dbg(DEBUG_REQUEST_GPIOS_MATCH, par, "%s('%s')\n",
+-		__func__, gpio->name);
++		      __func__, gpio->name);
+ 
+ 	if (strcasecmp(gpio->name, "reset") == 0) {
+ 		par->gpio.reset = gpio->gpio;
+@@ -100,7 +108,7 @@ static unsigned long fbtft_request_gpios_match(struct fbtft_par *par,
+ 		par->gpio.latch = gpio->gpio;
+ 		return GPIOF_OUT_INIT_LOW;
+ 	} else if (gpio->name[0] == 'd' && gpio->name[1] == 'b') {
+-		ret = kstrtol(&gpio->name[2], 10, &val);
++		ret = kstrtouint(&gpio->name[2], 10, &val);
+ 		if (ret == 0 && val < 16) {
+ 			par->gpio.db[val] = gpio->gpio;
+ 			return GPIOF_OUT_INIT_LOW;
+@@ -148,8 +156,8 @@ static int fbtft_request_gpios(struct fbtft_par *par)
+ 				return ret;
+ 			}
+ 			fbtft_par_dbg(DEBUG_REQUEST_GPIOS, par,
+-				"%s: '%s' = GPIO%d\n",
+-				__func__, gpio->name, gpio->gpio);
++				      "%s: '%s' = GPIO%d\n",
++				      __func__, gpio->name, gpio->gpio);
+ 		}
+ 		gpio++;
+ 	}
+@@ -182,7 +190,7 @@ static int fbtft_request_one_gpio(struct fbtft_par *par,
+ 		flags = (of_flags & OF_GPIO_ACTIVE_LOW) ? GPIOF_OUT_INIT_LOW :
+ 							GPIOF_OUT_INIT_HIGH;
+ 		ret = devm_gpio_request_one(dev, gpio, flags,
+-						dev->driver->name);
++					    dev->driver->name);
+ 		if (ret) {
+ 			dev_err(dev,
+ 				"gpio_request_one('%s'=%d) failed with %d\n",
+@@ -192,7 +200,7 @@ static int fbtft_request_one_gpio(struct fbtft_par *par,
+ 		if (gpiop)
+ 			*gpiop = gpio;
+ 		fbtft_par_dbg(DEBUG_REQUEST_GPIOS, par, "%s: '%s' = GPIO%d\n",
+-							__func__, name, gpio);
++			      __func__, name, gpio);
+ 	}
+ 
+ 	return ret;
+@@ -226,15 +234,15 @@ static int fbtft_request_gpios_dt(struct fbtft_par *par)
+ 		return ret;
+ 	for (i = 0; i < 16; i++) {
+ 		ret = fbtft_request_one_gpio(par, "db-gpios", i,
+-						&par->gpio.db[i]);
++					     &par->gpio.db[i]);
+ 		if (ret)
+ 			return ret;
+ 		ret = fbtft_request_one_gpio(par, "led-gpios", i,
+-						&par->gpio.led[i]);
++					     &par->gpio.led[i]);
+ 		if (ret)
+ 			return ret;
+ 		ret = fbtft_request_one_gpio(par, "aux-gpios", i,
+-						&par->gpio.aux[i]);
++					     &par->gpio.aux[i]);
+ 		if (ret)
+ 			return ret;
+ 	}
+@@ -253,7 +261,8 @@ static int fbtft_backlight_update_status(struct backlight_device *bd)
+ 		"%s: polarity=%d, power=%d, fb_blank=%d\n",
+ 		__func__, polarity, bd->props.power, bd->props.fb_blank);
+ 
+-	if ((bd->props.power == FB_BLANK_UNBLANK) && (bd->props.fb_blank == FB_BLANK_UNBLANK))
++	if ((bd->props.power == FB_BLANK_UNBLANK) &&
++	    (bd->props.fb_blank == FB_BLANK_UNBLANK))
+ 		gpio_set_value(par->gpio.led[0], polarity);
+ 	else
+ 		gpio_set_value(par->gpio.led[0], !polarity);
+@@ -288,7 +297,7 @@ void fbtft_register_backlight(struct fbtft_par *par)
+ 
+ 	if (par->gpio.led[0] == -1) {
+ 		fbtft_par_dbg(DEBUG_BACKLIGHT, par,
+-			"%s(): led pin not set, exiting.\n", __func__);
++			      "%s(): led pin not set, exiting.\n", __func__);
+ 		return;
+ 	}
+ 
+@@ -299,7 +308,8 @@ void fbtft_register_backlight(struct fbtft_par *par)
+ 		bl_props.state |= BL_CORE_DRIVER1;
+ 
+ 	bd = backlight_device_register(dev_driver_string(par->info->device),
+-				par->info->device, par, &fbtft_bl_ops, &bl_props);
++				       par->info->device, par,
++				       &fbtft_bl_ops, &bl_props);
+ 	if (IS_ERR(bd)) {
+ 		dev_err(par->info->device,
+ 			"cannot register backlight device (%ld)\n",
+@@ -335,10 +345,10 @@ static void fbtft_reset(struct fbtft_par *par)
+ 	if (par->gpio.reset == -1)
+ 		return;
+ 	fbtft_par_dbg(DEBUG_RESET, par, "%s()\n", __func__);
+-	gpio_set_value(par->gpio.reset, 0);
+-	udelay(20);
+-	gpio_set_value(par->gpio.reset, 1);
+-	mdelay(120);
++	gpio_set_value_cansleep(par->gpio.reset, 0);
++	usleep_range(20, 40);
++	gpio_set_value_cansleep(par->gpio.reset, 1);
++	msleep(120);
+ }
+ 
+ static void fbtft_update_display(struct fbtft_par *par, unsigned int start_line,
+@@ -350,9 +360,11 @@ static void fbtft_update_display(struct fbtft_par *par, unsigned int start_line,
+ 	bool timeit = false;
+ 	int ret = 0;
+ 
+-	if (unlikely(par->debug & (DEBUG_TIME_FIRST_UPDATE | DEBUG_TIME_EACH_UPDATE))) {
++	if (unlikely(par->debug & (DEBUG_TIME_FIRST_UPDATE |
++			DEBUG_TIME_EACH_UPDATE))) {
+ 		if ((par->debug & DEBUG_TIME_EACH_UPDATE) ||
+-				((par->debug & DEBUG_TIME_FIRST_UPDATE) && !par->first_update_done)) {
++		    ((par->debug & DEBUG_TIME_FIRST_UPDATE) &&
++		    !par->first_update_done)) {
+ 			ts_start = ktime_get();
+ 			timeit = true;
+ 		}
+@@ -361,21 +373,23 @@ static void fbtft_update_display(struct fbtft_par *par, unsigned int start_line,
+ 	/* Sanity checks */
+ 	if (start_line > end_line) {
+ 		dev_warn(par->info->device,
+-			"%s: start_line=%u is larger than end_line=%u. Shouldn't happen, will do full display update\n",
+-			__func__, start_line, end_line);
++			 "%s: start_line=%u is larger than end_line=%u. Shouldn't happen, will do full display update\n",
++			 __func__, start_line, end_line);
+ 		start_line = 0;
+ 		end_line = par->info->var.yres - 1;
+ 	}
+-	if (start_line > par->info->var.yres - 1 || end_line > par->info->var.yres - 1) {
++	if (start_line > par->info->var.yres - 1 ||
++	    end_line > par->info->var.yres - 1) {
+ 		dev_warn(par->info->device,
+ 			"%s: start_line=%u or end_line=%u is larger than max=%d. Shouldn't happen, will do full display update\n",
+-			__func__, start_line, end_line, par->info->var.yres - 1);
++			 __func__, start_line,
++			 end_line, par->info->var.yres - 1);
+ 		start_line = 0;
+ 		end_line = par->info->var.yres - 1;
+ 	}
+ 
+ 	fbtft_par_dbg(DEBUG_UPDATE_DISPLAY, par, "%s(start_line=%u, end_line=%u)\n",
+-		__func__, start_line, end_line);
++		      __func__, start_line, end_line);
+ 
+ 	if (par->fbtftops.set_addr_win)
+ 		par->fbtftops.set_addr_win(par, 0, start_line,
+@@ -403,8 +417,8 @@ static void fbtft_update_display(struct fbtft_par *par, unsigned int start_line,
+ 		throughput = throughput * 1000 / 1024;
+ 
+ 		dev_info(par->info->device,
+-			"Display update: %ld kB/s, fps=%ld\n",
+-			throughput, fps);
++			 "Display update: %ld kB/s, fps=%ld\n",
++			 throughput, fps);
+ 		par->first_update_done = true;
+ 	}
+ }
+@@ -557,7 +571,6 @@ static int fbtft_fb_setcolreg(unsigned int regno, unsigned int red, unsigned int
+ 			ret = 0;
+ 		}
+ 		break;
+-
+ 	}
+ 	return ret;
+ }
+@@ -660,12 +673,13 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
+ 	unsigned int bpp = display->bpp;
+ 	unsigned int fps = display->fps;
+ 	int vmem_size, i;
+-	int *init_sequence = display->init_sequence;
++	const s16 *init_sequence = display->init_sequence;
+ 	char *gamma = display->gamma;
+-	unsigned long *gamma_curves = NULL;
++	u32 *gamma_curves = NULL;
+ 
+ 	/* sanity check */
+-	if (display->gamma_num * display->gamma_len > FBTFT_GAMMA_MAX_VALUES_TOTAL) {
++	if (display->gamma_num * display->gamma_len >
++			FBTFT_GAMMA_MAX_VALUES_TOTAL) {
+ 		dev_err(dev, "FBTFT_GAMMA_MAX_VALUES_TOTAL=%d is exceeded\n",
+ 			FBTFT_GAMMA_MAX_VALUES_TOTAL);
+ 		return NULL;
+@@ -829,15 +843,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
+ #endif
+ 
+ 	if (txbuflen > 0) {
+-#ifdef CONFIG_HAS_DMA
+-		if (dma) {
+-			dev->coherent_dma_mask = ~0;
+-			txbuf = dmam_alloc_coherent(dev, txbuflen, &par->txbuf.dma, GFP_DMA);
+-		} else
+-#endif
+-		{
+-			txbuf = devm_kzalloc(par->info->device, txbuflen, GFP_KERNEL);
+-		}
++		txbuf = devm_kzalloc(par->info->device, txbuflen, GFP_KERNEL);
+ 		if (!txbuf)
+ 			goto alloc_fail;
+ 		par->txbuf.buf = txbuf;
+@@ -965,17 +971,16 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
+ 
+ 	fbtft_sysfs_init(par);
+ 
+-	if (par->txbuf.buf)
+-		sprintf(text1, ", %zu KiB %sbuffer memory",
+-			par->txbuf.len >> 10, par->txbuf.dma ? "DMA " : "");
++	if (par->txbuf.buf && par->txbuf.len >= 1024)
++		sprintf(text1, ", %zu KiB buffer memory", par->txbuf.len >> 10);
+ 	if (spi)
+ 		sprintf(text2, ", spi%d.%d at %d MHz", spi->master->bus_num,
+ 			spi->chip_select, spi->max_speed_hz / 1000000);
+ 	dev_info(fb_info->dev,
+-		"%s frame buffer, %dx%d, %d KiB video memory%s, fps=%lu%s\n",
+-		fb_info->fix.id, fb_info->var.xres, fb_info->var.yres,
+-		fb_info->fix.smem_len >> 10, text1,
+-		HZ / fb_info->fbdefio->delay, text2);
++		 "%s frame buffer, %dx%d, %d KiB video memory%s, fps=%lu%s\n",
++		 fb_info->fix.id, fb_info->var.xres, fb_info->var.yres,
++		 fb_info->fix.smem_len >> 10, text1,
++		 HZ / fb_info->fbdefio->delay, text2);
+ 
+ #ifdef CONFIG_FB_BACKLIGHT
+ 	/* Turn on backlight if available */
+@@ -1058,7 +1063,7 @@ static int fbtft_init_display_dt(struct fbtft_par *par)
+ 			}
+ 			/* make debug message */
+ 			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+-				"init: write_register:\n");
++				      "init: write_register:\n");
+ 			for (j = 0; j < i; j++)
+ 				fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+ 					      "buf[%d] = %02X\n", j, buf[j]);
+@@ -1082,12 +1087,12 @@ static int fbtft_init_display_dt(struct fbtft_par *par)
+ 				buf[60], buf[61], buf[62], buf[63]);
+ 		} else if (val & FBTFT_OF_INIT_DELAY) {
+ 			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+-				"init: msleep(%u)\n", val & 0xFFFF);
++				      "init: msleep(%u)\n", val & 0xFFFF);
+ 			msleep(val & 0xFFFF);
+ 			p = of_prop_next_u32(prop, p, &val);
+ 		} else {
+ 			dev_err(par->info->device, "illegal init value 0x%X\n",
+-									val);
++				val);
+ 			return -EINVAL;
+ 		}
+ 	}
+@@ -1162,8 +1167,8 @@ int fbtft_init_display(struct fbtft_par *par)
+ 				j++;
+ 			}
+ 			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+-				"init: write(0x%02X) %s\n",
+-				par->init_sequence[i], msg);
++				      "init: write(0x%02X) %s\n",
++				      par->init_sequence[i], msg);
+ 
+ 			/* Write */
+ 			j = 0;
+@@ -1456,7 +1461,7 @@ int fbtft_remove_common(struct device *dev, struct fb_info *info)
+ 	par = info->par;
+ 	if (par)
+ 		fbtft_par_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, par,
+-			"%s()\n", __func__);
++			      "%s()\n", __func__);
+ 	fbtft_unregister_framebuffer(info);
+ 	fbtft_framebuffer_release(info);
+ 
+diff --git a/drivers/staging/fbtft/fbtft-io.c b/drivers/staging/fbtft/fbtft-io.c
+index 4dcea2e0b3ae..f4a591919f62 100644
+--- a/drivers/staging/fbtft/fbtft-io.c
++++ b/drivers/staging/fbtft/fbtft-io.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ #include <linux/export.h>
+ #include <linux/errno.h>
+ #include <linux/gpio.h>
+@@ -22,10 +23,6 @@ int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)
+ 	}
+ 
+ 	spi_message_init(&m);
+-	if (par->txbuf.dma && buf == par->txbuf.buf) {
+-		t.tx_dma = par->txbuf.dma;
+-		m.is_dma_mapped = 1;
+-	}
+ 	spi_message_add_tail(&t, &m);
+ 	return spi_sync(par->spi, &m);
+ }
+@@ -75,7 +72,7 @@ int fbtft_write_spi_emulate_9(struct fbtft_par *par, void *buf, size_t len)
+ 			src++;
+ 		}
+ 		tmp |= ((*src & 0x0100) ? 1 : 0);
+-		*(u64 *)dst = cpu_to_be64(tmp);
++		*(__be64 *)dst = cpu_to_be64(tmp);
+ 		dst += 8;
+ 		*dst++ = (u8)(*src++ & 0x00FF);
+ 		added++;
+diff --git a/drivers/staging/fbtft/fbtft-sysfs.c b/drivers/staging/fbtft/fbtft-sysfs.c
+index 8d8bd12b90a1..712096659aa0 100644
+--- a/drivers/staging/fbtft/fbtft-sysfs.c
++++ b/drivers/staging/fbtft/fbtft-sysfs.c
+@@ -1,10 +1,10 @@
++// SPDX-License-Identifier: GPL-2.0
+ #include "fbtft.h"
+ #include "internal.h"
+ 
+ static int get_next_ulong(char **str_p, unsigned long *val, char *sep, int base)
+ {
+ 	char *p_val;
+-	int ret;
+ 
+ 	if (!str_p || !(*str_p))
+ 		return -EINVAL;
+@@ -14,15 +14,11 @@ static int get_next_ulong(char **str_p, unsigned long *val, char *sep, int base)
+ 	if (!p_val)
+ 		return -EINVAL;
+ 
+-	ret = kstrtoul(p_val, base, val);
+-	if (ret)
+-		return -EINVAL;
+-
+-	return 0;
++	return kstrtoul(p_val, base, val);
+ }
+ 
+-int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves,
+-						const char *str, int size)
++int fbtft_gamma_parse_str(struct fbtft_par *par, u32 *curves,
++			  const char *str, int size)
+ {
+ 	char *str_p, *curve_p = NULL;
+ 	char *tmp;
+@@ -94,7 +90,7 @@ int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves,
+ }
+ 
+ static ssize_t
+-sprintf_gamma(struct fbtft_par *par, unsigned long *curves, char *buf)
++sprintf_gamma(struct fbtft_par *par, u32 *curves, char *buf)
+ {
+ 	ssize_t len = 0;
+ 	unsigned int i, j;
+@@ -103,7 +99,7 @@ sprintf_gamma(struct fbtft_par *par, unsigned long *curves, char *buf)
+ 	for (i = 0; i < par->gamma.num_curves; i++) {
+ 		for (j = 0; j < par->gamma.num_values; j++)
+ 			len += scnprintf(&buf[len], PAGE_SIZE,
+-			     "%04lx ", curves[i * par->gamma.num_values + j]);
++			     "%04x ", curves[i * par->gamma.num_values + j]);
+ 		buf[len - 1] = '\n';
+ 	}
+ 	mutex_unlock(&par->gamma.lock);
+@@ -112,12 +108,12 @@ sprintf_gamma(struct fbtft_par *par, unsigned long *curves, char *buf)
+ }
+ 
+ static ssize_t store_gamma_curve(struct device *device,
+-					struct device_attribute *attr,
+-					const char *buf, size_t count)
++				 struct device_attribute *attr,
++				 const char *buf, size_t count)
+ {
+ 	struct fb_info *fb_info = dev_get_drvdata(device);
+ 	struct fbtft_par *par = fb_info->par;
+-	unsigned long tmp_curves[FBTFT_GAMMA_MAX_VALUES_TOTAL];
++	u32 tmp_curves[FBTFT_GAMMA_MAX_VALUES_TOTAL];
+ 	int ret;
+ 
+ 	ret = fbtft_gamma_parse_str(par, tmp_curves, buf, count);
+@@ -130,7 +126,7 @@ static ssize_t store_gamma_curve(struct device *device,
+ 
+ 	mutex_lock(&par->gamma.lock);
+ 	memcpy(par->gamma.curves, tmp_curves,
+-		par->gamma.num_curves * par->gamma.num_values * sizeof(tmp_curves[0]));
++	       par->gamma.num_curves * par->gamma.num_values * sizeof(tmp_curves[0]));
+ 	mutex_unlock(&par->gamma.lock);
+ 
+ 	return count;
+@@ -177,8 +173,8 @@ void fbtft_expand_debug_value(unsigned long *debug)
+ }
+ 
+ static ssize_t store_debug(struct device *device,
+-				struct device_attribute *attr,
+-				const char *buf, size_t count)
++			   struct device_attribute *attr,
++			   const char *buf, size_t count)
+ {
+ 	struct fb_info *fb_info = dev_get_drvdata(device);
+ 	struct fbtft_par *par = fb_info->par;
+@@ -193,7 +189,7 @@ static ssize_t store_debug(struct device *device,
+ }
+ 
+ static ssize_t show_debug(struct device *device,
+-				struct device_attribute *attr, char *buf)
++			  struct device_attribute *attr, char *buf)
+ {
+ 	struct fb_info *fb_info = dev_get_drvdata(device);
+ 	struct fbtft_par *par = fb_info->par;
+@@ -201,7 +197,7 @@ static ssize_t show_debug(struct device *device,
+ 	return snprintf(buf, PAGE_SIZE, "%lu\n", par->debug);
+ }
+ 
+-static struct device_attribute debug_device_attr = \
++static struct device_attribute debug_device_attr =
+ 	__ATTR(debug, 0660, show_debug, store_debug);
+ 
+ void fbtft_sysfs_init(struct fbtft_par *par)
+diff --git a/drivers/staging/fbtft/fbtft.h b/drivers/staging/fbtft/fbtft.h
+index 89c4b5b76ce6..488ab788138e 100644
+--- a/drivers/staging/fbtft/fbtft.h
++++ b/drivers/staging/fbtft/fbtft.h
+@@ -92,7 +92,7 @@ struct fbtft_ops {
+ 	void (*unregister_backlight)(struct fbtft_par *par);
+ 
+ 	int (*set_var)(struct fbtft_par *par);
+-	int (*set_gamma)(struct fbtft_par *par, unsigned long *curves);
++	int (*set_gamma)(struct fbtft_par *par, u32 *curves);
+ };
+ 
+ /**
+@@ -124,7 +124,7 @@ struct fbtft_display {
+ 	unsigned int bpp;
+ 	unsigned int fps;
+ 	int txbuflen;
+-	int *init_sequence;
++	const s16 *init_sequence;
+ 	char *gamma;
+ 	int gamma_num;
+ 	int gamma_len;
+@@ -209,7 +209,6 @@ struct fbtft_par {
+ 	u32 pseudo_palette[16];
+ 	struct {
+ 		void *buf;
+-		dma_addr_t dma;
+ 		size_t len;
+ 	} txbuf;
+ 	u8 *buf;
+@@ -229,10 +228,10 @@ struct fbtft_par {
+ 		int led[16];
+ 		int aux[16];
+ 	} gpio;
+-	int *init_sequence;
++	const s16 *init_sequence;
+ 	struct {
+ 		struct mutex lock;
+-		unsigned long *curves;
++		u32 *curves;
+ 		int num_values;
+ 		int num_curves;
+ 	} gamma;
+@@ -249,6 +248,7 @@ struct fbtft_par {
+ 	par->fbtftops.write_register(par, NUMARGS(__VA_ARGS__), __VA_ARGS__)
+ 
+ /* fbtft-core.c */
++int fbtft_write_buf_dc(struct fbtft_par *par, void *buf, size_t len, int dc);
+ void fbtft_dbg_hex(const struct device *dev, int groupsize,
+ 		   void *buf, size_t len, const char *fmt, ...);
+ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
+diff --git a/drivers/staging/fbtft/fbtft_device.c b/drivers/staging/fbtft/fbtft_device.c
+index e9211831b6a1..0d974738c1c4 100644
+--- a/drivers/staging/fbtft/fbtft_device.c
++++ b/drivers/staging/fbtft/fbtft_device.c
+@@ -29,85 +29,85 @@ static struct spi_device *spi_device;
+ static struct platform_device *p_device;
+ 
+ static char *name;
+-module_param(name, charp, 0);
++module_param(name, charp, 0000);
+ MODULE_PARM_DESC(name, "Devicename (required). name=list => list all supported devices.");
+ 
+ static unsigned int rotate;
+-module_param(rotate, uint, 0);
++module_param(rotate, uint, 0000);
+ MODULE_PARM_DESC(rotate,
+ "Angle to rotate display counter clockwise: 0, 90, 180, 270");
+ 
+ static unsigned int busnum;
+-module_param(busnum, uint, 0);
++module_param(busnum, uint, 0000);
+ MODULE_PARM_DESC(busnum, "SPI bus number (default=0)");
+ 
+ static unsigned int cs;
+-module_param(cs, uint, 0);
++module_param(cs, uint, 0000);
+ MODULE_PARM_DESC(cs, "SPI chip select (default=0)");
+ 
+ static unsigned int speed;
+-module_param(speed, uint, 0);
++module_param(speed, uint, 0000);
+ MODULE_PARM_DESC(speed, "SPI speed (override device default)");
+ 
+ static int mode = -1;
+-module_param(mode, int, 0);
++module_param(mode, int, 0000);
+ MODULE_PARM_DESC(mode, "SPI mode (override device default)");
+ 
+ static char *gpios;
+-module_param(gpios, charp, 0);
++module_param(gpios, charp, 0000);
+ MODULE_PARM_DESC(gpios,
+ "List of gpios. Comma separated with the form: reset:23,dc:24 (when overriding the default, all gpios must be specified)");
+ 
+ static unsigned int fps;
+-module_param(fps, uint, 0);
++module_param(fps, uint, 0000);
+ MODULE_PARM_DESC(fps, "Frames per second (override driver default)");
+ 
+ static char *gamma;
+-module_param(gamma, charp, 0);
++module_param(gamma, charp, 0000);
+ MODULE_PARM_DESC(gamma,
+ "String representation of Gamma Curve(s). Driver specific.");
+ 
+ static int txbuflen;
+-module_param(txbuflen, int, 0);
++module_param(txbuflen, int, 0000);
+ MODULE_PARM_DESC(txbuflen, "txbuflen (override driver default)");
+ 
+ static int bgr = -1;
+-module_param(bgr, int, 0);
++module_param(bgr, int, 0000);
+ MODULE_PARM_DESC(bgr,
+ "BGR bit (supported by some drivers).");
+ 
+ static unsigned int startbyte;
+-module_param(startbyte, uint, 0);
++module_param(startbyte, uint, 0000);
+ MODULE_PARM_DESC(startbyte, "Sets the Start byte used by some SPI displays.");
+ 
+ static bool custom;
+-module_param(custom, bool, 0);
++module_param(custom, bool, 0000);
+ MODULE_PARM_DESC(custom, "Add a custom display device. Use speed= argument to make it a SPI device, else platform_device");
+ 
+ static unsigned int width;
+-module_param(width, uint, 0);
++module_param(width, uint, 0000);
+ MODULE_PARM_DESC(width, "Display width, used with the custom argument");
+ 
+ static unsigned int height;
+-module_param(height, uint, 0);
++module_param(height, uint, 0000);
+ MODULE_PARM_DESC(height, "Display height, used with the custom argument");
+ 
+ static unsigned int buswidth = 8;
+-module_param(buswidth, uint, 0);
++module_param(buswidth, uint, 0000);
+ MODULE_PARM_DESC(buswidth, "Display bus width, used with the custom argument");
+ 
+-static int init[FBTFT_MAX_INIT_SEQUENCE];
++static s16 init[FBTFT_MAX_INIT_SEQUENCE];
+ static int init_num;
+-module_param_array(init, int, &init_num, 0);
++module_param_array(init, short, &init_num, 0000);
+ MODULE_PARM_DESC(init, "Init sequence, used with the custom argument");
+ 
+ static unsigned long debug;
+-module_param(debug, ulong, 0);
++module_param(debug, ulong, 0000);
+ MODULE_PARM_DESC(debug,
+ "level: 0-7 (the remaining 29 bits is for advanced usage)");
+ 
+ static unsigned int verbose = 3;
+-module_param(verbose, uint, 0);
++module_param(verbose, uint, 0000);
+ MODULE_PARM_DESC(verbose,
+ "0 silent, >0 show gpios, >1 show devices, >2 show devices before (default=3)");
+ 
+@@ -131,7 +131,7 @@ static void adafruit18_green_tab_set_addr_win(struct fbtft_par *par,
+ 		"D0 00 14 15 13 2C 42 43 4E 09 16 14 18 21\n" \
+ 		"D0 00 14 15 13 0B 43 55 53 0C 17 14 23 20"
+ 
+-static int cberry28_init_sequence[] = {
++static const s16 cberry28_init_sequence[] = {
+ 	/* turn off sleep mode */
+ 	-1, MIPI_DCS_EXIT_SLEEP_MODE,
+ 	-2, 120,
+@@ -180,7 +180,7 @@ static int cberry28_init_sequence[] = {
+ 	-3,
+ };
+ 
+-static int hy28b_init_sequence[] = {
++static const s16 hy28b_init_sequence[] = {
+ 	-1, 0x00e7, 0x0010, -1, 0x0000, 0x0001,
+ 	-1, 0x0001, 0x0100, -1, 0x0002, 0x0700,
+ 	-1, 0x0003, 0x1030, -1, 0x0004, 0x0000,
+@@ -211,7 +211,7 @@ static int hy28b_init_sequence[] = {
+ 	"04 1F 4 7 7 0 7 7 6 0\n" \
+ 	"0F 00 1 7 4 0 0 0 6 7"
+ 
+-static int pitft_init_sequence[] = {
++static const s16 pitft_init_sequence[] = {
+ 	-1, MIPI_DCS_SOFT_RESET,
+ 	-2, 5,
+ 	-1, MIPI_DCS_SET_DISPLAY_OFF,
+@@ -242,7 +242,7 @@ static int pitft_init_sequence[] = {
+ 	-3
+ };
+ 
+-static int waveshare32b_init_sequence[] = {
++static const s16 waveshare32b_init_sequence[] = {
+ 	-1, 0xCB, 0x39, 0x2C, 0x00, 0x34, 0x02,
+ 	-1, 0xCF, 0x00, 0xC1, 0x30,
+ 	-1, 0xE8, 0x85, 0x00, 0x78,
+@@ -1448,11 +1448,10 @@ static int __init fbtft_device_init(void)
+ 	if (fbtft_device_param_gpios[0].name[0])
+ 		gpio = fbtft_device_param_gpios;
+ 
+-	if (verbose > 2)
++	if (verbose > 2) {
+ 		pr_spi_devices(); /* print list of registered SPI devices */
+-
+-	if (verbose > 2)
+ 		pr_p_devices(); /* print list of 'fb' platform devices */
++	}
+ 
+ 	pr_debug("name='%s', busnum=%d, cs=%d\n", name, busnum, cs);
+ 
+@@ -1483,13 +1482,19 @@ static int __init fbtft_device_init(void)
+ 			displays[i].pdev->name = name;
+ 			displays[i].spi = NULL;
+ 		} else {
+-			strncpy(displays[i].spi->modalias, name, SPI_NAME_SIZE);
++			size_t len;
++
++			len = strlcpy(displays[i].spi->modalias, name,
++				SPI_NAME_SIZE);
++			if (len >= SPI_NAME_SIZE)
++				pr_warn("modalias (name) truncated to: %s\n",
++					displays[i].spi->modalias);
+ 			displays[i].pdev = NULL;
+ 		}
+ 	}
+ 
+ 	for (i = 0; i < ARRAY_SIZE(displays); i++) {
+-		if (strncmp(name, displays[i].name, 32) == 0) {
++		if (strncmp(name, displays[i].name, SPI_NAME_SIZE) == 0) {
+ 			if (displays[i].spi) {
+ 				spi = displays[i].spi;
+ 				spi->chip_select = cs;
+diff --git a/drivers/staging/fbtft/flexfb.c b/drivers/staging/fbtft/flexfb.c
+index ce0d254148e4..7134624a16c2 100644
+--- a/drivers/staging/fbtft/flexfb.c
++++ b/drivers/staging/fbtft/flexfb.c
+@@ -27,104 +27,352 @@
+ #define DRVNAME	    "flexfb"
+ 
+ static char *chip;
+-module_param(chip, charp, 0);
++module_param(chip, charp, 0000);
+ MODULE_PARM_DESC(chip, "LCD controller");
+ 
+ static unsigned int width;
+-module_param(width, uint, 0);
++module_param(width, uint, 0000);
+ MODULE_PARM_DESC(width, "Display width");
+ 
+ static unsigned int height;
+-module_param(height, uint, 0);
++module_param(height, uint, 0000);
+ MODULE_PARM_DESC(height, "Display height");
+ 
+-static int init[512];
++static s16 init[512];
+ static int init_num;
+-module_param_array(init, int, &init_num, 0);
++module_param_array(init, short, &init_num, 0000);
+ MODULE_PARM_DESC(init, "Init sequence");
+ 
+ static unsigned int setaddrwin;
+-module_param(setaddrwin, uint, 0);
++module_param(setaddrwin, uint, 0000);
+ MODULE_PARM_DESC(setaddrwin, "Which set_addr_win() implementation to use");
+ 
+ static unsigned int buswidth = 8;
+-module_param(buswidth, uint, 0);
++module_param(buswidth, uint, 0000);
+ MODULE_PARM_DESC(buswidth, "Width of databus (default: 8)");
+ 
+ static unsigned int regwidth = 8;
+-module_param(regwidth, uint, 0);
++module_param(regwidth, uint, 0000);
+ MODULE_PARM_DESC(regwidth, "Width of controller register (default: 8)");
+ 
+ static bool nobacklight;
+-module_param(nobacklight, bool, 0);
++module_param(nobacklight, bool, 0000);
+ MODULE_PARM_DESC(nobacklight, "Turn off backlight functionality.");
+ 
+ static bool latched;
+-module_param(latched, bool, 0);
++module_param(latched, bool, 0000);
+ MODULE_PARM_DESC(latched, "Use with latched 16-bit databus");
+ 
+-static int *initp;
++static const s16 *initp;
+ static int initp_num;
+ 
+ /* default init sequences */
+-static int st7735r_init[] = {
+--1, 0x01, -2, 150, -1, 0x11, -2, 500, -1, 0xB1, 0x01, 0x2C, 0x2D, -1, 0xB2, 0x01, 0x2C, 0x2D, -1, 0xB3, 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D,
+--1, 0xB4, 0x07, -1, 0xC0, 0xA2, 0x02, 0x84, -1, 0xC1, 0xC5, -1, 0xC2, 0x0A, 0x00, -1, 0xC3, 0x8A, 0x2A, -1, 0xC4, 0x8A, 0xEE, -1, 0xC5, 0x0E,
+--1, 0x20, -1, 0x36, 0xC0, -1, 0x3A, 0x05, -1, 0xE0, 0x0f, 0x1a, 0x0f, 0x18, 0x2f, 0x28, 0x20, 0x22, 0x1f, 0x1b, 0x23, 0x37, 0x00, 0x07, 0x02, 0x10,
+--1, 0xE1, 0x0f, 0x1b, 0x0f, 0x17, 0x33, 0x2c, 0x29, 0x2e, 0x30, 0x30, 0x39, 0x3f, 0x00, 0x07, 0x03, 0x10, -1, 0x29, -2, 100, -1, 0x13, -2, 10, -3 };
+-
+-static int ssd1289_init[] = {
+--1, 0x00, 0x0001, -1, 0x03, 0xA8A4, -1, 0x0C, 0x0000, -1, 0x0D, 0x080C, -1, 0x0E, 0x2B00, -1, 0x1E, 0x00B7, -1, 0x01, 0x2B3F, -1, 0x02, 0x0600,
+--1, 0x10, 0x0000, -1, 0x11, 0x6070, -1, 0x05, 0x0000, -1, 0x06, 0x0000, -1, 0x16, 0xEF1C, -1, 0x17, 0x0003, -1, 0x07, 0x0233, -1, 0x0B, 0x0000,
+--1, 0x0F, 0x0000, -1, 0x41, 0x0000, -1, 0x42, 0x0000, -1, 0x48, 0x0000, -1, 0x49, 0x013F, -1, 0x4A, 0x0000, -1, 0x4B, 0x0000, -1, 0x44, 0xEF00,
+--1, 0x45, 0x0000, -1, 0x46, 0x013F, -1, 0x30, 0x0707, -1, 0x31, 0x0204, -1, 0x32, 0x0204, -1, 0x33, 0x0502, -1, 0x34, 0x0507, -1, 0x35, 0x0204,
+--1, 0x36, 0x0204, -1, 0x37, 0x0502, -1, 0x3A, 0x0302, -1, 0x3B, 0x0302, -1, 0x23, 0x0000, -1, 0x24, 0x0000, -1, 0x25, 0x8000, -1, 0x4f, 0x0000,
+--1, 0x4e, 0x0000, -1, 0x22, -3 };
+-
+-static int hx8340bn_init[] = {
+--1, 0xC1, 0xFF, 0x83, 0x40, -1, 0x11, -2, 150, -1, 0xCA, 0x70, 0x00, 0xD9, -1, 0xB0, 0x01, 0x11,
+--1, 0xC9, 0x90, 0x49, 0x10, 0x28, 0x28, 0x10, 0x00, 0x06, -2, 20, -1, 0xC2, 0x60, 0x71, 0x01, 0x0E, 0x05, 0x02, 0x09, 0x31, 0x0A,
+--1, 0xC3, 0x67, 0x30, 0x61, 0x17, 0x48, 0x07, 0x05, 0x33, -2, 10, -1, 0xB5, 0x35, 0x20, 0x45, -1, 0xB4, 0x33, 0x25, 0x4C, -2, 10,
+--1, 0x3A, 0x05, -1, 0x29, -2, 10, -3 };
+-
+-static int ili9225_init[] = {
+--1, 0x0001, 0x011C, -1, 0x0002, 0x0100, -1, 0x0003, 0x1030, -1, 0x0008, 0x0808, -1, 0x000C, 0x0000, -1, 0x000F, 0x0A01, -1, 0x0020, 0x0000,
+--1, 0x0021, 0x0000, -2, 50, -1, 0x0010, 0x0A00, -1, 0x0011, 0x1038, -2, 50, -1, 0x0012, 0x1121, -1, 0x0013, 0x004E, -1, 0x0014, 0x676F,
+--1, 0x0030, 0x0000, -1, 0x0031, 0x00DB, -1, 0x0032, 0x0000, -1, 0x0033, 0x0000, -1, 0x0034, 0x00DB, -1, 0x0035, 0x0000, -1, 0x0036, 0x00AF,
+--1, 0x0037, 0x0000, -1, 0x0038, 0x00DB, -1, 0x0039, 0x0000, -1, 0x0050, 0x0000, -1, 0x0051, 0x060A, -1, 0x0052, 0x0D0A, -1, 0x0053, 0x0303,
+--1, 0x0054, 0x0A0D, -1, 0x0055, 0x0A06, -1, 0x0056, 0x0000, -1, 0x0057, 0x0303, -1, 0x0058, 0x0000, -1, 0x0059, 0x0000, -2, 50,
+--1, 0x0007, 0x1017, -2, 50, -3 };
+-
+-static int ili9320_init[] = {
+--1, 0x00E5, 0x8000, -1, 0x0000, 0x0001, -1, 0x0001, 0x0100, -1, 0x0002, 0x0700, -1, 0x0003, 0x1030, -1, 0x0004, 0x0000, -1, 0x0008, 0x0202,
+--1, 0x0009, 0x0000, -1, 0x000A, 0x0000, -1, 0x000C, 0x0000, -1, 0x000D, 0x0000, -1, 0x000F, 0x0000, -1, 0x0010, 0x0000, -1, 0x0011, 0x0007,
+--1, 0x0012, 0x0000, -1, 0x0013, 0x0000, -2, 200, -1, 0x0010, 0x17B0, -1, 0x0011, 0x0031, -2, 50, -1, 0x0012, 0x0138, -2, 50, -1, 0x0013, 0x1800,
+--1, 0x0029, 0x0008, -2, 50, -1, 0x0020, 0x0000, -1, 0x0021, 0x0000, -1, 0x0030, 0x0000, -1, 0x0031, 0x0505, -1, 0x0032, 0x0004,
+--1, 0x0035, 0x0006, -1, 0x0036, 0x0707, -1, 0x0037, 0x0105, -1, 0x0038, 0x0002, -1, 0x0039, 0x0707, -1, 0x003C, 0x0704, -1, 0x003D, 0x0807,
+--1, 0x0050, 0x0000, -1, 0x0051, 0x00EF, -1, 0x0052, 0x0000, -1, 0x0053, 0x013F, -1, 0x0060, 0x2700, -1, 0x0061, 0x0001, -1, 0x006A, 0x0000,
+--1, 0x0080, 0x0000, -1, 0x0081, 0x0000, -1, 0x0082, 0x0000, -1, 0x0083, 0x0000, -1, 0x0084, 0x0000, -1, 0x0085, 0x0000, -1, 0x0090, 0x0010,
+--1, 0x0092, 0x0000, -1, 0x0093, 0x0003, -1, 0x0095, 0x0110, -1, 0x0097, 0x0000, -1, 0x0098, 0x0000, -1, 0x0007, 0x0173, -3 };
+-
+-static int ili9325_init[] = {
+--1, 0x00E3, 0x3008, -1, 0x00E7, 0x0012, -1, 0x00EF, 0x1231, -1, 0x0001, 0x0100, -1, 0x0002, 0x0700, -1, 0x0003, 0x1030, -1, 0x0004, 0x0000,
+--1, 0x0008, 0x0207, -1, 0x0009, 0x0000, -1, 0x000A, 0x0000, -1, 0x000C, 0x0000, -1, 0x000D, 0x0000, -1, 0x000F, 0x0000, -1, 0x0010, 0x0000,
+--1, 0x0011, 0x0007, -1, 0x0012, 0x0000, -1, 0x0013, 0x0000, -2, 200, -1, 0x0010, 0x1690, -1, 0x0011, 0x0223, -2, 50, -1, 0x0012, 0x000D, -2, 50,
+--1, 0x0013, 0x1200, -1, 0x0029, 0x000A, -1, 0x002B, 0x000C, -2, 50, -1, 0x0020, 0x0000, -1, 0x0021, 0x0000, -1, 0x0030, 0x0000,
+--1, 0x0031, 0x0506, -1, 0x0032, 0x0104, -1, 0x0035, 0x0207, -1, 0x0036, 0x000F, -1, 0x0037, 0x0306, -1, 0x0038, 0x0102, -1, 0x0039, 0x0707,
+--1, 0x003C, 0x0702, -1, 0x003D, 0x1604, -1, 0x0050, 0x0000, -1, 0x0051, 0x00EF, -1, 0x0052, 0x0000, -1, 0x0053, 0x013F, -1, 0x0060, 0xA700,
+--1, 0x0061, 0x0001, -1, 0x006A, 0x0000, -1, 0x0080, 0x0000, -1, 0x0081, 0x0000, -1, 0x0082, 0x0000, -1, 0x0083, 0x0000, -1, 0x0084, 0x0000,
+--1, 0x0085, 0x0000, -1, 0x0090, 0x0010, -1, 0x0092, 0x0600, -1, 0x0007, 0x0133, -3 };
+-
+-static int ili9341_init[] = {
+--1, 0x28, -2, 20, -1, 0xCF, 0x00, 0x83, 0x30, -1, 0xED, 0x64, 0x03, 0x12, 0x81, -1, 0xE8, 0x85, 0x01, 0x79,
+--1, 0xCB, 0x39, 0x2c, 0x00, 0x34, 0x02, -1, 0xF7, 0x20, -1, 0xEA, 0x00, 0x00, -1, 0xC0, 0x26, -1, 0xC1, 0x11,
+--1, 0xC5, 0x35, 0x3E, -1, 0xC7, 0xBE, -1, 0xB1, 0x00, 0x1B, -1, 0xB6, 0x0a, 0x82, 0x27, 0x00, -1, 0xB7, 0x07,
+--1, 0x3A, 0x55, -1, 0x36, 0x48, -1, 0x11, -2, 120, -1, 0x29, -2, 20, -3 };
+-
+-static int ssd1351_init[] = { -1, 0xfd, 0x12, -1, 0xfd, 0xb1, -1, 0xae, -1, 0xb3, 0xf1, -1, 0xca, 0x7f, -1, 0xa0, 0x74,
+-			      -1, 0x15, 0x00, 0x7f, -1, 0x75, 0x00, 0x7f, -1, 0xa1, 0x00, -1, 0xa2, 0x00, -1, 0xb5, 0x00,
+-			      -1, 0xab, 0x01, -1, 0xb1, 0x32, -1, 0xb4, 0xa0, 0xb5, 0x55, -1, 0xbb, 0x17, -1, 0xbe, 0x05,
+-			      -1, 0xc1, 0xc8, 0x80, 0xc8, -1, 0xc7, 0x0f, -1, 0xb6, 0x01, -1, 0xa6, -1, 0xaf, -3 };
++static const s16 st7735r_init[] = {
++	-1, 0x01,
++	-2, 150,
++	-1, 0x11,
++	-2, 500,
++	-1, 0xB1, 0x01, 0x2C, 0x2D,
++	-1, 0xB2, 0x01, 0x2C, 0x2D,
++	-1, 0xB3, 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D,
++	-1, 0xB4, 0x07,
++	-1, 0xC0, 0xA2, 0x02, 0x84,
++	-1, 0xC1, 0xC5,
++	-1, 0xC2, 0x0A, 0x00,
++	-1, 0xC3, 0x8A, 0x2A,
++	-1, 0xC4, 0x8A, 0xEE,
++	-1, 0xC5, 0x0E,
++	-1, 0x20,
++	-1, 0x36, 0xC0,
++	-1, 0x3A, 0x05,
++	-1, 0xE0, 0x0f, 0x1a, 0x0f, 0x18, 0x2f, 0x28, 0x20, 0x22,
++	    0x1f, 0x1b, 0x23, 0x37, 0x00, 0x07, 0x02, 0x10,
++	-1, 0xE1, 0x0f, 0x1b, 0x0f, 0x17, 0x33, 0x2c, 0x29, 0x2e,
++	    0x30, 0x30, 0x39, 0x3f, 0x00, 0x07, 0x03, 0x10,
++	-1, 0x29,
++	-2, 100,
++	-1, 0x13,
++	-2, 10,
++	-3
++};
++
++static const s16 ssd1289_init[] = {
++	-1, 0x00, 0x0001,
++	-1, 0x03, 0xA8A4,
++	-1, 0x0C, 0x0000,
++	-1, 0x0D, 0x080C,
++	-1, 0x0E, 0x2B00,
++	-1, 0x1E, 0x00B7,
++	-1, 0x01, 0x2B3F,
++	-1, 0x02, 0x0600,
++	-1, 0x10, 0x0000,
++	-1, 0x11, 0x6070,
++	-1, 0x05, 0x0000,
++	-1, 0x06, 0x0000,
++	-1, 0x16, 0xEF1C,
++	-1, 0x17, 0x0003,
++	-1, 0x07, 0x0233,
++	-1, 0x0B, 0x0000,
++	-1, 0x0F, 0x0000,
++	-1, 0x41, 0x0000,
++	-1, 0x42, 0x0000,
++	-1, 0x48, 0x0000,
++	-1, 0x49, 0x013F,
++	-1, 0x4A, 0x0000,
++	-1, 0x4B, 0x0000,
++	-1, 0x44, 0xEF00,
++	-1, 0x45, 0x0000,
++	-1, 0x46, 0x013F,
++	-1, 0x30, 0x0707,
++	-1, 0x31, 0x0204,
++	-1, 0x32, 0x0204,
++	-1, 0x33, 0x0502,
++	-1, 0x34, 0x0507,
++	-1, 0x35, 0x0204,
++	-1, 0x36, 0x0204,
++	-1, 0x37, 0x0502,
++	-1, 0x3A, 0x0302,
++	-1, 0x3B, 0x0302,
++	-1, 0x23, 0x0000,
++	-1, 0x24, 0x0000,
++	-1, 0x25, 0x8000,
++	-1, 0x4f, 0x0000,
++	-1, 0x4e, 0x0000,
++	-1, 0x22,
++	-3
++};
++
++static const s16 hx8340bn_init[] = {
++	-1, 0xC1, 0xFF, 0x83, 0x40,
++	-1, 0x11,
++	-2, 150,
++	-1, 0xCA, 0x70, 0x00, 0xD9,
++	-1, 0xB0, 0x01, 0x11,
++	-1, 0xC9, 0x90, 0x49, 0x10, 0x28, 0x28, 0x10, 0x00, 0x06,
++	-2, 20,
++	-1, 0xC2, 0x60, 0x71, 0x01, 0x0E, 0x05, 0x02, 0x09, 0x31, 0x0A,
++	-1, 0xC3, 0x67, 0x30, 0x61, 0x17, 0x48, 0x07, 0x05, 0x33,
++	-2, 10,
++	-1, 0xB5, 0x35, 0x20, 0x45,
++	-1, 0xB4, 0x33, 0x25, 0x4C,
++	-2, 10,
++	-1, 0x3A, 0x05,
++	-1, 0x29,
++	-2, 10,
++	-3
++};
++
++static const s16 ili9225_init[] = {
++	-1, 0x0001, 0x011C,
++	-1, 0x0002, 0x0100,
++	-1, 0x0003, 0x1030,
++	-1, 0x0008, 0x0808,
++	-1, 0x000C, 0x0000,
++	-1, 0x000F, 0x0A01,
++	-1, 0x0020, 0x0000,
++	-1, 0x0021, 0x0000,
++	-2, 50,
++	-1, 0x0010, 0x0A00,
++	-1, 0x0011, 0x1038,
++	-2, 50,
++	-1, 0x0012, 0x1121,
++	-1, 0x0013, 0x004E,
++	-1, 0x0014, 0x676F,
++	-1, 0x0030, 0x0000,
++	-1, 0x0031, 0x00DB,
++	-1, 0x0032, 0x0000,
++	-1, 0x0033, 0x0000,
++	-1, 0x0034, 0x00DB,
++	-1, 0x0035, 0x0000,
++	-1, 0x0036, 0x00AF,
++	-1, 0x0037, 0x0000,
++	-1, 0x0038, 0x00DB,
++	-1, 0x0039, 0x0000,
++	-1, 0x0050, 0x0000,
++	-1, 0x0051, 0x060A,
++	-1, 0x0052, 0x0D0A,
++	-1, 0x0053, 0x0303,
++	-1, 0x0054, 0x0A0D,
++	-1, 0x0055, 0x0A06,
++	-1, 0x0056, 0x0000,
++	-1, 0x0057, 0x0303,
++	-1, 0x0058, 0x0000,
++	-1, 0x0059, 0x0000,
++	-2, 50,
++	-1, 0x0007, 0x1017,
++	-2, 50,
++	-3
++};
++
++static const s16 ili9320_init[] = {
++	-1, 0x00E5, 0x8000,
++	-1, 0x0000, 0x0001,
++	-1, 0x0001, 0x0100,
++	-1, 0x0002, 0x0700,
++	-1, 0x0003, 0x1030,
++	-1, 0x0004, 0x0000,
++	-1, 0x0008, 0x0202,
++	-1, 0x0009, 0x0000,
++	-1, 0x000A, 0x0000,
++	-1, 0x000C, 0x0000,
++	-1, 0x000D, 0x0000,
++	-1, 0x000F, 0x0000,
++	-1, 0x0010, 0x0000,
++	-1, 0x0011, 0x0007,
++	-1, 0x0012, 0x0000,
++	-1, 0x0013, 0x0000,
++	-2, 200,
++	-1, 0x0010, 0x17B0,
++	-1, 0x0011, 0x0031,
++	-2, 50,
++	-1, 0x0012, 0x0138,
++	-2, 50,
++	-1, 0x0013, 0x1800,
++	-1, 0x0029, 0x0008,
++	-2, 50,
++	-1, 0x0020, 0x0000,
++	-1, 0x0021, 0x0000,
++	-1, 0x0030, 0x0000,
++	-1, 0x0031, 0x0505,
++	-1, 0x0032, 0x0004,
++	-1, 0x0035, 0x0006,
++	-1, 0x0036, 0x0707,
++	-1, 0x0037, 0x0105,
++	-1, 0x0038, 0x0002,
++	-1, 0x0039, 0x0707,
++	-1, 0x003C, 0x0704,
++	-1, 0x003D, 0x0807,
++	-1, 0x0050, 0x0000,
++	-1, 0x0051, 0x00EF,
++	-1, 0x0052, 0x0000,
++	-1, 0x0053, 0x013F,
++	-1, 0x0060, 0x2700,
++	-1, 0x0061, 0x0001,
++	-1, 0x006A, 0x0000,
++	-1, 0x0080, 0x0000,
++	-1, 0x0081, 0x0000,
++	-1, 0x0082, 0x0000,
++	-1, 0x0083, 0x0000,
++	-1, 0x0084, 0x0000,
++	-1, 0x0085, 0x0000,
++	-1, 0x0090, 0x0010,
++	-1, 0x0092, 0x0000,
++	-1, 0x0093, 0x0003,
++	-1, 0x0095, 0x0110,
++	-1, 0x0097, 0x0000,
++	-1, 0x0098, 0x0000,
++	-1, 0x0007, 0x0173,
++	-3
++};
++
++static const s16 ili9325_init[] = {
++	-1, 0x00E3, 0x3008,
++	-1, 0x00E7, 0x0012,
++	-1, 0x00EF, 0x1231,
++	-1, 0x0001, 0x0100,
++	-1, 0x0002, 0x0700,
++	-1, 0x0003, 0x1030,
++	-1, 0x0004, 0x0000,
++	-1, 0x0008, 0x0207,
++	-1, 0x0009, 0x0000,
++	-1, 0x000A, 0x0000,
++	-1, 0x000C, 0x0000,
++	-1, 0x000D, 0x0000,
++	-1, 0x000F, 0x0000,
++	-1, 0x0010, 0x0000,
++	-1, 0x0011, 0x0007,
++	-1, 0x0012, 0x0000,
++	-1, 0x0013, 0x0000,
++	-2, 200,
++	-1, 0x0010, 0x1690,
++	-1, 0x0011, 0x0223,
++	-2, 50,
++	-1, 0x0012, 0x000D,
++	-2, 50,
++	-1, 0x0013, 0x1200,
++	-1, 0x0029, 0x000A,
++	-1, 0x002B, 0x000C,
++	-2, 50,
++	-1, 0x0020, 0x0000,
++	-1, 0x0021, 0x0000,
++	-1, 0x0030, 0x0000,
++	-1, 0x0031, 0x0506,
++	-1, 0x0032, 0x0104,
++	-1, 0x0035, 0x0207,
++	-1, 0x0036, 0x000F,
++	-1, 0x0037, 0x0306,
++	-1, 0x0038, 0x0102,
++	-1, 0x0039, 0x0707,
++	-1, 0x003C, 0x0702,
++	-1, 0x003D, 0x1604,
++	-1, 0x0050, 0x0000,
++	-1, 0x0051, 0x00EF,
++	-1, 0x0052, 0x0000,
++	-1, 0x0053, 0x013F,
++	-1, 0x0060, 0xA700,
++	-1, 0x0061, 0x0001,
++	-1, 0x006A, 0x0000,
++	-1, 0x0080, 0x0000,
++	-1, 0x0081, 0x0000,
++	-1, 0x0082, 0x0000,
++	-1, 0x0083, 0x0000,
++	-1, 0x0084, 0x0000,
++	-1, 0x0085, 0x0000,
++	-1, 0x0090, 0x0010,
++	-1, 0x0092, 0x0600,
++	-1, 0x0007, 0x0133,
++	-3
++};
++
++static const s16 ili9341_init[] = {
++	-1, 0x28,
++	-2, 20,
++	-1, 0xCF, 0x00, 0x83, 0x30,
++	-1, 0xED, 0x64, 0x03, 0x12, 0x81,
++	-1, 0xE8, 0x85, 0x01, 0x79,
++	-1, 0xCB, 0x39, 0x2c, 0x00, 0x34, 0x02,
++	-1, 0xF7, 0x20,
++	-1, 0xEA, 0x00, 0x00,
++	-1, 0xC0, 0x26,
++	-1, 0xC1, 0x11,
++	-1, 0xC5, 0x35, 0x3E,
++	-1, 0xC7, 0xBE,
++	-1, 0xB1, 0x00, 0x1B,
++	-1, 0xB6, 0x0a, 0x82, 0x27, 0x00,
++	-1, 0xB7, 0x07,
++	-1, 0x3A, 0x55,
++	-1, 0x36, 0x48,
++	-1, 0x11,
++	-2, 120,
++	-1, 0x29,
++	-2, 20,
++	-3
++};
++
++static const s16 ssd1351_init[] = {
++	-1, 0xfd, 0x12,
++	-1, 0xfd, 0xb1,
++	-1, 0xae,
++	-1, 0xb3, 0xf1,
++	-1, 0xca, 0x7f,
++	-1, 0xa0, 0x74,
++	-1, 0x15, 0x00, 0x7f,
++	-1, 0x75, 0x00, 0x7f,
++	-1, 0xa1, 0x00,
++	-1, 0xa2, 0x00,
++	-1, 0xb5, 0x00,
++	-1, 0xab, 0x01,
++	-1, 0xb1, 0x32,
++	-1, 0xb4, 0xa0, 0xb5, 0x55,
++	-1, 0xbb, 0x17,
++	-1, 0xbe, 0x05,
++	-1, 0xc1, 0xc8, 0x80, 0xc8,
++	-1, 0xc7, 0x0f,
++	-1, 0xb6, 0x01,
++	-1, 0xa6,
++	-1, 0xaf,
++	-3
++};
+ 
+ /**
+  * struct flexfb_lcd_controller - Describes the LCD controller properties
+@@ -142,7 +390,7 @@ struct flexfb_lcd_controller {
+ 	unsigned int height;
+ 	unsigned int setaddrwin;
+ 	unsigned int regwidth;
+-	int *init_seq;
++	const s16 *init_seq;
+ 	int init_seq_sz;
+ };
+ 
+@@ -169,22 +417,6 @@ static const struct flexfb_lcd_controller flexfb_chip_table[] = {
+ 		.init_seq = ili9225_init,
+ 		.init_seq_sz = ARRAY_SIZE(ili9225_init),
+ 	},
+-	{
+-		.name = "ili9225",
+-		.width = 176,
+-		.height = 220,
+-		.regwidth = 16,
+-		.init_seq = ili9225_init,
+-		.init_seq_sz = ARRAY_SIZE(ili9225_init),
+-	},
+-	{
+-		.name = "ili9225",
+-		.width = 176,
+-		.height = 220,
+-		.regwidth = 16,
+-		.init_seq = ili9225_init,
+-		.init_seq_sz = ARRAY_SIZE(ili9225_init),
+-	},
+ 	{
+ 		.name = "ili9320",
+ 		.width = 240,
+@@ -582,6 +814,7 @@ static const struct platform_device_id flexfb_platform_ids[] = {
+ 	{ "flexpfb", 0 },
+ 	{ },
+ };
++MODULE_DEVICE_TABLE(platform, flexfb_platform_ids);
+ 
+ static struct platform_driver flexfb_platform_driver = {
+ 	.driver = {
+diff --git a/drivers/staging/fbtft/internal.h b/drivers/staging/fbtft/internal.h
+index eea0ec5ff4d3..25b9bf6f54bb 100644
+--- a/drivers/staging/fbtft/internal.h
++++ b/drivers/staging/fbtft/internal.h
+@@ -19,7 +19,7 @@
+ void fbtft_sysfs_init(struct fbtft_par *par);
+ void fbtft_sysfs_exit(struct fbtft_par *par);
+ void fbtft_expand_debug_value(unsigned long *debug);
+-int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves,
++int fbtft_gamma_parse_str(struct fbtft_par *par, u32 *curves,
+ 			  const char *str, int size);
+ 
+ #endif /* __LINUX_FBTFT_INTERNAL_H */
+-- 
+2.16.1
+
