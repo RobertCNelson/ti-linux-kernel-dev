@@ -34,7 +34,7 @@ KERNEL_REL=4.9
 KERNEL_TAG=${KERNEL_REL}.82
 kernel_rt=".76-rt61"
 #Kernel Build
-BUILD=${build_prefix}100.1
+BUILD=${build_prefix}101
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -49,4 +49,9 @@ DEBARCH=armhf
 ti_git_old_release="f9882c2160c55e5e17f9cc7ea1ebc3dc606d1856"
         ti_git_pre="f9882c2160c55e5e17f9cc7ea1ebc3dc606d1856"
        ti_git_post="61f845756cc1eabeb9f05430d100f89aa5bd8cd4"
+#
+
+#https://git.xenomai.org/xenomai-3.git/
+#https://git.xenomai.org/xenomai-3.git/log/?h=stable-3.0.x
+#xenomai_checkout="3269d8a7682f6694f40b4e5af537e54cb0ce81fe"
 #
