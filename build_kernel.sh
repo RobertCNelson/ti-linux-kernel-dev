@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2017 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,6 @@
 # THE SOFTWARE.
 
 DIR=$PWD
-CORES=$(getconf _NPROCESSORS_ONLN)
 git_bin=$(which git)
 
 mkdir -p "${DIR}/deploy/"
@@ -30,7 +29,7 @@ patch_kernel () {
 	cd "${DIR}/KERNEL" || exit
 
 	export DIR
-	/bin/sh -e "${DIR}/patch.sh" || { ${git_bin} add . ; exit 1 ; }
+	/bin/bash -e "${DIR}/patch.sh" || { ${git_bin} add . ; exit 1 ; }
 
 	if [ ! -f "${DIR}/.yakbuild" ] ; then
 		if [ ! "${RUN_BISECT}" ] ; then
@@ -40,6 +39,12 @@ patch_kernel () {
 	fi
 
 	cd "${DIR}/" || exit
+}
+
+flash_kernel_db () {
+	cat ./KERNEL/arch/${KERNEL_ARCH}/boot/dts/*.dts | grep 'model =' | grep -v ',model' | grep -v 'audio' | grep -v 'sgtl5000' | grep -v 'n-board' | awk -F'"' '{print $2}' | sort -u > /tmp/pre.db
+	sed -i -e 's/^/Machine: /' /tmp/pre.db
+	awk '{print $0 "\nMethod: generic\n"}' /tmp/pre.db > patches/all.db
 }
 
 copy_defconfig () {
@@ -230,6 +235,10 @@ fi
 . "${DIR}/version.sh"
 export LINUX_GIT
 
+if [ ! "${CORES}" ] ; then
+	CORES=$(getconf _NPROCESSORS_ONLN)
+fi
+
 #unset FULL_REBUILD
 FULL_REBUILD=1
 if [ "${FULL_REBUILD}" ] ; then
@@ -240,6 +249,7 @@ if [ "${FULL_REBUILD}" ] ; then
 	fi
 
 	patch_kernel
+	flash_kernel_db
 	copy_defconfig
 fi
 if [ ! "${AUTO_BUILD}" ] ; then
@@ -250,7 +260,10 @@ if [  -f "${DIR}/.yakbuild" ] ; then
 fi
 make_kernel
 make_modules_pkg
-make_firmware_pkg
+if [ -f "${DIR}/KERNEL/scripts/Makefile.fwinst" ] ; then
+	#Finally nuked in v4.14.0-rc0 merge...
+	make_firmware_pkg
+fi
 if grep -q dtbs "${DIR}/KERNEL/arch/${KERNEL_ARCH}/Makefile"; then
 	make_dtbs_pkg
 fi

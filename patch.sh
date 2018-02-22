@@ -1,6 +1,6 @@
-#!/bin/sh -e
+#!/bin/bash -e
 #
-# Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2018 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 
 # Split out, so build_kernel.sh and build_deb.sh can share..
+
+shopt -s nullglob
 
 . ${DIR}/version.sh
 if [ -f ${DIR}/system.sh ] ; then
@@ -65,6 +67,36 @@ cleanup () {
 	exit 2
 }
 
+dir () {
+	wdir="$1"
+	if [ -d "${DIR}/patches/$wdir" ]; then
+		echo "dir: $wdir"
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			start_cleanup
+		fi
+
+		number=
+		for p in "${DIR}/patches/$wdir/"*.patch; do
+			${git} "$p"
+			number=$(( $number + 1 ))
+		done
+
+		if [ "x${regenerate}" = "xenable" ] ; then
+			cleanup
+		fi
+	fi
+	unset wdir
+}
+
+cherrypick () {
+	if [ ! -d ../patches/${cherrypick_dir} ] ; then
+		mkdir -p ../patches/${cherrypick_dir}
+	fi
+	${git_bin} format-patch -1 ${SHA} --start-number ${num} -o ../patches/${cherrypick_dir}
+	num=$(($num+1))
+}
+
 pick () {
 	if [ ! -d ../patches/${pick_dir} ] ; then
 		mkdir -p ../patches/${pick_dir}
@@ -74,9 +106,26 @@ pick () {
 }
 
 external_git () {
-	git_tag="ti-linux-3.14.y"
-	echo "pulling: ${git_tag}"
+	git_tag="ti-linux-${KERNEL_REL}.y"
+	echo "pulling: [${git_patchset} ${git_tag}]"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
+	top_of_branch=$(${git_bin} describe)
+	if [ ! "x${ti_git_post}" = "x" ] ; then
+		${git_bin} checkout master -f
+		test_for_branch=$(${git_bin} branch --list "v${KERNEL_TAG}${BUILD}")
+		if [ "x${test_for_branch}" != "x" ] ; then
+			${git_bin} branch "v${KERNEL_TAG}${BUILD}" -D
+		fi
+		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
+		current_git=$(${git_bin} describe)
+		echo "${current_git}"
+
+		if [ ! "x${top_of_branch}" = "x${current_git}" ] ; then
+			echo "INFO: external git repo has updates..."
+		fi
+	else
+		echo "${top_of_branch}"
+	fi
 }
 
 rt_cleanup () {
