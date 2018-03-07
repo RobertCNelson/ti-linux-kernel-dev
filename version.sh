@@ -31,10 +31,10 @@ toolchain="gcc_linaro_gnueabihf_6"
 
 #Kernel
 KERNEL_REL=4.9
-KERNEL_TAG=${KERNEL_REL}.82
-kernel_rt=".76-rt61"
+KERNEL_TAG=${KERNEL_REL}.83
+kernel_rt=".84-rt62"
 #Kernel Build
-BUILD=${build_prefix}102
+BUILD=${build_prefix}102.1
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -46,12 +46,12 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=cross
 DEBARCH=armhf
 
-ti_git_old_release="f9882c2160c55e5e17f9cc7ea1ebc3dc606d1856"
-        ti_git_pre="f9882c2160c55e5e17f9cc7ea1ebc3dc606d1856"
-       ti_git_post="61f845756cc1eabeb9f05430d100f89aa5bd8cd4"
+ti_git_old_release="61f845756cc1eabeb9f05430d100f89aa5bd8cd4"
+        ti_git_pre="61f845756cc1eabeb9f05430d100f89aa5bd8cd4"
+       ti_git_post="f4fa72e260309aa59b3ffd18e3560422c4ce3065"
 #
 
 #https://git.xenomai.org/xenomai-3.git/
 #https://git.xenomai.org/xenomai-3.git/log/?h=stable-3.0.x
-#xenomai_checkout="3269d8a7682f6694f40b4e5af537e54cb0ce81fe"
+#xenomai_checkout="35fc6d1103ca96e2a0d15bee907b8b5a32bf573e"
 #
