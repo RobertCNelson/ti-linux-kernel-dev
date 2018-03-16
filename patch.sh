@@ -368,7 +368,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.24"
+	backport_tag="v4.14.27"
 
 	subsystem="fbtft"
 	#regenerate="enable"
@@ -556,7 +556,7 @@ drivers () {
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 #	dir 'drivers/ti/spi'
-#	dir 'drivers/ti/uio'
+	dir 'drivers/ti/uio'
 	dir 'drivers/ti/wireless'
 
 	dir 'drivers/ti/gpio'
@@ -671,7 +671,7 @@ beaglebone
 dir 'build/gcc'
 dir 'pocketbeagle'
 dir 'config_pin'
-#dir 'pruss'
+dir 'pruss'
 dir 'fixes'
 
 sync_mainline_dtc () {
