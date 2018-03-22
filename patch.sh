@@ -468,6 +468,7 @@ drivers () {
 	dir 'drivers/ti/eqep'
 	dir 'drivers/ti/mcasp'
 	dir 'drivers/ti/rpmsg'
+	dir 'drivers/ti/pru_rproc'
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/uio'
