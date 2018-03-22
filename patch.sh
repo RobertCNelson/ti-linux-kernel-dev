@@ -567,6 +567,7 @@ beaglebone
 dir 'build/gcc'
 dir 'drivers/ti/sgx'
 dir 'undo'
+dir 'pruss'
 
 packaging () {
 	echo "dir: packaging"
