@@ -1,17 +1,18 @@
-From c6624bbb33afcf33ebf79b1c23fe130a148045a3 Mon Sep 17 00:00:00 2001
+From 698e06b117b5cf339b8ddbecf00c77aaa2747f8a Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 16 Mar 2018 15:34:16 -0500
+Date: Thu, 22 Mar 2018 12:17:31 -0500
 Subject: [PATCH 1/2] xenomai pre-patchset
 
 ---
- arch/arm/mach-omap2/timer.c        | 121 +---------------
+ arch/arm/mach-omap2/timer.c        | 121 +--------------
  arch/powerpc/kernel/align.c        | 119 ++++++---------
  arch/x86/entry/common.c            |   9 +-
- arch/x86/entry/entry_32.S          |  22 +--
- arch/x86/entry/entry_64.S          | 290 +++++++++++++++++--------------------
+ arch/x86/entry/entry_32.S          |  21 +--
+ arch/x86/entry/entry_64.S          | 300 ++++++++++++++++---------------------
  arch/x86/include/asm/thread_info.h |  14 +-
- drivers/gpio/gpio-davinci.c        | 218 +++++++++++++---------------
- 7 files changed, 297 insertions(+), 496 deletions(-)
+ arch/x86/kvm/x86.c                 | 140 +++++++----------
+ drivers/gpio/gpio-davinci.c        | 218 +++++++++++++--------------
+ 8 files changed, 346 insertions(+), 596 deletions(-)
 
 diff --git a/arch/arm/mach-omap2/timer.c b/arch/arm/mach-omap2/timer.c
 index 7aed750a341a..b2f2448bfa6d 100644
@@ -481,7 +482,7 @@ index b0cd306dc527..bdd9cc59d20f 100644
  		 * It's possible that a 32-bit syscall implementation
  		 * takes a 64-bit parameter but nonetheless assumes that
 diff --git a/arch/x86/entry/entry_32.S b/arch/x86/entry/entry_32.S
-index f5434b4670c1..edba8606b99a 100644
+index a76dc738ec61..edba8606b99a 100644
 --- a/arch/x86/entry/entry_32.S
 +++ b/arch/x86/entry/entry_32.S
 @@ -45,7 +45,6 @@
@@ -492,7 +493,7 @@ index f5434b4670c1..edba8606b99a 100644
  
  	.section .entry.text, "ax"
  
-@@ -229,18 +228,6 @@ ENTRY(__switch_to_asm)
+@@ -229,17 +228,6 @@ ENTRY(__switch_to_asm)
  	movl	%ebx, PER_CPU_VAR(stack_canary)+stack_canary_offset
  #endif
  
@@ -504,14 +505,13 @@ index f5434b4670c1..edba8606b99a 100644
 -	 * exist, overwrite the RSB with entries which capture
 -	 * speculative execution to prevent attack.
 -	 */
--	/* Clobbers %ebx */
--	FILL_RETURN_BUFFER RSB_CLEAR_LOOPS, X86_FEATURE_RSB_CTXSW
+-	FILL_RETURN_BUFFER %ebx, RSB_CLEAR_LOOPS, X86_FEATURE_RSB_CTXSW
 -#endif
 -
  	/* restore callee-saved registers */
  	popl	%esi
  	popl	%edi
-@@ -273,7 +260,7 @@ ENTRY(ret_from_fork)
+@@ -272,7 +260,7 @@ ENTRY(ret_from_fork)
  
  	/* kernel thread */
  1:	movl	%edi, %eax
@@ -520,7 +520,7 @@ index f5434b4670c1..edba8606b99a 100644
  	/*
  	 * A kernel thread is allowed to return here after successfully
  	 * calling do_execve().  Exit to userspace to complete the execve()
-@@ -997,8 +984,7 @@ trace:
+@@ -996,8 +984,7 @@ trace:
  	movl	0x4(%ebp), %edx
  	subl	$MCOUNT_INSN_SIZE, %eax
  
@@ -530,7 +530,7 @@ index f5434b4670c1..edba8606b99a 100644
  
  	popl	%edx
  	popl	%ecx
-@@ -1034,7 +1020,7 @@ return_to_handler:
+@@ -1033,7 +1020,7 @@ return_to_handler:
  	movl	%eax, %ecx
  	popl	%edx
  	popl	%eax
@@ -539,7 +539,7 @@ index f5434b4670c1..edba8606b99a 100644
  #endif
  
  #ifdef CONFIG_TRACING
-@@ -1076,7 +1062,7 @@ error_code:
+@@ -1075,7 +1062,7 @@ error_code:
  	movl	%ecx, %es
  	TRACE_IRQS_OFF
  	movl	%esp, %eax			# pt_regs pointer
@@ -549,7 +549,7 @@ index f5434b4670c1..edba8606b99a 100644
  END(page_fault)
  
 diff --git a/arch/x86/entry/entry_64.S b/arch/x86/entry/entry_64.S
-index db5009ce065a..e7b0e7ff4c58 100644
+index 58610fe93f5d..e7b0e7ff4c58 100644
 --- a/arch/x86/entry/entry_64.S
 +++ b/arch/x86/entry/entry_64.S
 @@ -36,8 +36,6 @@
@@ -569,22 +569,35 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	/*
  	 * A hypervisor implementation might want to use a label
  	 * after the swapgs, so that it can do the swapgs
-@@ -177,17 +174,83 @@ GLOBAL(entry_SYSCALL_64_after_swapgs)
+@@ -176,31 +173,84 @@ GLOBAL(entry_SYSCALL_64_after_swapgs)
+ 	pushq	%r8				/* pt_regs->r8 */
  	pushq	%r9				/* pt_regs->r9 */
  	pushq	%r10				/* pt_regs->r10 */
- 	pushq	%r11				/* pt_regs->r11 */
--	pushq	%rbx				/* pt_regs->rbx */
--	pushq	%rbp				/* pt_regs->rbp */
--	pushq	%r12				/* pt_regs->r12 */
--	pushq	%r13				/* pt_regs->r13 */
--	pushq	%r14				/* pt_regs->r14 */
--	pushq	%r15				/* pt_regs->r15 */
++	pushq	%r11				/* pt_regs->r11 */
 +	sub	$(6*8), %rsp			/* pt_regs->bp, bx, r12-15 not saved */
- 
-+	/*
++
+ 	/*
+-	 * Clear extra registers that a speculation attack might
+-	 * otherwise want to exploit. Interleave XOR with PUSH
+-	 * for better uop scheduling:
 +	 * If we need to do entry work or if we guess we'll need to do
 +	 * exit work, go straight to the slow path.
-+	 */
+ 	 */
+-	xorq	%r10, %r10			/* nospec   r10 */
+-	pushq	%r11				/* pt_regs->r11 */
+-	xorq	%r11, %r11			/* nospec   r11 */
+-	pushq	%rbx				/* pt_regs->rbx */
+-	xorl	%ebx, %ebx			/* nospec   rbx */
+-	pushq	%rbp				/* pt_regs->rbp */
+-	xorl	%ebp, %ebp			/* nospec   rbp */
+-	pushq	%r12				/* pt_regs->r12 */
+-	xorq	%r12, %r12			/* nospec   r12 */
+-	pushq	%r13				/* pt_regs->r13 */
+-	xorq	%r13, %r13			/* nospec   r13 */
+-	pushq	%r14				/* pt_regs->r14 */
+-	xorq	%r14, %r14			/* nospec   r14 */
+-	pushq	%r15				/* pt_regs->r15 */
+-	xorq	%r15, %r15			/* nospec   r15 */
 +	movq	PER_CPU_VAR(current_task), %r11
 +	testl	$_TIF_WORK_SYSCALL_ENTRY|_TIF_ALLWORK_MASK, TASK_TI_flags(%r11)
 +	jnz	entry_SYSCALL64_slow_path
@@ -648,7 +661,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
 +	movq	%rsp, %rdi
 +	call	syscall_return_slowpath	/* returns with IRQs disabled */
 +	jmp	return_from_SYSCALL_64
-+
+ 
 +entry_SYSCALL64_slow_path:
  	/* IRQs are off. */
 +	SAVE_EXTRA_REGS
@@ -659,7 +672,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	RESTORE_EXTRA_REGS
  	TRACE_IRQS_IRETQ		/* we're about to change IF */
  
-@@ -260,31 +323,53 @@ GLOBAL(entry_SYSCALL_64_after_swapgs)
+@@ -273,31 +323,53 @@ GLOBAL(entry_SYSCALL_64_after_swapgs)
  syscall_return_via_sysret:
  	/* rcx and r11 are already restored (see code above) */
  	RESTORE_C_REGS_EXCEPT_RCX_R11
@@ -730,7 +743,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  /*
   * %rdi: prev task
   * %rsi: next task
-@@ -310,18 +395,6 @@ ENTRY(__switch_to_asm)
+@@ -323,17 +395,6 @@ ENTRY(__switch_to_asm)
  	movq	%rbx, PER_CPU_VAR(irq_stack_union)+stack_canary_offset
  #endif
  
@@ -742,14 +755,13 @@ index db5009ce065a..e7b0e7ff4c58 100644
 -	 * exist, overwrite the RSB with entries which capture
 -	 * speculative execution to prevent attack.
 -	 */
--	/* Clobbers %rbx */
--	FILL_RETURN_BUFFER RSB_CLEAR_LOOPS, X86_FEATURE_RSB_CTXSW
+-	FILL_RETURN_BUFFER %r12, RSB_CLEAR_LOOPS, X86_FEATURE_RSB_CTXSW
 -#endif
 -
  	/* restore callee-saved registers */
  	popq	%r15
  	popq	%r14
-@@ -351,14 +424,13 @@ ENTRY(ret_from_fork)
+@@ -363,14 +424,13 @@ ENTRY(ret_from_fork)
  	movq	%rsp, %rdi
  	call	syscall_return_slowpath	/* returns with IRQs disabled */
  	TRACE_IRQS_ON			/* user mode is traced as IRQS on */
@@ -765,7 +777,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	/*
  	 * A kernel thread is allowed to return here after successfully
  	 * calling do_execve().  Exit to userspace to complete the execve()
-@@ -406,7 +478,6 @@ END(irq_entries_start)
+@@ -418,7 +478,6 @@ END(irq_entries_start)
  	 * tracking that we're in kernel mode.
  	 */
  	SWAPGS
@@ -773,7 +785,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  
  	/*
  	 * We need to tell lockdep that IRQs are off.  We can't do this until
-@@ -464,7 +535,6 @@ GLOBAL(retint_user)
+@@ -476,7 +535,6 @@ GLOBAL(retint_user)
  	mov	%rsp,%rdi
  	call	prepare_exit_to_usermode
  	TRACE_IRQS_IRETQ
@@ -781,7 +793,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	SWAPGS
  	jmp	restore_regs_and_iret
  
-@@ -542,7 +612,6 @@ native_irq_return_ldt:
+@@ -554,7 +612,6 @@ native_irq_return_ldt:
  
  	pushq	%rdi				/* Stash user RDI */
  	SWAPGS
@@ -789,7 +801,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	movq	PER_CPU_VAR(espfix_waddr), %rdi
  	movq	%rax, (0*8)(%rdi)		/* user RAX */
  	movq	(1*8)(%rsp), %rax		/* user RIP */
-@@ -569,7 +638,6 @@ native_irq_return_ldt:
+@@ -581,7 +638,6 @@ native_irq_return_ldt:
  	 * still points to an RO alias of the ESPFIX stack.
  	 */
  	orq	PER_CPU_VAR(espfix_stack), %rax
@@ -797,7 +809,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	SWAPGS
  	movq	%rax, %rsp
  
-@@ -948,17 +1016,13 @@ idtentry async_page_fault	do_async_page_fault	has_error_code=1
+@@ -960,17 +1016,13 @@ idtentry async_page_fault	do_async_page_fault	has_error_code=1
  #endif
  
  #ifdef CONFIG_X86_MCE
@@ -817,7 +829,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
   */
  ENTRY(paranoid_entry)
  	cld
-@@ -971,26 +1035,7 @@ ENTRY(paranoid_entry)
+@@ -983,26 +1035,7 @@ ENTRY(paranoid_entry)
  	js	1f				/* negative -> in kernel */
  	SWAPGS
  	xorl	%ebx, %ebx
@@ -845,7 +857,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  END(paranoid_entry)
  
  /*
-@@ -1003,26 +1048,19 @@ END(paranoid_entry)
+@@ -1015,26 +1048,19 @@ END(paranoid_entry)
   * be complicated.  Fortunately, we there's no good reason
   * to try to handle preemption here.
   *
@@ -878,7 +890,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	RESTORE_EXTRA_REGS
  	RESTORE_C_REGS
  	REMOVE_PT_GPREGS_FROM_STACK 8
-@@ -1037,13 +1075,6 @@ ENTRY(error_entry)
+@@ -1049,13 +1075,6 @@ ENTRY(error_entry)
  	cld
  	SAVE_C_REGS 8
  	SAVE_EXTRA_REGS 8
@@ -892,7 +904,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	xorl	%ebx, %ebx
  	testb	$3, CS+8(%rsp)
  	jz	.Lerror_kernelspace
-@@ -1204,10 +1235,6 @@ ENTRY(nmi)
+@@ -1216,10 +1235,6 @@ ENTRY(nmi)
  	 */
  
  	SWAPGS_UNSAFE_STACK
@@ -903,7 +915,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	cld
  	movq	%rsp, %rdx
  	movq	PER_CPU_VAR(cpu_current_top_of_stack), %rsp
-@@ -1241,34 +1268,12 @@ ENTRY(nmi)
+@@ -1253,34 +1268,12 @@ ENTRY(nmi)
  
  	movq	%rsp, %rdi
  	movq	$-1, %rsi
@@ -940,7 +952,7 @@ index db5009ce065a..e7b0e7ff4c58 100644
  	 */
  	SWAPGS
  	jmp	restore_c_regs_and_iret
-@@ -1465,55 +1470,22 @@ end_repeat_nmi:
+@@ -1477,55 +1470,22 @@ end_repeat_nmi:
  	ALLOC_PT_GPREGS_ON_STACK
  
  	/*
@@ -1043,6 +1055,284 @@ index 89978b9c667a..ad6f5eb07a95 100644
  #endif
  
  /*
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index 4b19ec1da22d..3dbcb09c19cf 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -773,8 +773,7 @@ int kvm_set_cr4(struct kvm_vcpu *vcpu, unsigned long cr4)
+ 			return 1;
+ 
+ 		/* PCID can not be enabled when cr3[11:0]!=000H or EFER.LMA=0 */
+-		if ((kvm_read_cr3(vcpu) & X86_CR3_PCID_ASID_MASK) ||
+-		    !is_long_mode(vcpu))
++		if ((kvm_read_cr3(vcpu) & X86_CR3_PCID_MASK) || !is_long_mode(vcpu))
+ 			return 1;
+ 	}
+ 
+@@ -975,7 +974,6 @@ static u32 msrs_to_save[] = {
+ #endif
+ 	MSR_IA32_TSC, MSR_IA32_CR_PAT, MSR_VM_HSAVE_PA,
+ 	MSR_IA32_FEATURE_CONTROL, MSR_IA32_BNDCFGS, MSR_TSC_AUX,
+-	MSR_IA32_SPEC_CTRL, MSR_IA32_ARCH_CAPABILITIES
+ };
+ 
+ static unsigned num_msrs_to_save;
+@@ -1752,13 +1750,10 @@ static u64 __get_kvmclock_ns(struct kvm *kvm)
+ 	/* both __this_cpu_read() and rdtsc() should be on the same cpu */
+ 	get_cpu();
+ 
+-	if (__this_cpu_read(cpu_tsc_khz)) {
+-		kvm_get_time_scale(NSEC_PER_SEC, __this_cpu_read(cpu_tsc_khz) * 1000LL,
+-				   &hv_clock.tsc_shift,
+-				   &hv_clock.tsc_to_system_mul);
+-		ret = __pvclock_read_cycles(&hv_clock, rdtsc());
+-	} else
+-		ret = ktime_get_boot_ns() + ka->kvmclock_offset;
++	kvm_get_time_scale(NSEC_PER_SEC, __this_cpu_read(cpu_tsc_khz) * 1000LL,
++			   &hv_clock.tsc_shift,
++			   &hv_clock.tsc_to_system_mul);
++	ret = __pvclock_read_cycles(&hv_clock, rdtsc());
+ 
+ 	put_cpu();
+ 
+@@ -1802,9 +1797,6 @@ static void kvm_setup_pvclock_page(struct kvm_vcpu *v)
+ 	 */
+ 	BUILD_BUG_ON(offsetof(struct pvclock_vcpu_time_info, version) != 0);
+ 
+-	if (guest_hv_clock.version & 1)
+-		++guest_hv_clock.version;  /* first time write, random junk */
+-
+ 	vcpu->hv_clock.version = guest_hv_clock.version + 1;
+ 	kvm_write_guest_cached(v->kvm, &vcpu->pv_time,
+ 				&vcpu->hv_clock,
+@@ -2847,12 +2839,6 @@ void kvm_arch_vcpu_put(struct kvm_vcpu *vcpu)
+ 	kvm_x86_ops->vcpu_put(vcpu);
+ 	kvm_put_guest_fpu(vcpu);
+ 	vcpu->arch.last_host_tsc = rdtsc();
+-	/*
+-	 * If userspace has set any breakpoints or watchpoints, dr6 is restored
+-	 * on every vmexit, but if not, we might have a stale dr6 from the
+-	 * guest. do_debug expects dr6 to be cleared after it runs, do the same.
+-	 */
+-	set_debugreg(0, 6);
+ }
+ 
+ static int kvm_vcpu_ioctl_get_lapic(struct kvm_vcpu *vcpu,
+@@ -4274,7 +4260,7 @@ static int vcpu_mmio_read(struct kvm_vcpu *vcpu, gpa_t addr, int len, void *v)
+ 					 addr, n, v))
+ 		    && kvm_io_bus_read(vcpu, KVM_MMIO_BUS, addr, n, v))
+ 			break;
+-		trace_kvm_mmio(KVM_TRACE_MMIO_READ, n, addr, v);
++		trace_kvm_mmio(KVM_TRACE_MMIO_READ, n, addr, *(u64 *)v);
+ 		handled += n;
+ 		addr += n;
+ 		len -= n;
+@@ -4527,7 +4513,7 @@ static int read_prepare(struct kvm_vcpu *vcpu, void *val, int bytes)
+ {
+ 	if (vcpu->mmio_read_completed) {
+ 		trace_kvm_mmio(KVM_TRACE_MMIO_READ, bytes,
+-			       vcpu->mmio_fragments[0].gpa, val);
++			       vcpu->mmio_fragments[0].gpa, *(u64 *)val);
+ 		vcpu->mmio_read_completed = 0;
+ 		return 1;
+ 	}
+@@ -4549,14 +4535,14 @@ static int write_emulate(struct kvm_vcpu *vcpu, gpa_t gpa,
+ 
+ static int write_mmio(struct kvm_vcpu *vcpu, gpa_t gpa, int bytes, void *val)
+ {
+-	trace_kvm_mmio(KVM_TRACE_MMIO_WRITE, bytes, gpa, val);
++	trace_kvm_mmio(KVM_TRACE_MMIO_WRITE, bytes, gpa, *(u64 *)val);
+ 	return vcpu_mmio_write(vcpu, gpa, bytes, val);
+ }
+ 
+ static int read_exit_mmio(struct kvm_vcpu *vcpu, gpa_t gpa,
+ 			  void *val, int bytes)
+ {
+-	trace_kvm_mmio(KVM_TRACE_MMIO_READ_UNSATISFIED, bytes, gpa, NULL);
++	trace_kvm_mmio(KVM_TRACE_MMIO_READ_UNSATISFIED, bytes, gpa, 0);
+ 	return X86EMUL_IO_NEEDED;
+ }
+ 
+@@ -5264,8 +5250,6 @@ static void init_emulate_ctxt(struct kvm_vcpu *vcpu)
+ 	kvm_x86_ops->get_cs_db_l_bits(vcpu, &cs_db, &cs_l);
+ 
+ 	ctxt->eflags = kvm_get_rflags(vcpu);
+-	ctxt->tf = (ctxt->eflags & X86_EFLAGS_TF) != 0;
+-
+ 	ctxt->eip = kvm_rip_read(vcpu);
+ 	ctxt->mode = (!is_protmode(vcpu))		? X86EMUL_MODE_REAL :
+ 		     (ctxt->eflags & X86_EFLAGS_VM)	? X86EMUL_MODE_VM86 :
+@@ -5318,7 +5302,7 @@ static int handle_emulation_failure(struct kvm_vcpu *vcpu)
+ 		vcpu->run->exit_reason = KVM_EXIT_INTERNAL_ERROR;
+ 		vcpu->run->internal.suberror = KVM_INTERNAL_ERROR_EMULATION;
+ 		vcpu->run->internal.ndata = 0;
+-		r = EMULATE_USER_EXIT;
++		r = EMULATE_FAIL;
+ 	}
+ 	kvm_queue_exception(vcpu, UD_VECTOR);
+ 
+@@ -5481,26 +5465,37 @@ static int kvm_vcpu_check_hw_bp(unsigned long addr, u32 type, u32 dr7,
+ 	return dr6;
+ }
+ 
+-static void kvm_vcpu_do_singlestep(struct kvm_vcpu *vcpu, int *r)
++static void kvm_vcpu_check_singlestep(struct kvm_vcpu *vcpu, unsigned long rflags, int *r)
+ {
+ 	struct kvm_run *kvm_run = vcpu->run;
+ 
+-	if (vcpu->guest_debug & KVM_GUESTDBG_SINGLESTEP) {
+-		kvm_run->debug.arch.dr6 = DR6_BS | DR6_FIXED_1 | DR6_RTM;
+-		kvm_run->debug.arch.pc = vcpu->arch.singlestep_rip;
+-		kvm_run->debug.arch.exception = DB_VECTOR;
+-		kvm_run->exit_reason = KVM_EXIT_DEBUG;
+-		*r = EMULATE_USER_EXIT;
+-	} else {
+-		vcpu->arch.emulate_ctxt.eflags &= ~X86_EFLAGS_TF;
+-		/*
+-		 * "Certain debug exceptions may clear bit 0-3.  The
+-		 * remaining contents of the DR6 register are never
+-		 * cleared by the processor".
+-		 */
+-		vcpu->arch.dr6 &= ~15;
+-		vcpu->arch.dr6 |= DR6_BS | DR6_RTM;
+-		kvm_queue_exception(vcpu, DB_VECTOR);
++	/*
++	 * rflags is the old, "raw" value of the flags.  The new value has
++	 * not been saved yet.
++	 *
++	 * This is correct even for TF set by the guest, because "the
++	 * processor will not generate this exception after the instruction
++	 * that sets the TF flag".
++	 */
++	if (unlikely(rflags & X86_EFLAGS_TF)) {
++		if (vcpu->guest_debug & KVM_GUESTDBG_SINGLESTEP) {
++			kvm_run->debug.arch.dr6 = DR6_BS | DR6_FIXED_1 |
++						  DR6_RTM;
++			kvm_run->debug.arch.pc = vcpu->arch.singlestep_rip;
++			kvm_run->debug.arch.exception = DB_VECTOR;
++			kvm_run->exit_reason = KVM_EXIT_DEBUG;
++			*r = EMULATE_USER_EXIT;
++		} else {
++			vcpu->arch.emulate_ctxt.eflags &= ~X86_EFLAGS_TF;
++			/*
++			 * "Certain debug exceptions may clear bit 0-3.  The
++			 * remaining contents of the DR6 register are never
++			 * cleared by the processor".
++			 */
++			vcpu->arch.dr6 &= ~15;
++			vcpu->arch.dr6 |= DR6_BS | DR6_RTM;
++			kvm_queue_exception(vcpu, DB_VECTOR);
++		}
+ 	}
+ }
+ 
+@@ -5590,8 +5585,6 @@ int x86_emulate_instruction(struct kvm_vcpu *vcpu,
+ 			if (reexecute_instruction(vcpu, cr2, write_fault_to_spt,
+ 						emulation_type))
+ 				return EMULATE_DONE;
+-			if (ctxt->have_exception && inject_emulated_exception(vcpu))
+-				return EMULATE_DONE;
+ 			if (emulation_type & EMULTYPE_SKIP)
+ 				return EMULATE_FAIL;
+ 			return handle_emulation_failure(vcpu);
+@@ -5657,9 +5650,8 @@ int x86_emulate_instruction(struct kvm_vcpu *vcpu,
+ 		toggle_interruptibility(vcpu, ctxt->interruptibility);
+ 		vcpu->arch.emulate_regs_need_sync_to_vcpu = false;
+ 		kvm_rip_write(vcpu, ctxt->eip);
+-		if (r == EMULATE_DONE &&
+-		    (ctxt->tf || (vcpu->guest_debug & KVM_GUESTDBG_SINGLESTEP)))
+-			kvm_vcpu_do_singlestep(vcpu, &r);
++		if (r == EMULATE_DONE)
++			kvm_vcpu_check_singlestep(vcpu, rflags, &r);
+ 		if (!ctxt->have_exception ||
+ 		    exception_type(ctxt->exception.vector) == EXCPT_TRAP)
+ 			__kvm_set_rflags(vcpu, ctxt->eflags);
+@@ -6537,20 +6529,6 @@ static void kvm_vcpu_flush_tlb(struct kvm_vcpu *vcpu)
+ 	kvm_x86_ops->tlb_flush(vcpu);
+ }
+ 
+-void kvm_arch_mmu_notifier_invalidate_range(struct kvm *kvm,
+-		unsigned long start, unsigned long end)
+-{
+-	unsigned long apic_address;
+-
+-	/*
+-	 * The physical address of apic access page is stored in the VMCS.
+-	 * Update it when it becomes invalid.
+-	 */
+-	apic_address = gfn_to_hva(kvm, APIC_DEFAULT_PHYS_BASE >> PAGE_SHIFT);
+-	if (start <= apic_address && apic_address < end)
+-		kvm_make_all_cpus_request(kvm, KVM_REQ_APIC_PAGE_RELOAD);
+-}
+-
+ void kvm_vcpu_reload_apic_access_page(struct kvm_vcpu *vcpu)
+ {
+ 	struct page *page = NULL;
+@@ -7143,7 +7121,7 @@ int kvm_arch_vcpu_ioctl_set_regs(struct kvm_vcpu *vcpu, struct kvm_regs *regs)
+ #endif
+ 
+ 	kvm_rip_write(vcpu, regs->rip);
+-	kvm_set_rflags(vcpu, regs->rflags | X86_EFLAGS_FIXED);
++	kvm_set_rflags(vcpu, regs->rflags);
+ 
+ 	vcpu->arch.exception.pending = false;
+ 
+@@ -8427,13 +8405,6 @@ static int apf_put_user(struct kvm_vcpu *vcpu, u32 val)
+ 				      sizeof(val));
+ }
+ 
+-static int apf_get_user(struct kvm_vcpu *vcpu, u32 *val)
+-{
+-
+-	return kvm_read_guest_cached(vcpu->kvm, &vcpu->arch.apf.data, val,
+-				      sizeof(u32));
+-}
+-
+ void kvm_arch_async_page_not_present(struct kvm_vcpu *vcpu,
+ 				     struct kvm_async_pf *work)
+ {
+@@ -8460,32 +8431,21 @@ void kvm_arch_async_page_present(struct kvm_vcpu *vcpu,
+ 				 struct kvm_async_pf *work)
+ {
+ 	struct x86_exception fault;
+-	u32 val;
+ 
++	trace_kvm_async_pf_ready(work->arch.token, work->gva);
+ 	if (work->wakeup_all)
+ 		work->arch.token = ~0; /* broadcast wakeup */
+ 	else
+ 		kvm_del_async_pf_gfn(vcpu, work->arch.gfn);
+-	trace_kvm_async_pf_ready(work->arch.token, work->gva);
+ 
+-	if (vcpu->arch.apf.msr_val & KVM_ASYNC_PF_ENABLED &&
+-	    !apf_get_user(vcpu, &val)) {
+-		if (val == KVM_PV_REASON_PAGE_NOT_PRESENT &&
+-		    vcpu->arch.exception.pending &&
+-		    vcpu->arch.exception.nr == PF_VECTOR &&
+-		    !apf_put_user(vcpu, 0)) {
+-			vcpu->arch.exception.pending = false;
+-			vcpu->arch.exception.nr = 0;
+-			vcpu->arch.exception.has_error_code = false;
+-			vcpu->arch.exception.error_code = 0;
+-		} else if (!apf_put_user(vcpu, KVM_PV_REASON_PAGE_READY)) {
+-			fault.vector = PF_VECTOR;
+-			fault.error_code_valid = true;
+-			fault.error_code = 0;
+-			fault.nested_page_fault = false;
+-			fault.address = work->arch.token;
+-			kvm_inject_page_fault(vcpu, &fault);
+-		}
++	if ((vcpu->arch.apf.msr_val & KVM_ASYNC_PF_ENABLED) &&
++	    !apf_put_user(vcpu, KVM_PV_REASON_PAGE_READY)) {
++		fault.vector = PF_VECTOR;
++		fault.error_code_valid = true;
++		fault.error_code = 0;
++		fault.nested_page_fault = false;
++		fault.address = work->arch.token;
++		kvm_inject_page_fault(vcpu, &fault);
+ 	}
+ 	vcpu->arch.apf.halted = false;
+ 	vcpu->arch.mp_state = KVM_MP_STATE_RUNNABLE;
 diff --git a/drivers/gpio/gpio-davinci.c b/drivers/gpio/gpio-davinci.c
 index e9440de6e7a9..dd262f00295d 100644
 --- a/drivers/gpio/gpio-davinci.c
