@@ -422,7 +422,7 @@ drivers () {
 	dir 'drivers/gadget'
 	dir 'drivers/mmc'
 	dir 'drivers/pm_bus'
-	dir 'drivers/pwm'
+	#dir 'drivers/pwm'
 	dir 'drivers/spi'
 	dir 'drivers/ssd1306'
 	dir 'drivers/thumb2'
