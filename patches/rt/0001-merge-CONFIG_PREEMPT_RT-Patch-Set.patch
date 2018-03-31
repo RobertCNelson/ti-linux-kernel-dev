@@ -1,6 +1,6 @@
-From 2f2ff8d5a439647883986068595640ff2395628c Mon Sep 17 00:00:00 2001
+From f522d161861e44b51ec61057730ec809ab7f0475 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 22 Mar 2018 10:44:24 -0500
+Date: Fri, 30 Mar 2018 19:22:08 -0500
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -172,6 +172,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/scsi/libsas/sas_ata.c                      |    4 +-
  drivers/scsi/qla2xxx/qla_inline.h                  |    4 +-
  drivers/staging/greybus/audio_manager.c            |    2 +-
+ drivers/target/target_core_tmr.c                   |    2 -
+ drivers/target/target_core_transport.c             |    6 -
  drivers/thermal/x86_pkg_temp_thermal.c             |   52 +-
  drivers/tty/Kconfig                                |    6 +-
  drivers/tty/goldfish.c                             |    2 +
@@ -183,7 +185,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/usb/gadget/function/f_fs.c                 |    2 +-
  drivers/usb/gadget/function/f_ncm.c                |   30 +-
  drivers/usb/gadget/legacy/inode.c                  |    4 +-
- fs/aio.c                                           |   24 +-
+ fs/aio.c                                           |   15 +-
  fs/autofs4/autofs_i.h                              |    1 +
  fs/autofs4/expire.c                                |    2 +-
  fs/buffer.c                                        |   21 +-
@@ -456,7 +458,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../inter-event/trigger-onmax-action-hist.tc       |   48 +
  .../trigger-synthetic-event-createremove.tc        |   54 +
  virt/kvm/arm/arm.c                                 |    6 +-
- 451 files changed, 17029 insertions(+), 5034 deletions(-)
+ 453 files changed, 17025 insertions(+), 5037 deletions(-)
  create mode 100644 Documentation/trace/histogram.txt
  create mode 100644 include/linux/locallock.h
  create mode 100644 include/linux/mutex_rt.h
@@ -6687,7 +6689,7 @@ index 60c4c342316c..cd0c7c56e2dd 100644
  	jz	restore_all
  	call	preempt_schedule_irq
 diff --git a/arch/x86/entry/entry_64.S b/arch/x86/entry/entry_64.S
-index 6f3cc15e0c73..558362e9d398 100644
+index f7bfa701219b..e5168e9672e7 100644
 --- a/arch/x86/entry/entry_64.S
 +++ b/arch/x86/entry/entry_64.S
 @@ -633,7 +633,23 @@ retint_kernel:
@@ -9957,6 +9959,43 @@ index aa6508b44fab..045696ce85c7 100644
  #include <linux/idr.h>
  
  #include "audio_manager.h"
+diff --git a/drivers/target/target_core_tmr.c b/drivers/target/target_core_tmr.c
+index 9c7bc1ca341a..3d35dad1de2c 100644
+--- a/drivers/target/target_core_tmr.c
++++ b/drivers/target/target_core_tmr.c
+@@ -114,8 +114,6 @@ static bool __target_check_io_state(struct se_cmd *se_cmd,
+ {
+ 	struct se_session *sess = se_cmd->se_sess;
+ 
+-	assert_spin_locked(&sess->sess_cmd_lock);
+-	WARN_ON_ONCE(!irqs_disabled());
+ 	/*
+ 	 * If command already reached CMD_T_COMPLETE state within
+ 	 * target_complete_cmd() or CMD_T_FABRIC_STOP due to shutdown,
+diff --git a/drivers/target/target_core_transport.c b/drivers/target/target_core_transport.c
+index e6d51135d105..b00829995131 100644
+--- a/drivers/target/target_core_transport.c
++++ b/drivers/target/target_core_transport.c
+@@ -2966,9 +2966,6 @@ __transport_wait_for_tasks(struct se_cmd *cmd, bool fabric_stop,
+ 	__acquires(&cmd->t_state_lock)
+ {
+ 
+-	assert_spin_locked(&cmd->t_state_lock);
+-	WARN_ON_ONCE(!irqs_disabled());
+-
+ 	if (fabric_stop)
+ 		cmd->transport_state |= CMD_T_FABRIC_STOP;
+ 
+@@ -3238,9 +3235,6 @@ static int __transport_check_aborted_status(struct se_cmd *cmd, int send_status)
+ {
+ 	int ret;
+ 
+-	assert_spin_locked(&cmd->t_state_lock);
+-	WARN_ON_ONCE(!irqs_disabled());
+-
+ 	if (!(cmd->transport_state & CMD_T_ABORTED))
+ 		return 0;
+ 	/*
 diff --git a/drivers/thermal/x86_pkg_temp_thermal.c b/drivers/thermal/x86_pkg_temp_thermal.c
 index d93eee2f101b..0287333b1f3c 100644
 --- a/drivers/thermal/x86_pkg_temp_thermal.c
@@ -10347,7 +10386,7 @@ index 5c28bee327e1..ed49dba4704d 100644
  					epdata->status = -EINTR;
  			} else {
 diff --git a/fs/aio.c b/fs/aio.c
-index 5a2487217072..462329c4a0b0 100644
+index c3ace7833a03..360e60944540 100644
 --- a/fs/aio.c
 +++ b/fs/aio.c
 @@ -40,6 +40,7 @@
@@ -10358,16 +10397,15 @@ index 5a2487217072..462329c4a0b0 100644
  
  #include <asm/kmap_types.h>
  #include <linux/uaccess.h>
-@@ -115,7 +116,7 @@ struct kioctx {
- 	struct page		**ring_pages;
- 	long			nr_pages;
+@@ -117,6 +118,7 @@ struct kioctx {
  
--	struct work_struct	free_work;
-+	struct swork_event	free_work;
+ 	struct rcu_head		free_rcu;
+ 	struct work_struct	free_work;	/* see free_ioctx() */
++	struct swork_event	free_swork;	/* see free_ioctx() */
  
  	/*
  	 * signals when all in-flight requests are done
-@@ -258,6 +259,7 @@ static int __init aio_setup(void)
+@@ -259,6 +261,7 @@ static int __init aio_setup(void)
  		.mount		= aio_mount,
  		.kill_sb	= kill_anon_super,
  	};
@@ -10375,30 +10413,7 @@ index 5a2487217072..462329c4a0b0 100644
  	aio_mnt = kern_mount(&aio_fs);
  	if (IS_ERR(aio_mnt))
  		panic("Failed to create aio fs mount.");
-@@ -588,9 +590,9 @@ static int kiocb_cancel(struct aio_kiocb *kiocb)
- 	return cancel(&kiocb->common);
- }
- 
--static void free_ioctx(struct work_struct *work)
-+static void free_ioctx(struct swork_event *sev)
- {
--	struct kioctx *ctx = container_of(work, struct kioctx, free_work);
-+	struct kioctx *ctx = container_of(sev, struct kioctx, free_work);
- 
- 	pr_debug("freeing %p\n", ctx);
- 
-@@ -609,8 +611,8 @@ static void free_ioctx_reqs(struct percpu_ref *ref)
- 	if (ctx->rq_wait && atomic_dec_and_test(&ctx->rq_wait->count))
- 		complete(&ctx->rq_wait->comp);
- 
--	INIT_WORK(&ctx->free_work, free_ioctx);
--	schedule_work(&ctx->free_work);
-+	INIT_SWORK(&ctx->free_work, free_ioctx);
-+	swork_queue(&ctx->free_work);
- }
- 
- /*
-@@ -618,9 +620,9 @@ static void free_ioctx_reqs(struct percpu_ref *ref)
+@@ -633,9 +636,9 @@ static void free_ioctx_reqs(struct percpu_ref *ref)
   * and ctx->users has dropped to 0, so we know no more kiocbs can be submitted -
   * now it's safe to cancel any that need to be.
   */
@@ -10406,11 +10421,11 @@ index 5a2487217072..462329c4a0b0 100644
 +static void free_ioctx_users_work(struct swork_event *sev)
  {
 -	struct kioctx *ctx = container_of(ref, struct kioctx, users);
-+	struct kioctx *ctx = container_of(sev, struct kioctx, free_work);
++	struct kioctx *ctx = container_of(sev, struct kioctx, free_swork);
  	struct aio_kiocb *req;
  
  	spin_lock_irq(&ctx->ctx_lock);
-@@ -639,6 +641,14 @@ static void free_ioctx_users(struct percpu_ref *ref)
+@@ -654,6 +657,14 @@ static void free_ioctx_users(struct percpu_ref *ref)
  	percpu_ref_put(&ctx->reqs);
  }
  
@@ -10418,8 +10433,8 @@ index 5a2487217072..462329c4a0b0 100644
 +{
 +	struct kioctx *ctx = container_of(ref, struct kioctx, users);
 +
-+	INIT_SWORK(&ctx->free_work, free_ioctx_users_work);
-+	swork_queue(&ctx->free_work);
++	INIT_SWORK(&ctx->free_swork, free_ioctx_users_work);
++	swork_queue(&ctx->free_swork);
 +}
 +
  static int ioctx_add_table(struct kioctx *ctx, struct mm_struct *mm)
@@ -16386,10 +16401,10 @@ index 3f9c97419f02..11dbe26a8279 100644
  
  config PREEMPT_COUNT
 diff --git a/kernel/cgroup/cgroup.c b/kernel/cgroup/cgroup.c
-index 030e4286f14c..da1ab12e9968 100644
+index 76c0ef2cb509..cfa3505f2b3b 100644
 --- a/kernel/cgroup/cgroup.c
 +++ b/kernel/cgroup/cgroup.c
-@@ -4498,10 +4498,10 @@ static void css_free_rcu_fn(struct rcu_head *rcu_head)
+@@ -4508,10 +4508,10 @@ static void css_free_rcu_fn(struct rcu_head *rcu_head)
  	queue_work(cgroup_destroy_wq, &css->destroy_work);
  }
  
@@ -16402,7 +16417,7 @@ index 030e4286f14c..da1ab12e9968 100644
  	struct cgroup_subsys *ss = css->ss;
  	struct cgroup *cgrp = css->cgroup;
  
-@@ -4552,8 +4552,8 @@ static void css_release(struct percpu_ref *ref)
+@@ -4562,8 +4562,8 @@ static void css_release(struct percpu_ref *ref)
  	struct cgroup_subsys_state *css =
  		container_of(ref, struct cgroup_subsys_state, refcnt);
  
@@ -16413,7 +16428,7 @@ index 030e4286f14c..da1ab12e9968 100644
  }
  
  static void init_and_link_css(struct cgroup_subsys_state *css,
-@@ -5259,6 +5259,7 @@ static int __init cgroup_wq_init(void)
+@@ -5269,6 +5269,7 @@ static int __init cgroup_wq_init(void)
  	 */
  	cgroup_destroy_wq = alloc_workqueue("cgroup_destroy", 0, 1);
  	BUG_ON(!cgroup_destroy_wq);
@@ -16859,7 +16874,7 @@ index e2764d767f18..0c1b7025950f 100644
  }
  
 diff --git a/kernel/events/core.c b/kernel/events/core.c
-index f42f7c7a8f84..532bec707d20 100644
+index cecd72eb09b8..3db198f9fcb9 100644
 --- a/kernel/events/core.c
 +++ b/kernel/events/core.c
 @@ -1042,7 +1042,7 @@ static void __perf_mux_hrtimer_init(struct perf_cpu_context *cpuctx, int cpu)
@@ -16871,7 +16886,7 @@ index f42f7c7a8f84..532bec707d20 100644
  	timer->function = perf_mux_hrtimer_handler;
  }
  
-@@ -8709,7 +8709,7 @@ static void perf_swevent_init_hrtimer(struct perf_event *event)
+@@ -8711,7 +8711,7 @@ static void perf_swevent_init_hrtimer(struct perf_event *event)
  	if (!is_sampling_event(event))
  		return;
  
@@ -26355,10 +26370,10 @@ index 5b117110b55b..47d063c4ed03 100644
   * Set one of the process-wide special case CPU timers or RLIMIT_CPU.
   * The tsk->sighand->siglock must be held by the caller.
 diff --git a/kernel/time/posix-timers.c b/kernel/time/posix-timers.c
-index ec999f32c840..0b568087bd64 100644
+index 708992708332..f357877f0cb7 100644
 --- a/kernel/time/posix-timers.c
 +++ b/kernel/time/posix-timers.c
-@@ -433,6 +433,7 @@ static enum hrtimer_restart posix_timer_fn(struct hrtimer *timer)
+@@ -434,6 +434,7 @@ static enum hrtimer_restart posix_timer_fn(struct hrtimer *timer)
  static struct pid *good_sigevent(sigevent_t * event)
  {
  	struct task_struct *rtn = current->group_leader;
@@ -26366,7 +26381,7 @@ index ec999f32c840..0b568087bd64 100644
  
  	switch (event->sigev_notify) {
  	case SIGEV_SIGNAL | SIGEV_THREAD_ID:
-@@ -442,7 +443,8 @@ static struct pid *good_sigevent(sigevent_t * event)
+@@ -443,7 +444,8 @@ static struct pid *good_sigevent(sigevent_t * event)
  		/* FALLTHRU */
  	case SIGEV_SIGNAL:
  	case SIGEV_THREAD:
@@ -26376,7 +26391,7 @@ index ec999f32c840..0b568087bd64 100644
  			return NULL;
  		/* FALLTHRU */
  	case SIGEV_NONE:
-@@ -794,6 +796,20 @@ SYSCALL_DEFINE1(timer_getoverrun, timer_t, timer_id)
+@@ -795,6 +797,20 @@ SYSCALL_DEFINE1(timer_getoverrun, timer_t, timer_id)
  	return overrun;
  }
  
@@ -26397,7 +26412,7 @@ index ec999f32c840..0b568087bd64 100644
  static void common_hrtimer_arm(struct k_itimer *timr, ktime_t expires,
  			       bool absolute, bool sigev_none)
  {
-@@ -888,6 +904,7 @@ static int do_timer_settime(timer_t timer_id, int flags,
+@@ -889,6 +905,7 @@ static int do_timer_settime(timer_t timer_id, int flags,
  	if (!timr)
  		return -EINVAL;
  
@@ -26405,7 +26420,7 @@ index ec999f32c840..0b568087bd64 100644
  	kc = timr->kclock;
  	if (WARN_ON_ONCE(!kc || !kc->timer_set))
  		error = -EINVAL;
-@@ -896,9 +913,12 @@ static int do_timer_settime(timer_t timer_id, int flags,
+@@ -897,9 +914,12 @@ static int do_timer_settime(timer_t timer_id, int flags,
  
  	unlock_timer(timr, flag);
  	if (error == TIMER_RETRY) {
@@ -26418,7 +26433,7 @@ index ec999f32c840..0b568087bd64 100644
  
  	return error;
  }
-@@ -980,10 +1000,15 @@ SYSCALL_DEFINE1(timer_delete, timer_t, timer_id)
+@@ -981,10 +1001,15 @@ SYSCALL_DEFINE1(timer_delete, timer_t, timer_id)
  	if (!timer)
  		return -EINVAL;
  
@@ -26434,7 +26449,7 @@ index ec999f32c840..0b568087bd64 100644
  
  	spin_lock(&current->sighand->siglock);
  	list_del(&timer->list);
-@@ -1009,8 +1034,18 @@ static void itimer_delete(struct k_itimer *timer)
+@@ -1010,8 +1035,18 @@ static void itimer_delete(struct k_itimer *timer)
  retry_delete:
  	spin_lock_irqsave(&timer->it_lock, flags);
  
@@ -33649,7 +33664,7 @@ index d7c8e4ec3d9d..518c61a1bceb 100644
  
  	get_online_cpus();
 diff --git a/kernel/trace/trace_kprobe.c b/kernel/trace/trace_kprobe.c
-index 8a907e12b6b9..af6134f2e597 100644
+index f8d3bd974bcc..1f8b72d82ad9 100644
 --- a/kernel/trace/trace_kprobe.c
 +++ b/kernel/trace/trace_kprobe.c
 @@ -907,8 +907,8 @@ static int probes_open(struct inode *inode, struct file *file)
@@ -33754,10 +33769,10 @@ index c738e764e2a5..5af6d7d1b1e9 100644
  }
  
 diff --git a/kernel/trace/trace_probe.c b/kernel/trace/trace_probe.c
-index 52478f033f88..d59357308677 100644
+index fe4513330412..daf54bda4dc8 100644
 --- a/kernel/trace/trace_probe.c
 +++ b/kernel/trace/trace_probe.c
-@@ -623,92 +623,6 @@ void traceprobe_free_probe_arg(struct probe_arg *arg)
+@@ -621,92 +621,6 @@ void traceprobe_free_probe_arg(struct probe_arg *arg)
  	kfree(arg->comm);
  }
  
@@ -33851,7 +33866,7 @@ index 52478f033f88..d59357308677 100644
  			   bool is_return)
  {
 diff --git a/kernel/trace/trace_probe.h b/kernel/trace/trace_probe.h
-index 903273c93e61..fb66e3eaa192 100644
+index dc39472ca9e4..a0d750e3d17c 100644
 --- a/kernel/trace/trace_probe.h
 +++ b/kernel/trace/trace_probe.h
 @@ -42,7 +42,6 @@
@@ -33864,7 +33879,7 @@ index 903273c93e61..fb66e3eaa192 100644
  /* Reserved field names */
 @@ -356,12 +355,6 @@ extern void traceprobe_free_probe_arg(struct probe_arg *arg);
  
- extern int traceprobe_split_symbol_offset(char *symbol, unsigned long *offset);
+ extern int traceprobe_split_symbol_offset(char *symbol, long *offset);
  
 -extern ssize_t traceprobe_probes_write(struct file *file,
 -		const char __user *buffer, size_t count, loff_t *ppos,
@@ -35793,7 +35808,7 @@ index 3e612ae748e9..d0ccc070979f 100644
  #ifdef finish_arch_post_lock_switch
  	finish_arch_post_lock_switch();
 diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 6627caeeaf82..b6c2e5a417ac 100644
+index 1d7693c35424..15d6e8022168 100644
 --- a/mm/page_alloc.c
 +++ b/mm/page_alloc.c
 @@ -61,6 +61,7 @@
@@ -36120,7 +36135,7 @@ index 6627caeeaf82..b6c2e5a417ac 100644
  	return NULL;
  }
  
-@@ -6788,8 +6848,9 @@ void __init free_area_init(unsigned long *zones_size)
+@@ -6779,8 +6839,9 @@ void __init free_area_init(unsigned long *zones_size)
  
  static int page_alloc_cpu_dead(unsigned int cpu)
  {
@@ -36131,7 +36146,7 @@ index 6627caeeaf82..b6c2e5a417ac 100644
  	drain_pages(cpu);
  
  	/*
-@@ -7693,7 +7754,7 @@ void zone_pcp_reset(struct zone *zone)
+@@ -7684,7 +7745,7 @@ void zone_pcp_reset(struct zone *zone)
  	struct per_cpu_pageset *pset;
  
  	/* avoid races with drain_pages()  */
@@ -36140,7 +36155,7 @@ index 6627caeeaf82..b6c2e5a417ac 100644
  	if (zone->pageset != &boot_pageset) {
  		for_each_online_cpu(cpu) {
  			pset = per_cpu_ptr(zone->pageset, cpu);
-@@ -7702,7 +7763,7 @@ void zone_pcp_reset(struct zone *zone)
+@@ -7693,7 +7754,7 @@ void zone_pcp_reset(struct zone *zone)
  		free_percpu(zone->pageset);
  		zone->pageset = &boot_pageset;
  	}
