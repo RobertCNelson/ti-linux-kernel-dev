@@ -362,7 +362,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.29"
+	backport_tag="v4.14.32"
 
 	subsystem="fbtft"
 	#regenerate="enable"
@@ -618,7 +618,6 @@ reverts
 drivers
 soc
 beaglebone
-dir 'build/gcc'
 dir 'pocketbeagle'
 dir 'config_pin'
 dir 'pruss'
