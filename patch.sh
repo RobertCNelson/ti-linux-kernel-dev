@@ -465,7 +465,6 @@ drivers () {
 	dir 'drivers/ti/cpsw'
 	dir 'drivers/ti/etnaviv'
 	dir 'drivers/ti/eqep'
-	dir 'drivers/ti/mcasp'
 	dir 'drivers/ti/rpmsg'
 	dir 'drivers/ti/pru_rproc'
 	dir 'drivers/ti/serial'
@@ -564,7 +563,6 @@ reverts
 drivers
 soc
 beaglebone
-dir 'build/gcc'
 dir 'drivers/ti/sgx'
 dir 'undo'
 dir 'pruss'
