@@ -1,6 +1,6 @@
-From 69c4f6d39ac8db4c1d65cd8c034e84eea7d047dc Mon Sep 17 00:00:00 2001
+From 538ef4ede2772ffa7efa4e9ebd67a59234826ee3 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 20 Feb 2018 11:43:48 -0600
+Date: Fri, 6 Apr 2018 14:21:11 -0500
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
@@ -50,7 +50,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm/kernel/entry-common.S                 |  131 +-
  arch/arm/kernel/entry-header.S                 |   36 +-
  arch/arm/kernel/hibernate.c                    |    2 +-
- arch/arm/kernel/ipipe.c                        |  526 +++++++
+ arch/arm/kernel/ipipe.c                        |  525 +++++++
  arch/arm/kernel/ipipe_tsc.c                    |  270 ++++
  arch/arm/kernel/ipipe_tsc_asm.S                |  298 ++++
  arch/arm/kernel/perf_callchain.c               |    3 +
@@ -244,7 +244,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/powerpc/sysdev/uic.c                      |   15 +-
  arch/powerpc/sysdev/xics/xics-common.c         |   19 +
  arch/powerpc/xmon/xmon.c                       |    4 +-
- arch/x86/Kconfig                               |   10 +-
+ arch/x86/Kconfig                               |   12 +-
  arch/x86/entry/common.c                        |   89 +-
  arch/x86/entry/entry_32.S                      |   92 +-
  arch/x86/entry/entry_64.S                      |  201 ++-
@@ -315,6 +315,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/x86/lib/usercopy.c                        |    2 +-
  arch/x86/mm/fault.c                            |   74 +-
  arch/x86/mm/tlb.c                              |    4 +
+ drivers/base/core.c                            |   11 +
  drivers/clk/imx/clk-imx51-imx53.c              |    4 +
  drivers/clocksource/Makefile                   |    3 +
  drivers/clocksource/arm_arch_timer.c           |   79 +-
@@ -386,7 +387,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  include/linux/hardirq.h                        |    2 +
  include/linux/i8253.h                          |    3 +-
  include/linux/ipipe.h                          |  470 ++++++
- include/linux/ipipe_base.h                     |  356 +++++
+ include/linux/ipipe_base.h                     |  358 +++++
  include/linux/ipipe_compat.h                   |  319 ++++
  include/linux/ipipe_debug.h                    |  100 ++
  include/linux/ipipe_domain.h                   |  309 ++++
@@ -399,7 +400,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  include/linux/irqnr.h                          |    4 +
  include/linux/kernel.h                         |    8 +-
  include/linux/kvm_host.h                       |    3 +
- include/linux/preempt.h                        |   25 +-
+ include/linux/preempt.h                        |   26 +-
  include/linux/printk.h                         |   11 +
  include/linux/rwlock.h                         |    8 +-
  include/linux/rwlock_api_smp.h                 |    4 +-
@@ -436,7 +437,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  kernel/module.c                                |    8 +-
  kernel/panic.c                                 |    3 +
  kernel/power/hibernate.c                       |    3 +
- kernel/printk/printk.c                         |  195 ++-
+ kernel/printk/printk.c                         |  205 ++-
  kernel/sched/core.c                            |   76 +-
  kernel/sched/wait.c                            |    2 +
  kernel/signal.c                                |    9 +-
@@ -467,7 +468,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  mm/mprotect.c                                  |   10 +-
  mm/vmalloc.c                                   |    2 +
  scripts/ipipe/genpatches.sh                    |  219 +++
- 463 files changed, 22133 insertions(+), 1693 deletions(-)
+ 464 files changed, 22157 insertions(+), 1694 deletions(-)
  create mode 100644 arch/arm/boot/dts/omap3-igep0020-3430.dts
  create mode 100644 arch/arm/boot/dts/omap3430-igep.dtsi
  create mode 100644 arch/arm/include/asm/fcse.h
@@ -4059,10 +4060,10 @@ index b09561a6d06a..a3c79f50d37d 100644
  
 diff --git a/arch/arm/kernel/ipipe.c b/arch/arm/kernel/ipipe.c
 new file mode 100644
-index 000000000000..ba209ff5d005
+index 000000000000..047a85c612eb
 --- /dev/null
 +++ b/arch/arm/kernel/ipipe.c
-@@ -0,0 +1,526 @@
+@@ -0,0 +1,525 @@
 +/* -*- linux-c -*-
 + * linux/arch/arm/kernel/ipipe.c
 + *
@@ -4419,8 +4420,7 @@ index 000000000000..ba209ff5d005
 +		 * so prefer test then maybe clear over
 +		 * test_and_clear.
 +		 */
-+		ipipe_clear_thread_flag(TIP_MAYDAY);
-+		__ipipe_notify_trap(IPIPE_TRAP_MAYDAY, regs);
++		__ipipe_call_mayday(regs);
 +	}
 +}
 +
@@ -18515,7 +18515,7 @@ index 786bf01691c9..e1b970b2d130 100644
  	DUMP(p, irq_work_pending, "x");
  	DUMP(p, nap_state_lost, "x");
 diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
-index 75d0053b495a..120d1de883df 100644
+index 75d0053b495a..214298287073 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
 @@ -9,6 +9,7 @@ config 64BIT
@@ -18537,6 +18537,15 @@ index 75d0053b495a..120d1de883df 100644
  	select ARCH_HAS_DEBUG_STRICT_USER_COPY_CHECKS
  	select ARCH_HAS_ELF_RANDOMIZE
  	select ARCH_HAS_FAST_MULTIPLIER
+@@ -79,7 +84,7 @@ config X86
+ 	select HAVE_AOUT			if X86_32
+ 	select HAVE_ARCH_AUDITSYSCALL
+ 	select HAVE_ARCH_HUGE_VMAP		if X86_64 || X86_PAE
+-	select HAVE_ARCH_JUMP_LABEL
++	select HAVE_ARCH_JUMP_LABEL		if !IPIPE
+ 	select HAVE_ARCH_KASAN			if X86_64 && SPARSEMEM_VMEMMAP
+ 	select HAVE_ARCH_KGDB
+ 	select HAVE_ARCH_KMEMCHECK
 @@ -91,7 +96,7 @@ config X86
  	select HAVE_CC_STACKPROTECTOR
  	select HAVE_CMPXCHG_DOUBLE
@@ -23660,6 +23669,28 @@ index 7cad01af6dcd..f0a1343ed58f 100644
  }
  EXPORT_SYMBOL_GPL(leave_mm);
  
+diff --git a/drivers/base/core.c b/drivers/base/core.c
+index afe045792796..5e71efa88f01 100644
+--- a/drivers/base/core.c
++++ b/drivers/base/core.c
+@@ -2212,6 +2212,17 @@ EXPORT_SYMBOL(dev_printk_emit);
+ static void __dev_printk(const char *level, const struct device *dev,
+ 			struct va_format *vaf)
+ {
++#ifdef CONFIG_IPIPE
++	/*
++	 * Console logging only if hard locked, or over the head
++	 * stage.
++	 */
++	if (hard_irqs_disabled() || !ipipe_root_p) {
++		__ipipe_log_printk(vaf->fmt, *vaf->va);
++		return;
++	}
++#endif
++
+ 	if (dev)
+ 		dev_printk_emit(level[1] - '0', dev, "%s %s: %pV",
+ 				dev_driver_string(dev), dev_name(dev), vaf);
 diff --git a/drivers/clk/imx/clk-imx51-imx53.c b/drivers/clk/imx/clk-imx51-imx53.c
 index c6770348d2ab..b04f1725268e 100644
 --- a/drivers/clk/imx/clk-imx51-imx53.c
@@ -28367,10 +28398,10 @@ index 000000000000..85af7fd82467
 +#endif	/* !__LINUX_IPIPE_H */
 diff --git a/include/linux/ipipe_base.h b/include/linux/ipipe_base.h
 new file mode 100644
-index 000000000000..ac38c358d3c9
+index 000000000000..e056d27a2fd6
 --- /dev/null
 +++ b/include/linux/ipipe_base.h
-@@ -0,0 +1,356 @@
+@@ -0,0 +1,358 @@
 +/* -*- linux-c -*-
 + * include/linux/ipipe_base.h
 + *
@@ -28420,6 +28451,7 @@ index 000000000000..ac38c358d3c9
 +#include <asm/ipipe_base.h>
 +#include <linux/compiler.h>
 +#include <linux/linkage.h>
++#include <stdarg.h>
 +
 +#ifndef IPIPE_NR_ROOT_IRQS
 +#define IPIPE_NR_ROOT_IRQS	NR_IRQS
@@ -28542,6 +28574,7 @@ index 000000000000..ac38c358d3c9
 +#define __ipipe_run_irqtail(irq) do { } while(0)
 +#endif
 +
++int __ipipe_log_printk(const char *fmt, va_list args);
 +void __ipipe_flush_printk(unsigned int irq, void *cookie);
 +
 +#define __ipipe_get_cpu(flags)	({ (flags) = hard_preempt_disable(); ipipe_processor_id(); })
@@ -30251,7 +30284,7 @@ index d7ce4e3280db..aea0005fff85 100644
  	int cpu;
  	int vcpu_id;
 diff --git a/include/linux/preempt.h b/include/linux/preempt.h
-index 7eeceac52dea..f39f245c6fa5 100644
+index 7eeceac52dea..3a85b00a537e 100644
 --- a/include/linux/preempt.h
 +++ b/include/linux/preempt.h
 @@ -8,6 +8,7 @@
@@ -30262,7 +30295,7 @@ index 7eeceac52dea..f39f245c6fa5 100644
  
  /*
   * We put the hardirq and softirq counter into the preemption
-@@ -233,7 +234,27 @@ do { \
+@@ -233,7 +234,28 @@ do { \
  
  #endif /* CONFIG_PREEMPT_COUNT */
  
@@ -30277,21 +30310,22 @@ index 7eeceac52dea..f39f245c6fa5 100644
 +		__flags__;				\
 +	})
 +
-+#define hard_preempt_enable(__flags__)			\
-+	do {						\
-+		if (__ipipe_root_p) {			\
-+			preempt_enable_no_resched();	\
-+			hard_local_irq_restore(__flags__);	\
-+			preempt_check_resched();	\
-+		} else					\
-+			hard_local_irq_restore(__flags__);	\
++#define hard_preempt_enable(__flags__)					\
++	do {								\
++		if (__ipipe_root_p) {					\
++			preempt_enable_no_resched();			\
++			hard_local_irq_restore(__flags__);		\
++			if (!hard_irqs_disabled_flags(__flags__))	\
++				preempt_check_resched();		\
++		} else							\
++			hard_local_irq_restore(__flags__);		\
 +	} while (0)
 +
 +#elif defined(MODULE)
  /*
   * Modules have no business playing preemption tricks.
   */
-@@ -241,7 +262,7 @@ do { \
+@@ -241,7 +263,7 @@ do { \
  #undef preempt_enable_no_resched
  #undef preempt_enable_no_resched_notrace
  #undef preempt_check_resched
@@ -36364,7 +36398,7 @@ index 3124cebaec31..fe8214323e4f 100644
  	if (pm_wakeup_pending()) {
  		error = -EAGAIN;
 diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
-index 0b5613554769..abe6b00a676a 100644
+index 0b5613554769..bb01686ffd56 100644
 --- a/kernel/printk/printk.c
 +++ b/kernel/printk/printk.c
 @@ -62,6 +62,9 @@ int console_printk[4] = {
@@ -36457,7 +36491,7 @@ index 0b5613554769..abe6b00a676a 100644
  }
  EXPORT_SYMBOL(vprintk);
  
-@@ -1875,6 +1877,43 @@ EXPORT_SYMBOL_GPL(vprintk_default);
+@@ -1875,6 +1877,66 @@ EXPORT_SYMBOL_GPL(vprintk_default);
   */
  DEFINE_PER_CPU(printk_func_t, printk_func) = vprintk_default;
  
@@ -36470,6 +36504,29 @@ index 0b5613554769..abe6b00a676a 100644
 +static int __ipipe_printk_fill;
 +
 +static char __ipipe_printk_buf[__LOG_BUF_LEN];
++
++int __ipipe_log_printk(const char *fmt, va_list args)
++{
++	int ret = 0, fbytes, oldcount;
++	unsigned long flags;
++
++	raw_spin_lock_irqsave(&__ipipe_printk_lock, flags);
++
++	oldcount = __ipipe_printk_fill;
++	fbytes = __LOG_BUF_LEN - oldcount;
++	if (fbytes > 1)	{
++		ret = vscnprintf(__ipipe_printk_buf + __ipipe_printk_fill,
++				 fbytes, fmt, args) + 1;
++		__ipipe_printk_fill += ret;
++	}
++
++	raw_spin_unlock_irqrestore(&__ipipe_printk_lock, flags);
++
++	if (oldcount == 0)
++		ipipe_raise_irq(__ipipe_printk_virq);
++
++	return ret;
++}
 +
 +void __ipipe_flush_printk (unsigned virq, void *cookie)
 +{
@@ -36501,16 +36558,18 @@ index 0b5613554769..abe6b00a676a 100644
  /**
   * printk - print a kernel message
   * @fmt: format string
-@@ -1896,6 +1935,59 @@ DEFINE_PER_CPU(printk_func_t, printk_func) = vprintk_default;
+@@ -1896,6 +1958,46 @@ DEFINE_PER_CPU(printk_func_t, printk_func) = vprintk_default;
   *
   * See the vsnprintf() documentation for format string extensions over C99.
   */
++
 +asmlinkage __visible int printk(const char *fmt, ...)
 +{
++	printk_func_t vprintk_func;
 +	int sprintk = 1, cs = -1;
-+	int r, fbytes, oldcount;
 +	unsigned long flags;
 +	va_list args;
++	int ret;
 +
 +	va_start(args, fmt);
 +
@@ -36529,31 +36588,16 @@ index 0b5613554769..abe6b00a676a 100644
 +	hard_local_irq_restore(flags);
 +
 +	if (sprintk) {
-+		r = vprintk(fmt, args);
++		vprintk_func = this_cpu_read(printk_func);
++		ret = vprintk_func(fmt, args);
 +		if (cs != -1)
 +			ipipe_restore_context_check(cs);
-+		goto out;
-+	}
-+
-+	raw_spin_lock_irqsave(&__ipipe_printk_lock, flags);
-+
-+	oldcount = __ipipe_printk_fill;
-+	fbytes = __LOG_BUF_LEN - oldcount;
-+	if (fbytes > 1)	{
-+		r = vscnprintf(__ipipe_printk_buf + __ipipe_printk_fill,
-+			       fbytes, fmt, args) + 1;
-+		__ipipe_printk_fill += r;
 +	} else
-+		r = 0;
++		ret = __ipipe_log_printk(fmt, args);
 +
-+	raw_spin_unlock_irqrestore(&__ipipe_printk_lock, flags);
-+
-+	if (oldcount == 0)
-+		ipipe_raise_irq(__ipipe_printk_virq);
-+out:
 +	va_end(args);
 +
-+	return r;
++	return ret;
 +}
 +
 +#else /* !CONFIG_IPIPE */
@@ -36561,7 +36605,7 @@ index 0b5613554769..abe6b00a676a 100644
  asmlinkage __visible int printk(const char *fmt, ...)
  {
  	printk_func_t vprintk_func;
-@@ -1917,6 +2009,8 @@ asmlinkage __visible int printk(const char *fmt, ...)
+@@ -1917,6 +2019,8 @@ asmlinkage __visible int printk(const char *fmt, ...)
  
  	return r;
  }
@@ -36570,7 +36614,7 @@ index 0b5613554769..abe6b00a676a 100644
  EXPORT_SYMBOL(printk);
  
  #else /* CONFIG_PRINTK */
-@@ -1964,21 +2058,80 @@ DEFINE_PER_CPU(printk_func_t, printk_func);
+@@ -1964,21 +2068,80 @@ DEFINE_PER_CPU(printk_func_t, printk_func);
  #ifdef CONFIG_EARLY_PRINTK
  struct console *early_console;
  
@@ -36655,7 +36699,7 @@ index 0b5613554769..abe6b00a676a 100644
  #endif
  
  static int __add_preferred_console(char *name, int idx, char *options,
-@@ -2598,6 +2751,9 @@ void register_console(struct console *newcon)
+@@ -2598,6 +2761,9 @@ void register_console(struct console *newcon)
  		console_drivers->next = newcon;
  	}
  
@@ -36665,7 +36709,7 @@ index 0b5613554769..abe6b00a676a 100644
  	if (newcon->flags & CON_EXTENDED)
  		if (!nr_ext_console_drivers++)
  			pr_info("printk: continuation disabled due to ext consoles, expect more fragments in /dev/kmsg\n");
-@@ -2654,6 +2810,8 @@ int unregister_console(struct console *console)
+@@ -2654,6 +2820,8 @@ int unregister_console(struct console *console)
  		(console->flags & CON_BOOT) ? "boot" : "" ,
  		console->name, console->index);
  
@@ -36674,7 +36718,7 @@ index 0b5613554769..abe6b00a676a 100644
  	res = _braille_unregister_console(console);
  	if (res)
  		return res;
-@@ -2750,7 +2908,7 @@ int printk_deferred(const char *fmt, ...)
+@@ -2750,7 +2918,7 @@ int printk_deferred(const char *fmt, ...)
  
  	preempt_disable();
  	va_start(args, fmt);
@@ -36683,7 +36727,7 @@ index 0b5613554769..abe6b00a676a 100644
  	va_end(args);
  
  	__this_cpu_or(printk_pending, PRINTK_PENDING_OUTPUT);
-@@ -3153,6 +3311,9 @@ void dump_stack_print_info(const char *log_lvl)
+@@ -3153,6 +3321,9 @@ void dump_stack_print_info(const char *log_lvl)
  	if (dump_stack_arch_desc_str[0] != '\0')
  		printk("%sHardware name: %s\n",
  		       log_lvl, dump_stack_arch_desc_str);
@@ -38277,5 +38321,5 @@ index 000000000000..c32bd92f1797
 +}
 +'
 -- 
-2.16.1
+2.16.3
 
