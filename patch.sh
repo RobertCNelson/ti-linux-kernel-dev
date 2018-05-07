@@ -524,8 +524,8 @@ beaglebone () {
 
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 
-#		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
-#		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
 
 		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
 
@@ -566,6 +566,7 @@ beaglebone
 dir 'drivers/ti/sgx'
 dir 'undo'
 dir 'pruss'
+dir 'roboticscape'
 
 packaging () {
 	echo "dir: packaging"
