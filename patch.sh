@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 #
 # Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
 #
@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 
 # Split out, so build_kernel.sh and build_deb.sh can share..
+
+shopt -s nullglob
 
 . ${DIR}/version.sh
 if [ -f ${DIR}/system.sh ] ; then
