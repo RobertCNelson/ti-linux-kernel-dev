@@ -221,7 +221,12 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	${git_bin} revert --no-edit 13e75c74cd69ca460778fad5ab902f0b20869267
+	#v4.9.101
+	${git_bin} revert --no-edit 205cd52bbee7fe6452912fe01ceade970bccc926
+
+	#v4.9.104
+	${git_bin} revert --no-edit 527ed41ff2776311bdae56c2472ee0a5cbb60605
+	${git_bin} revert --no-edit bcefedb87cf9625d33d0e53dfdc52e43744593c1
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -329,7 +334,7 @@ ti_pm_firmware
 #local_patch
 
 ipipe () {
-	kernel_base="v4.9.51"
+	kernel_base="v4.9.92"
 	xenomai_branch="ipipe-4.9.y"
 	echo "dir: ipipe"
 	#regenerate="enable"
@@ -348,14 +353,11 @@ ipipe () {
 		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
 
 		cp -v arch/arm/mach-omap2/timer.c ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c
-		cp -v arch/powerpc/kernel/align.c ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c
-		cp -v arch/x86/entry/common.c ../patches/${xenomai_branch}/arch_x86_entry_common.c
-		cp -v arch/x86/entry/entry_32.S ../patches/${xenomai_branch}/arch_x86_entry_entry_32.S
-		cp -v arch/x86/entry/entry_64.S ../patches/${xenomai_branch}/arch_x86_entry_entry_64.S
-		cp -v arch/powerpc/kernel/align.c ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c
-		cp -v arch/x86/include/asm/thread_info.h ../patches/${xenomai_branch}/arch_x86_include_asm_thread_info.h
+		cp -v arch/arm64/include/asm/proc-fns.h ../patches/${xenomai_branch}/arch_arm64_include_asm_proc-fns.h
+		cp -v arch/arm64/include/asm/uaccess.h ../patches/${xenomai_branch}/arch_arm64_include_asm_uaccess.h
+		cp -v arch/arm64/kernel/entry.S ../patches/${xenomai_branch}/arch_arm64_kernel_entry.S
+		cp -v arch/powerpc/kernel/irq.c ../patches/${xenomai_branch}/arch_powerpc_kernel_irq.c
 		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
-		cp -v arch/x86/kvm/x86.c ../patches/${xenomai_branch}/arch_x86_kvm_x86.c
 
 		echo "${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}"
 		${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}
@@ -368,14 +370,11 @@ ipipe () {
 		fi
 
 		cp -v ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c arch/arm/mach-omap2/timer.c
-		cp -v ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c arch/powerpc/kernel/align.c
-		cp -v ../patches/${xenomai_branch}/arch_x86_entry_common.c arch/x86/entry/common.c
-		cp -v ../patches/${xenomai_branch}/arch_x86_entry_entry_32.S arch/x86/entry/entry_32.S
-		cp -v ../patches/${xenomai_branch}/arch_x86_entry_entry_64.S arch/x86/entry/entry_64.S
-		cp -v ../patches/${xenomai_branch}/arch_powerpc_kernel_align.c arch/powerpc/kernel/align.c
-		cp -v ../patches/${xenomai_branch}/arch_x86_include_asm_thread_info.h arch/x86/include/asm/thread_info.h
+		cp -v ../patches/${xenomai_branch}/arch_arm64_include_asm_proc-fns.h arch/arm64/include/asm/proc-fns.h
+		cp -v ../patches/${xenomai_branch}/arch_arm64_include_asm_uaccess.h arch/arm64/include/asm/uaccess.h
+		cp -v ../patches/${xenomai_branch}/arch_arm64_kernel_entry.S arch/arm64/kernel/entry.S
+		cp -v ../patches/${xenomai_branch}/arch_powerpc_kernel_irq.c arch/powerpc/kernel/irq.c
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
-		cp -v ../patches/${xenomai_branch}/arch_x86_kvm_x86.c arch/x86/kvm/x86.c
 
 		#exit 2
 
@@ -456,7 +455,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.29"
+	backport_tag="v4.14.47"
 
 	subsystem="fbtft"
 	#regenerate="enable"
@@ -712,7 +711,6 @@ reverts
 drivers
 soc
 beaglebone
-dir 'build/gcc'
 dir 'pocketbeagle'
 dir 'config_pin'
 dir 'pruss'
@@ -760,6 +758,7 @@ packaging () {
 	echo "dir: packaging"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		cp -v "${DIR}/3rdparty/packaging/Makefile" "${DIR}/KERNEL/scripts/package"
 		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
 		#Needed for v4.11.x and less
 		patch -p1 < "${DIR}/patches/packaging/0002-Revert-deb-pkg-Remove-the-KBUILD_IMAGE-workaround.patch"
