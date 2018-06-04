@@ -221,7 +221,12 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	${git_bin} revert --no-edit 13e75c74cd69ca460778fad5ab902f0b20869267
+	#v4.9.101
+	${git_bin} revert --no-edit 205cd52bbee7fe6452912fe01ceade970bccc926
+
+	#v4.9.104
+	${git_bin} revert --no-edit 527ed41ff2776311bdae56c2472ee0a5cbb60605
+	${git_bin} revert --no-edit bcefedb87cf9625d33d0e53dfdc52e43744593c1
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -362,7 +367,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.35"
+	backport_tag="v4.14.47"
 
 	subsystem="fbtft"
 	#regenerate="enable"
