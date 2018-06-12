@@ -392,10 +392,11 @@ reverts () {
 
 	${git} "${DIR}/patches/reverts/0001-Revert-eeprom-at24-check-if-the-chip-is-functional-i.patch"
 	${git} "${DIR}/patches/reverts/0002-Revert-ARM-dts-am33xx-Add-pinmux-data-for-mmc1-in-am.patch"
+	${git} "${DIR}/patches/reverts/0003-Revert-tis-overlay-setup.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
-		number=2
+		number=3
 		cleanup
 	fi
 }
@@ -494,8 +495,9 @@ soc () {
 	dir 'soc/ti/am335x_olimex_som'
 	dir 'soc/ti/beaglebone_capes'
 	dir 'soc/ti/pocketbeagle'
-	dir 'soc/ti/undo_uio_pruss'
+	dir 'soc/ti/pruss'
 	#dir 'soc/ti/uboot_univ'
+	dir 'soc/ti/roboticscape'
 }
 
 dtb_makefile_append () {
@@ -575,9 +577,6 @@ drivers
 soc
 beaglebone
 dir 'drivers/ti/sgx'
-dir 'undo'
-dir 'pruss'
-dir 'roboticscape'
 
 packaging () {
 	echo "dir: packaging"
