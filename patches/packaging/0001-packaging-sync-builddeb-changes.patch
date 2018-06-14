@@ -1,15 +1,15 @@
-From de43281d344f98be675aef5e8cfc2dc37b314f39 Mon Sep 17 00:00:00 2001
+From ef871dc5dfa4d2d2f41e1f88a440b21660be3d91 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 19 Jan 2017 13:12:00 -0600
+Date: Thu, 14 Jun 2018 15:02:48 -0500
 Subject: [PATCH] packaging: sync builddeb changes
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- scripts/package/builddeb | 127 ++++++++++++++++++++++++++++++++++++-----------
- 1 file changed, 98 insertions(+), 29 deletions(-)
+ scripts/package/builddeb | 140 ++++++++++++++++++++++++++++-----------
+ 1 file changed, 102 insertions(+), 38 deletions(-)
 
 diff --git a/scripts/package/builddeb b/scripts/package/builddeb
-index 88dbf23b6970..1d46d7dcd6b0 100755
+index 88dbf23b6970..172be74043c5 100755
 --- a/scripts/package/builddeb
 +++ b/scripts/package/builddeb
 @@ -15,6 +15,8 @@ set -e
@@ -39,7 +39,7 @@ index 88dbf23b6970..1d46d7dcd6b0 100755
  	case "$UTS_MACHINE" in
  	i386|ia64|alpha)
  		debarch="$UTS_MACHINE" ;;
-@@ -42,11 +51,21 @@ create_package() {
+@@ -42,15 +51,25 @@ create_package() {
  		debarch=hppa ;;
  	mips*)
  		debarch=mips$(grep -q CPU_LITTLE_ENDIAN=y $KCONFIG_CONFIG && echo el || true) ;;
@@ -63,6 +63,11 @@ index 88dbf23b6970..1d46d7dcd6b0 100755
  		echo "" >&2
  		echo "** ** **  WARNING  ** ** **" >&2
  		echo "" >&2
+-		echo "Your architecture doesn't have it's equivalent" >&2
++		echo "Your architecture doesn't have its equivalent" >&2
+ 		echo "Debian userspace architecture defined!" >&2
+ 		echo "Falling back to using your current userspace instead!" >&2
+ 		echo "Please add support for $UTS_MACHINE to ${0} ..." >&2
 @@ -59,13 +78,8 @@ create_package() {
  	if [ -n "$KBUILD_DEBARCH" ] ; then
  		debarch="$KBUILD_DEBARCH"
@@ -191,7 +196,21 @@ index 88dbf23b6970..1d46d7dcd6b0 100755
  
    * Custom built Linux kernel.
  
-@@ -257,12 +287,16 @@ On Debian GNU/Linux systems, the complete text of the GNU General Public
+@@ -241,10 +271,10 @@ EOF
+ cat <<EOF > debian/copyright
+ This is a packacked upstream version of the Linux kernel.
+ 
+-The sources may be found at most Linux ftp sites, including:
+-ftp://ftp.kernel.org/pub/linux/kernel
++The sources may be found at most Linux archive sites, including:
++https://www.kernel.org/pub/linux/kernel
+ 
+-Copyright: 1991 - 2015 Linus Torvalds and others.
++Copyright: 1991 - 2017 Linus Torvalds and others.
+ 
+ The git repository for mainline kernel development is at:
+ git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+@@ -257,13 +287,16 @@ On Debian GNU/Linux systems, the complete text of the GNU General Public
  License version 2 can be found in \`/usr/share/common-licenses/GPL-2'.
  EOF
  
@@ -205,11 +224,28 @@ index 88dbf23b6970..1d46d7dcd6b0 100755
  Section: kernel
  Priority: optional
  Maintainer: $maintainer
+-Standards-Version: 3.8.4
 +Build-Depends: $build_depends
- Standards-Version: 3.8.4
  Homepage: http://www.kernel.org/
  EOF
-@@ -300,10 +334,16 @@ fi
+ 
+@@ -271,7 +304,6 @@ if [ "$ARCH" = "um" ]; then
+ 	cat <<EOF >> debian/control
+ 
+ Package: $packagename
+-Provides: linux-image, linux-image-2.6, linux-modules-$version
+ Architecture: any
+ Description: User Mode Linux kernel, version $version
+  User-mode Linux is a port of the Linux kernel to its own system call
+@@ -288,7 +320,6 @@ else
+ 	cat <<EOF >> debian/control
+ 
+ Package: $packagename
+-Provides: linux-image, linux-image-2.6, linux-modules-$version
+ Suggests: $fwpackagename
+ Architecture: any
+ Description: Linux kernel, version $version
+@@ -300,10 +331,16 @@ fi
  
  # Build kernel header package
  (cd $srctree; find . -name Makefile\* -o -name Kconfig\* -o -name \*.pl) > "$objtree/debian/hdrsrcfiles"
@@ -227,7 +263,23 @@ index 88dbf23b6970..1d46d7dcd6b0 100755
  destdir=$kernel_headers_dir/usr/src/linux-headers-$version
  mkdir -p "$destdir"
  (cd $srctree; tar -c -f - -T -) < "$objtree/debian/hdrsrcfiles" | (cd $destdir; tar -xf -)
-@@ -383,4 +423,33 @@ EOF
+@@ -315,7 +352,6 @@ rm -f "$objtree/debian/hdrsrcfiles" "$objtree/debian/hdrobjfiles"
+ cat <<EOF >> debian/control
+ 
+ Package: $kernel_headers_packagename
+-Provides: linux-headers, linux-headers-2.6
+ Architecture: any
+ Description: Linux kernel headers for $KERNELRELEASE on \${kernel:debarch}
+  This package provides kernel header files for $KERNELRELEASE on \${kernel:debarch}
+@@ -373,7 +409,6 @@ if [ -n "$BUILD_DEBUG" ] ; then
+ 
+ Package: $dbg_packagename
+ Section: debug
+-Provides: linux-debug, linux-debug-$version
+ Architecture: any
+ Description: Linux kernel debugging symbols for $version
+  This package will come in handy if you need to debug the kernel. It provides
+@@ -383,4 +418,33 @@ EOF
  	create_package "$dbg_packagename" "$dbg_dir"
  fi
  
@@ -262,5 +314,5 @@ index 88dbf23b6970..1d46d7dcd6b0 100755
 +
  exit 0
 -- 
-2.11.0
+2.17.1
 

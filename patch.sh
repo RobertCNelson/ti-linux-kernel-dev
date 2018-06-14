@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2016 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2018 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -98,21 +98,26 @@ cherrypick () {
 }
 
 external_git () {
-	git_tag="ti-rt-linux-4.1.y"
-	echo "pulling: ${git_tag}"
+	git_tag="ti-linux-${KERNEL_REL}.y"
+	echo "pulling: [${git_patchset} ${git_tag}]"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
-	. ${DIR}/.CC
-	sed -i -e 's:linux-kernel:`pwd`/:g' ./ti_config_fragments/defconfig_merge.sh
-	./ti_config_fragments/defconfig_merge.sh -o /dev/null -f ti_config_fragments/defconfig_fragment -c ${CC}
-	git checkout -- ./ti_config_fragments/defconfig_merge.sh
+	top_of_branch=$(${git_bin} describe)
+	if [ ! "x${ti_git_post}" = "x" ] ; then
+		${git_bin} checkout master -f
+		test_for_branch=$(${git_bin} branch --list "v${KERNEL_TAG}${BUILD}")
+		if [ "x${test_for_branch}" != "x" ] ; then
+			${git_bin} branch "v${KERNEL_TAG}${BUILD}" -D
+		fi
+		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
+		current_git=$(${git_bin} describe)
+		echo "${current_git}"
 
-	make ARCH=arm CROSS_COMPILE="${CC}" appended_omap2plus_defconfig
-	mv -v .config ../patches/ti_omap2plus_defconfig
-
-	rm -f arch/arm/configs/appended_omap2plus_defconfig
-	rm -f ti_config_fragments/working_config/base_config
-	rm -f ti_config_fragments/working_config/final_config
-	rm -f ti_config_fragments/working_config/merged_omap2plus_defconfig
+		if [ ! "x${top_of_branch}" = "x${current_git}" ] ; then
+			echo "INFO: external git repo has updates..."
+		fi
+	else
+		echo "${top_of_branch}"
+	fi
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -199,16 +204,10 @@ aufs4 () {
 
 		cd ../
 		if [ ! -d ./aufs4-standalone ] ; then
-			${git_bin} clone https://github.com/sfjro/aufs4-standalone
-			cd ./aufs4-standalone
-			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
-			cd ../
+			${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/aufs4-standalone --depth=1
 		else
 			rm -rf ./aufs4-standalone || true
-			${git_bin} clone https://github.com/sfjro/aufs4-standalone
-			cd ./aufs4-standalone
-			${git_bin} checkout origin/aufs${KERNEL_REL} -b tmp
-			cd ../
+			${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/aufs4-standalone --depth=1
 		fi
 		KERNEL_REL="4.1"
 		cd ./KERNEL/
@@ -226,12 +225,20 @@ aufs4 () {
 
 		rm -rf ../aufs4-standalone/ || true
 
-		exit 2
-	fi
+		${git_bin} reset --hard HEAD~6
 
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
+
+		${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
+		${git} "${DIR}/patches/aufs4/0002-merge-aufs4-base.patch"
+		${git} "${DIR}/patches/aufs4/0003-merge-aufs4-mmap.patch"
+		${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
+		${git} "${DIR}/patches/aufs4/0005-merge-aufs4.patch"
+		${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
+
+		wdir="aufs4"
+		number=6
+		cleanup
 	fi
 
 	${git} "${DIR}/patches/aufs4/0001-merge-aufs4-kbuild.patch"
@@ -240,12 +247,6 @@ aufs4 () {
 	${git} "${DIR}/patches/aufs4/0004-merge-aufs4-standalone.patch"
 	${git} "${DIR}/patches/aufs4/0005-merge-aufs4.patch"
 	${git} "${DIR}/patches/aufs4/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="aufs4"
-		number=6
-		cleanup
-	fi
 }
 
 rt_cleanup () {
@@ -256,8 +257,14 @@ rt_cleanup () {
 rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
+
+	#${git_bin} revert --no-edit xyz
+
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
+		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
+		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -s
@@ -269,6 +276,46 @@ rt () {
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
 
+wireguard_fail () {
+	echo "WireGuard failed"
+	exit 2
+}
+
+wireguard () {
+	echo "dir: WireGuard"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./WireGuard ] ; then
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+		else
+			rm -rf ./WireGuard || true
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+		fi
+		cd ./KERNEL/
+
+		../WireGuard/contrib/kernel-tree/create-patch.sh | patch -p1 || wireguard_fail
+
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: WireGuard' -s
+		${git_bin} format-patch -1 -o ../patches/WireGuard/
+
+		rm -rf ../WireGuard/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
+
+		wdir="WireGuard"
+		number=1
+		cleanup
+	fi
+
+	${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
+}
+
 local_patch () {
 	echo "dir: dir"
 	${git} "${DIR}/patches/dir/0001-patch.patch"
@@ -276,7 +323,7 @@ local_patch () {
 
 external_git
 aufs4
-rt
+#rt
 #local_patch
 
 reverts () {
@@ -442,7 +489,7 @@ fixes () {
 	${git} "${DIR}/patches/fixes/0002-fix-sleep43xx.S-for-thumb2.patch"
 	${git} "${DIR}/patches/fixes/0003-fix-ti-emif-sram-pm.S-for-thumb2.patch"
 	${git} "${DIR}/patches/fixes/0004-net-wireless-SanCloud-wifi-issue-when-associating-wi.patch"
-	${git} "${DIR}/patches/fixes/0005-fix-4.1.29-rt-big-opps.patch"
+	#${git} "${DIR}/patches/fixes/0005-fix-4.1.29-rt-big-opps.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="fixes"
@@ -512,7 +559,7 @@ bbb_overlays () {
 		fi
 		git clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
 		cd dtc
-		git pull --no-edit https://github.com/pantoniou/dtc dt-overlays5
+		git pull --no-edit https://github.com/RobertCNelson/dtc bb.org-4.1-dt-overlays5-dtc-b06e55c88b9b
 
 		cd ../KERNEL/
 		sed -i -e 's:git commit:#git commit:g' ./scripts/dtc/update-dtc-source.sh
@@ -527,6 +574,7 @@ bbb_overlays () {
 			start_cleanup
 		fi
 
+		#4.6.0-rc: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=91feabc2e2240ee80dc8ac08103cb83f497e4d12
 		${git} "${DIR}/patches/bbb_overlays/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
 
 		if [ "x${regenerate}" = "xenable" ] ; then
@@ -628,6 +676,8 @@ bbb_overlays () {
 	fi
 
 	${git} "${DIR}/patches/bbb_overlays/0032-bone_capemgr-uboot_capemgr_enabled-flag.patch"
+
+	${git} "${DIR}/patches/bbb_overlays/0039-bone_capemgr-kill-with-uboot-flag.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=32
@@ -855,6 +905,8 @@ beaglebone () {
 		cleanup
 	fi
 
+	dir 'soc/ti/uboot'
+
 	#This has to be last...
 	echo "dir: beaglebone/dtbs"
 	#regenerate="enable"
@@ -898,6 +950,8 @@ beaglebone () {
 
 		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 
 		${git_bin} commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		${git_bin} format-patch -1 -o ../patches/beaglebone/generated/
@@ -981,18 +1035,12 @@ sync_mainline_dtc () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
-		if [ ! -d ./dtc ] ; then
-			${git_bin} clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
-			cd ./dtc
-			${git_bin} checkout origin/master -b tmp
-			cd ../
-		else
+		if [ -d ./dtc ] ; then
 			rm -rf ./dtc || true
-			${git_bin} clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
-			cd ./dtc
-			${git_bin} checkout origin/master -b tmp
-			cd ../
 		fi
+
+		${git_bin} clone -b dtc-v1.4.4 https://github.com/RobertCNelson/dtc --depth=1
+
 		cd ./KERNEL/
 
 		sed -i -e 's:git commit:#git commit:g' ./scripts/dtc/update-dtc-source.sh
@@ -1013,10 +1061,11 @@ sync_mainline_dtc () {
 		${git} "${DIR}/patches/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
 		${git} "${DIR}/patches/dtc/0002-dtc-turn-off-dtc-unit-address-warnings-by-default.patch"
 		${git} "${DIR}/patches/dtc/0003-ARM-boot-Add-an-implementation-of-strnlen-for-libfdt.patch"
+		${git} "${DIR}/patches/dtc/0004-libfdt-add-fdt-type-definitions.patch"
 
 		if [ "x${regenerate}" = "xenable" ] ; then
 			wdir="dtc"
-			number=3
+			number=4
 			cleanup
 		fi
 	fi
@@ -1032,13 +1081,14 @@ pru_rpmsg
 bbb_overlays
 beaglebone
 quieter
-sync_mainline_dtc
 
 packaging () {
 	echo "dir: packaging"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
+		#Needed for v4.11.x and less
+		patch -p1 < "${DIR}/patches/packaging/0002-Revert-deb-pkg-Remove-the-KBUILD_IMAGE-workaround.patch"
 		${git_bin} commit -a -m 'packaging: sync builddeb changes' -s
 		${git_bin} format-patch -1 -o "${DIR}/patches/packaging"
 		exit 2
@@ -1047,23 +1097,24 @@ packaging () {
 	fi
 }
 
-travis () {
-	echo "dir: travis"
+readme () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		cp -v "${DIR}/3rdparty/travis/.travis.yml" "${DIR}/KERNEL/.travis.yml"
-		${git_bin} add -f .travis.yml
-		cp -v "${DIR}/3rdparty/travis/build_deb_in_arm_chroot.sh" "${DIR}/KERNEL/"
-		cp -v "${DIR}/3rdparty/travis/build_on_x86.sh" "${DIR}/KERNEL/"
-		${git_bin} add -f build_*.sh
-		${git_bin} commit -a -m 'enable: travis: https://travis-ci.org/beagleboard/linux' -s
-		${git_bin} format-patch -1 -o "${DIR}/patches/travis"
+		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
+		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
+		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
+		git add -f README.md
+		git add -f jenkins_build.sh
+		git add -f Jenkinsfile
+		git commit -a -m 'enable: Jenkins: http://rcn-ee.online:8080' -s
+		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
 	else
-		${git} "${DIR}/patches/travis/0001-enable-travis-https-travis-ci.org-beagleboard-linux.patch"
+		dir 'readme'
 	fi
 }
 
+sync_mainline_dtc
 packaging
-travis
+#readme
 echo "patch.sh ran successfully"

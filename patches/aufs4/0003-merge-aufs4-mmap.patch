@@ -1,6 +1,6 @@
-From 2b598bf47ad3670bb8e6ca100287aa7e380ebb09 Mon Sep 17 00:00:00 2001
+From a7d62aad42eced764ef961b2e8a3d4769b89600f Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 10 Aug 2016 13:10:35 -0500
+Date: Thu, 14 Jun 2018 14:50:15 -0500
 Subject: [PATCH 3/6] merge: aufs4-mmap
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -8,25 +8,25 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/buffer.c              |  2 +-
  fs/proc/base.c           |  2 +-
  fs/proc/nommu.c          |  5 ++-
- fs/proc/task_mmu.c       |  7 ++--
+ fs/proc/task_mmu.c       |  7 +++-
  fs/proc/task_nommu.c     |  5 ++-
- include/linux/mm.h       | 22 +++++++++++++
- include/linux/mm_types.h |  2 ++
+ include/linux/mm.h       | 22 ++++++++++
+ include/linux/mm_types.h |  2 +
  kernel/fork.c            |  2 +-
  mm/Makefile              |  2 +-
  mm/filemap.c             |  2 +-
  mm/memory.c              |  2 +-
- mm/mmap.c                | 33 ++++++++++++++-----
- mm/nommu.c               | 10 +++---
- mm/prfile.c              | 86 ++++++++++++++++++++++++++++++++++++++++++++++++
+ mm/mmap.c                | 33 +++++++++++----
+ mm/nommu.c               | 10 ++---
+ mm/prfile.c              | 86 ++++++++++++++++++++++++++++++++++++++++
  14 files changed, 159 insertions(+), 23 deletions(-)
  create mode 100644 mm/prfile.c
 
 diff --git a/fs/buffer.c b/fs/buffer.c
-index 2907544..15760d38 100644
+index c7a5602d01ee..8c50a225074b 100644
 --- a/fs/buffer.c
 +++ b/fs/buffer.c
-@@ -2442,7 +2442,7 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+@@ -2450,7 +2450,7 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
  	 * Update file times before taking page lock. We may end up failing the
  	 * fault so this update may be superfluous but who really cares...
  	 */
@@ -36,7 +36,7 @@ index 2907544..15760d38 100644
  	ret = __block_page_mkwrite(vma, vmf, get_block);
  	sb_end_pagefault(sb);
 diff --git a/fs/proc/base.c b/fs/proc/base.c
-index 239dca3..64fa77a 100644
+index 239dca3fb676..64fa77ab33a0 100644
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
 @@ -1743,7 +1743,7 @@ static int proc_map_files_get_link(struct dentry *dentry, struct path *path)
@@ -49,7 +49,7 @@ index 239dca3..64fa77a 100644
  		rc = 0;
  	}
 diff --git a/fs/proc/nommu.c b/fs/proc/nommu.c
-index d4a3574..1397181 100644
+index d4a35746cab9..13971813209e 100644
 --- a/fs/proc/nommu.c
 +++ b/fs/proc/nommu.c
 @@ -45,7 +45,10 @@ static int nommu_region_show(struct seq_file *m, struct vm_region *region)
@@ -65,7 +65,7 @@ index d4a3574..1397181 100644
  		ino = inode->i_ino;
  	}
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index 6dee68d..9afa35d 100644
+index 32287fb146db..a77994ad1769 100644
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
 @@ -279,7 +279,10 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
@@ -90,7 +90,7 @@ index 6dee68d..9afa35d 100644
  	struct mm_walk walk = {
  		.hugetlb_entry = gather_hugetlb_stats,
 diff --git a/fs/proc/task_nommu.c b/fs/proc/task_nommu.c
-index 599ec2e..1740207 100644
+index 599ec2e20104..174020784290 100644
 --- a/fs/proc/task_nommu.c
 +++ b/fs/proc/task_nommu.c
 @@ -160,7 +160,10 @@ static int nommu_vma_show(struct seq_file *m, struct vm_area_struct *vma,
@@ -106,7 +106,7 @@ index 599ec2e..1740207 100644
  		ino = inode->i_ino;
  		pgoff = (loff_t)vma->vm_pgoff << PAGE_SHIFT;
 diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 6b85ec6..12e917f 100644
+index 7cadf0a660e7..570498074261 100644
 --- a/include/linux/mm.h
 +++ b/include/linux/mm.h
 @@ -1200,6 +1200,28 @@ static inline int fixup_user_fault(struct task_struct *tsk,
@@ -139,10 +139,10 @@ index 6b85ec6..12e917f 100644
  extern int access_remote_vm(struct mm_struct *mm, unsigned long addr,
  		void *buf, int len, int write);
 diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
-index 89c0471..8b2fba8 100644
+index c0c6b33535fb..e65090c6ea68 100644
 --- a/include/linux/mm_types.h
 +++ b/include/linux/mm_types.h
-@@ -233,6 +233,7 @@ struct vm_region {
+@@ -232,6 +232,7 @@ struct vm_region {
  	unsigned long	vm_top;		/* region allocated to here */
  	unsigned long	vm_pgoff;	/* the offset in vm_file corresponding to vm_start */
  	struct file	*vm_file;	/* the backing file or NULL */
@@ -150,7 +150,7 @@ index 89c0471..8b2fba8 100644
  
  	int		vm_usage;	/* region usage count (access under nommu_region_sem) */
  	bool		vm_icache_flushed : 1; /* true if the icache has been flushed for
-@@ -297,6 +298,7 @@ struct vm_area_struct {
+@@ -296,6 +297,7 @@ struct vm_area_struct {
  	unsigned long vm_pgoff;		/* Offset (within vm_file) in PAGE_SIZE
  					   units, *not* PAGE_CACHE_SIZE */
  	struct file * vm_file;		/* File we map to (can be NULL). */
@@ -159,10 +159,10 @@ index 89c0471..8b2fba8 100644
  
  #ifndef CONFIG_MMU
 diff --git a/kernel/fork.c b/kernel/fork.c
-index 8f8a0a1..e7e21b6 100644
+index 8209fa2d36ef..7c655e8d7ac8 100644
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -470,7 +470,7 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
+@@ -456,7 +456,7 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
  			struct inode *inode = file_inode(file);
  			struct address_space *mapping = file->f_mapping;
  
@@ -172,7 +172,7 @@ index 8f8a0a1..e7e21b6 100644
  				atomic_dec(&inode->i_writecount);
  			i_mmap_lock_write(mapping);
 diff --git a/mm/Makefile b/mm/Makefile
-index 98c4eae..3f0c9b9 100644
+index 98c4eaeabdcb..3f0c9b9d5c99 100644
 --- a/mm/Makefile
 +++ b/mm/Makefile
 @@ -21,7 +21,7 @@ obj-y			:= filemap.o mempool.o oom_kill.o \
@@ -185,10 +185,10 @@ index 98c4eae..3f0c9b9 100644
  obj-y += init-mm.o
  
 diff --git a/mm/filemap.c b/mm/filemap.c
-index 7d4fa2b..3553868 100644
+index 1ffef05f1c1f..13a198138f80 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
-@@ -2067,7 +2067,7 @@ int filemap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+@@ -2062,7 +2062,7 @@ int filemap_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
  	int ret = VM_FAULT_LOCKED;
  
  	sb_start_pagefault(inode->i_sb);
@@ -198,7 +198,7 @@ index 7d4fa2b..3553868 100644
  	if (page->mapping != inode->i_mapping) {
  		unlock_page(page);
 diff --git a/mm/memory.c b/mm/memory.c
-index 3456e24..bc4ab7d 100644
+index 701d9ad45c46..e9fb6d2225d3 100644
 --- a/mm/memory.c
 +++ b/mm/memory.c
 @@ -2034,7 +2034,7 @@ static inline int wp_page_reuse(struct mm_struct *mm,
@@ -211,7 +211,7 @@ index 3456e24..bc4ab7d 100644
  
  	return VM_FAULT_WRITE;
 diff --git a/mm/mmap.c b/mm/mmap.c
-index d30b8f8..34e9bea 100644
+index d30b8f8f02b1..34e9beaefc46 100644
 --- a/mm/mmap.c
 +++ b/mm/mmap.c
 @@ -274,7 +274,7 @@ static struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
@@ -308,7 +308,7 @@ index d30b8f8..34e9bea 100644
  				new_vma->vm_ops->open(new_vma);
  			vma_link(mm, new_vma, prev, rb_link, rb_parent);
 diff --git a/mm/nommu.c b/mm/nommu.c
-index e544508..dd6f74a 100644
+index e544508e2a4b..dd6f74a039fc 100644
 --- a/mm/nommu.c
 +++ b/mm/nommu.c
 @@ -693,7 +693,7 @@ static void __put_nommu_region(struct vm_region *region)
@@ -353,7 +353,7 @@ index e544508..dd6f74a 100644
  	return ret;
 diff --git a/mm/prfile.c b/mm/prfile.c
 new file mode 100644
-index 0000000..b323b8a
+index 000000000000..b323b8af9182
 --- /dev/null
 +++ b/mm/prfile.c
 @@ -0,0 +1,86 @@
@@ -444,5 +444,5 @@ index 0000000..b323b8a
 +}
 +#endif /* !CONFIG_MMU */
 -- 
-2.8.1
+2.17.1
 
