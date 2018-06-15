@@ -385,8 +385,6 @@ post_backports () {
 		mkdir -p ../patches/backports/${subsystem}/
 	fi
 	${git_bin} format-patch -1 -o ../patches/backports/${subsystem}/
-
-	exit 2
 }
 
 patch_backports (){
@@ -432,9 +430,9 @@ backports () {
 	fi
 
 	backport_tag="v4.6.6"
+	#regenerate="enable"
 
 	subsystem="fbtft"
-	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -445,11 +443,11 @@ backports () {
 		sed -i -e 's:info->screen_base = vmem:info->screen_base = (u8 __force __iomem *)vmem:g' ./drivers/staging/fbtft/fbtft-core.c
 
 		post_backports
+	else
+		patch_backports
 	fi
-	patch_backports
 
 	subsystem="iio"
-	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports_iio
 
@@ -460,20 +458,22 @@ backports () {
 		cp -v  ~/linux-src/include/uapi/linux/iio/types.h ./include/uapi/linux/iio/types.h
 
 		post_backports
+	else
+		patch_backports
 	fi
-	patch_backports
 	${git} "${DIR}/patches/backports/iio/0001-backports-iio-broken.patch"
 
 	subsystem="edt-ft5x06"
-	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
 		cp -v ~/linux-src/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/edt-ft5x06.c
 
 		post_backports
+		exit 2
+	else
+		patch_backports
 	fi
-	patch_backports
 	${git} "${DIR}/patches/backports/edt-ft5x06/0001-of-add-helper-function-to-retrive-match-data.patch"
 	${git} "${DIR}/patches/backports/edt-ft5x06/0002-edt-ft5x06-add-invert_x-invert_y-swap_xy.patch"
 }
@@ -493,7 +493,7 @@ fixes () {
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="fixes"
-		number=5
+		number=4
 		cleanup
 	fi
 }
@@ -1032,6 +1032,23 @@ quieter () {
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
+
+	backport_tag="v4.4.137"
+
+	#regenerate="enable"
+	subsystem="dtc"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -vr ~/linux-src/scripts/dtc/* ./scripts/dtc/
+		cp -v  ~/linux-src/include/linux/libfdt.h ./include/linux/
+		cp -v  ~/linux-src/include/linux/libfdt_env.h ./include/linux/
+
+		post_backports
+	else
+		patch_backports
+	fi
+
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
@@ -1061,11 +1078,10 @@ sync_mainline_dtc () {
 		${git} "${DIR}/patches/dtc/0001-scripts-dtc-Update-to-upstream-version-overlays.patch"
 		${git} "${DIR}/patches/dtc/0002-dtc-turn-off-dtc-unit-address-warnings-by-default.patch"
 		${git} "${DIR}/patches/dtc/0003-ARM-boot-Add-an-implementation-of-strnlen-for-libfdt.patch"
-		${git} "${DIR}/patches/dtc/0004-libfdt-add-fdt-type-definitions.patch"
 
 		if [ "x${regenerate}" = "xenable" ] ; then
 			wdir="dtc"
-			number=4
+			number=3
 			cleanup
 		fi
 	fi
