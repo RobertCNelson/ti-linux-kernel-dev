@@ -394,22 +394,9 @@ reverts () {
 	${git} "${DIR}/patches/reverts/0002-Revert-ARM-dts-am33xx-Add-pinmux-data-for-mmc1-in-am.patch"
 	${git} "${DIR}/patches/reverts/0003-Revert-tis-overlay-setup.patch"
 
-	## 4.9
-	## debian@beaglebone:~$ ls /dev/spidev*
-	## /dev/spidev1.0  /dev/spidev2.0  /dev/spidev2.1
-	##
-	## to 4.14
-	##
-	## debian@beaglebone:~$ ls /dev/spidev*
-	## /dev/spidev0.0  /dev/spidev1.0  /dev/spidev1.1
-
-	##git revert --no-edit cddfae253c875076750a03bd05ba5b1569e6876e -s
-
-	${git} "${DIR}/patches/reverts/0004-Revert-ARM-dts-am33xx-Add-spi-alias-to-match-SOC-sch.patch"
-
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
-		number=4
+		number=3
 		cleanup
 	fi
 }
@@ -493,6 +480,7 @@ drivers () {
 	dir 'drivers/ti/rpmsg'
 	dir 'drivers/ti/pru_rproc'
 	dir 'drivers/ti/serial'
+	dir 'drivers/ti/spi'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
