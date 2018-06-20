@@ -277,6 +277,7 @@ wireguard () {
 }
 
 ti_pm_firmware () {
+	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y-next
 	echo "dir: drivers/ti/firmware"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -391,12 +392,11 @@ reverts () {
 	#[    5.422573] bone_capemgr bone_capemgr: Failed to add slot #1
 
 	${git} "${DIR}/patches/reverts/0001-Revert-eeprom-at24-check-if-the-chip-is-functional-i.patch"
-	${git} "${DIR}/patches/reverts/0002-Revert-ARM-dts-am33xx-Add-pinmux-data-for-mmc1-in-am.patch"
-	${git} "${DIR}/patches/reverts/0003-Revert-tis-overlay-setup.patch"
+	${git} "${DIR}/patches/reverts/0002-Revert-tis-overlay-setup.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
-		number=3
+		number=2
 		cleanup
 	fi
 }
@@ -488,6 +488,7 @@ drivers () {
 
 soc () {
 	dir 'soc/ti'
+	dir 'soc/ti/mmc'
 	dir 'soc/ti/bone_common'
 	dir 'soc/ti/uboot'
 	dir 'soc/ti/blue'
