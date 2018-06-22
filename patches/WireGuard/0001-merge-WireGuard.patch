@@ -1,6 +1,6 @@
-From 8bcc9b6ee03a7611b7b1a29062e8095da6702574 Mon Sep 17 00:00:00 2001
+From b0ff9e052d76f1e6c5e52208c5ee87d4b2539545 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 20 Jun 2018 11:05:55 -0500
+Date: Fri, 22 Jun 2018 11:03:58 -0500
 Subject: [PATCH] merge: WireGuard
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -55,7 +55,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/crypto/poly1305-x86_64.S        | 2790 +++++++++++++++++
  net/wireguard/crypto/poly1305.c               |  376 +++
  net/wireguard/crypto/poly1305.h               |   34 +
- net/wireguard/crypto/simd.h                   |   59 +
+ net/wireguard/crypto/simd.h                   |   60 +
  net/wireguard/device.c                        |  426 +++
  net/wireguard/device.h                        |   64 +
  net/wireguard/hashtables.c                    |  168 +
@@ -72,7 +72,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/queueing.h                      |  145 +
  net/wireguard/ratelimiter.c                   |  205 ++
  net/wireguard/ratelimiter.h                   |   19 +
- net/wireguard/receive.c                       |  495 +++
+ net/wireguard/receive.c                       |  489 +++
  net/wireguard/selftest/allowedips.h           |  586 ++++
  net/wireguard/selftest/blake2s.h              |  559 ++++
  net/wireguard/selftest/chacha20poly1305.h     | 1418 +++++++++
@@ -87,7 +87,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/timers.h                        |   22 +
  net/wireguard/uapi/wireguard.h                |  182 ++
  net/wireguard/version.h                       |    1 +
- 82 files changed, 33793 insertions(+)
+ 82 files changed, 33788 insertions(+)
  create mode 100644 net/wireguard/Kconfig
  create mode 100644 net/wireguard/Makefile
  create mode 100644 net/wireguard/allowedips.c
@@ -1862,7 +1862,7 @@ index 000000000000..7ec22f768a8f
 +}
 diff --git a/net/wireguard/compat/dst_cache/include/net/dst_cache.h b/net/wireguard/compat/dst_cache/include/net/dst_cache.h
 new file mode 100644
-index 000000000000..5a083c7e05e9
+index 000000000000..48021c0d6be1
 --- /dev/null
 +++ b/net/wireguard/compat/dst_cache/include/net/dst_cache.h
 @@ -0,0 +1,97 @@
@@ -1958,7 +1958,7 @@ index 000000000000..5a083c7e05e9
 + *	@dst_cache: the cache
 + *
 + *	No synchronization is enforced: it must be called only when the cache
-+ *	is unsed.
++ *	is unused.
 + */
 +void dst_cache_destroy(struct dst_cache *dst_cache);
 +
@@ -21502,7 +21502,7 @@ index 000000000000..1a45fbee3c7f
 +.end	poly1305_emit_mips
 diff --git a/net/wireguard/crypto/poly1305-x86_64.S b/net/wireguard/crypto/poly1305-x86_64.S
 new file mode 100644
-index 000000000000..3ab21eacb045
+index 000000000000..7c1b7363f487
 --- /dev/null
 +++ b/net/wireguard/crypto/poly1305-x86_64.S
 @@ -0,0 +1,2790 @@
@@ -21515,7 +21515,7 @@ index 000000000000..3ab21eacb045
 +
 +#include <linux/linkage.h>
 +
-+.section .rodata.cst192.Lconst, "aM", @progbits, 32
++.section .rodata.cst192.Lconst, "aM", @progbits, 192
 +.align	64
 +.Lconst:
 +.long	0x0ffffff,0,0x0ffffff,0,0x0ffffff,0,0x0ffffff,0
@@ -24720,10 +24720,10 @@ index 000000000000..876234c53701
 +#endif /* _WG_POLY1305_H */
 diff --git a/net/wireguard/crypto/simd.h b/net/wireguard/crypto/simd.h
 new file mode 100644
-index 000000000000..07936bff4362
+index 000000000000..007f66ea34b7
 --- /dev/null
 +++ b/net/wireguard/crypto/simd.h
-@@ -0,0 +1,59 @@
+@@ -0,0 +1,60 @@
 +/* SPDX-License-Identifier: GPL-2.0
 + *
 + * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
@@ -24732,6 +24732,7 @@ index 000000000000..07936bff4362
 +#ifndef _WG_SIMD_H
 +#define _WG_SIMD_H
 +
++#include <linux/sched.h>
 +#if defined(CONFIG_X86_64)
 +#include <linux/version.h>
 +#include <asm/fpu/api.h>
@@ -25519,7 +25520,7 @@ index 000000000000..a2ef6f0babce
 +#endif /* _WG_HASHTABLES_H */
 diff --git a/net/wireguard/main.c b/net/wireguard/main.c
 new file mode 100644
-index 000000000000..f1db64b6fc77
+index 000000000000..a4f707ddb35f
 --- /dev/null
 +++ b/net/wireguard/main.c
 @@ -0,0 +1,71 @@
@@ -25555,7 +25556,7 @@ index 000000000000..f1db64b6fc77
 +	blake2s_fpu_init();
 +	curve25519_fpu_init();
 +#ifdef DEBUG
-+	if (!allowedips_selftest() || !packet_counter_selftest() || !curve25519_selftest() || !chacha20poly1305_selftest() || !poly1305_selftest() || !blake2s_selftest() || !ratelimiter_selftest())
++	if (!allowedips_selftest() || !packet_counter_selftest() || !curve25519_selftest() || !poly1305_selftest() || !chacha20poly1305_selftest() || !blake2s_selftest() || !ratelimiter_selftest())
 +		return -ENOTRECOVERABLE;
 +#endif
 +	noise_init();
@@ -27711,10 +27712,10 @@ index 000000000000..8931c0615374
 +#endif /* _WG_RATELIMITER_H */
 diff --git a/net/wireguard/receive.c b/net/wireguard/receive.c
 new file mode 100644
-index 000000000000..92a47c82208a
+index 000000000000..ac23e47584d1
 --- /dev/null
 +++ b/net/wireguard/receive.c
-@@ -0,0 +1,495 @@
+@@ -0,0 +1,489 @@
 +/* SPDX-License-Identifier: GPL-2.0
 + *
 + * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
@@ -28122,12 +28123,6 @@ index 000000000000..92a47c82208a
 +		peer_put(peer);
 +		if (unlikely(free))
 +			dev_kfree_skb(skb);
-+
-+		/* Don't totally kill scheduling latency by keeping preemption disabled forever. */
-+		if (need_resched()) {
-+			local_bh_enable();
-+			local_bh_disable();
-+		}
 +	}
 +	local_bh_enable();
 +}
@@ -33244,7 +33239,7 @@ index 000000000000..0bdff1e5b9bc
 +#endif
 diff --git a/net/wireguard/send.c b/net/wireguard/send.c
 new file mode 100644
-index 000000000000..d3e3d752d84d
+index 000000000000..f0f53d455f9b
 --- /dev/null
 +++ b/net/wireguard/send.c
 @@ -0,0 +1,352 @@
@@ -33587,7 +33582,7 @@ index 000000000000..d3e3d752d84d
 +	skb_queue_walk(&packets, skb)
 +		skb_orphan(skb);
 +	/* Then we put them back on the top of the queue. We're not too concerned about
-+	 * accidently getting things a little out of order if packets are being added
++	 * accidentally getting things a little out of order if packets are being added
 +	 * really fast, because this queue is for before packets can even be sent and
 +	 * it's small anyway.
 +	 */
@@ -34459,11 +34454,11 @@ index 000000000000..8b8a1f254bb6
 +#endif /* _WG_UAPI_WIREGUARD_H */
 diff --git a/net/wireguard/version.h b/net/wireguard/version.h
 new file mode 100644
-index 000000000000..f990e776297e
+index 000000000000..aeb04739a6d7
 --- /dev/null
 +++ b/net/wireguard/version.h
 @@ -0,0 +1 @@
-+#define WIREGUARD_VERSION "0.0.20180613"
++#define WIREGUARD_VERSION "0.0.20180620"
 -- 
 2.17.1
 
