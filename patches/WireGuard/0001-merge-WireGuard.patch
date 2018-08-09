@@ -1,6 +1,6 @@
-From a50ee7bf212a705a77ecd5083666b157d2ebd6ea Mon Sep 17 00:00:00 2001
+From 00e6dd587e29ddc748d2ebf33f217c650f123f59 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 7 Aug 2018 13:34:10 -0500
+Date: Thu, 9 Aug 2018 16:06:39 -0500
 Subject: [PATCH] merge: WireGuard
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -44,7 +44,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/crypto/curve25519-arm.S         | 2110 ++++++++
  net/wireguard/crypto/curve25519-arm.h         |   14 +
  net/wireguard/crypto/curve25519-fiat32.h      |  838 ++++
- net/wireguard/crypto/curve25519-hacl64.h      |  751 +++
+ net/wireguard/crypto/curve25519-hacl64.h      |  744 +++
  net/wireguard/crypto/curve25519-x86_64.h      | 2060 ++++++++
  net/wireguard/crypto/curve25519.c             |   83 +
  net/wireguard/crypto/curve25519.h             |   25 +
@@ -62,7 +62,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/hashtables.h                    |   52 +
  net/wireguard/main.c                          |   72 +
  net/wireguard/messages.h                      |  126 +
- net/wireguard/netlink.c                       |  521 ++
+ net/wireguard/netlink.c                       |  523 ++
  net/wireguard/netlink.h                       |   12 +
  net/wireguard/noise.c                         |  651 +++
  net/wireguard/noise.h                         |  114 +
@@ -83,11 +83,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/send.c                          |  355 ++
  net/wireguard/socket.c                        |  393 ++
  net/wireguard/socket.h                        |   35 +
- net/wireguard/timers.c                        |  208 +
- net/wireguard/timers.h                        |   27 +
+ net/wireguard/timers.c                        |  206 +
+ net/wireguard/timers.h                        |   29 +
  net/wireguard/uapi/wireguard.h                |  182 +
  net/wireguard/version.h                       |    1 +
- 82 files changed, 36866 insertions(+)
+ 82 files changed, 36861 insertions(+)
  create mode 100644 net/wireguard/Kconfig
  create mode 100644 net/wireguard/Makefile
  create mode 100644 net/wireguard/allowedips.c
@@ -12237,7 +12237,7 @@ index 000000000000..39883f3718b6
 +#endif /* CONFIG_AS_AVX512 */
 diff --git a/net/wireguard/crypto/chacha20.c b/net/wireguard/crypto/chacha20.c
 new file mode 100644
-index 000000000000..29f7e6b8d549
+index 000000000000..815d7770f33e
 --- /dev/null
 +++ b/net/wireguard/crypto/chacha20.c
 @@ -0,0 +1,239 @@
@@ -12380,7 +12380,7 @@ index 000000000000..29f7e6b8d549
 +	};
 +
 +	if (out != in)
-+		memcpy(out, in, len);
++		memmove(out, in, len);
 +
 +	while (len >= CHACHA20_BLOCK_SIZE) {
 +		chacha20_block_generic(buf, x);
@@ -15858,10 +15858,10 @@ index 000000000000..f1e21a416a31
 +}
 diff --git a/net/wireguard/crypto/curve25519-hacl64.h b/net/wireguard/crypto/curve25519-hacl64.h
 new file mode 100644
-index 000000000000..4fd95cbd9a83
+index 000000000000..d2637ac4459c
 --- /dev/null
 +++ b/net/wireguard/crypto/curve25519-hacl64.h
-@@ -0,0 +1,751 @@
+@@ -0,0 +1,744 @@
 +/* SPDX-License-Identifier: GPL-2.0
 + *
 + * Copyright (C) 2016-2017 INRIA and Microsoft Corporation.
@@ -15874,21 +15874,14 @@ index 000000000000..4fd95cbd9a83
 +typedef __uint128_t u128;
 +static __always_inline u64 u64_eq_mask(u64 x, u64 y)
 +{
-+	x = ~(x ^ y);
-+	x &= x << 32;
-+	x &= x << 16;
-+	x &= x << 8;
-+	x &= x << 4;
-+	x &= x << 2;
-+	x &= x << 1;
-+	return ((s64)x) >> 63;
++	x ^= y;
++	x |= -x;
++	return (x >> 63) - 1;
 +}
 +
 +static __always_inline u64 u64_gte_mask(u64 x, u64 y)
 +{
-+	u64 low63 = ~((u64)((s64)((s64)(x & 0x7fffffffffffffffLLU) - (s64)(y & 0x7fffffffffffffffLLU)) >> 63));
-+	u64 high_bit = ~((u64)((s64)((s64)(x & 0x8000000000000000LLU) - (s64)(y & 0x8000000000000000LLU)) >> 63));
-+	return low63 & high_bit;
++	return ((x ^ ((x ^ y) | ((x - y) ^ y))) >> 63) - 1;
 +}
 +
 +static __always_inline void modulo_carry_top(u64 *b)
@@ -25780,10 +25773,10 @@ index 000000000000..9425a26d8457
 +#endif /* _WG_MESSAGES_H */
 diff --git a/net/wireguard/netlink.c b/net/wireguard/netlink.c
 new file mode 100644
-index 000000000000..90c7aa26a2ad
+index 000000000000..3147587bc451
 --- /dev/null
 +++ b/net/wireguard/netlink.c
-@@ -0,0 +1,521 @@
+@@ -0,0 +1,523 @@
 +/* SPDX-License-Identifier: GPL-2.0
 + *
 + * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
@@ -25951,13 +25944,15 @@ index 000000000000..90c7aa26a2ad
 +static int get_device_dump(struct sk_buff *skb, struct netlink_callback *cb)
 +{
 +	struct wireguard_device *wg = (struct wireguard_device *)cb->args[0];
-+	struct wireguard_peer *peer, *next_peer_cursor = NULL, *last_peer_cursor = (struct wireguard_peer *)cb->args[1];
++	struct wireguard_peer *peer, *next_peer_cursor, *last_peer_cursor;
 +	struct allowedips_cursor *rt_cursor = (struct allowedips_cursor *)cb->args[2];
 +	unsigned int peer_idx = 0;
 +	struct nlattr *peers_nest;
 +	bool done = true;
 +	void *hdr;
 +	int ret = -EMSGSIZE;
++
++	next_peer_cursor = last_peer_cursor = (struct wireguard_peer *)cb->args[1];
 +
 +	rtnl_lock();
 +	mutex_lock(&wg->device_update_lock);
@@ -26006,9 +26001,9 @@ index 000000000000..90c7aa26a2ad
 +	nla_nest_end(skb, peers_nest);
 +
 +out:
-+	peer_put(last_peer_cursor);
 +	if (!ret && !done && next_peer_cursor)
 +		peer_get(next_peer_cursor);
++	peer_put(last_peer_cursor);
 +	mutex_unlock(&wg->device_update_lock);
 +	rtnl_unlock();
 +
@@ -37097,10 +37092,10 @@ index 000000000000..9faba77c1170
 +#endif /* _WG_SOCKET_H */
 diff --git a/net/wireguard/timers.c b/net/wireguard/timers.c
 new file mode 100644
-index 000000000000..762152a282ae
+index 000000000000..7db892a10b6e
 --- /dev/null
 +++ b/net/wireguard/timers.c
-@@ -0,0 +1,208 @@
+@@ -0,0 +1,206 @@
 +/* SPDX-License-Identifier: GPL-2.0
 + *
 + * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
@@ -37111,8 +37106,6 @@ index 000000000000..762152a282ae
 +#include "peer.h"
 +#include "queueing.h"
 +#include "socket.h"
-+
-+#include <linux/ktime.h>
 +
 +/*
 + * Timer for retransmitting the handshake if we don't hear back after `REKEY_TIMEOUT + jitter` ms
@@ -37311,10 +37304,10 @@ index 000000000000..762152a282ae
 +}
 diff --git a/net/wireguard/timers.h b/net/wireguard/timers.h
 new file mode 100644
-index 000000000000..1c46555de7e8
+index 000000000000..c95bf31dc0f9
 --- /dev/null
 +++ b/net/wireguard/timers.h
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,29 @@
 +/* SPDX-License-Identifier: GPL-2.0
 + *
 + * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
@@ -37322,6 +37315,8 @@ index 000000000000..1c46555de7e8
 +
 +#ifndef _WG_TIMERS_H
 +#define _WG_TIMERS_H
++
++#include <linux/ktime.h>
 +
 +struct wireguard_peer;
 +
