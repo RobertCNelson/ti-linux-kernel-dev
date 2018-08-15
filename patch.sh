@@ -208,6 +208,9 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
+	#revert this from ti's branch...
+	${git_bin} revert --no-edit 2f6872da466b6f35b3c0a94aa01629da7ae9b72b
+
 	#v4.14.62
 	${git_bin} revert --no-edit 2d898915ccf4838c04531c51a598469e921a5eb5
 
