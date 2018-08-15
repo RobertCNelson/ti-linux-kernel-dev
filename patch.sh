@@ -221,16 +221,16 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v4.9.101
-	${git_bin} revert --no-edit 205cd52bbee7fe6452912fe01ceade970bccc926
-
 	#v4.9.104
 	${git_bin} revert --no-edit 527ed41ff2776311bdae56c2472ee0a5cbb60605
 	${git_bin} revert --no-edit bcefedb87cf9625d33d0e53dfdc52e43744593c1
 
+	#v4.9.101
+	${git_bin} revert --no-edit 205cd52bbee7fe6452912fe01ceade970bccc926
+
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
