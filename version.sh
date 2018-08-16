@@ -43,7 +43,7 @@ BUILD=${build_prefix}71
 #git branch
 BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
-DISTRO=cross
+DISTRO=xross
 DEBARCH=armhf
 
 ti_git_old_release="fe53fe6f5f3bd039d3a4e4bc76c18d21f6cf2b0f"
