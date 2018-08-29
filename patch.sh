@@ -209,18 +209,7 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
 	#revert this from ti's branch...
-	${git_bin} revert --no-edit 2f6872da466b6f35b3c0a94aa01629da7ae9b72b
-
-	#v4.14.63
-	${git_bin} revert --no-edit 3eb86ff32eb54c4345b723ae8dd03bd7487d35bd
-	${git_bin} revert --no-edit b7722f4ac3533d48dc5996a4f7e5d847934179b0
-
-	#v4.14.62
-	${git_bin} revert --no-edit 2d898915ccf4838c04531c51a598469e921a5eb5
-
-	#v4.14.60
-	${git_bin} revert --no-edit da2b62c740def7d1e9d7ce4506e8b1b7a2514e89
-	${git_bin} revert --no-edit c06f5a018f710ff24ef7c1b922d2b6704c35dd8c
+	#${git_bin} revert --no-edit 2f6872da466b6f35b3c0a94aa01629da7ae9b72b
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -249,10 +238,18 @@ wireguard () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./WireGuard ] ; then
-			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=20
+			cd ./WireGuard
+			#https://git.zx2c4.com/WireGuard/commit/?id=02da5711330c4944c2b69a52a936c4ef15268930
+			git checkout 02da5711330c4944c2b69a52a936c4ef15268930 -b tmp
+			cd ./../
 		else
 			rm -rf ./WireGuard || true
-			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=20
+			cd ./WireGuard
+			#https://git.zx2c4.com/WireGuard/commit/?id=02da5711330c4944c2b69a52a936c4ef15268930
+			git checkout 02da5711330c4944c2b69a52a936c4ef15268930 -b tmp
+			cd ./../
 		fi
 		cd ./KERNEL/
 
