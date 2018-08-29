@@ -209,7 +209,7 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
 	#revert this from ti's branch...
-	#${git_bin} revert --no-edit 2f6872da466b6f35b3c0a94aa01629da7ae9b72b
+	${git_bin} revert --no-edit 2f6872da466b6f35b3c0a94aa01629da7ae9b72b
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -234,6 +234,11 @@ wireguard_fail () {
 
 wireguard () {
 	echo "dir: WireGuard"
+
+	#[    3.315290] NOHZ: local_softirq_pending 242
+	#[    3.319504] NOHZ: local_softirq_pending 242
+	${git_bin} revert --no-edit 2d898915ccf4838c04531c51a598469e921a5eb5
+
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
