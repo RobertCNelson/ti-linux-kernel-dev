@@ -243,18 +243,10 @@ wireguard () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./WireGuard ] ; then
-			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=20
-			cd ./WireGuard
-			#https://git.zx2c4.com/WireGuard/commit/?id=02da5711330c4944c2b69a52a936c4ef15268930
-			git checkout 02da5711330c4944c2b69a52a936c4ef15268930 -b tmp
-			cd ./../
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
 		else
 			rm -rf ./WireGuard || true
-			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=20
-			cd ./WireGuard
-			#https://git.zx2c4.com/WireGuard/commit/?id=02da5711330c4944c2b69a52a936c4ef15268930
-			git checkout 02da5711330c4944c2b69a52a936c4ef15268930 -b tmp
-			cd ./../
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
 		fi
 		cd ./KERNEL/
 
