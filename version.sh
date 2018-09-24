@@ -23,6 +23,7 @@ KERNEL_ARCH=arm
 #toolchain="gcc_linaro_gnueabihf_5"
 #toolchain="gcc_linaro_gnueabihf_6"
 toolchain="gcc_linaro_gnueabihf_7"
+#toolchain="gcc_arm_gnueabihf_8"
 #arm64
 #KERNEL_ARCH=arm64
 #toolchain="gcc_linaro_aarch64_gnu_5"
@@ -31,10 +32,10 @@ toolchain="gcc_linaro_gnueabihf_7"
 
 #Kernel
 KERNEL_REL=4.14
-KERNEL_TAG=${KERNEL_REL}.69
-kernel_rt=".69-rt43"
+KERNEL_TAG=${KERNEL_REL}.71
+kernel_rt=".71-rt44"
 #Kernel Build
-BUILD=${build_prefix}76
+BUILD=${build_prefix}76.1
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -46,7 +47,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 DEBARCH=armhf
 
-ti_git_old_release="5b00e75c670e2f306afcc5bda7862460f3786e8c"
-        ti_git_pre="5b00e75c670e2f306afcc5bda7862460f3786e8c"
-       ti_git_post="9b12b1d5f49785eb63e40f1269e85187f850ed91"
+ti_git_old_release="9b12b1d5f49785eb63e40f1269e85187f850ed91"
+        ti_git_pre="9b12b1d5f49785eb63e40f1269e85187f850ed91"
+       ti_git_post="e3a49f236cc5ed0cfe3d413616d7cbf8c8b3583b"
 #
