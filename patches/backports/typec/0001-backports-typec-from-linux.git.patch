@@ -1,6 +1,6 @@
-From b1f7ab10b58128151f92ecdcf2f77b803d4ef18e Mon Sep 17 00:00:00 2001
+From 631e4f3ba6abef6733b7e023c8deba6705f882df Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 4 Oct 2018 10:50:22 -0500
+Date: Thu, 4 Oct 2018 12:58:28 -0500
 Subject: [PATCH] backports: typec: from: linux.git
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -15,22 +15,21 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/usb/typec/Makefile                    |   4 +
  .../{staging => usb}/typec/fusb302/Kconfig    |   0
  .../{staging => usb}/typec/fusb302/Makefile   |   1 +
- .../{staging => usb}/typec/fusb302/fusb302.c  |  15 +-
+ .../{staging => usb}/typec/fusb302/fusb302.c  |  34 +-
  .../typec/fusb302/fusb302_reg.h               |  11 +-
- drivers/{staging => usb}/typec/tcpm.c         |  63 +-
- drivers/usb/typec/tps6598x.c                  | 473 ++++++++++++++
+ drivers/{staging => usb}/typec/tcpm.c         | 193 ++++--
+ drivers/usb/typec/tps6598x.c                  | 504 ++++++++++++++
  drivers/usb/typec/typec.c                     |   5 +-
- drivers/usb/typec/typec_wcove.c               | 599 +++++++++++++-----
+ drivers/usb/typec/typec_wcove.c               | 619 +++++++++++++-----
  drivers/usb/typec/ucsi/Kconfig                |   1 -
- drivers/usb/typec/ucsi/Makefile               |   2 +-
  drivers/usb/typec/ucsi/trace.c                |   1 +
- drivers/usb/typec/ucsi/ucsi.c                 |  20 +-
+ drivers/usb/typec/ucsi/ucsi.c                 |  18 +-
  drivers/usb/typec/ucsi/ucsi_acpi.c            |  10 +-
- .../staging/typec => include/linux/usb}/pd.h  |   5 +
+ .../staging/typec => include/linux/usb}/pd.h  |   7 +
  .../typec => include/linux/usb}/pd_bdo.h      |   0
- .../typec => include/linux/usb}/pd_vdo.h      |   0
- .../typec => include/linux/usb}/tcpm.h        |  57 +-
- 25 files changed, 1066 insertions(+), 985 deletions(-)
+ .../typec => include/linux/usb}/pd_vdo.h      |   2 +-
+ .../typec => include/linux/usb}/tcpm.h        |  73 ++-
+ 24 files changed, 1258 insertions(+), 1009 deletions(-)
  delete mode 100644 drivers/staging/typec/Kconfig
  delete mode 100644 drivers/staging/typec/Makefile
  delete mode 100644 drivers/staging/typec/TODO
@@ -41,12 +40,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  rename drivers/{staging => usb}/typec/fusb302/Makefile (53%)
  rename drivers/{staging => usb}/typec/fusb302/fusb302.c (98%)
  rename drivers/{staging => usb}/typec/fusb302/fusb302_reg.h (93%)
- rename drivers/{staging => usb}/typec/tcpm.c (98%)
+ rename drivers/{staging => usb}/typec/tcpm.c (96%)
  create mode 100644 drivers/usb/typec/tps6598x.c
  rename {drivers/staging/typec => include/linux/usb}/pd.h (98%)
  rename {drivers/staging/typec => include/linux/usb}/pd_bdo.h (100%)
- rename {drivers/staging/typec => include/linux/usb}/pd_vdo.h (100%)
- rename {drivers/staging/typec => include/linux/usb}/tcpm.h (68%)
+ rename {drivers/staging/typec => include/linux/usb}/pd_vdo.h (99%)
+ rename {drivers/staging/typec => include/linux/usb}/tcpm.h (63%)
 
 diff --git a/drivers/staging/typec/Kconfig b/drivers/staging/typec/Kconfig
 deleted file mode 100644
@@ -921,7 +920,7 @@ diff --git a/drivers/staging/typec/fusb302/fusb302.c b/drivers/usb/typec/fusb302
 similarity index 98%
 rename from drivers/staging/typec/fusb302/fusb302.c
 rename to drivers/usb/typec/fusb302/fusb302.c
-index 7d9f25db1add..d20008576b8f 100644
+index 7d9f25db1add..dcd8ef085b30 100644
 --- a/drivers/staging/typec/fusb302/fusb302.c
 +++ b/drivers/usb/typec/fusb302/fusb302.c
 @@ -1,16 +1,7 @@
@@ -942,7 +941,15 @@ index 7d9f25db1add..d20008576b8f 100644
   * Fairchild FUSB302 Type-C Chip Driver
   */
  
-@@ -37,11 +28,11 @@
+@@ -25,7 +16,6 @@
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/of_device.h>
+-#include <linux/of_device.h>
+ #include <linux/of_gpio.h>
+ #include <linux/pinctrl/consumer.h>
+ #include <linux/power_supply.h>
+@@ -37,11 +27,11 @@
  #include <linux/string.h>
  #include <linux/types.h>
  #include <linux/usb/typec.h>
@@ -956,6 +963,57 @@ index 7d9f25db1add..d20008576b8f 100644
  
  /*
   * When the device is SNK, BC_LVL interrupt is used to monitor cc pins
+@@ -1753,24 +1743,24 @@ static int init_gpio(struct fusb302_chip *chip)
+ 	chip->gpio_int_n = of_get_named_gpio(node, "fcs,int_n", 0);
+ 	if (!gpio_is_valid(chip->gpio_int_n)) {
+ 		ret = chip->gpio_int_n;
+-		fusb302_log(chip, "cannot get named GPIO Int_N, ret=%d", ret);
++		dev_err(chip->dev, "cannot get named GPIO Int_N, ret=%d", ret);
+ 		return ret;
+ 	}
+ 	ret = devm_gpio_request(chip->dev, chip->gpio_int_n, "fcs,int_n");
+ 	if (ret < 0) {
+-		fusb302_log(chip, "cannot request GPIO Int_N, ret=%d", ret);
++		dev_err(chip->dev, "cannot request GPIO Int_N, ret=%d", ret);
+ 		return ret;
+ 	}
+ 	ret = gpio_direction_input(chip->gpio_int_n);
+ 	if (ret < 0) {
+-		fusb302_log(chip,
+-			    "cannot set GPIO Int_N to input, ret=%d", ret);
++		dev_err(chip->dev,
++			"cannot set GPIO Int_N to input, ret=%d", ret);
+ 		return ret;
+ 	}
+ 	ret = gpio_to_irq(chip->gpio_int_n);
+ 	if (ret < 0) {
+-		fusb302_log(chip,
+-			    "cannot request IRQ for GPIO Int_N, ret=%d", ret);
++		dev_err(chip->dev,
++			"cannot request IRQ for GPIO Int_N, ret=%d", ret);
+ 		return ret;
+ 	}
+ 	chip->gpio_int_n_irq = ret;
+@@ -1867,7 +1857,8 @@ static int fusb302_probe(struct i2c_client *client,
+ 	chip->tcpm_port = tcpm_register_port(&client->dev, &chip->tcpc_dev);
+ 	if (IS_ERR(chip->tcpm_port)) {
+ 		ret = PTR_ERR(chip->tcpm_port);
+-		fusb302_log(chip, "cannot register tcpm port, ret=%d", ret);
++		if (ret != -EPROBE_DEFER)
++			dev_err(dev, "cannot register tcpm port, ret=%d", ret);
+ 		goto destroy_workqueue;
+ 	}
+ 
+@@ -1876,8 +1867,7 @@ static int fusb302_probe(struct i2c_client *client,
+ 					IRQF_ONESHOT | IRQF_TRIGGER_LOW,
+ 					"fsc_interrupt_int_n", chip);
+ 	if (ret < 0) {
+-		fusb302_log(chip,
+-			    "cannot request IRQ for GPIO Int_N, ret=%d", ret);
++		dev_err(dev, "cannot request IRQ for GPIO Int_N, ret=%d", ret);
+ 		goto tcpm_unregister_port;
+ 	}
+ 	enable_irq_wake(chip->gpio_int_n_irq);
 diff --git a/drivers/staging/typec/fusb302/fusb302_reg.h b/drivers/usb/typec/fusb302/fusb302_reg.h
 similarity index 93%
 rename from drivers/staging/typec/fusb302/fusb302_reg.h
@@ -982,10 +1040,10 @@ index 0682e63de773..00b39d365478 100644
   */
  
 diff --git a/drivers/staging/typec/tcpm.c b/drivers/usb/typec/tcpm.c
-similarity index 98%
+similarity index 96%
 rename from drivers/staging/typec/tcpm.c
 rename to drivers/usb/typec/tcpm.c
-index f237e31926f4..c166fc77dfb8 100644
+index f237e31926f4..8b637a4b474b 100644
 --- a/drivers/staging/typec/tcpm.c
 +++ b/drivers/usb/typec/tcpm.c
 @@ -1,16 +1,7 @@
@@ -1086,7 +1144,118 @@ index f237e31926f4..c166fc77dfb8 100644
  
  	if (rlen > 0) {
  		tcpm_queue_vdm(port, response[0], &response[1], rlen - 1);
-@@ -2442,7 +2403,6 @@ static void run_state_machine(struct tcpm_port *port)
+@@ -1286,6 +1247,100 @@ static void vdm_state_machine_work(struct work_struct *work)
+ 	mutex_unlock(&port->lock);
+ }
+ 
++enum pdo_err {
++	PDO_NO_ERR,
++	PDO_ERR_NO_VSAFE5V,
++	PDO_ERR_VSAFE5V_NOT_FIRST,
++	PDO_ERR_PDO_TYPE_NOT_IN_ORDER,
++	PDO_ERR_FIXED_NOT_SORTED,
++	PDO_ERR_VARIABLE_BATT_NOT_SORTED,
++	PDO_ERR_DUPE_PDO,
++};
++
++static const char * const pdo_err_msg[] = {
++	[PDO_ERR_NO_VSAFE5V] =
++	" err: source/sink caps should atleast have vSafe5V",
++	[PDO_ERR_VSAFE5V_NOT_FIRST] =
++	" err: vSafe5V Fixed Supply Object Shall always be the first object",
++	[PDO_ERR_PDO_TYPE_NOT_IN_ORDER] =
++	" err: PDOs should be in the following order: Fixed; Battery; Variable",
++	[PDO_ERR_FIXED_NOT_SORTED] =
++	" err: Fixed supply pdos should be in increasing order of their fixed voltage",
++	[PDO_ERR_VARIABLE_BATT_NOT_SORTED] =
++	" err: Variable/Battery supply pdos should be in increasing order of their minimum voltage",
++	[PDO_ERR_DUPE_PDO] =
++	" err: Variable/Batt supply pdos cannot have same min/max voltage",
++};
++
++static enum pdo_err tcpm_caps_err(struct tcpm_port *port, const u32 *pdo,
++				  unsigned int nr_pdo)
++{
++	unsigned int i;
++
++	/* Should at least contain vSafe5v */
++	if (nr_pdo < 1)
++		return PDO_ERR_NO_VSAFE5V;
++
++	/* The vSafe5V Fixed Supply Object Shall always be the first object */
++	if (pdo_type(pdo[0]) != PDO_TYPE_FIXED ||
++	    pdo_fixed_voltage(pdo[0]) != VSAFE5V)
++		return PDO_ERR_VSAFE5V_NOT_FIRST;
++
++	for (i = 1; i < nr_pdo; i++) {
++		if (pdo_type(pdo[i]) < pdo_type(pdo[i - 1])) {
++			return PDO_ERR_PDO_TYPE_NOT_IN_ORDER;
++		} else if (pdo_type(pdo[i]) == pdo_type(pdo[i - 1])) {
++			enum pd_pdo_type type = pdo_type(pdo[i]);
++
++			switch (type) {
++			/*
++			 * The remaining Fixed Supply Objects, if
++			 * present, shall be sent in voltage order;
++			 * lowest to highest.
++			 */
++			case PDO_TYPE_FIXED:
++				if (pdo_fixed_voltage(pdo[i]) <=
++				    pdo_fixed_voltage(pdo[i - 1]))
++					return PDO_ERR_FIXED_NOT_SORTED;
++				break;
++			/*
++			 * The Battery Supply Objects and Variable
++			 * supply, if present shall be sent in Minimum
++			 * Voltage order; lowest to highest.
++			 */
++			case PDO_TYPE_VAR:
++			case PDO_TYPE_BATT:
++				if (pdo_min_voltage(pdo[i]) <
++				    pdo_min_voltage(pdo[i - 1]))
++					return PDO_ERR_VARIABLE_BATT_NOT_SORTED;
++				else if ((pdo_min_voltage(pdo[i]) ==
++					  pdo_min_voltage(pdo[i - 1])) &&
++					 (pdo_max_voltage(pdo[i]) ==
++					  pdo_min_voltage(pdo[i - 1])))
++					return PDO_ERR_DUPE_PDO;
++				break;
++			default:
++				tcpm_log_force(port, " Unknown pdo type");
++			}
++		}
++	}
++
++	return PDO_NO_ERR;
++}
++
++static int tcpm_validate_caps(struct tcpm_port *port, const u32 *pdo,
++			      unsigned int nr_pdo)
++{
++	enum pdo_err err_index = tcpm_caps_err(port, pdo, nr_pdo);
++
++	if (err_index != PDO_NO_ERR) {
++		tcpm_log_force(port, " %s", pdo_err_msg[err_index]);
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
+ /*
+  * PD (data, control) command handling functions
+  */
+@@ -1308,6 +1363,9 @@ static void tcpm_pd_data_request(struct tcpm_port *port,
+ 
+ 		tcpm_log_source_caps(port);
+ 
++		tcpm_validate_caps(port, port->source_caps,
++				   port->nr_source_caps);
++
+ 		/*
+ 		 * This message may be received even if VBUS is not
+ 		 * present. This is quite unexpected; see USB PD
+@@ -2442,7 +2500,6 @@ static void run_state_machine(struct tcpm_port *port)
  			tcpm_set_state(port, SNK_STARTUP, 0);
  		break;
  	case SNK_STARTUP:
@@ -1094,7 +1263,7 @@ index f237e31926f4..c166fc77dfb8 100644
  		opmode =  tcpm_get_pwr_opmode(port->polarity ?
  					      port->cc2 : port->cc1);
  		typec_set_pwr_opmode(port->typec_port, opmode);
-@@ -2479,8 +2439,7 @@ static void run_state_machine(struct tcpm_port *port)
+@@ -2479,8 +2536,7 @@ static void run_state_machine(struct tcpm_port *port)
  		    tcpm_port_is_sink(port) &&
  		    time_is_after_jiffies(port->delayed_runtime)) {
  			tcpm_set_state(port, SNK_DISCOVERY,
@@ -1104,7 +1273,73 @@ index f237e31926f4..c166fc77dfb8 100644
  			break;
  		}
  		tcpm_set_state(port, unattached_state(port), 0);
-@@ -3590,11 +3549,6 @@ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc)
+@@ -3476,9 +3532,12 @@ static int tcpm_copy_vdos(u32 *dest_vdo, const u32 *src_vdo,
+ 	return nr_vdo;
+ }
+ 
+-void tcpm_update_source_capabilities(struct tcpm_port *port, const u32 *pdo,
+-				     unsigned int nr_pdo)
++int tcpm_update_source_capabilities(struct tcpm_port *port, const u32 *pdo,
++				    unsigned int nr_pdo)
+ {
++	if (tcpm_validate_caps(port, pdo, nr_pdo))
++		return -EINVAL;
++
+ 	mutex_lock(&port->lock);
+ 	port->nr_src_pdo = tcpm_copy_pdos(port->src_pdo, pdo, nr_pdo);
+ 	switch (port->state) {
+@@ -3498,16 +3557,20 @@ void tcpm_update_source_capabilities(struct tcpm_port *port, const u32 *pdo,
+ 		break;
+ 	}
+ 	mutex_unlock(&port->lock);
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(tcpm_update_source_capabilities);
+ 
+-void tcpm_update_sink_capabilities(struct tcpm_port *port, const u32 *pdo,
+-				   unsigned int nr_pdo,
+-				   unsigned int max_snk_mv,
+-				   unsigned int max_snk_ma,
+-				   unsigned int max_snk_mw,
+-				   unsigned int operating_snk_mw)
++int tcpm_update_sink_capabilities(struct tcpm_port *port, const u32 *pdo,
++				  unsigned int nr_pdo,
++				  unsigned int max_snk_mv,
++				  unsigned int max_snk_ma,
++				  unsigned int max_snk_mw,
++				  unsigned int operating_snk_mw)
+ {
++	if (tcpm_validate_caps(port, pdo, nr_pdo))
++		return -EINVAL;
++
+ 	mutex_lock(&port->lock);
+ 	port->nr_snk_pdo = tcpm_copy_pdos(port->snk_pdo, pdo, nr_pdo);
+ 	port->max_snk_mv = max_snk_mv;
+@@ -3526,6 +3589,7 @@ void tcpm_update_sink_capabilities(struct tcpm_port *port, const u32 *pdo,
+ 		break;
+ 	}
+ 	mutex_unlock(&port->lock);
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(tcpm_update_sink_capabilities);
+ 
+@@ -3561,7 +3625,15 @@ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc)
+ 
+ 	init_completion(&port->tx_complete);
+ 	init_completion(&port->swap_complete);
++	tcpm_debugfs_init(port);
+ 
++	if (tcpm_validate_caps(port, tcpc->config->src_pdo,
++			       tcpc->config->nr_src_pdo) ||
++	    tcpm_validate_caps(port, tcpc->config->snk_pdo,
++			       tcpc->config->nr_snk_pdo)) {
++		err = -EINVAL;
++		goto out_destroy_wq;
++	}
+ 	port->nr_src_pdo = tcpm_copy_pdos(port->src_pdo, tcpc->config->src_pdo,
+ 					  tcpc->config->nr_src_pdo);
+ 	port->nr_snk_pdo = tcpm_copy_pdos(port->snk_pdo, tcpc->config->snk_pdo,
+@@ -3590,11 +3662,6 @@ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc)
  
  	port->partner_desc.identity = &port->partner_ident;
  	port->port_type = tcpc->config->type;
@@ -1116,7 +1351,15 @@ index f237e31926f4..c166fc77dfb8 100644
  
  	port->typec_port = typec_register_port(port->dev, &port->typec_caps);
  	if (!port->typec_port) {
-@@ -3639,6 +3593,7 @@ void tcpm_unregister_port(struct tcpm_port *port)
+@@ -3621,7 +3688,6 @@ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc)
+ 		}
+ 	}
+ 
+-	tcpm_debugfs_init(port);
+ 	mutex_lock(&port->lock);
+ 	tcpm_init(port);
+ 	mutex_unlock(&port->lock);
+@@ -3639,6 +3705,7 @@ void tcpm_unregister_port(struct tcpm_port *port)
  {
  	int i;
  
@@ -1126,10 +1369,10 @@ index f237e31926f4..c166fc77dfb8 100644
  	typec_unregister_port(port->typec_port);
 diff --git a/drivers/usb/typec/tps6598x.c b/drivers/usb/typec/tps6598x.c
 new file mode 100644
-index 000000000000..2719f5d382f7
+index 000000000000..7b01648c85ca
 --- /dev/null
 +++ b/drivers/usb/typec/tps6598x.c
-@@ -0,0 +1,473 @@
+@@ -0,0 +1,504 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Driver for TI TPS6598x USB Power Delivery controller family
@@ -1205,6 +1448,7 @@ index 000000000000..2719f5d382f7
 +	struct device *dev;
 +	struct regmap *regmap;
 +	struct mutex lock; /* device lock */
++	u8 i2c_protocol:1;
 +
 +	struct typec_port *port;
 +	struct typec_partner *partner;
@@ -1212,19 +1456,39 @@ index 000000000000..2719f5d382f7
 +	struct typec_capability typec_cap;
 +};
 +
++static int
++tps6598x_block_read(struct tps6598x *tps, u8 reg, void *val, size_t len)
++{
++	u8 data[len + 1];
++	int ret;
++
++	if (!tps->i2c_protocol)
++		return regmap_raw_read(tps->regmap, reg, val, len);
++
++	ret = regmap_raw_read(tps->regmap, reg, data, sizeof(data));
++	if (ret)
++		return ret;
++
++	if (data[0] < len)
++		return -EIO;
++
++	memcpy(val, &data[1], len);
++	return 0;
++}
++
 +static inline int tps6598x_read16(struct tps6598x *tps, u8 reg, u16 *val)
 +{
-+	return regmap_raw_read(tps->regmap, reg, val, sizeof(u16));
++	return tps6598x_block_read(tps, reg, val, sizeof(u16));
 +}
 +
 +static inline int tps6598x_read32(struct tps6598x *tps, u8 reg, u32 *val)
 +{
-+	return regmap_raw_read(tps->regmap, reg, val, sizeof(u32));
++	return tps6598x_block_read(tps, reg, val, sizeof(u32));
 +}
 +
 +static inline int tps6598x_read64(struct tps6598x *tps, u8 reg, u64 *val)
 +{
-+	return regmap_raw_read(tps->regmap, reg, val, sizeof(u64));
++	return tps6598x_block_read(tps, reg, val, sizeof(u64));
 +}
 +
 +static inline int tps6598x_write16(struct tps6598x *tps, u8 reg, u16 val)
@@ -1253,8 +1517,8 @@ index 000000000000..2719f5d382f7
 +	struct tps6598x_rx_identity_reg id;
 +	int ret;
 +
-+	ret = regmap_raw_read(tps->regmap, TPS_REG_RX_IDENTITY_SOP,
-+			      &id, sizeof(id));
++	ret = tps6598x_block_read(tps, TPS_REG_RX_IDENTITY_SOP,
++				  &id, sizeof(id));
 +	if (ret)
 +		return ret;
 +
@@ -1355,13 +1619,13 @@ index 000000000000..2719f5d382f7
 +	} while (val);
 +
 +	if (out_len) {
-+		ret = regmap_raw_read(tps->regmap, TPS_REG_DATA1,
-+				      out_data, out_len);
++		ret = tps6598x_block_read(tps, TPS_REG_DATA1,
++					  out_data, out_len);
 +		if (ret)
 +			return ret;
 +		val = out_data[0];
 +	} else {
-+		ret = regmap_read(tps->regmap, TPS_REG_DATA1, &val);
++		ret = tps6598x_block_read(tps, TPS_REG_DATA1, &val, sizeof(u8));
 +		if (ret)
 +			return ret;
 +	}
@@ -1516,6 +1780,16 @@ index 000000000000..2719f5d382f7
 +	if (!vid)
 +		return -ENODEV;
 +
++	/*
++	 * Checking can the adapter handle SMBus protocol. If it can not, the
++	 * driver needs to take care of block reads separately.
++	 *
++	 * FIXME: Testing with I2C_FUNC_I2C. regmap-i2c uses I2C protocol
++	 * unconditionally if the adapter has I2C_FUNC_I2C set.
++	 */
++	if (i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
++		tps->i2c_protocol = true;
++
 +	ret = tps6598x_read32(tps, TPS_REG_STATUS, &status);
 +	if (ret < 0)
 +		return ret;
@@ -1622,7 +1896,7 @@ index 24e355ba109d..735726ced602 100644
  
  #include <linux/device.h>
 diff --git a/drivers/usb/typec/typec_wcove.c b/drivers/usb/typec/typec_wcove.c
-index e9c4e784a9cb..a8d479eb221a 100644
+index e9c4e784a9cb..1e13d4e15831 100644
 --- a/drivers/usb/typec/typec_wcove.c
 +++ b/drivers/usb/typec/typec_wcove.c
 @@ -1,24 +1,20 @@
@@ -1794,7 +2068,7 @@ index e9c4e784a9cb..a8d479eb221a 100644
  				&argv4);
  	if (!obj) {
  		dev_err(wcove->dev, "%s: failed to evaluate _DSM\n", __func__);
-@@ -129,158 +197,349 @@ static int wcove_typec_func(struct wcove_typec *wcove,
+@@ -129,158 +197,375 @@ static int wcove_typec_func(struct wcove_typec *wcove,
  	return 0;
  }
  
@@ -1816,19 +2090,25 @@ index e9c4e784a9cb..a8d479eb221a 100644
 -	mutex_lock(&wcove->lock);
 -
 -	ret = regmap_read(wcove->regmap, USBC_IRQ1, &cc_irq1);
++	ret = regmap_write(wcove->regmap, USBC_CONTROL1, 0);
+ 	if (ret)
+-		goto err;
++		return ret;
+ 
+-	ret = regmap_read(wcove->regmap, USBC_IRQ2, &cc_irq2);
 +	/* Unmask everything */
 +	ret = regmap_write(wcove->regmap, USBC_IRQMASK1, 0);
  	if (ret)
 -		goto err;
 +		return ret;
  
--	ret = regmap_read(wcove->regmap, USBC_IRQ2, &cc_irq2);
+-	ret = regmap_read(wcove->regmap, USBC_STATUS1, &status1);
 -	if (ret)
 -		goto err;
 +	return regmap_write(wcove->regmap, USBC_IRQMASK2, 0);
 +}
  
--	ret = regmap_read(wcove->regmap, USBC_STATUS1, &status1);
+-	ret = regmap_read(wcove->regmap, USBC_STATUS2, &status2);
 -	if (ret)
 -		goto err;
 +static int wcove_get_vbus(struct tcpc_dev *tcpc)
@@ -1837,22 +2117,16 @@ index e9c4e784a9cb..a8d479eb221a 100644
 +	unsigned int cc1ctrl;
 +	int ret;
  
--	ret = regmap_read(wcove->regmap, USBC_STATUS2, &status2);
+-	ret = regmap_read(wcove->regmap, USBC_CC1_CTRL, &cc1_ctrl);
 +	ret = regmap_read(wcove->regmap, USBC_CC1_CTRL, &cc1ctrl);
  	if (ret)
 -		goto err;
 +		return ret;
  
--	ret = regmap_read(wcove->regmap, USBC_CC1_CTRL, &cc1_ctrl);
--	if (ret)
--		goto err;
-+	wcove->vbus = !!(cc1ctrl & USBC_CC_CTRL_VBUSOK);
- 
 -	ret = regmap_read(wcove->regmap, USBC_CC2_CTRL, &cc2_ctrl);
 -	if (ret)
 -		goto err;
-+	return wcove->vbus;
-+}
++	wcove->vbus = !!(cc1ctrl & USBC_CC_CTRL_VBUSOK);
  
 -	if (cc_irq1) {
 -		if (cc_irq1 & USBC_IRQ1_OVERTEMP)
@@ -1863,9 +2137,8 @@ index e9c4e784a9cb..a8d479eb221a 100644
 -		if (ret)
 -			goto err;
 -	}
-+static int wcove_set_vbus(struct tcpc_dev *tcpc, bool on, bool sink)
-+{
-+	struct wcove_typec *wcove = tcpc_to_wcove(tcpc);
++	return wcove->vbus;
++}
  
 -	if (cc_irq2) {
 -		ret = regmap_write(wcove->regmap, USBC_IRQ2, cc_irq2);
@@ -1878,16 +2151,28 @@ index e9c4e784a9cb..a8d479eb221a 100644
 -		if (cc_irq2 & ~USBC_IRQ2_CC_CHANGE) {
 -			dev_WARN(wcove->dev, "USB PD handling missing\n");
 -			goto err;
+-		}
+-	}
++static int wcove_set_vbus(struct tcpc_dev *tcpc, bool on, bool sink)
++{
++	struct wcove_typec *wcove = tcpc_to_wcove(tcpc);
++
 +	return wcove_typec_func(wcove, WCOVE_FUNC_DRIVE_VBUS, on);
 +}
 +
 +static int wcove_set_vconn(struct tcpc_dev *tcpc, bool on)
 +{
 +	struct wcove_typec *wcove = tcpc_to_wcove(tcpc);
-+
+ 
+-	if (status1 & USBC_STATUS1_DET_ONGOING)
+-		goto out;
 +	return wcove_typec_func(wcove, WCOVE_FUNC_DRIVE_VCONN, on);
 +}
-+
+ 
+-	if (USBC_STATUS1_RSLT(status1) == USBC_RSLT_NOTHING) {
+-		if (wcove->partner) {
+-			typec_unregister_partner(wcove->partner);
+-			wcove->partner = NULL;
 +static enum typec_cc_status wcove_to_typec_cc(unsigned int cc)
 +{
 +	if (cc & UCSC_CC_STATUS_SNK_RP) {
@@ -1906,12 +2191,12 @@ index e9c4e784a9cb..a8d479eb221a 100644
 +		default:
 +			break;
  		}
- 	}
++	}
 +	return TYPEC_CC_OPEN;
 +}
  
--	if (status1 & USBC_STATUS1_DET_ONGOING)
--		goto out;
+-		wcove_typec_func(wcove, WCOVE_FUNC_ORIENTATION,
+-				 WCOVE_ORIENTATION_NORMAL);
 +static int wcove_get_cc(struct tcpc_dev *tcpc, enum typec_cc_status *cc1,
 +			enum typec_cc_status *cc2)
 +{
@@ -1920,57 +2205,70 @@ index e9c4e784a9cb..a8d479eb221a 100644
 +	unsigned int cc2_status;
 +	int ret;
  
--	if (USBC_STATUS1_RSLT(status1) == USBC_RSLT_NOTHING) {
--		if (wcove->partner) {
--			typec_unregister_partner(wcove->partner);
--			wcove->partner = NULL;
--		}
+-		/* This makes sure the device controller is disconnected */
+-		wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_HOST);
 +	ret = regmap_read(wcove->regmap, USBC_CC1_STATUS, &cc1_status);
 +	if (ret)
 +		return ret;
- 
--		wcove_typec_func(wcove, WCOVE_FUNC_ORIENTATION,
--				 WCOVE_ORIENTATION_NORMAL);
-+	ret = regmap_read(wcove->regmap, USBC_CC2_STATUS, &cc2_status);
-+	if (ret)
-+		return ret;
- 
--		/* This makes sure the device controller is disconnected */
--		wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_HOST);
-+	*cc1 = wcove_to_typec_cc(cc1_status);
-+	*cc2 = wcove_to_typec_cc(cc2_status);
  
 -		/* Port to default role */
 -		typec_set_data_role(wcove->port, TYPEC_DEVICE);
 -		typec_set_pwr_role(wcove->port, TYPEC_SINK);
 -		typec_set_pwr_opmode(wcove->port, TYPEC_PWR_MODE_USB);
-+	return 0;
-+}
++	ret = regmap_read(wcove->regmap, USBC_CC2_STATUS, &cc2_status);
++	if (ret)
++		return ret;
  
 -		goto out;
 -	}
-+static int wcove_set_cc(struct tcpc_dev *tcpc, enum typec_cc_status cc)
-+{
-+	/* XXX: Relying on the HW FSM to configure things correctly for now */
++	*cc1 = wcove_to_typec_cc(cc1_status);
++	*cc2 = wcove_to_typec_cc(cc2_status);
++
 +	return 0;
 +}
  
 -	if (wcove->partner)
 -		goto out;
-+static int wcove_set_polarity(struct tcpc_dev *tcpc, enum typec_cc_polarity pol)
++static int wcove_set_cc(struct tcpc_dev *tcpc, enum typec_cc_status cc)
 +{
 +	struct wcove_typec *wcove = tcpc_to_wcove(tcpc);
++	unsigned int ctrl;
  
 -	switch (USBC_STATUS1_ORIENT(status1)) {
 -	case USBC_ORIENT_NORMAL:
 -		wcove_typec_func(wcove, WCOVE_FUNC_ORIENTATION,
 -				 WCOVE_ORIENTATION_NORMAL);
--		break;
++	switch (cc) {
++	case TYPEC_CC_RD:
++		ctrl = USBC_CONTROL1_MODE_SNK;
+ 		break;
 -	case USBC_ORIENT_REVERSE:
 -		wcove_typec_func(wcove, WCOVE_FUNC_ORIENTATION,
 -				 WCOVE_ORIENTATION_REVERSE);
 -	default:
--		break;
++	case TYPEC_CC_RP_DEF:
++		ctrl = USBC_CONTROL1_CURSRC_UA_80 | USBC_CONTROL1_MODE_SRC;
++		break;
++	case TYPEC_CC_RP_1_5:
++		ctrl = USBC_CONTROL1_CURSRC_UA_180 | USBC_CONTROL1_MODE_SRC;
++		break;
++	case TYPEC_CC_RP_3_0:
++		ctrl = USBC_CONTROL1_CURSRC_UA_330 | USBC_CONTROL1_MODE_SRC;
+ 		break;
++	case TYPEC_CC_OPEN:
++		ctrl = 0;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return regmap_write(wcove->regmap, USBC_CONTROL1, ctrl);
++}
++
++static int wcove_set_polarity(struct tcpc_dev *tcpc, enum typec_cc_polarity pol)
++{
++	struct wcove_typec *wcove = tcpc_to_wcove(tcpc);
++
 +	return wcove_typec_func(wcove, WCOVE_FUNC_ORIENTATION, pol);
 +}
 +
@@ -2175,13 +2473,13 @@ index e9c4e784a9cb..a8d479eb221a 100644
 +	/* ..check.. */
 +	if (usbc_irq1 & USBC_IRQ1_OVERTEMP) {
 +		dev_err(wcove->dev, "VCONN Switch Over Temperature!\n");
-+		wcove_typec_func(wcove, WCOVE_FUNC_DRIVE_VCONN, false);
+ 		wcove_typec_func(wcove, WCOVE_FUNC_DRIVE_VCONN, false);
 +		/* REVISIT: Report an error? */
 +	}
 +
 +	if (usbc_irq1 & USBC_IRQ1_SHORT) {
 +		dev_err(wcove->dev, "VCONN Switch Short Circuit!\n");
- 		wcove_typec_func(wcove, WCOVE_FUNC_DRIVE_VCONN, false);
++		wcove_typec_func(wcove, WCOVE_FUNC_DRIVE_VCONN, false);
 +		/* REVISIT: Report an error? */
 +	}
 +
@@ -2257,7 +2555,7 @@ index e9c4e784a9cb..a8d479eb221a 100644
  	/* REVISIT: Clear WhiskeyCove CHGR Type-C interrupt */
  	regmap_write(wcove->regmap, WCOVE_CHGRIRQ0, BIT(5));
  
-@@ -288,11 +547,41 @@ static irqreturn_t wcove_typec_irq(int irq, void *data)
+@@ -288,11 +573,39 @@ static irqreturn_t wcove_typec_irq(int irq, void *data)
  	return IRQ_HANDLED;
  }
  
@@ -2270,10 +2568,8 @@ index e9c4e784a9cb..a8d479eb221a 100644
 +};
 +
 +static const u32 snk_pdo[] = {
-+	PDO_FIXED(12000, 3000, PDO_FIXED_DUAL_ROLE | PDO_FIXED_DATA_SWAP |
++	PDO_FIXED(5000, 500, PDO_FIXED_DUAL_ROLE | PDO_FIXED_DATA_SWAP |
 +		  PDO_FIXED_USB_COMM),
-+	PDO_BATT(4750, 12000, 15000),
-+	PDO_VAR(4750, 12000, 3000),
 +};
 +
 +static struct tcpc_config wcove_typec_config = {
@@ -2300,7 +2596,7 @@ index e9c4e784a9cb..a8d479eb221a 100644
  	int ret;
  
  	wcove = devm_kzalloc(&pdev->dev, sizeof(*wcove), GFP_KERNEL);
-@@ -303,43 +592,47 @@ static int wcove_typec_probe(struct platform_device *pdev)
+@@ -303,43 +616,47 @@ static int wcove_typec_probe(struct platform_device *pdev)
  	wcove->dev = &pdev->dev;
  	wcove->regmap = pmic->regmap;
  
@@ -2372,7 +2668,7 @@ index e9c4e784a9cb..a8d479eb221a 100644
  
  	platform_set_drvdata(pdev, wcove);
  	return 0;
-@@ -356,8 +649,8 @@ static int wcove_typec_remove(struct platform_device *pdev)
+@@ -356,8 +673,8 @@ static int wcove_typec_remove(struct platform_device *pdev)
  	regmap_read(wcove->regmap, USBC_IRQMASK2, &val);
  	regmap_write(wcove->regmap, USBC_IRQMASK2, val | USBC_IRQMASK2_ALL);
  
@@ -2395,18 +2691,6 @@ index d0c31cee4720..e36d6c73c4a4 100644
  	help
  	  USB Type-C Connector System Software Interface (UCSI) is a
  	  specification for an interface that allows the operating system to
-diff --git a/drivers/usb/typec/ucsi/Makefile b/drivers/usb/typec/ucsi/Makefile
-index 7afbea512207..b57891c1fd31 100644
---- a/drivers/usb/typec/ucsi/Makefile
-+++ b/drivers/usb/typec/ucsi/Makefile
-@@ -5,6 +5,6 @@ obj-$(CONFIG_TYPEC_UCSI)	+= typec_ucsi.o
- 
- typec_ucsi-y			:= ucsi.o
- 
--typec_ucsi-$(CONFIG_TRACING)	+= trace.o
-+typec_ucsi-$(CONFIG_FTRACE)	+= trace.o
- 
- obj-$(CONFIG_UCSI_ACPI)		+= ucsi_acpi.o
 diff --git a/drivers/usb/typec/ucsi/trace.c b/drivers/usb/typec/ucsi/trace.c
 index 006f65c72a34..d9a6ff6e673c 100644
 --- a/drivers/usb/typec/ucsi/trace.c
@@ -2416,7 +2700,7 @@ index 006f65c72a34..d9a6ff6e673c 100644
  #define CREATE_TRACE_POINTS
  #include "trace.h"
 diff --git a/drivers/usb/typec/ucsi/ucsi.c b/drivers/usb/typec/ucsi/ucsi.c
-index 251f5d66651e..79046fe66426 100644
+index 251f5d66651e..8d95b3a168d2 100644
 --- a/drivers/usb/typec/ucsi/ucsi.c
 +++ b/drivers/usb/typec/ucsi/ucsi.c
 @@ -1,12 +1,9 @@
@@ -2433,15 +2717,6 @@ index 251f5d66651e..79046fe66426 100644
   */
  
  #include <linux/completion.h>
-@@ -31,7 +28,7 @@
-  * difficult to estimate the time it takes for the system to process the command
-  * before it is actually passed to the PPM.
-  */
--#define UCSI_TIMEOUT_MS		5000
-+#define UCSI_TIMEOUT_MS		1000
- 
- /*
-  * UCSI_SWAP_TIMEOUT_MS - Timeout for role swap requests
 @@ -346,19 +343,6 @@ static void ucsi_connector_change(struct work_struct *work)
  	}
  
@@ -2496,7 +2771,7 @@ diff --git a/drivers/staging/typec/pd.h b/include/linux/usb/pd.h
 similarity index 98%
 rename from drivers/staging/typec/pd.h
 rename to include/linux/usb/pd.h
-index 30b32ad72acd..e00051ced806 100644
+index 30b32ad72acd..b3d41d7409b3 100644
 --- a/drivers/staging/typec/pd.h
 +++ b/include/linux/usb/pd.h
 @@ -104,6 +104,11 @@ static inline unsigned int pd_header_msgid_le(__le16 header)
@@ -2511,19 +2786,40 @@ index 30b32ad72acd..e00051ced806 100644
  struct pd_message {
  	__le16 header;
  	__le32 payload[PD_MAX_PAYLOAD];
+@@ -143,6 +148,8 @@ enum pd_pdo_type {
+ 	(PDO_TYPE(PDO_TYPE_FIXED) | (flags) |		\
+ 	 PDO_FIXED_VOLT(mv) | PDO_FIXED_CURR(ma))
+ 
++#define VSAFE5V 5000 /* mv units */
++
+ #define PDO_BATT_MAX_VOLT_SHIFT	20	/* 50mV units */
+ #define PDO_BATT_MIN_VOLT_SHIFT	10	/* 50mV units */
+ #define PDO_BATT_MAX_PWR_SHIFT	0	/* 250mW units */
 diff --git a/drivers/staging/typec/pd_bdo.h b/include/linux/usb/pd_bdo.h
 similarity index 100%
 rename from drivers/staging/typec/pd_bdo.h
 rename to include/linux/usb/pd_bdo.h
 diff --git a/drivers/staging/typec/pd_vdo.h b/include/linux/usb/pd_vdo.h
-similarity index 100%
+similarity index 99%
 rename from drivers/staging/typec/pd_vdo.h
 rename to include/linux/usb/pd_vdo.h
+index d92259f8de0a..2b64d23ace5c 100644
+--- a/drivers/staging/typec/pd_vdo.h
++++ b/include/linux/usb/pd_vdo.h
+@@ -65,7 +65,7 @@
+ #define CMD_EXIT_MODE		5
+ #define CMD_ATTENTION		6
+ 
+-#define VDO_CMD_VENDOR(x)    (((10 + (x)) & 0x1f))
++#define VDO_CMD_VENDOR(x)    (((0x10 + (x)) & 0x1f))
+ 
+ /* ChromeOS specific commands */
+ #define VDO_CMD_VERSION		VDO_CMD_VENDOR(0)
 diff --git a/drivers/staging/typec/tcpm.h b/include/linux/usb/tcpm.h
-similarity index 68%
+similarity index 63%
 rename from drivers/staging/typec/tcpm.h
 rename to include/linux/usb/tcpm.h
-index 7e9a6b7b5cd6..073197f0d2bb 100644
+index 7e9a6b7b5cd6..ca1c0b57f03f 100644
 --- a/drivers/staging/typec/tcpm.h
 +++ b/include/linux/usb/tcpm.h
 @@ -54,6 +54,27 @@ enum tcpm_transmit_type {
@@ -2609,6 +2905,29 @@ index 7e9a6b7b5cd6..073197f0d2bb 100644
  	int (*get_current_limit)(struct tcpc_dev *dev);
  	int (*set_cc)(struct tcpc_dev *dev, enum typec_cc_status cc);
  	int (*get_cc)(struct tcpc_dev *dev, enum typec_cc_status *cc1,
+@@ -140,14 +183,14 @@ struct tcpm_port;
+ struct tcpm_port *tcpm_register_port(struct device *dev, struct tcpc_dev *tcpc);
+ void tcpm_unregister_port(struct tcpm_port *port);
+ 
+-void tcpm_update_source_capabilities(struct tcpm_port *port, const u32 *pdo,
+-				     unsigned int nr_pdo);
+-void tcpm_update_sink_capabilities(struct tcpm_port *port, const u32 *pdo,
+-				   unsigned int nr_pdo,
+-				   unsigned int max_snk_mv,
+-				   unsigned int max_snk_ma,
+-				   unsigned int max_snk_mw,
+-				   unsigned int operating_snk_mw);
++int tcpm_update_source_capabilities(struct tcpm_port *port, const u32 *pdo,
++				    unsigned int nr_pdo);
++int tcpm_update_sink_capabilities(struct tcpm_port *port, const u32 *pdo,
++				  unsigned int nr_pdo,
++				  unsigned int max_snk_mv,
++				  unsigned int max_snk_ma,
++				  unsigned int max_snk_mw,
++				  unsigned int operating_snk_mw);
+ 
+ void tcpm_vbus_change(struct tcpm_port *port);
+ void tcpm_cc_change(struct tcpm_port *port);
 -- 
 2.19.0
 
