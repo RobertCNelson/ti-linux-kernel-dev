@@ -350,21 +350,30 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.x-y"
+	backport_tag="v4.15.18"
 
-	subsystem="xyz"
+	subsystem="typec"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		mkdir -p ./x/
-		cp -v ~/linux-src/x/* ./x/
+		cp -rv ~/linux-src/drivers/usb/typec/* ./drivers/usb/typec/
+		cp -v ~/linux-src/include/linux/usb/pd.h ./include/linux/usb/pd.h
+		cp -v ~/linux-src/include/linux/usb/pd_bdo.h ./include/linux/usb/pd_bdo.h
+		cp -v ~/linux-src/include/linux/usb/pd_vdo.h ./include/linux/usb/pd_vdo.h
+		cp -v ~/linux-src/include/linux/usb/tcpm.h ./include/linux/usb/tcpm.h
+		cp -v ~/linux-src/include/linux/usb/typec.h ./include/linux/usb/typec.h
+
+		#Cleanup old Staging version of typec...
+		rm -rf ./drivers/staging/typec/
 
 		post_backports
 		exit 2
 	else
 		patch_backports
 	fi
+
+	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 }
 
 reverts () {
@@ -567,7 +576,7 @@ beaglebone () {
 }
 
 ###
-#backports
+backports
 reverts
 drivers
 soc
