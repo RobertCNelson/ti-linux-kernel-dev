@@ -234,7 +234,7 @@ wireguard_fail () {
 
 wireguard () {
 	echo "dir: WireGuard"
-	regenerate="enable"
+	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./WireGuard ] ; then
