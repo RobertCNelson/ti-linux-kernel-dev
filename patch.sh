@@ -390,12 +390,9 @@ reverts () {
 	${git} "${DIR}/patches/reverts/0001-Revert-eeprom-at24-check-if-the-chip-is-functional-i.patch"
 	${git} "${DIR}/patches/reverts/0002-Revert-tis-overlay-setup.patch"
 
-	#https://github.com/beagleboard/linux/issues/184
-	${git} "${DIR}/patches/reverts/0003-Revert-rpmsg-core-add-support-to-power-domains-for-d.patch"
-
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
-		number=3
+		number=2
 		cleanup
 	fi
 }
