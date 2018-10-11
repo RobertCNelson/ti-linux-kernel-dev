@@ -546,6 +546,7 @@ soc () {
 	dir 'soc/ti/roboticscape'
 	dir 'soc/ti/uboot_univ'
 	dir 'soc/ti/x15'
+	dir 'soc/gssi'
 }
 
 dtb_makefile_append () {
