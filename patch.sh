@@ -208,8 +208,7 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#revert this from ti's branch...
-	${git_bin} revert --no-edit 2f6872da466b6f35b3c0a94aa01629da7ae9b72b
+	#${git_bin} revert --no-edit xyz
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -234,11 +233,6 @@ wireguard_fail () {
 
 wireguard () {
 	echo "dir: WireGuard"
-
-	#[    3.315290] NOHZ: local_softirq_pending 242
-	#[    3.319504] NOHZ: local_softirq_pending 242
-	${git_bin} revert --no-edit 2d898915ccf4838c04531c51a598469e921a5eb5
-
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
@@ -315,7 +309,7 @@ local_patch () {
 }
 
 external_git
-aufs4
+#aufs4
 #rt
 wireguard
 ti_pm_firmware
@@ -355,30 +349,21 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.16.18"
+	backport_tag="v4.x-y"
 
-	subsystem="typec"
+	subsystem="xyz"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/drivers/usb/typec/* ./drivers/usb/typec/
-		cp -v ~/linux-src/include/linux/usb/pd.h ./include/linux/usb/pd.h
-		cp -v ~/linux-src/include/linux/usb/pd_bdo.h ./include/linux/usb/pd_bdo.h
-		cp -v ~/linux-src/include/linux/usb/pd_vdo.h ./include/linux/usb/pd_vdo.h
-		cp -v ~/linux-src/include/linux/usb/tcpm.h ./include/linux/usb/tcpm.h
-		cp -v ~/linux-src/include/linux/usb/typec.h ./include/linux/usb/typec.h
-
-		#Cleanup old Staging version of typec...
-		rm -rf ./drivers/staging/typec/
+		mkdir -p ./x/
+		cp -v ~/linux-src/x/* ./x/
 
 		post_backports
 		exit 2
 	else
 		patch_backports
 	fi
-
-	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 }
 
 reverts () {
@@ -388,20 +373,14 @@ reverts () {
 		start_cleanup
 	fi
 
-	#https://github.com/torvalds/linux/commit/00f0ea70d2b82b7d7afeb1bdedc9169eb8ea6675
-	#
-	#Causes bone_capemgr to get stuck on slot 1 and just eventually exit "without" checking slot2/3/4...
-	#
-	#[    5.406775] bone_capemgr bone_capemgr: Baseboard: 'A335BNLT,00C0,2516BBBK2626'
-	#[    5.414178] bone_capemgr bone_capemgr: compatible-baseboard=ti,beaglebone-black - #slots=4
-	#[    5.422573] bone_capemgr bone_capemgr: Failed to add slot #1
+	## notes
+	##git revert --no-edit xyz -s
 
-	${git} "${DIR}/patches/reverts/0001-Revert-eeprom-at24-check-if-the-chip-is-functional-i.patch"
-	${git} "${DIR}/patches/reverts/0002-Revert-tis-overlay-setup.patch"
+	#${git} "${DIR}/patches/reverts/0001-Revert-xyz.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
-		number=2
+		number=1
 		cleanup
 	fi
 }
@@ -410,112 +389,41 @@ drivers () {
 	dir 'drivers/ar1021_i2c'
 	dir 'drivers/btrfs'
 	dir 'drivers/pwm'
+#	dir 'drivers/lora'
 	dir 'drivers/snd_pwmsp'
 	dir 'drivers/spi'
 	dir 'drivers/ssd1306'
-	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
 	dir 'drivers/opp'
 	dir 'drivers/wiznet'
-
-	#https://github.com/pantoniou/linux-beagle-track-mainline/tree/bbb-overlays
-	echo "dir: drivers/ti/bbb_overlays"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0001-gitignore-Ignore-DTB-files.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0002-add-PM-firmware.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0003-ARM-CUSTOM-Build-a-uImage-with-dtb-already-appended.patch"
-	fi
-
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0004-omap-Fix-crash-when-omap-device-is-disabled.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0005-serial-omap-Fix-port-line-number-without-aliases.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0006-tty-omap-serial-Fix-up-platform-data-alloc.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0007-of-overlay-kobjectify-overlay-objects.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0008-of-overlay-global-sysfs-enable-attribute.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0009-Documentation-ABI-overlays-global-attributes.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0010-Documentation-document-of_overlay_disable-parameter.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0011-of-overlay-add-per-overlay-sysfs-attributes.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0012-Documentation-ABI-overlays-per-overlay-docs.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0013-of-dynamic-Add-__of_node_dupv.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0014-of-changesets-Introduce-changeset-helper-methods.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0015-of-changeset-Add-of_changeset_node_move-method.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0016-of-unittest-changeset-helpers.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0017-OF-DT-Overlay-configfs-interface-v7.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0018-ARM-DT-Enable-symbols-when-CONFIG_OF_OVERLAY-is-used.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0019-misc-Beaglebone-capemanager.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0020-doc-misc-Beaglebone-capemanager-documentation.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0021-doc-dt-beaglebone-cape-manager-bindings.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0022-doc-ABI-bone_capemgr-sysfs-API.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0023-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0024-arm-dts-Enable-beaglebone-cape-manager.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0025-of-overlay-Implement-target-index-support.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0026-of-unittest-Add-indirect-overlay-target-test.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0027-doc-dt-Document-the-indirect-overlay-method.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0028-of-overlay-Introduce-target-root-capability.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0029-of-unittest-Unit-tests-for-target-root-overlays.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0030-doc-dt-Document-the-target-root-overlay-method.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0031-RFC-Device-overlay-manager-PCI-USB-DT.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0032-of-rename-_node_sysfs-to-_node_post.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0033-of-Support-hashtable-lookups-for-phandles.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0034-of-unittest-hashed-phandles-unitest.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0035-of-overlay-Pick-up-label-symbols-from-overlays.patch"
-
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0036-of-Portable-Device-Tree-connector.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0037-boneblack-defconfig.patch"
-	fi
-
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0038-bone_capemgr-uboot_capemgr_enabled-flag.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0039-bone_capemgr-kill-with-uboot-flag.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0040-fix-include-linux-of.h-add-linux-slab.h-include.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="drivers/ti/bbb_overlays"
-		number=40
-		cleanup
-	fi
-
+	dir 'drivers/ti/overlays'
 	dir 'drivers/ti/cpsw'
 	dir 'drivers/ti/etnaviv'
 	dir 'drivers/ti/eqep'
 	dir 'drivers/ti/rpmsg'
-	dir 'drivers/ti/pru_rproc'
+#needs ti driver...
+#	dir 'drivers/ti/pru_rproc'
 	dir 'drivers/ti/serial'
-	dir 'drivers/ti/spi'
+#Goal, use mainline spi number...
+#	dir 'drivers/ti/spi'
 	dir 'drivers/ti/tsc'
-	dir 'drivers/ti/uio'
+#Needs to be ported...
+#	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
 }
 
 soc () {
 	dir 'soc/ti'
-	dir 'soc/ti/mmc'
 	dir 'soc/ti/bone_common'
 	dir 'soc/ti/uboot'
 	dir 'soc/ti/blue'
-	dir 'soc/ti/sancloud'
-	dir 'soc/ti/abbbi'
-	dir 'soc/ti/am335x_olimex_som'
 	dir 'soc/ti/beaglebone_capes'
 	dir 'soc/ti/pocketbeagle'
-	dir 'soc/ti/pruss'
-	dir 'soc/ti/roboticscape'
 	dir 'soc/ti/uboot_univ'
-	dir 'soc/ti/x15'
 }
 
 dtb_makefile_append () {
 	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
-}
-
-dtb_makefile_append_am57xx () {
-	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
 
 beaglebone () {
@@ -547,15 +455,6 @@ beaglebone () {
 
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 
-		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
-
-		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
-
-		device="am335x-abbbi.dtb" ; dtb_makefile_append
-
-		device="am335x-olimex-som.dtb" ; dtb_makefile_append
-
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
@@ -564,9 +463,6 @@ beaglebone () {
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
-
-		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
-		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
 
 		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
@@ -581,12 +477,12 @@ beaglebone () {
 }
 
 ###
-backports
-reverts
+#backports
+#reverts
 drivers
 soc
 beaglebone
-dir 'drivers/ti/sgx'
+#dir 'drivers/ti/sgx'
 
 packaging () {
 	echo "dir: packaging"
