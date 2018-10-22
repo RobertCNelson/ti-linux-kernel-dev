@@ -142,6 +142,7 @@ aufs4 () {
 	echo "dir: aufs4"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		KERNEL_REL=4.9.94+
 		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-kbuild.patch
 		patch -p1 < aufs4-kbuild.patch || aufs_fail
 		rm -rf aufs4-kbuild.patch
@@ -176,6 +177,7 @@ aufs4 () {
 			${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/aufs4-standalone --depth=1
 		fi
 		cd ./KERNEL/
+		KERNEL_REL=4.9
 
 		cp -v ../aufs4-standalone/Documentation/ABI/testing/*aufs ./Documentation/ABI/testing/
 		mkdir -p ./Documentation/filesystems/aufs/
@@ -285,6 +287,7 @@ wireguard () {
 }
 
 ti_pm_firmware () {
+	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y-next
 	echo "dir: drivers/ti/firmware"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -367,7 +370,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.47"
+	backport_tag="v4.14.78"
 
 	subsystem="fbtft"
 	#regenerate="enable"
