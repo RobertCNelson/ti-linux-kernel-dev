@@ -1,0 +1,135 @@
+From 42106b51cef23421079d926494551d9777069489 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Thu, 8 Nov 2018 12:39:44 -0600
+Subject: [PATCH 2/3] treewide: init_timer() -> setup_timer()
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/net/wireless/bcmdhd/dhd_ip.c        | 7 +++----
+ drivers/net/wireless/bcmdhd/dhd_linux.c     | 8 ++------
+ drivers/net/wireless/bcmdhd/wl_cfg80211.c   | 8 ++------
+ drivers/net/wireless/bcmdhd/wl_cfg_btcoex.c | 5 ++---
+ drivers/net/wireless/bcmdhd/wl_cfgp2p.h     | 4 +---
+ drivers/net/wireless/bcmdhd/wl_iw.c         | 4 +---
+ 6 files changed, 11 insertions(+), 25 deletions(-)
+
+diff --git a/drivers/net/wireless/bcmdhd/dhd_ip.c b/drivers/net/wireless/bcmdhd/dhd_ip.c
+index 231bcc7b5ece..40434ba69a43 100644
+--- a/drivers/net/wireless/bcmdhd/dhd_ip.c
++++ b/drivers/net/wireless/bcmdhd/dhd_ip.c
+@@ -418,10 +418,9 @@ int dhd_tcpack_suppress_set(dhd_pub_t *dhdp, uint8 mode)
+ 		for (i = 0; i < TCPACK_INFO_MAXNUM; i++)
+ 		{
+ 			tcpack_sup_mod->tcpack_info_tbl[i].dhdp = dhdp;
+-			init_timer(&tcpack_sup_mod->tcpack_info_tbl[i].timer);
+-			tcpack_sup_mod->tcpack_info_tbl[i].timer.data =
+-				(ulong)&tcpack_sup_mod->tcpack_info_tbl[i];
+-			tcpack_sup_mod->tcpack_info_tbl[i].timer.function = dhd_tcpack_send;
++			setup_timer(&tcpack_sup_mod->tcpack_info_tbl[i].timer,
++				    dhd_tcpack_send,
++				    (ulong) & tcpack_sup_mod->tcpack_info_tbl[i]);
+ 		}
+ 	}
+ 
+diff --git a/drivers/net/wireless/bcmdhd/dhd_linux.c b/drivers/net/wireless/bcmdhd/dhd_linux.c
+index 4b14a9875493..33fba251d7cb 100644
+--- a/drivers/net/wireless/bcmdhd/dhd_linux.c
++++ b/drivers/net/wireless/bcmdhd/dhd_linux.c
+@@ -7328,9 +7328,7 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
+ 
+ 
+ 	/* Set up the watchdog timer */
+-	init_timer(&dhd->timer);
+-	dhd->timer.data = (ulong)dhd;
+-	dhd->timer.function = dhd_watchdog;
++	setup_timer(&dhd->timer, dhd_watchdog, (ulong)dhd);
+ 	dhd->default_wd_interval = dhd_watchdog_ms;
+ 
+ 	if (dhd_watchdog_prio >= 0) {
+@@ -7346,9 +7344,7 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
+ 
+ #ifdef DHD_PCIE_RUNTIMEPM
+ 	/* Setup up the runtime PM Idlecount timer */
+-	init_timer(&dhd->rpm_timer);
+-	dhd->rpm_timer.data = (ulong)dhd;
+-	dhd->rpm_timer.function = dhd_runtimepm;
++	setup_timer(&dhd->rpm_timer, dhd_runtimepm, (ulong)dhd);
+ 	dhd->rpm_timer_valid = FALSE;
+ 
+ 	dhd->thr_rpm_ctl.thr_pid = DHD_PID_KT_INVALID;
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfg80211.c b/drivers/net/wireless/bcmdhd/wl_cfg80211.c
+index bf73254e1acb..ce32e4a1de6c 100644
+--- a/drivers/net/wireless/bcmdhd/wl_cfg80211.c
++++ b/drivers/net/wireless/bcmdhd/wl_cfg80211.c
+@@ -13437,9 +13437,7 @@ static s32 wl_init_scan(struct bcm_cfg80211 *cfg)
+ 	wl_escan_init_sync_id(cfg);
+ 
+ 	/* Init scan_timeout timer */
+-	init_timer(&cfg->scan_timeout);
+-	cfg->scan_timeout.data = (unsigned long) cfg;
+-	cfg->scan_timeout.function = wl_scan_timeout;
++	setup_timer(&cfg->scan_timeout, wl_scan_timeout, (unsigned long)cfg);
+ 
+ 	return err;
+ }
+@@ -13450,9 +13448,7 @@ static s32 wl_init_roam_timeout(struct bcm_cfg80211 *cfg)
+ 	int err = 0;
+ 
+ 	/* Init roam timer */
+-	init_timer(&cfg->roam_timeout);
+-	cfg->roam_timeout.data = (unsigned long) cfg;
+-	cfg->roam_timeout.function = wl_roam_timeout;
++	setup_timer(&cfg->roam_timeout, wl_roam_timeout, (unsigned long)cfg);
+ 
+ 	return err;
+ }
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfg_btcoex.c b/drivers/net/wireless/bcmdhd/wl_cfg_btcoex.c
+index 32ba61d50e87..0e9e5df9ede0 100644
+--- a/drivers/net/wireless/bcmdhd/wl_cfg_btcoex.c
++++ b/drivers/net/wireless/bcmdhd/wl_cfg_btcoex.c
+@@ -390,9 +390,8 @@ void* wl_cfg80211_btcoex_init(struct net_device *ndev)
+ 	btco_inf->ts_dhcp_ok = 0;
+ 	/* Set up timer for BT  */
+ 	btco_inf->timer_ms = 10;
+-	init_timer(&btco_inf->timer);
+-	btco_inf->timer.data = (ulong)btco_inf;
+-	btco_inf->timer.function = wl_cfg80211_bt_timerfunc;
++	setup_timer(&btco_inf->timer, wl_cfg80211_bt_timerfunc,
++		    (ulong)btco_inf);
+ 
+ 	btco_inf->dev = ndev;
+ 
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfgp2p.h b/drivers/net/wireless/bcmdhd/wl_cfgp2p.h
+index 0cd8b91a5a0d..f1c13f5a2e7a 100644
+--- a/drivers/net/wireless/bcmdhd/wl_cfgp2p.h
++++ b/drivers/net/wireless/bcmdhd/wl_cfgp2p.h
+@@ -185,10 +185,8 @@ enum wl_cfgp2p_status {
+ 	} while (0)
+ #define INIT_TIMER(timer, func, duration, extra_delay)	\
+ 	do {				   \
+-		init_timer(timer); \
+-		timer->function = func; \
++		setup_timer(timer, func, (unsigned long)cfg); \
+ 		timer->expires = jiffies + msecs_to_jiffies(duration + extra_delay); \
+-		timer->data = (unsigned long) cfg; \
+ 		add_timer(timer); \
+ 	} while (0);
+ 
+diff --git a/drivers/net/wireless/bcmdhd/wl_iw.c b/drivers/net/wireless/bcmdhd/wl_iw.c
+index c900d6629ddf..afc877e780fa 100644
+--- a/drivers/net/wireless/bcmdhd/wl_iw.c
++++ b/drivers/net/wireless/bcmdhd/wl_iw.c
+@@ -3878,9 +3878,7 @@ wl_iw_attach(struct net_device *dev, void * dhdp)
+ 
+ 	/* Set up the timer */
+ 	iscan->timer_ms    = 2000;
+-	init_timer(&iscan->timer);
+-	iscan->timer.data = (ulong)iscan;
+-	iscan->timer.function = wl_iw_timerfunc;
++	setup_timer(&iscan->timer, wl_iw_timerfunc, (ulong)iscan);
+ 
+ 	sema_init(&iscan->sysioc_sem, 0);
+ 	init_completion(&iscan->sysioc_exited);
+-- 
+2.19.1
+
