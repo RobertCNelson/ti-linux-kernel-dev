@@ -441,7 +441,7 @@ reverts () {
 
 drivers () {
 	dir 'drivers/ar1021_i2c'
-	dir 'drivers/bcmdhd'
+#	dir 'drivers/bcmdhd'
 	dir 'drivers/btrfs'
 	dir 'drivers/pwm'
 	dir 'drivers/snd_pwmsp'
@@ -599,7 +599,7 @@ beaglebone () {
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
 
 		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
-		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle-gamepup.dtb" ; dtb_makefile_append
 
 		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
