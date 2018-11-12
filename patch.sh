@@ -625,6 +625,7 @@ drivers
 soc
 beaglebone
 dir 'drivers/ti/sgx'
+dir 'soc/ti/reva3'
 
 packaging () {
 	echo "dir: packaging"
