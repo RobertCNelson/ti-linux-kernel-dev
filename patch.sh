@@ -445,6 +445,7 @@ drivers () {
 	dir 'drivers/btrfs'
 	dir 'drivers/pwm'
 	dir 'drivers/snd_pwmsp'
+	dir 'drivers/sound'
 	dir 'drivers/spi'
 	dir 'drivers/ssd1306'
 	dir 'drivers/tps65217'
@@ -541,6 +542,8 @@ soc () {
 	dir 'soc/ti/roboticscape'
 	dir 'soc/ti/uboot_univ'
 	dir 'soc/ti/x15'
+	dir 'soc/ti/evm'
+	dir 'soc/gssi'
 }
 
 dtb_makefile_append () {
@@ -548,7 +551,7 @@ dtb_makefile_append () {
 }
 
 dtb_makefile_append_am57xx () {
-	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+	sed -i -e 's:am57xx-beagle-x15-revc.dtb \\:am57xx-beagle-x15-revc.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
 
 beaglebone () {
@@ -605,6 +608,9 @@ beaglebone () {
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
 
+		device="am57xx-evm.dtb" ; dtb_makefile_append_am57xx
+		device="am57xx-evm-reva3.dtb" ; dtb_makefile_append_am57xx
+
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
 		exit 2
@@ -620,7 +626,6 @@ drivers
 soc
 beaglebone
 dir 'drivers/ti/sgx'
-dir 'soc/ti/reva3'
 
 packaging () {
 	echo "dir: packaging"
