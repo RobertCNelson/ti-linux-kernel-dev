@@ -349,7 +349,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.20-rc1"
+	backport_tag="v4.20-rc2"
 
 	subsystem="brcm80211"
 	#regenerate="enable"
@@ -363,6 +363,7 @@ backports () {
 	else
 		patch_backports
 		dir 'backports/brcm80211_post'
+		dir 'backports/brcm80211_sg'
 	fi
 }
 
