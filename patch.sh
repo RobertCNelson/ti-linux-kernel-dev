@@ -450,6 +450,7 @@ drivers () {
 	dir 'drivers/btrfs'
 	dir 'drivers/pwm'
 	dir 'drivers/snd_pwmsp'
+	dir 'drivers/sound'
 	dir 'drivers/spi'
 	dir 'drivers/ssd1306'
 	dir 'drivers/tps65217'
