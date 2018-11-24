@@ -223,8 +223,8 @@ git_xenomai () {
 			rm -rf "${DIR}/ignore/xenomai/" || true
 		fi
 		mkdir -p "${DIR}/ignore/xenomai/" || true
-		echo "git: [git clone -b stable-3.0.x ${xenomai}]"
-		${git_bin} clone --depth=50 -b stable-3.0.x ${xenomai} "${DIR}/ignore/xenomai/"
+		echo "git: [git clone -b stable/v3.0.x ${xenomai}]"
+		${git_bin} clone --depth=50 -b stable/v3.0.x ${xenomai} "${DIR}/ignore/xenomai/"
 		touch "${DIR}/ignore/xenomai/.ignore-${xenomai_checkout}"
 	fi
 	echo "-----------------------------"
@@ -330,7 +330,7 @@ torvalds_linux="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.g
 unsecure_torvalds_linux="git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 linux_stable="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
 unsecure_linux_stable="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
-xenomai="git://git.xenomai.org/xenomai-3.git"
+xenomai="https://gitlab.denx.de/Xenomai/xenomai.git"
 
 if [ ! -f "${DIR}/.yakbuild" ] ; then
 	git_kernel
