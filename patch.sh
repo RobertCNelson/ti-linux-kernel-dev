@@ -228,44 +228,41 @@ rt () {
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
 
-wireguard_fail () {
-	echo "WireGuard failed"
-	exit 2
-}
-
-wireguard () {
-	echo "dir: WireGuard"
+ti_pm_firmware () {
+	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y-next
+	echo "dir: drivers/ti/firmware"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+
 		cd ../
-		if [ ! -d ./WireGuard ] ; then
-			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+		if [ ! -d ./ti-amx3-cm3-pm-firmware ] ; then
+			${git_bin} clone -b ti-v4.1.y-next git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git --depth=1
 		else
-			rm -rf ./WireGuard || true
-			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
+			rm -rf ./ti-amx3-cm3-pm-firmware || true
+			${git_bin} clone -b ti-v4.1.y-next git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git --depth=1
 		fi
 		cd ./KERNEL/
 
-		../WireGuard/contrib/kernel-tree/create-patch.sh | patch -p1 || wireguard_fail
+		cp -v ../ti-amx3-cm3-pm-firmware/bin/am* ./firmware/
 
-		${git_bin} add .
-		${git_bin} commit -a -m 'merge: WireGuard' -s
-		${git_bin} format-patch -1 -o ../patches/WireGuard/
+		${git_bin} add -f ./firmware/am*
+		${git_bin} commit -a -m 'add am33x firmware' -s
+		${git_bin} format-patch -1 -o ../patches/drivers/ti/firmware/
 
-		rm -rf ../WireGuard/ || true
+		rm -rf ../ti-amx3-cm3-pm-firmware/ || true
 
 		${git_bin} reset --hard HEAD^
 
 		start_cleanup
 
-		${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
+		${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 
-		wdir="WireGuard"
+		wdir="drivers/ti/firmware"
 		number=1
 		cleanup
 	fi
 
-	${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
+	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 }
 
 local_patch () {
@@ -276,7 +273,7 @@ local_patch () {
 external_git
 aufs4
 rt
-#wireguard
+ti_pm_firmware
 #local_patch
 
 pre_backports () {
@@ -449,11 +446,22 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/iio/0026-iio-adc-xilinx-Fix-error-handling.patch"
 #v4.4.97
 	${git} "${DIR}/patches/backports/iio/0027-iio-trigger-free-trigger-resource-correctly.patch"
+#v4.4.102
+	${git} "${DIR}/patches/backports/iio/0028-iio-light-fix-improper-return-value.patch"
+	${git} "${DIR}/patches/backports/iio/0029-staging-iio-cdc-fix-improper-return-value.patch"
+#v4.4.103
+	${git} "${DIR}/patches/backports/iio/0030-staging-iio-adc-ad7192-fix-external-frequency-settin.patch"
+#v4.4.118
+	${git} "${DIR}/patches/backports/iio/0031-iio-buffer-check-if-a-buffer-has-been-set-up-when-po.patch"
+	${git} "${DIR}/patches/backports/iio/0032-iio-adis_lib-Initialize-trigger-before-requesting-in.patch"
+#v4.4.119
+	${git} "${DIR}/patches/backports/iio/0033-iio-st_pressure-st_accel-Initialise-sensor-platform-.patch"
+#v4.4.125
 
 #fix, ti merged in v4.9.x:
 	${git} "${DIR}/patches/backports/iio/0028-mfd-palmas-Assign-the-right-powerhold-mask-for-tps65.patch"
 
-	backport_tag="v4.9.92"
+	backport_tag="v4.9.142"
 
 	subsystem="touchscreen"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -508,7 +516,7 @@ lts44_backports () {
 	${git} "${DIR}/patches/backports/etnaviv/0003-etnaviv-enable-for-ARCH_OMAP2PLUS.patch"
 	${git} "${DIR}/patches/backports/etnaviv/0004-drm-etnaviv-julbouln-diff.patch"
 
-	backport_tag="v4.14.32"
+	backport_tag="v4.14.85"
 
 	subsystem="fbtft"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -959,49 +967,6 @@ beaglebone () {
 	fi
 
 	dir 'beaglebone/phy'
-
-	echo "dir: beaglebone/firmware"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=summary
-	#git clone git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git
-
-	#cd ti-amx3-cm3-pm-firmware/
-	#git checkout origin/ti-v4.1.y-next -b tmp
-
-	#commit ee4acf427055d7e87d9d1d82296cbd05e388642e
-	#Author: Dave Gerlach <d-gerlach@ti.com>
-	#Date:   Tue Sep 6 14:33:11 2016 -0500
-	#
-	#    CM3: Firmware release 0x192
-	#    
-	#    This version, 0x192, includes the following changes:
-	#         - Fix DDR IO CTRL handling during suspend so both am335x and am437x
-	#           use optimal low power state and restore the exact previous
-	#           configuration.
-	#        - Explicitly configure PER state in standby, even though it is
-	#           configured to ON state to ensure proper state.
-	#         - Add new 'halt' flag in IPC_REG4 bit 11 to allow HLOS to configure
-	#           the suspend path to wait immediately before suspending the system
-	#           entirely to allow JTAG visiblity for debug.
-	#         - Fix board voltage scaling binaries i2c speed configuration in
-	#           order to properly configure 100khz operation.
-	#    
-	#    Signed-off-by: Dave Gerlach <d-gerlach@ti.com>
-
-	#cp -v bin/am* /opt/github/bb.org/ti-4.4/normal/KERNEL/firmware/
-
-	#git add -f ./firmware/am*
-
-	${git} "${DIR}/patches/beaglebone/firmware/0001-add-am33x-firmware.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
 }
 
 remoteproc_by_default () {
@@ -1094,6 +1059,7 @@ packaging () {
 }
 
 readme () {
+	echo "dir: readme"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
