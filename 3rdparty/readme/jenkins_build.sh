@@ -4,9 +4,11 @@
 
 site="https://releases.linaro.org"
 
+#https://releases.linaro.org/components/toolchain/binaries/6.4-2018.05/arm-linux-gnueabihf/gcc-linaro-6.4.1-2018.05-x86_64_arm-linux-gnueabihf.tar.xz
+
 gcc_version="6.4"
 gcc_minor=".1"
-release="17.11"
+release="18.05"
 target="arm-linux-gnueabihf"
 
 version="components/toolchain/binaries/${gcc_version}-20${release}/${target}"
