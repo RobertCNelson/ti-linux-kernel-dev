@@ -399,32 +399,28 @@ drivers () {
 	dir 'drivers/tps65217'
 	dir 'drivers/opp'
 	dir 'drivers/wiznet'
+
 	dir 'drivers/ti/overlays'
 	dir 'drivers/ti/cpsw'
 	dir 'drivers/ti/etnaviv'
 	dir 'drivers/ti/eqep'
 	dir 'drivers/ti/rpmsg'
-#needs ti driver...
-#	dir 'drivers/ti/pru_rproc'
 	dir 'drivers/ti/serial'
-#Goal, use mainline spi number...
-#	dir 'drivers/ti/spi'
 	dir 'drivers/ti/tsc'
-#Needs to be ported...
-#	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
 	#[PATCH v3 1/4] mfd: stmpe: Move ADC related defines to header of mfd
 	dir 'drivers/iio/stmpe'
 }
 
 soc () {
-	dir 'soc/ti'
-	dir 'soc/ti/bone_common'
-	dir 'soc/ti/uboot'
+	dir 'soc/ti/am335x'
+
 	dir 'soc/ti/blue'
-	dir 'soc/ti/beaglebone_capes'
+	dir 'soc/ti/abbbi'
+	dir 'soc/ti/am335x_olimex_som'
 	dir 'soc/ti/pocketbeagle'
-	dir 'soc/ti/uboot_univ'
+	dir 'soc/ti/beaglebone_capes'
+	dir 'soc/ti/uboot'
 }
 
 dtb_makefile_append () {
@@ -459,6 +455,13 @@ beaglebone () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
+
+#		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
+#		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
+
+		device="am335x-abbbi.dtb" ; dtb_makefile_append
+
+		device="am335x-olimex-som.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 
