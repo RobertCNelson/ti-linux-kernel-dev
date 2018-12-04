@@ -208,6 +208,7 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
+	#v4.19.x
 	#${git_bin} revert --no-edit xyz
 
 	#regenerate="enable"
@@ -351,6 +352,9 @@ patch_backports (){
 backports () {
 	backport_tag="v4.20-rc5"
 
+	subsystem="am335xdts"
+	patch_backports
+
 	subsystem="brcm80211"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -390,8 +394,6 @@ drivers () {
 	dir 'drivers/ar1021_i2c'
 	dir 'drivers/btrfs'
 	dir 'drivers/pwm'
-#	dir 'drivers/lora'
-	dir 'drivers/snd_pwmsp'
 	dir 'drivers/spi'
 	dir 'drivers/ssd1306'
 	dir 'drivers/tps65217'
@@ -411,6 +413,8 @@ drivers () {
 #Needs to be ported...
 #	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
+	#[PATCH v3 1/4] mfd: stmpe: Move ADC related defines to header of mfd
+	dir 'drivers/iio/stmpe'
 }
 
 soc () {
@@ -483,7 +487,6 @@ backports
 drivers
 soc
 beaglebone
-#dir 'drivers/ti/sgx'
 
 packaging () {
 	echo "dir: packaging"
