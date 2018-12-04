@@ -32,10 +32,10 @@ toolchain="gcc_arm_gnueabihf_8"
 
 #Kernel
 KERNEL_REL=4.19
-KERNEL_TAG=${KERNEL_REL}
-kernel_rt="-rt1"
+KERNEL_TAG=${KERNEL_REL}.5
+kernel_rt=".5-rt4"
 #Kernel Build
-BUILD=${build_prefix}2.3
+BUILD=${build_prefix}2.4
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -47,7 +47,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 DEBARCH=armhf
 
-ti_git_old_release="d59046e64d99dfd9085ee78b7193f37f6a5f33d1"
-        ti_git_pre="d59046e64d99dfd9085ee78b7193f37f6a5f33d1"
-       ti_git_post="45639814c5b6e110518b4358f02ebfee0ad10355"
+ti_git_old_release="45639814c5b6e110518b4358f02ebfee0ad10355"
+        ti_git_pre="45639814c5b6e110518b4358f02ebfee0ad10355"
+       ti_git_post="23c0c00c2f0b857d39bfe98aba7c85391dbd029f"
 #
