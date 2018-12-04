@@ -349,20 +349,21 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.x-y"
+	backport_tag="v4.20-rc5"
 
-	subsystem="xyz"
+	subsystem="brcm80211"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		mkdir -p ./x/
-		cp -v ~/linux-src/x/* ./x/
+		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
 
 		post_backports
 		exit 2
 	else
 		patch_backports
+		dir 'backports/brcm80211_post'
+		dir 'backports/brcm80211_sg'
 	fi
 }
 
@@ -477,7 +478,7 @@ beaglebone () {
 }
 
 ###
-#backports
+backports
 #reverts
 drivers
 soc
