@@ -350,7 +350,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.20-rc5"
+	backport_tag="v4.20-rc6"
 
 	subsystem="am335xdts"
 	patch_backports
