@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2009-2017 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2018 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -138,11 +138,12 @@ gcc_toolchain () {
 		#https://releases.linaro.org/components/toolchain/binaries/6.3-2017.05/arm-eabi/gcc-linaro-6.3.1-2017.05-x86_64_arm-eabi.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/6.4-2017.08/arm-eabi/gcc-linaro-6.4.1-2017.08-x86_64_arm-eabi.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/6.4-2017.11/arm-eabi/gcc-linaro-6.4.1-2017.11-x86_64_arm-eabi.tar.xz
+		#https://releases.linaro.org/components/toolchain/binaries/6.4-2018.05/arm-eabi/gcc-linaro-6.4.1-2018.05-x86_64_arm-eabi.tar.xz
 		#
 
 		gcc_version="6.4"
 		gcc_minor=".1"
-		release="17.11"
+		release="18.05"
 		target="arm-eabi"
 
 		version="components/toolchain/binaries/${gcc_version}-20${release}/${target}"
@@ -158,12 +159,13 @@ gcc_toolchain () {
 		#https://releases.linaro.org/components/toolchain/binaries/7.1-2017.05/arm-eabi/gcc-linaro-7.1.1-2017.05-x86_64_arm-eabi.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/7.1-2017.08/arm-eabi/gcc-linaro-7.1.1-2017.08-x86_64_arm-eabi.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/7.2-2017.11/arm-eabi/gcc-linaro-7.2.1-2017.11-x86_64_arm-eabi.tar.xz
+		#https://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/arm-eabi/gcc-linaro-7.3.1-2018.05-x86_64_arm-eabi.tar.xz
 		#
 		#site="https://snapshots.linaro.org"
 
-		gcc_version="7.2"
+		gcc_version="7.3"
 		gcc_minor=".1"
-		release="17.11"
+		release="18.05"
 		target="arm-eabi"
 
 		version="components/toolchain/binaries/${gcc_version}-20${release}/${target}"
@@ -282,11 +284,12 @@ gcc_toolchain () {
 		#https://releases.linaro.org/components/toolchain/binaries/6.3-2017.05/arm-linux-gnueabihf/gcc-linaro-6.3.1-2017.05-x86_64_arm-linux-gnueabihf.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/6.4-2017.08/arm-linux-gnueabihf/gcc-linaro-6.4.1-2017.08-x86_64_arm-linux-gnueabihf.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/6.4-2017.11/arm-linux-gnueabihf/gcc-linaro-6.4.1-2017.11-x86_64_arm-linux-gnueabihf.tar.xz
+		#https://releases.linaro.org/components/toolchain/binaries/6.4-2018.05/arm-linux-gnueabihf/gcc-linaro-6.4.1-2018.05-x86_64_arm-linux-gnueabihf.tar.xz
 		#
 
 		gcc_version="6.4"
 		gcc_minor=".1"
-		release="17.11"
+		release="18.05"
 		target="arm-linux-gnueabihf"
 
 		version="components/toolchain/binaries/${gcc_version}-20${release}/${target}"
@@ -302,17 +305,39 @@ gcc_toolchain () {
 		#https://releases.linaro.org/components/toolchain/binaries/7.1-2017.05/arm-linux-gnueabihf/gcc-linaro-7.1.1-2017.05-x86_64_arm-linux-gnueabihf.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/7.1-2017.08/arm-linux-gnueabihf/gcc-linaro-7.1.1-2017.08-x86_64_arm-linux-gnueabihf.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/7.2-2017.11/arm-linux-gnueabihf/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabihf.tar.xz
+		#https://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/arm-linux-gnueabihf/gcc-linaro-7.3.1-2018.05-x86_64_arm-linux-gnueabihf.tar.xz
 		#
 		#site="https://snapshots.linaro.org"
 
-		gcc_version="7.2"
+		gcc_version="7.3"
 		gcc_minor=".1"
-		release="17.11"
+		release="18.05"
 		target="arm-linux-gnueabihf"
 
 		version="components/toolchain/binaries/${gcc_version}-20${release}/${target}"
 		filename="gcc-linaro-${gcc_version}${gcc_minor}-20${release}-x86_64_${target}.tar.xz"
 		directory="gcc-linaro-${gcc_version}${gcc_minor}-20${release}-x86_64_${target}"
+
+		datestamp="${gcc_version}-20${release}-${target}"
+
+		binary="bin/${target}-"
+		;;
+	gcc_arm_gnueabihf_8)
+		#
+		#https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2018.08/gcc-arm-8.2-2018.08-x86_64-arm-linux-gnueabihf.tar.xz
+		#https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2018.11/gcc-arm-8.2-2018.11-x86_64-arm-linux-gnueabihf.tar.xz
+		#
+		site="https://developer.arm.com/-/media/Files/downloads/gnu-a"
+		archive_site="https://developer.arm.com/-/media/Files/downloads/gnu-a"
+
+		gcc_version="8.2"
+		gcc_minor=""
+		release="18.11"
+		target="arm-linux-gnueabihf"
+
+		version="${gcc_version}-20${release}"
+		filename="gcc-arm-${gcc_version}${gcc_minor}-20${release}-x86_64-${target}.tar.xz"
+		directory="gcc-arm-${gcc_version}${gcc_minor}-20${release}-x86_64-${target}"
 
 		datestamp="${gcc_version}-20${release}-${target}"
 
@@ -342,11 +367,12 @@ gcc_toolchain () {
 		#https://releases.linaro.org/components/toolchain/binaries/6.3-2017.05/aarch64-linux-gnu/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/6.4-2017.08/aarch64-linux-gnu/gcc-linaro-6.4.1-2017.08-x86_64_aarch64-linux-gnu.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/6.4-2017.11/aarch64-linux-gnu/gcc-linaro-6.4.1-2017.11-x86_64_aarch64-linux-gnu.tar.xz
+		#https://releases.linaro.org/components/toolchain/binaries/6.4-2018.05/aarch64-linux-gnu/gcc-linaro-6.4.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
 		#
 
 		gcc_version="6.4"
 		gcc_minor=".1"
-		release="17.11"
+		release="18.05"
 		target="aarch64-linux-gnu"
 
 		version="components/toolchain/binaries/${gcc_version}-20${release}/${target}"
@@ -362,12 +388,13 @@ gcc_toolchain () {
 		#https://releases.linaro.org/components/toolchain/binaries/7.1-2017.05/aarch64-linux-gnu/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/7.1-2017.08/aarch64-linux-gnu/gcc-linaro-7.1.1-2017.08-x86_64_aarch64-linux-gnu.tar.xz
 		#https://releases.linaro.org/components/toolchain/binaries/7.2-2017.11/aarch64-linux-gnu/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu.tar.xz
+		#https://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
 		#
 		#site="https://snapshots.linaro.org"
 
-		gcc_version="7.2"
+		gcc_version="7.3"
 		gcc_minor=".1"
-		release="17.11"
+		release="18.05"
 		target="aarch64-linux-gnu"
 
 		version="components/toolchain/binaries/${gcc_version}-20${release}/${target}"

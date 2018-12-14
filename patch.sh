@@ -1191,6 +1191,7 @@ packaging () {
 }
 
 readme () {
+	echo "dir: readme"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"

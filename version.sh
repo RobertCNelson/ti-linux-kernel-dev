@@ -23,6 +23,7 @@ KERNEL_ARCH=arm
 toolchain="gcc_linaro_gnueabihf_5"
 #toolchain="gcc_linaro_gnueabihf_6"
 #toolchain="gcc_linaro_gnueabihf_7"
+#toolchain="gcc_arm_gnueabihf_8"
 #arm64
 #KERNEL_ARCH=arm64
 #toolchain="gcc_linaro_aarch64_gnu_5"
