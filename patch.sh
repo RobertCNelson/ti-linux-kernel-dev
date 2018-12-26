@@ -142,6 +142,7 @@ aufs4 () {
 	echo "dir: aufs4"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
+		KERNEL_REL=4.9.94+
 		wget https://raw.githubusercontent.com/sfjro/aufs4-standalone/aufs${KERNEL_REL}/aufs4-kbuild.patch
 		patch -p1 < aufs4-kbuild.patch || aufs_fail
 		rm -rf aufs4-kbuild.patch
@@ -176,6 +177,7 @@ aufs4 () {
 			${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/aufs4-standalone --depth=1
 		fi
 		cd ./KERNEL/
+		KERNEL_REL=4.9
 
 		cp -v ../aufs4-standalone/Documentation/ABI/testing/*aufs ./Documentation/ABI/testing/
 		mkdir -p ./Documentation/filesystems/aufs/
@@ -221,12 +223,8 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v4.9.104
-	${git_bin} revert --no-edit 527ed41ff2776311bdae56c2472ee0a5cbb60605
-	${git_bin} revert --no-edit bcefedb87cf9625d33d0e53dfdc52e43744593c1
-
-	#v4.9.101
-	${git_bin} revert --no-edit 205cd52bbee7fe6452912fe01ceade970bccc926
+	#v4.9.147
+	${git_bin} revert --no-edit 3a7bac902691cd92cb69f95d98dc675dea8b3228
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -285,6 +283,7 @@ wireguard () {
 }
 
 ti_pm_firmware () {
+	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y-next
 	echo "dir: drivers/ti/firmware"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -329,7 +328,7 @@ external_git
 #sync_cherrypicks
 aufs4
 rt
-wireguard
+#wireguard
 ti_pm_firmware
 #local_patch
 
@@ -367,7 +366,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.47"
+	backport_tag="v4.14.90"
 
 	subsystem="fbtft"
 	#regenerate="enable"
@@ -431,7 +430,6 @@ drivers () {
 	dir 'drivers/spi'
 	dir 'drivers/ssd1306'
 	dir 'drivers/thumb2'
-	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
 	dir 'drivers/broadcom'
 	dir 'drivers/wiznet'
