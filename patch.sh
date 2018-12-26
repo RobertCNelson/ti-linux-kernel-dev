@@ -223,12 +223,8 @@ rt () {
 	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v4.9.104
-	${git_bin} revert --no-edit 527ed41ff2776311bdae56c2472ee0a5cbb60605
-	${git_bin} revert --no-edit bcefedb87cf9625d33d0e53dfdc52e43744593c1
-
-	#v4.9.101
-	${git_bin} revert --no-edit 205cd52bbee7fe6452912fe01ceade970bccc926
+	#v4.9.147
+	${git_bin} revert --no-edit 3a7bac902691cd92cb69f95d98dc675dea8b3228
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -370,7 +366,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.89"
+	backport_tag="v4.14.90"
 
 	subsystem="fbtft"
 	#regenerate="enable"
@@ -434,7 +430,6 @@ drivers () {
 	dir 'drivers/spi'
 	dir 'drivers/ssd1306'
 	dir 'drivers/thumb2'
-	dir 'drivers/tsl2550'
 	dir 'drivers/tps65217'
 	dir 'drivers/broadcom'
 	dir 'drivers/wiznet'
