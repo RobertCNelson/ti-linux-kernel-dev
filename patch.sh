@@ -603,6 +603,7 @@ beaglebone () {
 
 		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
 		device="am335x-pocketbeagle-gamepup.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle-techlab.dtb" ; dtb_makefile_append
 
 		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
