@@ -448,6 +448,7 @@ drivers () {
 	dir 'drivers/ar1021_i2c'
 #	dir 'drivers/bcmdhd'
 	dir 'drivers/btrfs'
+	dir 'drivers/mcp23s08'
 	dir 'drivers/pwm'
 	dir 'drivers/snd_pwmsp'
 	dir 'drivers/sound'
