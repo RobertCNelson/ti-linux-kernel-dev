@@ -1,12 +1,12 @@
-From 80d1ca4543fb81a9efbfe343817c45e93eba92b5 Mon Sep 17 00:00:00 2001
+From 40fd202567dc173608a5b2a9df2fbb5b92fe2dde Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 4 Jan 2019 14:04:42 -0600
+Date: Mon, 14 Jan 2019 14:21:40 -0600
 Subject: [PATCH] merge: brcm80211
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  .../broadcom/brcm80211/brcmfmac/bus.h         |  13 ++
- .../broadcom/brcm80211/brcmfmac/cfg80211.c    |  68 +++----
+ .../broadcom/brcm80211/brcmfmac/cfg80211.c    |  65 ++-----
  .../broadcom/brcm80211/brcmfmac/common.c      | 177 +++++++++++++++++-
  .../broadcom/brcm80211/brcmfmac/core.c        |  39 ++++
  .../broadcom/brcm80211/brcmfmac/core.h        |   1 +
@@ -16,9 +16,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../broadcom/brcm80211/brcmfmac/pcie.c        |  19 ++
  .../broadcom/brcm80211/brcmfmac/sdio.c        |  22 ++-
  .../broadcom/brcm80211/brcmfmac/usb.c         |  18 ++
- .../broadcom/brcm80211/brcmutil/d11.c         |  37 +++-
- .../broadcom/brcm80211/include/brcmu_wifi.h   |   2 +
- 13 files changed, 374 insertions(+), 57 deletions(-)
+ 11 files changed, 334 insertions(+), 55 deletions(-)
 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
 index 163ddc49f951..fb60a7c66e2c 100644
@@ -59,7 +57,7 @@ index 163ddc49f951..fb60a7c66e2c 100644
   * interface functions from common layer
   */
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-index 083e5ce7eac7..2b671d03387b 100644
+index cd6c5ece9a5d..2b671d03387b 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 @@ -472,47 +472,6 @@ send_key_to_dongle(struct brcmf_if *ifp, struct brcmf_wsec_key *key)
@@ -119,17 +117,7 @@ index 083e5ce7eac7..2b671d03387b 100644
  	cfg->pwr_save = enabled;
  	if (!check_vif_up(ifp->vif)) {
  
-@@ -6098,7 +6059,8 @@ static int brcmf_construct_chaninfo(struct brcmf_cfg80211_info *cfg,
- 			 * for subsequent chanspecs.
- 			 */
- 			channel->flags = IEEE80211_CHAN_NO_HT40 |
--					 IEEE80211_CHAN_NO_80MHZ;
-+					 IEEE80211_CHAN_NO_80MHZ |
-+					 IEEE80211_CHAN_NO_160MHZ;
- 			ch.bw = BRCMU_CHAN_BW_20;
- 			cfg->d11inf.encchspec(&ch);
- 			chaninfo = ch.chspec;
-@@ -6862,12 +6824,18 @@ static s32 brcmf_translate_country_code(struct brcmf_pub *drvr, char alpha2[2],
+@@ -6863,12 +6824,18 @@ static s32 brcmf_translate_country_code(struct brcmf_pub *drvr, char alpha2[2],
  	struct brcmfmac_pd_cc *country_codes;
  	struct brcmfmac_pd_cc_entry *cc;
  	s32 found_index;
@@ -150,7 +138,7 @@ index 083e5ce7eac7..2b671d03387b 100644
  	}
  
  	if ((alpha2[0] == ccreq->country_abbrev[0]) &&
-@@ -6891,10 +6859,14 @@ static s32 brcmf_translate_country_code(struct brcmf_pub *drvr, char alpha2[2],
+@@ -6892,10 +6859,14 @@ static s32 brcmf_translate_country_code(struct brcmf_pub *drvr, char alpha2[2],
  		brcmf_dbg(TRACE, "No country code match found\n");
  		return -EINVAL;
  	}
@@ -168,7 +156,7 @@ index 083e5ce7eac7..2b671d03387b 100644
  	ccreq->country_abbrev[0] = alpha2[0];
  	ccreq->country_abbrev[1] = alpha2[1];
  	ccreq->country_abbrev[2] = 0;
-@@ -6918,6 +6890,8 @@ static void brcmf_cfg80211_reg_notifier(struct wiphy *wiphy,
+@@ -6919,6 +6890,8 @@ static void brcmf_cfg80211_reg_notifier(struct wiphy *wiphy,
  	/* ignore non-ISO3166 country codes */
  	for (i = 0; i < 2; i++)
  		if (req->alpha2[i] < 'A' || req->alpha2[i] > 'Z') {
@@ -677,75 +665,6 @@ index 11ffaa01599e..b27170c12482 100644
  };
  
  static int brcmf_usb_bus_setup(struct brcmf_usbdev_info *devinfo)
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmutil/d11.c b/drivers/net/wireless/broadcom/brcm80211/brcmutil/d11.c
-index d8b79cb72b58..eb5db94f5745 100644
---- a/drivers/net/wireless/broadcom/brcm80211/brcmutil/d11.c
-+++ b/drivers/net/wireless/broadcom/brcm80211/brcmutil/d11.c
-@@ -77,6 +77,8 @@ static u16 d11ac_bw(enum brcmu_chan_bw bw)
- 		return BRCMU_CHSPEC_D11AC_BW_40;
- 	case BRCMU_CHAN_BW_80:
- 		return BRCMU_CHSPEC_D11AC_BW_80;
-+	case BRCMU_CHAN_BW_160:
-+		return BRCMU_CHSPEC_D11AC_BW_160;
- 	default:
- 		WARN_ON(1);
- 	}
-@@ -190,8 +192,41 @@ static void brcmu_d11ac_decchspec(struct brcmu_chan *ch)
- 			break;
- 		}
- 		break;
--	case BRCMU_CHSPEC_D11AC_BW_8080:
- 	case BRCMU_CHSPEC_D11AC_BW_160:
-+		ch->bw = BRCMU_CHAN_BW_160;
-+		ch->sb = brcmu_maskget16(ch->chspec, BRCMU_CHSPEC_D11AC_SB_MASK,
-+					 BRCMU_CHSPEC_D11AC_SB_SHIFT);
-+		switch (ch->sb) {
-+		case BRCMU_CHAN_SB_LLL:
-+			ch->control_ch_num -= CH_70MHZ_APART;
-+			break;
-+		case BRCMU_CHAN_SB_LLU:
-+			ch->control_ch_num -= CH_50MHZ_APART;
-+			break;
-+		case BRCMU_CHAN_SB_LUL:
-+			ch->control_ch_num -= CH_30MHZ_APART;
-+			break;
-+		case BRCMU_CHAN_SB_LUU:
-+			ch->control_ch_num -= CH_10MHZ_APART;
-+			break;
-+		case BRCMU_CHAN_SB_ULL:
-+			ch->control_ch_num += CH_10MHZ_APART;
-+			break;
-+		case BRCMU_CHAN_SB_ULU:
-+			ch->control_ch_num += CH_30MHZ_APART;
-+			break;
-+		case BRCMU_CHAN_SB_UUL:
-+			ch->control_ch_num += CH_50MHZ_APART;
-+			break;
-+		case BRCMU_CHAN_SB_UUU:
-+			ch->control_ch_num += CH_70MHZ_APART;
-+			break;
-+		default:
-+			WARN_ON_ONCE(1);
-+			break;
-+		}
-+		break;
-+	case BRCMU_CHSPEC_D11AC_BW_8080:
- 	default:
- 		WARN_ON_ONCE(1);
- 		break;
-diff --git a/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h b/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
-index 7b9a77981df1..75b2a0438cfa 100644
---- a/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
-+++ b/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
-@@ -29,6 +29,8 @@
- #define CH_UPPER_SB			0x01
- #define CH_LOWER_SB			0x02
- #define CH_EWA_VALID			0x04
-+#define CH_70MHZ_APART			14
-+#define CH_50MHZ_APART			10
- #define CH_30MHZ_APART			6
- #define CH_20MHZ_APART			4
- #define CH_10MHZ_APART			2
 -- 
 2.20.1
 
