@@ -414,7 +414,6 @@ soc () {
 
 	dir 'soc/ti/blue'
 	dir 'soc/ti/abbbi'
-	dir 'soc/ti/am335x_olimex_som'
 	dir 'soc/ti/pocketbeagle'
 	dir 'soc/ti/beaglebone_capes'
 	dir 'soc/ti/uboot'
@@ -457,8 +456,6 @@ beaglebone () {
 #		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
-
-		device="am335x-olimex-som.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 
