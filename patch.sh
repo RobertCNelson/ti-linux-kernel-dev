@@ -453,6 +453,7 @@ drivers () {
 	dir 'drivers/btrfs'
 	dir 'drivers/mcp23s08'
 	dir 'drivers/pwm'
+	dir 'drivers/rtl8188eu'
 	dir 'drivers/snd_pwmsp'
 	dir 'drivers/sound'
 	dir 'drivers/spi'
