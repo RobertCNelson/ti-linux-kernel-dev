@@ -414,12 +414,28 @@ backports () {
 		rm -rf ./drivers/staging/typec/
 
 		post_backports
-		exit 2
 	else
 		patch_backports
 	fi
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
+
+	backport_tag="v5.0-rc4"
+
+	subsystem="vl53l0x"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/iio/proximity/vl53l0x-i2c.c ./drivers/iio/proximity/vl53l0x-i2c.c
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 }
 
 reverts () {
