@@ -406,6 +406,7 @@ drivers () {
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/gpio'
+	dir 'drivers/ti/uio_pruss'
 	#[PATCH v3 1/4] mfd: stmpe: Move ADC related defines to header of mfd
 	dir 'drivers/iio/stmpe'
 }
@@ -485,11 +486,6 @@ backports
 drivers
 soc
 beaglebone
-
-###FULL
-#dir 'pruss'
-###U-Boot Overlays
-${git} "${DIR}/patches/pruss/0001-uio-pruss-cleanups-and-pruss-v2-pru-icss-support.patch"
 
 packaging () {
 	echo "dir: packaging"
