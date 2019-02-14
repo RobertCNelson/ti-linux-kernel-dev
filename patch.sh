@@ -350,7 +350,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.20.7"
+	backport_tag="v4.20.8"
 
 	subsystem="brcm80211"
 	#regenerate="enable"
@@ -416,6 +416,7 @@ soc () {
 	dir 'soc/ti/blue'
 	dir 'soc/ti/abbbi'
 	dir 'soc/ti/pocketbeagle'
+	dir 'soc/ti/osd3358'
 	dir 'soc/ti/beaglebone_capes'
 	dir 'soc/ti/uboot'
 }
