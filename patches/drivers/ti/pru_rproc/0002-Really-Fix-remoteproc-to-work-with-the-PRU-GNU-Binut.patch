@@ -1,0 +1,57 @@
+From 905a57d98aba8127e51ac53899a1e2db26e6b47c Mon Sep 17 00:00:00 2001
+From: Dimitar Dimitrov <dimitar@dinux.eu>
+Date: Fri, 16 Nov 2018 22:09:26 +0200
+Subject: [PATCH 2/2] Really Fix remoteproc to work with the PRU GNU Binutils
+ port
+
+The original patch has been mistakenly applied to DRAM addresses,
+whereas IRAM are the ones needing a fixup.
+
+This patch fixes the following error:
+  [ 1672.917602] remoteproc remoteproc1: Booting fw image pru-core0.elf, size 7104
+  [ 1672.917632] remoteproc remoteproc1: bad phdr da 0x20000000 mem 0x8f4
+  [ 1672.929347] remoteproc remoteproc1: Failed to load program segments: -22
+  [ 1672.938733] remoteproc remoteproc1: Boot failed: -22
+
+Signed-off-by: Dimitar Dimitrov <dimitar@dinux.eu>
+---
+ drivers/remoteproc/pru_rproc.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/remoteproc/pru_rproc.c b/drivers/remoteproc/pru_rproc.c
+index 68c2ed38e751..9086f8f93acc 100644
+--- a/drivers/remoteproc/pru_rproc.c
++++ b/drivers/remoteproc/pru_rproc.c
+@@ -891,14 +891,6 @@ static void *pru_d_da_to_va(struct pru_rproc *pru, u32 da, int len)
+ 	u32 offset;
+ 	void *va = NULL;
+ 
+-	/* GNU binutils do not support multiple address spaces. The
+-	 * default linker script from the official GNU pru-ld places
+-	 * IRAM at an arbitrary high offset, in order to differentiate it
+-	 * from DRAM. Hence we need to strip the artificial offset
+-	 * from the IRAM address.
+-	 */
+-	da &= ~0xf0000000u;
+-
+ 	if (len <= 0)
+ 		return NULL;
+ 
+@@ -937,6 +929,14 @@ static void *pru_i_da_to_va(struct pru_rproc *pru, u32 da, int len)
+ 	u32 offset;
+ 	void *va = NULL;
+ 
++	/* GNU binutils do not support multiple address spaces. The
++	 * default linker script from the official GNU pru-ld places
++	 * IRAM at an arbitrary high offset, in order to differentiate it
++	 * from DRAM. Hence we need to strip the artificial offset
++	 * from the IRAM address.
++	 */
++	da &= ~0xf0000000u;
++
+ 	if (len <= 0)
+ 		return NULL;
+ 
+-- 
+2.20.1
+
