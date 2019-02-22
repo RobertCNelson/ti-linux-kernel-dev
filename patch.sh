@@ -350,7 +350,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.20.8"
+	backport_tag="v4.20.11"
 
 	subsystem="brcm80211"
 	#regenerate="enable"
@@ -391,7 +391,6 @@ drivers () {
 	dir 'drivers/ar1021_i2c'
 	dir 'drivers/btrfs'
 	dir 'drivers/pwm'
-	dir 'drivers/rtl8188eu'
 	dir 'drivers/spi'
 	dir 'drivers/ssd1306'
 	dir 'drivers/tps65217'
