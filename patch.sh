@@ -350,7 +350,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.20.11"
+	backport_tag="v4.20.12"
 
 	subsystem="brcm80211"
 	#regenerate="enable"
@@ -405,7 +405,9 @@ drivers () {
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/gpio'
-	dir 'drivers/ti/uio_pruss'
+
+	#dir 'drivers/ti/uio_pruss'
+
 	#[PATCH v3 1/4] mfd: stmpe: Move ADC related defines to header of mfd
 	dir 'drivers/iio/stmpe'
 }
