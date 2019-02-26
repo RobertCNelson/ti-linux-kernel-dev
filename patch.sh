@@ -431,6 +431,11 @@ soc () {
 	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0005-ARM-dts-dra7-am335x-dtsi-files-for-enabling-uio-prus.patch"
 	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0006-ARM-dts-beagle-x15-enable-uio-pruss-by-default.patch"
 
+	dir 'soc/ti/beaglebone_ai'
+}
+
+dtb_makefile_append_am57xx () {
+	sed -i -e 's:am57xx-beagle-x15-revc.dtb \\:am57xx-beagle-x15-revc.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
 
 dtb_makefile_append () {
@@ -483,6 +488,8 @@ beaglebone () {
 		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
+
+		device="am57xx-beaglebone-ai.dtb" ; dtb_makefile_append_am57xx
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
