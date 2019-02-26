@@ -406,8 +406,6 @@ drivers () {
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/gpio'
 
-	#dir 'drivers/ti/uio_pruss'
-
 	#[PATCH v3 1/4] mfd: stmpe: Move ADC related defines to header of mfd
 	dir 'drivers/iio/stmpe'
 }
@@ -421,6 +419,18 @@ soc () {
 	dir 'soc/ti/osd3358'
 	dir 'soc/ti/beaglebone_capes'
 	dir 'soc/ti/uboot'
+
+#pruss:
+	dir 'soc/ti/uboot_pru_overlay'
+	#dir 'drivers/ti/uio_pruss'
+
+	${git} "${DIR}/patches/drivers/ti/uio_pruss/0001-uio-pruss-cleanups-and-pruss-v2-pru-icss-support.patch"
+	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0002-ARM-DRA7-hwmod_data-Add-PRU-ICSS-data-for-AM57xx-var.patch"
+	${git} "${DIR}/patches/drivers/ti/uio_pruss/0003-ARM-omap2-support-deasserting-reset-from-dts.patch"
+	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0004-ARM-dts-dra7-am335x-add-outline-definitions-for-prus.patch"
+	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0005-ARM-dts-dra7-am335x-dtsi-files-for-enabling-uio-prus.patch"
+	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0006-ARM-dts-beagle-x15-enable-uio-pruss-by-default.patch"
+
 }
 
 dtb_makefile_append () {
