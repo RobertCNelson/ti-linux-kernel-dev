@@ -432,6 +432,7 @@ soc () {
 	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0006-ARM-dts-beagle-x15-enable-uio-pruss-by-default.patch"
 
 	dir 'soc/ti/beaglebone_ai'
+	dir 'soc/ti/roboticscape'
 }
 
 dtb_makefile_append_am57xx () {
@@ -443,26 +444,6 @@ dtb_makefile_append () {
 }
 
 beaglebone () {
-	#This has to be last...
-	echo "dir: beaglebone/dtbs"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-		exit 2
-	fi
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
 	####
 	#dtb makefile
 	echo "dir: beaglebone/generated"
@@ -471,8 +452,8 @@ beaglebone () {
 
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 
-#		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
-#		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
