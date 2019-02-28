@@ -260,6 +260,7 @@ backport_brcm80211 () {
 	fi
 
 	${git} "${DIR}/patches/brcm80211/0001-merge-brcm80211.patch"
+	dir 'backports/brcm80211_sg'
 }
 
 wireguard_fail () {
@@ -269,7 +270,7 @@ wireguard_fail () {
 
 wireguard () {
 	echo "dir: WireGuard"
-	regenerate="enable"
+	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./WireGuard ] ; then
