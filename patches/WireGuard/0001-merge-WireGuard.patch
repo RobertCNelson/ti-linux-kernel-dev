@@ -1,6 +1,6 @@
-From 7728b4b204ea2a7380eb5c5d0a91209cde907075 Mon Sep 17 00:00:00 2001
+From 085f43b105d816d56c69ee39f2fb679d3b31754c Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 26 Feb 2019 10:40:19 -0600
+Date: Thu, 28 Feb 2019 14:32:16 -0600
 Subject: [PATCH] merge: WireGuard
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -14,7 +14,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/compat/Makefile.include         |   78 +
  .../compat/checksum/checksum_partial_compat.h |  208 +
  net/wireguard/compat/compat-asm.h             |   43 +
- net/wireguard/compat/compat.h                 |  834 ++
+ net/wireguard/compat/compat.h                 |  839 ++
  net/wireguard/compat/dst_cache/dst_cache.c    |  175 +
  .../compat/dst_cache/include/net/dst_cache.h  |   97 +
  .../compat/fpu-x86/include/asm/fpu/api.h      |    1 +
@@ -89,7 +89,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/peer.c                          |  239 +
  net/wireguard/peer.h                          |   83 +
  net/wireguard/queueing.c                      |   53 +
- net/wireguard/queueing.h                      |  197 +
+ net/wireguard/queueing.h                      |  198 +
  net/wireguard/ratelimiter.c                   |  223 +
  net/wireguard/ratelimiter.h                   |   19 +
  net/wireguard/receive.c                       |  606 ++
@@ -103,7 +103,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireguard/timers.h                        |   31 +
  net/wireguard/uapi/wireguard.h                |  190 +
  net/wireguard/version.h                       |    1 +
- 98 files changed, 51334 insertions(+)
+ 98 files changed, 51340 insertions(+)
  create mode 100644 net/wireguard/Kconfig
  create mode 100644 net/wireguard/Makefile
  create mode 100644 net/wireguard/allowedips.c
@@ -1080,10 +1080,10 @@ index 000000000000..f5c5bc29db26
 +#endif /* _WG_COMPATASM_H */
 diff --git a/net/wireguard/compat/compat.h b/net/wireguard/compat/compat.h
 new file mode 100644
-index 000000000000..e08edcae6a6c
+index 000000000000..7a61e4c1a5cd
 --- /dev/null
 +++ b/net/wireguard/compat/compat.h
-@@ -0,0 +1,834 @@
+@@ -0,0 +1,839 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * Copyright (C) 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
@@ -1857,6 +1857,11 @@ index 000000000000..e08edcae6a6c
 +#ifndef ALIGN_DOWN
 +#define ALIGN_DOWN(x, a) __ALIGN_KERNEL((x) - ((a) - 1), (a))
 +#endif
++#endif
++
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0)
++#include <linux/skbuff.h>
++#define skb_probe_transport_header(a) skb_probe_transport_header(a, 0)
 +#endif
 +
 +/* https://github.com/ClangBuiltLinux/linux/issues/7 */
@@ -46624,7 +46629,7 @@ index 000000000000..3cfd1c5e9b02
 +#endif /* _WG_MESSAGES_H */
 diff --git a/net/wireguard/netlink.c b/net/wireguard/netlink.c
 new file mode 100644
-index 000000000000..d75394b74e1e
+index 000000000000..b179b3184725
 --- /dev/null
 +++ b/net/wireguard/netlink.c
 @@ -0,0 +1,632 @@
@@ -46779,11 +46784,11 @@ index 000000000000..d75394b74e1e
 +			list_first_entry_or_null(&peer->allowedips_list,
 +					struct allowedips_node, peer_list);
 +	}
++	if (!allowedips_node)
++		goto no_allowedips;
 +	if (!*allowedips_seq)
 +		*allowedips_seq = peer->device->peer_allowedips.seq;
 +	else if (*allowedips_seq != peer->device->peer_allowedips.seq)
-+		goto no_allowedips;
-+	if (!allowedips_node)
 +		goto no_allowedips;
 +
 +	allowedips_nest = nla_nest_start(skb, WGPEER_A_ALLOWEDIPS);
@@ -48623,10 +48628,10 @@ index 000000000000..5c964fcb994e
 +}
 diff --git a/net/wireguard/queueing.h b/net/wireguard/queueing.h
 new file mode 100644
-index 000000000000..dcfe9381b064
+index 000000000000..f8de703dff97
 --- /dev/null
 +++ b/net/wireguard/queueing.h
-@@ -0,0 +1,197 @@
+@@ -0,0 +1,198 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/*
 + * Copyright (C) 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
@@ -48731,7 +48736,8 @@ index 000000000000..dcfe9381b064
 +	skb->hdr_len = skb_headroom(skb);
 +	skb_reset_mac_header(skb);
 +	skb_reset_network_header(skb);
-+	skb_probe_transport_header(skb, 0);
++	skb_reset_transport_header(skb);
++	skb_probe_transport_header(skb);
 +	skb_reset_inner_headers(skb);
 +}
 +
@@ -52128,11 +52134,11 @@ index 000000000000..071ce4167f54
 +#endif /* _WG_UAPI_WIREGUARD_H */
 diff --git a/net/wireguard/version.h b/net/wireguard/version.h
 new file mode 100644
-index 000000000000..55e9f528e917
+index 000000000000..723534b11200
 --- /dev/null
 +++ b/net/wireguard/version.h
 @@ -0,0 +1 @@
-+#define WIREGUARD_VERSION "0.0.20190123"
++#define WIREGUARD_VERSION "0.0.20190227"
 -- 
 2.20.1
 

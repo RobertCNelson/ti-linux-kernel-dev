@@ -227,6 +227,41 @@ rt () {
 	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
 }
 
+backport_brcm80211 () {
+	echo "dir: brcm80211"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./brcm80211 ] ; then
+			${git_bin} clone -b rpi-4.19.y https://github.com/raspberrypi/linux brcm80211 --depth=1 --reference ./KERNEL/
+		else
+			rm -rf ./brcm80211 || true
+			${git_bin} clone -b rpi-4.19.y https://github.com/raspberrypi/linux brcm80211 --depth=1 --reference ./KERNEL/
+		fi
+		cd ./KERNEL/
+
+		cp -rv ../brcm80211/drivers/net/wireless/broadcom/brcm80211/ ./drivers/net/wireless/broadcom/
+
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: brcm80211' -s
+		${git_bin} format-patch -1 -o ../patches/brcm80211/
+
+		rm -rf ../brcm80211/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/brcm80211/0001-merge-brcm80211.patch"
+
+		wdir="brcm80211"
+		number=1
+		cleanup
+	fi
+
+	${git} "${DIR}/patches/brcm80211/0001-merge-brcm80211.patch"
+}
+
 wireguard_fail () {
 	echo "WireGuard failed"
 	exit 2
@@ -312,6 +347,7 @@ local_patch () {
 external_git
 aufs4
 #rt
+backport_brcm80211
 wireguard
 ti_pm_firmware
 #local_patch
@@ -350,21 +386,20 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.20.12"
+	backport_tag="v4.x-y"
 
-	subsystem="brcm80211"
+	subsystem="xyz"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
+		mkdir -p ./x/
+		cp -v ~/linux-src/x/* ./x/
 
 		post_backports
 		exit 2
 	else
 		patch_backports
-		dir 'backports/brcm80211_post'
-		dir 'backports/brcm80211_sg'
 	fi
 }
 
@@ -481,7 +516,7 @@ beaglebone () {
 }
 
 ###
-backports
+#backports
 #reverts
 drivers
 soc
