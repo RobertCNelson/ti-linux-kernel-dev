@@ -260,6 +260,7 @@ backport_brcm80211 () {
 	fi
 
 	${git} "${DIR}/patches/brcm80211/0001-merge-brcm80211.patch"
+	dir 'backports/brcm80211_sg'
 }
 
 wireguard_fail () {
