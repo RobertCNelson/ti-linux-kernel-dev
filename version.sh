@@ -36,7 +36,7 @@ KERNEL_REL=4.4
 KERNEL_TAG=${KERNEL_REL}.113
 kernel_rt=".113-rt128"
 #Kernel Build
-BUILD=${build_prefix}149
+BUILD=${build_prefix}149.1
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -53,7 +53,7 @@ ti_git_old_release="f89a69bfc84a93f8259b3d6e0faa75b72b718860"
        ti_git_post="4a9c4fec7bb53ab82bc7a0b80a7435d059db438a"
 #
 
-#https://git.xenomai.org/xenomai-3.git/
-#https://git.xenomai.org/xenomai-3.git/log/?h=stable-3.0.x
-xenomai_checkout="d24dc64cfbf8a6de2e5967879c24025b88131bc1"
+#https://gitlab.denx.de/Xenomai/xenomai.git
+#https://gitlab.denx.de/Xenomai/xenomai/tree/stable/v3.0.x
+xenomai_checkout="0e79d326061190e08f53e7a41bcea50da4859615"
 #
