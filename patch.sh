@@ -274,11 +274,6 @@ wireguard_fail () {
 
 wireguard () {
 	echo "dir: WireGuard"
-
-	#[    3.315290] NOHZ: local_softirq_pending 242
-	#[    3.319504] NOHZ: local_softirq_pending 242
-	${git_bin} revert --no-edit 2d898915ccf4838c04531c51a598469e921a5eb5
-
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
@@ -356,9 +351,9 @@ local_patch () {
 
 external_git
 aufs4
-#rt
+rt
 backport_brcm80211
-wireguard
+#wireguard
 ti_pm_firmware
 #local_patch
 
