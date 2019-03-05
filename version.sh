@@ -4,10 +4,10 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="-ti-rt-r"
-branch_prefix="ti-linux-rt-"
+build_prefix="-ti-xenomai-r"
+branch_prefix="ti-linux-xenomai-"
 branch_postfix=".y"
-bborg_branch="4.14-rt"
+bborg_branch="4.14-xenomai"
 
 #arm
 KERNEL_ARCH=arm
@@ -51,4 +51,9 @@ DEBARCH=armhf
 ti_git_old_release="34be9b4b29a1b6515b99295efefa6cd9bb30f102"
         ti_git_pre="34be9b4b29a1b6515b99295efefa6cd9bb30f102"
        ti_git_post="34be9b4b29a1b6515b99295efefa6cd9bb30f102"
+#
+
+#https://gitlab.denx.de/Xenomai/xenomai.git
+#https://gitlab.denx.de/Xenomai/xenomai/tree/stable/v3.0.x
+xenomai_checkout="0e79d326061190e08f53e7a41bcea50da4859615"
 #

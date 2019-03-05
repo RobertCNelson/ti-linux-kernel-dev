@@ -351,11 +351,98 @@ local_patch () {
 
 external_git
 aufs4
-rt
+#rt
 backport_brcm80211
 #wireguard
 ti_pm_firmware
 #local_patch
+
+ipipe () {
+	kernel_base="v4.14.85"
+	xenomai_branch="stable/4.14.85-arm"
+	echo "dir: ipipe"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		#https://gitlab.denx.de/Xenomai/ipipe-arm
+		#https://gitlab.denx.de/Xenomai/ipipe-arm/tree/stable/4.14.85-arm
+		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
+		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
+		if [ "x${test_for_branch}" != "x" ] ; then
+			${git_bin} branch "${xenomai_branch}" -D
+		fi
+
+		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
+
+		cp -v drivers/pci/dwc/pcie-designware-host.c ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c
+		cp -v drivers/thermal/hisi_thermal.c ../patches/ipipe/drivers_thermal_hisi_thermal.c
+
+		echo "${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}"
+		${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}
+		${git_bin} diff ${kernel_base}...HEAD > ../patches/ipipe/ipipe.diff
+
+		sed -i -s 's:arch/arm/plat-omap/include/plat/dmtimer.h:include/clocksource/timer-ti-dm.h:g' ../patches/ipipe/ipipe.diff
+		sed -i -s 's:arch/arm/plat-omap/dmtimer.c:drivers/clocksource/timer-ti-dm.c:g' ../patches/ipipe/ipipe.diff
+		sed -i -s 's:__ASM_ARCH_DMTIMER_H:CONFIG_ARCH_OMAP1 || CONFIG_ARCH_OMAP2PLUS:g' ../patches/ipipe/ipipe.diff
+
+		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
+		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
+		if [ "x${test_for_branch}" != "x" ] ; then
+			${git_bin} branch "${xenomai_branch}" -D
+		fi
+
+		cp -v ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c drivers/pci/dwc/pcie-designware-host.c
+		cp -v ../patches/ipipe/drivers_thermal_hisi_thermal.c drivers/thermal/hisi_thermal.c
+
+		#exit 2
+
+		${git_bin} add --all
+		${git_bin} commit --allow-empty -a -m 'xenomai pre-patchset'
+
+		sed -i -s 's:#endif :\n#endif :g' include/clocksource/timer-ti-dm.h
+		patch -p1 < ../patches/ipipe/ipipe.diff
+
+		#drivers/clocksource/timer-ti-dm.c
+		#include/clocksource/timer-ti-dm.h
+
+		${git_bin} add --all
+		${git_bin} commit -a -m 'xenomai ipipe patchset'
+		${git_bin} format-patch -2 -o ../patches/ipipe/
+
+		${git_bin} reset --hard HEAD~2
+
+		start_cleanup
+
+		${git} "${DIR}/patches/ipipe/0001-xenomai-pre-patchset.patch"
+		${git} "${DIR}/patches/ipipe/0002-xenomai-ipipe-patchset.patch"
+
+		wdir="ipipe"
+		number=2
+		cleanup
+	fi
+
+	${git} "${DIR}/patches/ipipe/0001-xenomai-pre-patchset.patch"
+	${git} "${DIR}/patches/ipipe/0002-xenomai-ipipe-patchset.patch"
+
+	echo "dir: xenomai - prepare_kernel"
+	# Add the rest of xenomai to the kernel
+	OUTPATCH=$(mktemp "${DIR}/ignore/xenomai-patch.XXXXXXXXXX") || { echo "Failed to create temp file"; exit 1; }
+
+	# generate the xenomai patch
+	# doing it this way fixes the dangling symlinks problem under /usr/src/linux-headers-*
+	${DIR}/ignore/xenomai/scripts/prepare-kernel.sh --linux=./ --arch=arm --outpatch="${OUTPATCH}"
+
+	# and apply it
+	${git_bin} apply "${OUTPATCH}"
+
+	${git_bin} add .
+	${git_bin} commit -a -m 'xenomai patchset'
+
+	if [ "x${regenerate}" = "xenable" ] ; then
+		exit 2
+	fi
+}
+
+ipipe
 
 pre_backports () {
 	echo "dir: backports/${subsystem}"
