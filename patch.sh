@@ -333,12 +333,12 @@ ti_pm_firmware
 #local_patch
 
 ipipe () {
-	kernel_base="v4.9.92"
+	kernel_base="v4.9.146"
 	xenomai_branch="ipipe-4.9.y"
 	echo "dir: ipipe"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		#https://git.xenomai.org/ipipe.git/log/?h=ipipe-4.9.y
+		#https://gitlab.denx.de/Xenomai/ipipe
 		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
 		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
 		if [ "x${test_for_branch}" != "x" ] ; then
@@ -352,14 +352,10 @@ ipipe () {
 		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
 
 		cp -v arch/arm/mach-omap2/timer.c ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c
-		cp -v arch/arm64/include/asm/proc-fns.h ../patches/${xenomai_branch}/arch_arm64_include_asm_proc-fns.h
-		cp -v arch/arm64/include/asm/uaccess.h ../patches/${xenomai_branch}/arch_arm64_include_asm_uaccess.h
-		cp -v arch/arm64/kernel/entry.S ../patches/${xenomai_branch}/arch_arm64_kernel_entry.S
-		cp -v arch/powerpc/kernel/irq.c ../patches/${xenomai_branch}/arch_powerpc_kernel_irq.c
 		cp -v drivers/gpio/gpio-davinci.c ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c
 
-		echo "${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}"
-		${git_bin} pull --no-edit git://git.xenomai.org/ipipe.git ${xenomai_branch}
+		echo "${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe.git ${xenomai_branch}"
+		${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe.git ${xenomai_branch}
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/${xenomai_branch}/${xenomai_branch}.diff
 
 		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
@@ -369,10 +365,6 @@ ipipe () {
 		fi
 
 		cp -v ../patches/${xenomai_branch}/arch_arm_mach-omap2_timer.c arch/arm/mach-omap2/timer.c
-		cp -v ../patches/${xenomai_branch}/arch_arm64_include_asm_proc-fns.h arch/arm64/include/asm/proc-fns.h
-		cp -v ../patches/${xenomai_branch}/arch_arm64_include_asm_uaccess.h arch/arm64/include/asm/uaccess.h
-		cp -v ../patches/${xenomai_branch}/arch_arm64_kernel_entry.S arch/arm64/kernel/entry.S
-		cp -v ../patches/${xenomai_branch}/arch_powerpc_kernel_irq.c arch/powerpc/kernel/irq.c
 		cp -v ../patches/${xenomai_branch}/drivers_gpio_gpio-davinci.c drivers/gpio/gpio-davinci.c
 
 		#exit 2
@@ -415,7 +407,9 @@ ipipe () {
 	${git_bin} add .
 	${git_bin} commit -a -m 'xenomai patchset'
 
-	#exit 2
+	if [ "x${regenerate}" = "xenable" ] ; then
+		exit 2
+	fi
 }
 
 ipipe
