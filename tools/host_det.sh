@@ -150,6 +150,15 @@ debian_regs () {
 	check_dpkg
 	pkg="flex"
 	check_dpkg
+	#v4.18-rc0
+	pkg="pkg-config"
+	check_dpkg
+	#GCC_PLUGINS
+	pkg="libmpc-dev"
+	check_dpkg
+	#"mkimage" command not found - U-Boot images will not be built
+	pkg="u-boot-tools"
+	check_dpkg
 
 	unset warn_dpkg_ia32
 	unset stop_pkg_search
@@ -285,6 +294,10 @@ debian_regs () {
 			#LMDE 2
 			deb_distro="jessie"
 			;;
+		cindy)
+			#LMDE 3 https://linuxmint.com/rel_cindy.php
+			deb_distro="stretch"
+			;;
 		debian)
 			deb_distro="jessie"
 			;;
@@ -356,16 +369,26 @@ debian_regs () {
 			#http://packages.linuxmint.com/index.php
 			deb_distro="xenial"
 			;;
+		tara)
+			#19
+			#http://blog.linuxmint.com/?p=2975
+			deb_distro="bionic"
+			;;
+		tessa)
+			#19.1
+			#https://blog.linuxmint.com/?p=3671
+			deb_distro="bionic"
+			;;
 		esac
 
 		#Future Debian Code names:
 		case "${deb_distro}" in
 		bullseye)
-			#Debian 11
+			#11 bullseye: https://wiki.debian.org/DebianBullseye
 			deb_distro="sid"
 			;;
 		bookworm)
-			#Debian 12
+			#12 bookworm:
 			deb_distro="sid"
 			;;
 		esac
@@ -373,26 +396,29 @@ debian_regs () {
 		#https://wiki.ubuntu.com/Releases
 		unset error_unknown_deb_distro
 		case "${deb_distro}" in
-		wheezy|jessie|stretch|buster|sid)
-			#7 wheezy: https://wiki.debian.org/DebianWheezy
+		jessie|stretch|buster|sid)
+			#https://wiki.debian.org/LTS
 			#8 jessie: https://wiki.debian.org/DebianJessie
 			#9 stretch: https://wiki.debian.org/DebianStretch
 			#10 buster: https://wiki.debian.org/DebianBuster
 			unset warn_eol_distro
 			;;
-		squeeze)
-			#6 squeeze: 2016-02-06 https://wiki.debian.org/DebianSqueeze
+		squeeze|wheezy)
+			#https://wiki.debian.org/LTS
+			#6 squeeze: 2016-02-29 https://wiki.debian.org/DebianSqueeze
+			#7 wheezy: 2018-05-31 https://wiki.debian.org/DebianWheezy
 			warn_eol_distro=1
 			stop_pkg_search=1
 			;;
-		artful|bionic)
-			#17.10 artful: (EOL: July 2018)
-			#18.04 bionic: (EOL:) lts: bionic -> xyz
+		bionic|cosmic)
+			#18.04 bionic: (EOL: April 2023) lts: bionic -> xyz
+			#18.10 cosmic: (EOL: )
 			unset warn_eol_distro
 			;;
-		yakkety|zesty)
+		yakkety|zesty|artful)
 			#16.10 yakkety: (EOL: July 20, 2017)
 			#17.04 zesty: (EOL: January 2018)
+			#17.10 artful: (EOL: July 2018)
 			warn_eol_distro=1
 			stop_pkg_search=1
 			;;
@@ -434,40 +460,21 @@ debian_regs () {
 
 	if [ "$(which lsb_release)" ] && [ ! "${stop_pkg_search}" ] ; then
 		deb_arch=$(LC_ALL=C dpkg --print-architecture)
-		
-		#Libs; starting with jessie/sid, lib<pkg_name>-dev:<arch>
-		case "${deb_distro}" in
-		wheezy)
-			pkg="libncurses5-dev"
+
+		pkg="libncurses5-dev:${deb_arch}"
+		check_dpkg
+		pkg="libssl-dev:${deb_arch}"
+		check_dpkg
+
+		if [ "x${build_git}" = "xtrue" ] ; then
+			#git
+			pkg="libcurl4-gnutls-dev:${deb_arch}"
 			check_dpkg
-			if [ "x${build_git}" = "xtrue" ] ; then
-				#git
-				pkg="libcurl4-gnutls-dev"
-				check_dpkg
-				pkg="libelf-dev"
-				check_dpkg
-				pkg="libexpat1-dev"
-				check_dpkg
-				pkg="libssl-dev"
-				check_dpkg
-			fi
-			;;
-		*)
-			pkg="libncurses5-dev:${deb_arch}"
+			pkg="libelf-dev:${deb_arch}"
 			check_dpkg
-			if [ "x${build_git}" = "xtrue" ] ; then
-				#git
-				pkg="libcurl4-gnutls-dev:${deb_arch}"
-				check_dpkg
-				pkg="libelf-dev:${deb_arch}"
-				check_dpkg
-				pkg="libexpat1-dev:${deb_arch}"
-				check_dpkg
-				pkg="libssl-dev:${deb_arch}"
-				check_dpkg
-			fi
-			;;
-		esac
+			pkg="libexpat1-dev:${deb_arch}"
+			check_dpkg
+		fi
 
 		#pkg: ia32-libs
 		if [ "x${deb_arch}" = "xamd64" ] ; then
@@ -562,6 +569,9 @@ if [ "x${ARCH}" = "xx86_64" ] ; then
 		ignore_32bit="true"
 		;;
 	gcc_linaro_eabi_7|gcc_linaro_gnueabihf_7|gcc_linaro_aarch64_gnu_7)
+		ignore_32bit="true"
+		;;
+	gcc_arm_eabi_8|gcc_arm_gnueabihf_8|gcc_arm_aarch64_gnu_8)
 		ignore_32bit="true"
 		;;
 	*)
