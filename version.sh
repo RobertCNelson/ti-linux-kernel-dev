@@ -36,7 +36,7 @@ KERNEL_REL=4.4
 KERNEL_TAG=${KERNEL_REL}.155
 kernel_rt=".157-rt174"
 #Kernel Build
-BUILD=${build_prefix}151
+BUILD=${build_prefix}152
 
 #v4.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -45,7 +45,7 @@ BUILD=${build_prefix}151
 #git branch
 BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
-DISTRO=cross
+DISTRO=xross
 DEBARCH=armhf
 
 ti_git_old_release="66080347de725494bdcf6758b293208cb9e49827"
