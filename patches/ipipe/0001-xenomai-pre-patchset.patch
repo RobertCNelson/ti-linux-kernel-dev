@@ -1,13 +1,74 @@
-From 366269ff16525ba2f8aff3ee701f9b945972bf08 Mon Sep 17 00:00:00 2001
+From c5661c944d2f64e1390272d8bfd04bb831ac3214 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 8 Mar 2019 15:32:10 -0600
+Date: Mon, 18 Mar 2019 13:55:24 -0500
 Subject: [PATCH 1/2] xenomai pre-patchset
 
 ---
+ drivers/gpio/gpio-pl061.c              |  21 +-
  drivers/pci/dwc/pcie-designware-host.c | 405 +++++++++++--------------
+ drivers/pinctrl/bcm/pinctrl-bcm2835.c  |  16 +-
  drivers/thermal/hisi_thermal.c         | 318 ++++++++++---------
- 2 files changed, 331 insertions(+), 392 deletions(-)
+ 4 files changed, 350 insertions(+), 410 deletions(-)
 
+diff --git a/drivers/gpio/gpio-pl061.c b/drivers/gpio/gpio-pl061.c
+index f6e1e0e306a3..6aaaab79c205 100644
+--- a/drivers/gpio/gpio-pl061.c
++++ b/drivers/gpio/gpio-pl061.c
+@@ -54,7 +54,6 @@ struct pl061 {
+ 
+ 	void __iomem		*base;
+ 	struct gpio_chip	gc;
+-	struct irq_chip		irq_chip;
+ 	int			parent_irq;
+ 
+ #ifdef CONFIG_PM
+@@ -282,6 +281,15 @@ static int pl061_irq_set_wake(struct irq_data *d, unsigned int state)
+ 	return irq_set_irq_wake(pl061->parent_irq, state);
+ }
+ 
++static struct irq_chip pl061_irqchip = {
++	.name		= "pl061",
++	.irq_ack	= pl061_irq_ack,
++	.irq_mask	= pl061_irq_mask,
++	.irq_unmask	= pl061_irq_unmask,
++	.irq_set_type	= pl061_irq_type,
++	.irq_set_wake	= pl061_irq_set_wake,
++};
++
+ static int pl061_probe(struct amba_device *adev, const struct amba_id *id)
+ {
+ 	struct device *dev = &adev->dev;
+@@ -320,13 +328,6 @@ static int pl061_probe(struct amba_device *adev, const struct amba_id *id)
+ 	/*
+ 	 * irq_chip support
+ 	 */
+-	pl061->irq_chip.name = dev_name(dev);
+-	pl061->irq_chip.irq_ack	= pl061_irq_ack;
+-	pl061->irq_chip.irq_mask = pl061_irq_mask;
+-	pl061->irq_chip.irq_unmask = pl061_irq_unmask;
+-	pl061->irq_chip.irq_set_type = pl061_irq_type;
+-	pl061->irq_chip.irq_set_wake = pl061_irq_set_wake;
+-
+ 	writeb(0, pl061->base + GPIOIE); /* disable irqs */
+ 	irq = adev->irq[0];
+ 	if (irq < 0) {
+@@ -335,14 +336,14 @@ static int pl061_probe(struct amba_device *adev, const struct amba_id *id)
+ 	}
+ 	pl061->parent_irq = irq;
+ 
+-	ret = gpiochip_irqchip_add(&pl061->gc, &pl061->irq_chip,
++	ret = gpiochip_irqchip_add(&pl061->gc, &pl061_irqchip,
+ 				   0, handle_bad_irq,
+ 				   IRQ_TYPE_NONE);
+ 	if (ret) {
+ 		dev_info(&adev->dev, "could not add irqchip\n");
+ 		return ret;
+ 	}
+-	gpiochip_set_chained_irqchip(&pl061->gc, &pl061->irq_chip,
++	gpiochip_set_chained_irqchip(&pl061->gc, &pl061_irqchip,
+ 				     irq, pl061_irq_handler);
+ 
+ 	amba_set_drvdata(adev, pl061);
 diff --git a/drivers/pci/dwc/pcie-designware-host.c b/drivers/pci/dwc/pcie-designware-host.c
 index a89ffda64303..bc3e2d8d0cce 100644
 --- a/drivers/pci/dwc/pcie-designware-host.c
@@ -557,6 +618,74 @@ index a89ffda64303..bc3e2d8d0cce 100644
  		dw_pcie_prog_outbound_atu(pci, PCIE_ATU_REGION_INDEX0,
  					  PCIE_ATU_TYPE_MEM, pp->mem_base,
  					  pp->mem_bus_addr, pp->mem_size);
+diff --git a/drivers/pinctrl/bcm/pinctrl-bcm2835.c b/drivers/pinctrl/bcm/pinctrl-bcm2835.c
+index e72bf2502eca..ff782445dfb7 100644
+--- a/drivers/pinctrl/bcm/pinctrl-bcm2835.c
++++ b/drivers/pinctrl/bcm/pinctrl-bcm2835.c
+@@ -92,7 +92,7 @@ struct bcm2835_pinctrl {
+ 	struct gpio_chip gpio_chip;
+ 	struct pinctrl_gpio_range gpio_range;
+ 
+-	raw_spinlock_t irq_lock[BCM2835_NUM_BANKS];
++	spinlock_t irq_lock[BCM2835_NUM_BANKS];
+ };
+ 
+ /* pins are just named GPIO0..GPIO53 */
+@@ -471,10 +471,10 @@ static void bcm2835_gpio_irq_enable(struct irq_data *data)
+ 	unsigned bank = GPIO_REG_OFFSET(gpio);
+ 	unsigned long flags;
+ 
+-	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
++	spin_lock_irqsave(&pc->irq_lock[bank], flags);
+ 	set_bit(offset, &pc->enabled_irq_map[bank]);
+ 	bcm2835_gpio_irq_config(pc, gpio, true);
+-	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
++	spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
+ }
+ 
+ static void bcm2835_gpio_irq_disable(struct irq_data *data)
+@@ -486,12 +486,12 @@ static void bcm2835_gpio_irq_disable(struct irq_data *data)
+ 	unsigned bank = GPIO_REG_OFFSET(gpio);
+ 	unsigned long flags;
+ 
+-	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
++	spin_lock_irqsave(&pc->irq_lock[bank], flags);
+ 	bcm2835_gpio_irq_config(pc, gpio, false);
+ 	/* Clear events that were latched prior to clearing event sources */
+ 	bcm2835_gpio_set_bit(pc, GPEDS0, gpio);
+ 	clear_bit(offset, &pc->enabled_irq_map[bank]);
+-	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
++	spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
+ }
+ 
+ static int __bcm2835_gpio_irq_set_type_disabled(struct bcm2835_pinctrl *pc,
+@@ -594,7 +594,7 @@ static int bcm2835_gpio_irq_set_type(struct irq_data *data, unsigned int type)
+ 	unsigned long flags;
+ 	int ret;
+ 
+-	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
++	spin_lock_irqsave(&pc->irq_lock[bank], flags);
+ 
+ 	if (test_bit(offset, &pc->enabled_irq_map[bank]))
+ 		ret = __bcm2835_gpio_irq_set_type_enabled(pc, gpio, type);
+@@ -606,7 +606,7 @@ static int bcm2835_gpio_irq_set_type(struct irq_data *data, unsigned int type)
+ 	else
+ 		irq_set_handler_locked(data, handle_level_irq);
+ 
+-	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
++	spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
+ 
+ 	return ret;
+ }
+@@ -1021,7 +1021,7 @@ static int bcm2835_pinctrl_probe(struct platform_device *pdev)
+ 		for_each_set_bit(offset, &events, 32)
+ 			bcm2835_gpio_wr(pc, GPEDS0 + i * 4, BIT(offset));
+ 
+-		raw_spin_lock_init(&pc->irq_lock[i]);
++		spin_lock_init(&pc->irq_lock[i]);
+ 	}
+ 
+ 	err = gpiochip_add_data(&pc->gpio_chip, pc);
 diff --git a/drivers/thermal/hisi_thermal.c b/drivers/thermal/hisi_thermal.c
 index 7c5d4647cb5e..6d8906d65476 100644
 --- a/drivers/thermal/hisi_thermal.c

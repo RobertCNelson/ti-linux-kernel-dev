@@ -1,6 +1,6 @@
-From 2fcfccc398421fd1cb4fb33fae5721a5578d05ec Mon Sep 17 00:00:00 2001
+From b25951f42653e7b846271453757a2f75f9c00741 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 8 Mar 2019 15:32:11 -0600
+Date: Mon, 18 Mar 2019 13:55:24 -0500
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
@@ -216,7 +216,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  mm/mmu_context.c                         |    4 +
  mm/mprotect.c                            |   11 +-
  mm/vmalloc.c                             |    2 +
- 212 files changed, 13190 insertions(+), 803 deletions(-)
+ 212 files changed, 13191 insertions(+), 802 deletions(-)
  create mode 100644 Documentation/ipipe-arm.rst
  create mode 100644 Documentation/ipipe.rst
  create mode 100644 arch/arm/include/asm/ipipe.h
@@ -2128,7 +2128,7 @@ index 9327e3a101dc..e9e7656bc137 100644
  }
  
 diff --git a/arch/arm/include/asm/assembler.h b/arch/arm/include/asm/assembler.h
-index b17ee03d280b..4573d83ac799 100644
+index 88286dd483ff..2af03ad1feca 100644
 --- a/arch/arm/include/asm/assembler.h
 +++ b/arch/arm/include/asm/assembler.h
 @@ -100,6 +100,18 @@
@@ -3302,7 +3302,7 @@ index d3e937dcee4d..2ae59624bb99 100644
  
  #endif /* __ASM_ARM_SWITCH_TO_H */
 diff --git a/arch/arm/include/asm/thread_info.h b/arch/arm/include/asm/thread_info.h
-index 57d2ad9c75ca..1be54c4687bc 100644
+index df8420672c7e..12055d5f4533 100644
 --- a/arch/arm/include/asm/thread_info.h
 +++ b/arch/arm/include/asm/thread_info.h
 @@ -25,6 +25,7 @@
@@ -3358,7 +3358,7 @@ index 57d2ad9c75ca..1be54c4687bc 100644
  #endif /* __KERNEL__ */
  #endif /* __ASM_ARM_THREAD_INFO_H */
 diff --git a/arch/arm/include/asm/uaccess.h b/arch/arm/include/asm/uaccess.h
-index 4140be431087..656e3f66b422 100644
+index a5807b67ca8a..90f62abe9d3b 100644
 --- a/arch/arm/include/asm/uaccess.h
 +++ b/arch/arm/include/asm/uaccess.h
 @@ -16,6 +16,7 @@
@@ -3369,7 +3369,15 @@ index 4140be431087..656e3f66b422 100644
  
  #include <asm/extable.h>
  
-@@ -198,7 +199,7 @@ extern int __get_user_64t_4(void *);
+@@ -61,6 +62,7 @@ extern int __put_user_bad(void);
+ #define KERNEL_DS	0x00000000
+ #define get_ds()	(KERNEL_DS)
+ 
++
+ #ifdef CONFIG_MMU
+ 
+ #define USER_DS		TASK_SIZE
+@@ -232,7 +234,7 @@ extern int __get_user_64t_4(void *);
  
  #define get_user(x, p)							\
  	({								\
@@ -3378,7 +3386,7 @@ index 4140be431087..656e3f66b422 100644
  		__get_user_check(x, p);					\
  	 })
  
-@@ -282,7 +283,7 @@ do {									\
+@@ -316,7 +318,7 @@ do {									\
  	unsigned long __gu_val;						\
  	unsigned int __ua_flags;					\
  	__chk_user_ptr(ptr);						\
@@ -3387,7 +3395,7 @@ index 4140be431087..656e3f66b422 100644
  	__ua_flags = uaccess_save_and_enable();				\
  	switch (sizeof(*(ptr))) {					\
  	case 1:	__get_user_asm_byte(__gu_val, __gu_addr, err);	break;	\
-@@ -343,7 +344,7 @@ do {									\
+@@ -377,7 +379,7 @@ do {									\
  		const __typeof__(*(ptr)) __user *__pu_ptr = (ptr);	\
  		__typeof__(*(ptr)) __pu_val = (x);			\
  		unsigned int __ua_flags;				\
@@ -3396,14 +3404,6 @@ index 4140be431087..656e3f66b422 100644
  		__ua_flags = uaccess_save_and_enable();			\
  		switch (sizeof(*(ptr))) {				\
  		case 1: __fn(__pu_val, __pu_ptr, __err, 1); break;	\
-@@ -454,7 +455,6 @@ do {									\
- 	: "r" (x), "i" (-EFAULT)				\
- 	: "cc")
- 
--
- #ifdef CONFIG_MMU
- extern unsigned long __must_check
- arm_copy_from_user(void *to, const void __user *from, unsigned long n);
 diff --git a/arch/arm/include/uapi/asm/unistd.h b/arch/arm/include/uapi/asm/unistd.h
 index 39b2ad997e91..4967abf4d2e6 100644
 --- a/arch/arm/include/uapi/asm/unistd.h
@@ -5151,7 +5151,7 @@ index 000000000000..919c36d86de3
 +
 +console_initcall(raw_console_init);
 diff --git a/arch/arm/kernel/setup.c b/arch/arm/kernel/setup.c
-index 8e9a3e40d949..8ffaea7442a4 100644
+index a6d27284105a..9aa9f1a7c700 100644
 --- a/arch/arm/kernel/setup.c
 +++ b/arch/arm/kernel/setup.c
 @@ -32,7 +32,7 @@
@@ -5163,7 +5163,7 @@ index 8e9a3e40d949..8ffaea7442a4 100644
  #include <asm/unified.h>
  #include <asm/cp15.h>
  #include <asm/cpu.h>
-@@ -579,7 +579,17 @@ void notrace cpu_init(void)
+@@ -584,7 +584,17 @@ void notrace cpu_init(void)
  #endif
  }
  
@@ -5183,10 +5183,10 @@ index 8e9a3e40d949..8ffaea7442a4 100644
  void __init smp_setup_processor_id(void)
  {
 diff --git a/arch/arm/kernel/signal.c b/arch/arm/kernel/signal.c
-index cdfe52b15a0a..21f4768e8514 100644
+index 02e6b6dfffa7..500399ffd572 100644
 --- a/arch/arm/kernel/signal.c
 +++ b/arch/arm/kernel/signal.c
-@@ -616,11 +616,13 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
+@@ -624,11 +624,13 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
  	trace_hardirqs_off();
  	do {
  		if (likely(thread_flags & _TIF_NEED_RESCHED)) {
@@ -5201,7 +5201,7 @@ index cdfe52b15a0a..21f4768e8514 100644
  			if (thread_flags & _TIF_SIGPENDING) {
  				int restart = do_signal(regs, syscall);
  				if (unlikely(restart)) {
-@@ -639,7 +641,7 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
+@@ -647,7 +649,7 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
  				tracehook_notify_resume(regs);
  			}
  		}
@@ -5211,10 +5211,10 @@ index cdfe52b15a0a..21f4768e8514 100644
  	} while (thread_flags & _TIF_WORK_MASK);
  	return 0;
 diff --git a/arch/arm/kernel/smp.c b/arch/arm/kernel/smp.c
-index e61af0600133..533dbbb20242 100644
+index f57333f46242..271f9e36957f 100644
 --- a/arch/arm/kernel/smp.c
 +++ b/arch/arm/kernel/smp.c
-@@ -81,8 +81,23 @@ enum ipi_msg_type {
+@@ -82,8 +82,23 @@ enum ipi_msg_type {
  	 * not be usable by the kernel. Please keep the above limited
  	 * to at most 8 entries.
  	 */
@@ -5238,7 +5238,7 @@ index e61af0600133..533dbbb20242 100644
  static DECLARE_COMPLETION(cpu_running);
  
  static struct smp_operations smp_ops __ro_after_init;
-@@ -368,6 +383,13 @@ asmlinkage void secondary_start_kernel(void)
+@@ -399,6 +414,13 @@ asmlinkage void secondary_start_kernel(void)
  	local_flush_bp_all();
  	enter_lazy_tlb(mm, current);
  	local_flush_tlb_all();
@@ -5252,7 +5252,7 @@ index e61af0600133..533dbbb20242 100644
  
  	/*
  	 * All kernel threads share the same mm context; grab a
-@@ -545,6 +567,81 @@ void arch_irq_work_raise(void)
+@@ -576,6 +598,81 @@ void arch_irq_work_raise(void)
  }
  #endif
  
@@ -5334,7 +5334,7 @@ index e61af0600133..533dbbb20242 100644
  #ifdef CONFIG_GENERIC_CLOCKEVENTS_BROADCAST
  void tick_broadcast(const struct cpumask *mask)
  {
-@@ -612,9 +709,9 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
+@@ -643,9 +740,9 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
  
  #ifdef CONFIG_GENERIC_CLOCKEVENTS_BROADCAST
  	case IPI_TIMER:
@@ -5347,7 +5347,7 @@ index e61af0600133..533dbbb20242 100644
  		break;
  #endif
  
-@@ -623,36 +720,36 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
+@@ -654,36 +751,36 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
  		break;
  
  	case IPI_CALL_FUNC:
@@ -6789,7 +6789,7 @@ index f74a8f7e5f84..5cf55d790e9b 100644
  	dec_preempt_count_ti r10, r4
  	ret	lr
 diff --git a/arch/arm/vfp/vfpmodule.c b/arch/arm/vfp/vfpmodule.c
-index 6abcd4af8274..c43e9f31120a 100644
+index 8e11223d32a1..990acd762671 100644
 --- a/arch/arm/vfp/vfpmodule.c
 +++ b/arch/arm/vfp/vfpmodule.c
 @@ -93,6 +93,7 @@ static void vfp_force_reload(unsigned int cpu, struct thread_info *thread)
@@ -6947,10 +6947,10 @@ index 6abcd4af8274..c43e9f31120a 100644
  
  /*
 diff --git a/drivers/base/core.c b/drivers/base/core.c
-index 7a5481aaef60..4b0fe20d6ba3 100644
+index 00d0e5557742..f22956e92dcd 100644
 --- a/drivers/base/core.c
 +++ b/drivers/base/core.c
-@@ -2958,6 +2958,17 @@ EXPORT_SYMBOL(dev_printk_emit);
+@@ -2966,6 +2966,17 @@ EXPORT_SYMBOL(dev_printk_emit);
  static void __dev_printk(const char *level, const struct device *dev,
  			struct va_format *vaf)
  {
@@ -10603,7 +10603,7 @@ index d29b512a7d9f..b4cd94614b61 100644
  	.data		= &serial8250_reg,
  };
 diff --git a/drivers/tty/serial/amba-pl011.c b/drivers/tty/serial/amba-pl011.c
-index c9f701aca677..602dc4c11af7 100644
+index 4a4a9f33715c..857588d534c3 100644
 --- a/drivers/tty/serial/amba-pl011.c
 +++ b/drivers/tty/serial/amba-pl011.c
 @@ -2226,6 +2226,42 @@ static void pl011_console_putchar(struct uart_port *port, int ch)
@@ -10690,7 +10690,7 @@ index c9f701aca677..602dc4c11af7 100644
  	.data		= &amba_reg,
  };
 diff --git a/drivers/tty/serial/xilinx_uartps.c b/drivers/tty/serial/xilinx_uartps.c
-index 897b1c515d00..23c676518a0d 100644
+index 217686cb4cd3..051a14244ee9 100644
 --- a/drivers/tty/serial/xilinx_uartps.c
 +++ b/drivers/tty/serial/xilinx_uartps.c
 @@ -1257,6 +1257,34 @@ static void cdns_uart_console_write(struct console *co, const char *s,
@@ -13326,7 +13326,7 @@ index 4b484ab9e163..8a730fa3878c 100644
  
  #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
 diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
-index b6962ae6237e..623f0bb5c51d 100644
+index 4f7f19c1dc0a..fb4ff6389e26 100644
 --- a/include/linux/kvm_host.h
 +++ b/include/linux/kvm_host.h
 @@ -218,6 +218,9 @@ struct kvm_vcpu {
@@ -13461,12 +13461,12 @@ index 866439c361a9..1f018a8a6f79 100644
  /* Convenience macros for the sake of set_current_state: */
  #define TASK_KILLABLE			(TASK_WAKEKILL | TASK_UNINTERRUPTIBLE)
 diff --git a/include/linux/sched/coredump.h b/include/linux/sched/coredump.h
-index ec912d01126f..07d34a37f374 100644
+index ecdc6542070f..50ccb66593b3 100644
 --- a/include/linux/sched/coredump.h
 +++ b/include/linux/sched/coredump.h
-@@ -72,6 +72,7 @@ static inline int get_dumpable(struct mm_struct *mm)
- #define MMF_DISABLE_THP		24	/* disable THP for all VMAs */
+@@ -73,6 +73,7 @@ static inline int get_dumpable(struct mm_struct *mm)
  #define MMF_OOM_VICTIM		25	/* mm is the oom victim */
+ #define MMF_OOM_REAP_QUEUED	26	/* mm was queued for oom_reaper */
  #define MMF_DISABLE_THP_MASK	(1 << MMF_DISABLE_THP)
 +#define MMF_VM_PINNED		31	/* ondemand load up and COW disabled */
  
@@ -13885,7 +13885,7 @@ index 9ad37b9e44a7..b123fad0a562 100644
  
  	local_irq_save(flags);
 diff --git a/kernel/debug/debug_core.c b/kernel/debug/debug_core.c
-index 65c0f1363788..819a6c4e989b 100644
+index 94aa9ae0007a..5f593270d689 100644
 --- a/kernel/debug/debug_core.c
 +++ b/kernel/debug/debug_core.c
 @@ -119,8 +119,8 @@ static struct kgdb_bkpt		kgdb_break[KGDB_MAX_BREAKPOINTS] = {
@@ -13918,7 +13918,7 @@ index 65c0f1363788..819a6c4e989b 100644
  
  	cpu = ks->cpu;
  	kgdb_info[cpu].debuggerinfo = regs;
-@@ -541,7 +543,7 @@ static int kgdb_cpu_enter(struct kgdb_state *ks, struct pt_regs *regs,
+@@ -543,7 +545,7 @@ static int kgdb_cpu_enter(struct kgdb_state *ks, struct pt_regs *regs,
  			smp_mb__before_atomic();
  			atomic_dec(&slaves_in_kgdb);
  			dbg_touch_watchdogs();
@@ -13927,7 +13927,7 @@ index 65c0f1363788..819a6c4e989b 100644
  			return 0;
  		}
  		cpu_relax();
-@@ -559,7 +561,7 @@ static int kgdb_cpu_enter(struct kgdb_state *ks, struct pt_regs *regs,
+@@ -561,7 +563,7 @@ static int kgdb_cpu_enter(struct kgdb_state *ks, struct pt_regs *regs,
  		atomic_set(&kgdb_active, -1);
  		raw_spin_unlock(&dbg_master_lock);
  		dbg_touch_watchdogs();
@@ -13936,7 +13936,7 @@ index 65c0f1363788..819a6c4e989b 100644
  
  		goto acquirelock;
  	}
-@@ -676,7 +678,7 @@ static int kgdb_cpu_enter(struct kgdb_state *ks, struct pt_regs *regs,
+@@ -680,7 +682,7 @@ static int kgdb_cpu_enter(struct kgdb_state *ks, struct pt_regs *regs,
  	atomic_set(&kgdb_active, -1);
  	raw_spin_unlock(&dbg_master_lock);
  	dbg_touch_watchdogs();
@@ -13945,7 +13945,7 @@ index 65c0f1363788..819a6c4e989b 100644
  
  	return kgdb_info[cpu].ret_state;
  }
-@@ -795,9 +797,9 @@ static void kgdb_console_write(struct console *co, const char *s,
+@@ -799,9 +801,9 @@ static void kgdb_console_write(struct console *co, const char *s,
  	if (!kgdb_connected || atomic_read(&kgdb_active) != -1 || dbg_kdb_mode)
  		return;
  
@@ -13958,7 +13958,7 @@ index 65c0f1363788..819a6c4e989b 100644
  
  static struct console kgdbcons = {
 diff --git a/kernel/exit.c b/kernel/exit.c
-index e3a08761eb40..10d6aee30c8a 100644
+index 3aa01b74c1e3..005884ea74f3 100644
 --- a/kernel/exit.c
 +++ b/kernel/exit.c
 @@ -56,6 +56,7 @@
@@ -13969,7 +13969,7 @@ index e3a08761eb40..10d6aee30c8a 100644
  #include <linux/writeback.h>
  #include <linux/shm.h>
  #include <linux/kcov.h>
-@@ -820,6 +821,7 @@ void __noreturn do_exit(long code)
+@@ -828,6 +829,7 @@ void __noreturn do_exit(long code)
  	 */
  	raw_spin_lock_irq(&tsk->pi_lock);
  	raw_spin_unlock_irq(&tsk->pi_lock);
@@ -19090,7 +19090,7 @@ index 6e40fdfba326..46698d68e2c5 100644
   * The __lock_function inlines are taken from
   * include/linux/spinlock_api_smp.h
 diff --git a/kernel/module.c b/kernel/module.c
-index 2a44c515f0d7..e3e1eda51728 100644
+index 94528b891027..095a60b1954b 100644
 --- a/kernel/module.c
 +++ b/kernel/module.c
 @@ -1109,7 +1109,7 @@ bool try_module_get(struct module *module)
@@ -19705,7 +19705,7 @@ index e29608464382..9e3b707167c6 100644
  		return nr_exclusive;
  
 diff --git a/kernel/signal.c b/kernel/signal.c
-index 164c36ef0825..f6a444d87c77 100644
+index 619c6160f64f..3c6c9892a013 100644
 --- a/kernel/signal.c
 +++ b/kernel/signal.c
 @@ -32,6 +32,7 @@
@@ -19727,7 +19727,7 @@ index 164c36ef0825..f6a444d87c77 100644
  	/*
  	 * TASK_WAKEKILL also means wake it up in the stopped/traced/killable
  	 * case. We don't check t->state here because there is a race with it
-@@ -884,8 +889,11 @@ static inline int wants_signal(int sig, struct task_struct *p)
+@@ -926,8 +931,11 @@ static inline int wants_signal(int sig, struct task_struct *p)
  		return 0;
  	if (sig == SIGKILL)
  		return 1;
@@ -19782,10 +19782,10 @@ index 4237e0744e26..fd6894afff6b 100644
  		WARN_ON(num_possible_cpus() > 1);
  		dev->cpumask = cpumask_of(smp_processor_id());
 diff --git a/kernel/time/timekeeping.c b/kernel/time/timekeeping.c
-index 2cafb49aa65e..002c93975327 100644
+index 1ce7c404d0b0..6027672ed909 100644
 --- a/kernel/time/timekeeping.c
 +++ b/kernel/time/timekeeping.c
-@@ -525,7 +525,7 @@ static inline void update_vsyscall(struct timekeeper *tk)
+@@ -527,7 +527,7 @@ static inline void update_vsyscall(struct timekeeper *tk)
  	xt = timespec64_to_timespec(tk_xtime(tk));
  	wm = timespec64_to_timespec(tk->wall_to_monotonic);
  	update_vsyscall_old(&xt, &wm, tk->tkr_mono.clock, tk->tkr_mono.mult,

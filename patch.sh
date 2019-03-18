@@ -219,7 +219,7 @@ rt () {
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
@@ -377,6 +377,9 @@ ipipe () {
 		cp -v drivers/pci/dwc/pcie-designware-host.c ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c
 		cp -v drivers/thermal/hisi_thermal.c ../patches/ipipe/drivers_thermal_hisi_thermal.c
 
+		cp -v drivers/gpio/gpio-pl061.c ../patches/ipipe/drivers_gpio_gpio-pl061.c
+		cp -v drivers/pinctrl/bcm/pinctrl-bcm2835.c ../patches/ipipe/drivers_pinctrl_bcm_pinctrl-bcm2835.c
+
 		echo "${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}"
 		${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/ipipe/ipipe.diff
@@ -394,12 +397,17 @@ ipipe () {
 		cp -v ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c drivers/pci/dwc/pcie-designware-host.c
 		cp -v ../patches/ipipe/drivers_thermal_hisi_thermal.c drivers/thermal/hisi_thermal.c
 
+		cp -v ../patches/ipipe/drivers_gpio_gpio-pl061.c drivers/gpio/gpio-pl061.c
+		cp -v ../patches/ipipe/drivers_pinctrl_bcm_pinctrl-bcm2835.c drivers/pinctrl/bcm/pinctrl-bcm2835.c
+
 		#exit 2
 
 		${git_bin} add --all
 		${git_bin} commit --allow-empty -a -m 'xenomai pre-patchset'
 
 		sed -i -s 's:#endif :\n#endif :g' include/clocksource/timer-ti-dm.h
+		sed -i -s 's:#ifdef CONFIG_MMU:\n#ifdef CONFIG_MMU:g' arch/arm/include/asm/uaccess.h
+
 		patch -p1 < ../patches/ipipe/ipipe.diff
 
 		#drivers/clocksource/timer-ti-dm.c
@@ -503,7 +511,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
-	backport_tag="v5.0.1"
+	backport_tag="v5.0.2"
 
 	subsystem="vl53l0x"
 	#regenerate="enable"
@@ -552,7 +560,6 @@ drivers () {
 	dir 'drivers/btrfs'
 	dir 'drivers/mcp23s08'
 	dir 'drivers/pwm'
-	dir 'drivers/rtl8188eu'
 	dir 'drivers/snd_pwmsp'
 	dir 'drivers/sound'
 	dir 'drivers/spi'
