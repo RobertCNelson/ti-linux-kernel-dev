@@ -33,12 +33,12 @@ toolchain="gcc_linaro_gnueabihf_7"
 
 #Kernel
 KERNEL_REL=4.14
-KERNEL_TAG=${KERNEL_REL}.94
-kernel_rt=".93-rt53"
+KERNEL_TAG=${KERNEL_REL}.103
+kernel_rt=".103-rt55"
 #Kernel Build
-BUILD=${build_prefix}97
+BUILD=${build_prefix}97.1
 
-#v4.X-rcX + upto SHA
+#v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
 #KERNEL_SHA=""
 
@@ -50,7 +50,7 @@ DEBARCH=armhf
 
 ti_git_old_release="34be9b4b29a1b6515b99295efefa6cd9bb30f102"
         ti_git_pre="34be9b4b29a1b6515b99295efefa6cd9bb30f102"
-       ti_git_post="34be9b4b29a1b6515b99295efefa6cd9bb30f102"
+       ti_git_post="7820722526972cc3be0dfc64f724a9bd66bc2a74"
 #
 
 #https://gitlab.denx.de/Xenomai/xenomai.git

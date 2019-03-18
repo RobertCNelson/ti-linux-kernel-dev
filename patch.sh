@@ -219,7 +219,7 @@ rt () {
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
@@ -421,7 +421,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
-	backport_tag="v5.0.1"
+	backport_tag="v5.0.2"
 
 	subsystem="vl53l0x"
 	#regenerate="enable"
@@ -470,7 +470,6 @@ drivers () {
 	dir 'drivers/btrfs'
 	dir 'drivers/mcp23s08'
 	dir 'drivers/pwm'
-	dir 'drivers/rtl8188eu'
 	dir 'drivers/snd_pwmsp'
 	dir 'drivers/sound'
 	dir 'drivers/spi'
