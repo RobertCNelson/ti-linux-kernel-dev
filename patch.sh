@@ -366,6 +366,9 @@ ipipe () {
 	kernel_base="v4.14.85"
 	xenomai_branch="stable/4.14.85-arm"
 	echo "dir: ipipe"
+
+	${git_bin} revert --no-edit a8aac659b9652430ccf898dd61bc6f996e3aef9d
+
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		#https://gitlab.denx.de/Xenomai/ipipe-arm
@@ -515,7 +518,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
-	backport_tag="v5.0.4"
+	backport_tag="v5.0.5"
 
 	subsystem="vl53l0x"
 	#regenerate="enable"
