@@ -36,7 +36,7 @@ KERNEL_REL=4.14
 KERNEL_TAG=${KERNEL_REL}.108
 kernel_rt=".106-rt56"
 #Kernel Build
-BUILD=${build_prefix}101.1
+BUILD=${build_prefix}101.2
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -48,8 +48,8 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 DEBARCH=armhf
 
-ti_git_old_release="7820722526972cc3be0dfc64f724a9bd66bc2a74"
-        ti_git_pre="7820722526972cc3be0dfc64f724a9bd66bc2a74"
+ti_git_old_release="b02daa74d9bd58b07b7d43168d4dca9595c0bab3"
+        ti_git_pre="b02daa74d9bd58b07b7d43168d4dca9595c0bab3"
        ti_git_post="b02daa74d9bd58b07b7d43168d4dca9595c0bab3"
 #
 

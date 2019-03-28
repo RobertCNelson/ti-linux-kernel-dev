@@ -574,6 +574,7 @@ soc () {
 	dir 'soc/ti/x15'
 	dir 'soc/ti/evm'
 	dir 'soc/gssi'
+	dir 'soc/ti/beagleboneai'
 }
 
 dtb_makefile_append () {
@@ -641,6 +642,8 @@ beaglebone () {
 
 		device="am57xx-evm.dtb" ; dtb_makefile_append_am57xx
 		device="am57xx-evm-reva3.dtb" ; dtb_makefile_append_am57xx
+		device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am57xx
+		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am57xx
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
