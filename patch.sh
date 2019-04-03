@@ -449,7 +449,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.105"
+	backport_tag="v4.14.110"
 
 	subsystem="fbtft"
 	#regenerate="enable"
