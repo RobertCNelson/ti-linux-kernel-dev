@@ -284,15 +284,15 @@ wireguard () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./WireGuard ] ; then
-			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=10
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
 		else
 			rm -rf ./WireGuard || true
-			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=10
+			${git_bin} clone https://git.zx2c4.com/WireGuard --depth=1
 		fi
 
-		cd ./WireGuard/
-		${git_bin}  revert --no-edit cf8c39531b788cbb95af72fdea78dbaeeb3ce2c1
-		cd ../
+		#cd ./WireGuard/
+		#${git_bin}  revert --no-edit xyz
+		#cd ../
 		cd ./KERNEL/
 
 		../WireGuard/contrib/kernel-tree/create-patch.sh | patch -p1 || wireguard_fail
@@ -362,7 +362,7 @@ local_patch () {
 external_git
 aufs
 #rt
-backport_brcm80211
+#backport_brcm80211
 wireguard
 ti_pm_firmware
 #local_patch
@@ -555,6 +555,87 @@ drivers () {
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
+
+	${git} "${DIR}/patches/cypress/cypress-patch/0001-brcmfmac-add-CLM-download-support.patch" # [v4.15-rc1]
+	${git} "${DIR}/patches/cypress/cypress-patch/0002-brcmfmac-Set-F2-blksz-and-Watermark-to-256-for-4373.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0003-brcmfmac-Add-sg-parameters-dts-parsing.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0004-brcmfmac-return-EPERM-when-getting-error-in-vendor-c.patch" # [v4.16-rc1]
+	${git} "${DIR}/patches/cypress/cypress-patch/0005-brcmfmac-Add-support-for-CYW43012-SDIO-chipset.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0006-brcmfmac-set-apsta-to-0-when-AP-starts-on-primary-in.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0007-brcmfmac-Saverestore-support-changes-for-43012.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0008-brcmfmac-Support-43455-save-restore-SR-feature-if-FW.patch" # [v4.16-rc1]
+	${git} "${DIR}/patches/cypress/cypress-patch/0009-brcmfmac-fix-CLM-load-error-for-legacy-chips-when-us.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0010-brcmfmac-enlarge-buffer-size-of-caps-to-512-bytes.patch" # [v4.16-rc1]
+	${git} "${DIR}/patches/cypress/cypress-patch/0011-brcmfmac-calling-skb_orphan-before-sending-skb-to-SD.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0012-brcmfmac-43012-Update-F2-Watermark-to-0x60-to-fix-DM.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0013-brcmfmac-DS1-Exit-should-re-download-the-firmware.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0014-brcmfmac-add-FT-based-AKMs-in-brcmf_set_key_mgmt-for.patch" #
+#	${git} "${DIR}/patches/cypress/cypress-patch/0015-brcmfmac-Add-support-for-43428-SDIO-device-ID.patch" # [4.18-rc1]
+	${git} "${DIR}/patches/cypress/cypress-patch/0016-brcmfmac-support-AP-isolation.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0017-brcmfmac-do-not-print-ulp_sdioctrl-get-error.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0018-brcmfmac-fix-system-warning-message-during-wowl-susp.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0019-brcmfmac-add-a-module-parameter-to-set-scheduling-pr.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0020-brcmfmac-make-firmware-eap_restrict-a-module-paramet.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0021-brcmfmac-Support-wake-on-ping-packet.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0022-brcmfmac-Remove-WOWL-configuration-in-disconnect-sta.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0023-brcmfmac-add-CYW89342-PCIE-device.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0024-brcmfmac-handle-compressed-tx-status-signal.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0025-revert-brcmfmac-add-a-module-parameter-to-set-schedu.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0026-brcmfmac-make-setting-SDIO-workqueue-WQ_HIGHPRI-a-mo.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0027-brcmfmac-add-credit-map-updating-support.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0028-brcmfmac-add-4-way-handshake-offload-detection-for-F.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0029-brcmfmac-remove-arp_hostip_clear-from-brcmf_netdev_s.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0030-brcmfmac-fix-unused-variable-building-warning-messag.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0031-brcmfmac-disable-command-decode-in-sdio_aos-for-4339.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0032-Revert-brcmfmac-fix-CLM-load-error-for-legacy-chips-.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0033-brcmfmac-fix-CLM-load-error-for-legacy-chips-when-us.patch" # [v4.15-rc9]
+	${git} "${DIR}/patches/cypress/cypress-patch/0034-brcmfmac-set-WIPHY_FLAG_HAVE_AP_SME-flag.patch" # [v4.18-rc1]
+	${git} "${DIR}/patches/cypress/cypress-patch/0035-brcmfmac-P2P-CERT-6.1.9-Support-GOUT-handling-P2P-Pr.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0036-brcmfmac-only-generate-random-p2p-address-when-neede.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0037-brcmfmac-disable-command-decode-in-sdio_aos-for-4354.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0038-brcmfmac-increase-max-hanger-slots-from-1K-to-3K-in-.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0039-brcmfmac-reduce-timeout-for-action-frame-scan.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0040-brcmfmac-fix-full-timeout-waiting-for-action-frame-o.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0041-brcmfmac-4373-save-restore-support.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0042-brcmfmac-map-802.1d-priority-to-precedence-level-bas.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0043-brcmfmac-allow-GCI-core-enumuration.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0044-brcmfmac-make-firmware-frameburst-mode-a-module-para.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0045-brcmfmac-set-state-of-hanger-slot-to-FREE-when-flush.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0046-brcmfmac-add-creating-station-interface-support.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0047-brcmfmac-add-RSDB-condition-when-setting-interface-c.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0048-brcmfmac-not-set-mbss-in-vif-if-firmware-does-not-su.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0049-brcmfmac-support-the-second-p2p-connection.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0050-brcmfmac-Add-support-for-BCM4359-SDIO-chipset.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0051-cfg80211-nl80211-add-a-port-authorized-event.patch" # [4.15-rc1]
+	${git} "${DIR}/patches/cypress/cypress-patch/0052-nl80211-add-NL80211_ATTR_IFINDEX-to-port-authorized-.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0053-brcmfmac-send-port-authorized-event-for-802.1X-4-way.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0054-brcmfmac-send-port-authorized-event-for-FT-802.1X.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0055-brcmfmac-Support-DS1-TX-Exit-in-FMAC.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0056-brcmfmac-disable-command-decode-in-sdio_aos-for-4373.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0057-brcmfmac-add-vendor-ie-for-association-responses.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0058-brcmfmac-fix-43012-insmod-after-rmmod-in-DS1-failure.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0059-brcmfmac-Set-SDIO-F1-MesBusyCtrl-for-CYW4373.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0060-brcmfmac-add-4354-raw-pcie-device-id.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0061-nl80211-Allow-SAE-Authentication-for-NL80211_CMD_CON.patch" # [4.17-rc1]
+	${git} "${DIR}/patches/cypress/cypress-patch/0062-non-upstream-update-enum-nl80211_attrs-and-nl80211_e.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0063-nl80211-add-WPA3-definition-for-SAE-authentication.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0064-cfg80211-add-support-for-SAE-authentication-offload.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0065-brcmfmac-add-support-for-SAE-authentication-offload.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0066-brcmfmac-fix-4339-CRC-error-under-SDIO-3.0-SDR104-mo.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0067-brcmfmac-fix-the-incorrect-return-value-in-brcmf_inf.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0068-brcmfmac-Fix-double-freeing-in-the-fmac-usb-data-pat.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0069-brcmfmac-Fix-driver-crash-on-USB-control-transfer-ti.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0070-brcmfmac-avoid-network-disconnection-during-suspend-.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0071-brcmfmac-Allow-credit-borrowing-for-all-access-categ.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0072-non-upstream-Changes-to-improve-USB-Tx-throughput.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0073-non-upstream-reset-two-D11-cores-if-chip-has-two-D11.patch" # [x]
+	${git} "${DIR}/patches/cypress/cypress-patch/0074-brcmfmac-reset-PMU-backplane-all-cores-in-CYW4373-du.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0075-brcmfmac-introduce-module-parameter-to-configure-def.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0076-brcmfmac-configure-wowl-parameters-in-suspend-functi.patch" #
+	${git} "${DIR}/patches/cypress/cypress-patch/0077-brcmfmac-discard-user-space-RSNE-for-SAE-authenticat.patch" #
+
+#Note: [*] is the upstream tag containing the patch
+#      [x] means no plan to upstream
 }
 
 soc () {
@@ -660,6 +741,7 @@ drivers
 soc
 beaglebone
 dir 'drivers/ti/sgx'
+dir 'drivers/ti/spi_symlink'
 
 packaging () {
 	echo "dir: packaging"
