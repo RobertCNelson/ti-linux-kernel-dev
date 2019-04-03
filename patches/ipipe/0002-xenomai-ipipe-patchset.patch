@@ -1,6 +1,6 @@
-From 772baf5be574a79fe4b64f8fa5dc1d0ab1042a9e Mon Sep 17 00:00:00 2001
+From d292696a0a2b4319bfb66b348b3d996c7fbed7a0 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 27 Mar 2019 10:48:51 -0500
+Date: Wed, 3 Apr 2019 15:57:49 -0500
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
@@ -25,14 +25,14 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm/include/asm/percpu.h            |   10 +-
  arch/arm/include/asm/setup.h             |    6 +
  arch/arm/include/asm/switch_to.h         |    9 +
- arch/arm/include/asm/thread_info.h       |   18 +
+ arch/arm/include/asm/thread_info.h       |   20 +
  arch/arm/include/asm/uaccess.h           |    8 +-
  arch/arm/include/uapi/asm/unistd.h       |    6 +
  arch/arm/kernel/Makefile                 |    3 +
  arch/arm/kernel/asm-offsets.c            |    3 +
  arch/arm/kernel/devtree.c                |    2 +
  arch/arm/kernel/entry-armv.S             |  113 +-
- arch/arm/kernel/entry-common.S           |  132 +-
+ arch/arm/kernel/entry-common.S           |  147 +-
  arch/arm/kernel/entry-header.S           |   40 +-
  arch/arm/kernel/ipipe.c                  |  453 +++++
  arch/arm/kernel/ipipe_tsc.c              |  276 +++
@@ -114,7 +114,6 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  drivers/pinctrl/sunxi/pinctrl-sunxi.c    |   26 +-
  drivers/pinctrl/sunxi/pinctrl-sunxi.h    |    4 +
  drivers/soc/dove/pmu.c                   |    9 +-
- drivers/thermal/hisi_thermal.c           |    2 -
  drivers/tty/serial/8250/8250_core.c      |   47 +
  drivers/tty/serial/amba-pl011.c          |   47 +-
  drivers/tty/serial/xilinx_uartps.c       |   33 +
@@ -136,12 +135,11 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  include/linux/gpio/driver.h              |    2 +-
  include/linux/hardirq.h                  |    3 +
  include/linux/interrupt.h                |   17 +
- include/linux/ipipe.h                    |  478 ++++++
- include/linux/ipipe_base.h               |  242 +++
+ include/linux/ipipe.h                    |  721 ++++++++
  include/linux/ipipe_debug.h              |  100 ++
- include/linux/ipipe_domain.h             |  358 ++++
+ include/linux/ipipe_domain.h             |  360 ++++
  include/linux/ipipe_lock.h               |  329 ++++
- include/linux/ipipe_tickdev.h            |  160 ++
+ include/linux/ipipe_tickdev.h            |  165 ++
  include/linux/ipipe_trace.h              |   78 +
  include/linux/irq.h                      |   47 +-
  include/linux/irqchip/arm-gic.h          |    4 +
@@ -171,8 +169,8 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  kernel/ipipe/Kconfig                     |   47 +
  kernel/ipipe/Kconfig.debug               |  100 ++
  kernel/ipipe/Makefile                    |    2 +
- kernel/ipipe/core.c                      | 1978 ++++++++++++++++++++++
- kernel/ipipe/timer.c                     |  630 +++++++
+ kernel/ipipe/core.c                      | 1986 ++++++++++++++++++++++
+ kernel/ipipe/timer.c                     |  648 +++++++
  kernel/ipipe/tracer.c                    | 1486 ++++++++++++++++
  kernel/irq/chip.c                        |  247 ++-
  kernel/irq/dummychip.c                   |    4 +-
@@ -188,13 +186,14 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  kernel/panic.c                           |    4 +
  kernel/power/hibernate.c                 |    3 +
  kernel/printk/printk.c                   |  176 +-
+ kernel/ptrace.c                          |    2 +
  kernel/rcu/Kconfig.debug                 |    2 +-
  kernel/sched/core.c                      |   73 +-
  kernel/sched/idle.c                      |   32 +-
  kernel/sched/wait.c                      |    2 +
  kernel/signal.c                          |   10 +-
  kernel/stop_machine.c                    |    2 +
- kernel/time/clockevents.c                |    3 +
+ kernel/time/clockevents.c                |    8 +-
  kernel/time/timekeeping.c                |    2 +-
  kernel/time/timer.c                      |   12 +-
  kernel/trace/Kconfig                     |    1 +
@@ -212,11 +211,11 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  lib/ioremap.c                            |    8 +-
  lib/smp_processor_id.c                   |    7 +
  mm/memory.c                              |   97 +-
- mm/mlock.c                               |   24 +
+ mm/mlock.c                               |   26 +
  mm/mmu_context.c                         |    4 +
  mm/mprotect.c                            |   11 +-
  mm/vmalloc.c                             |    2 +
- 212 files changed, 13191 insertions(+), 802 deletions(-)
+ 211 files changed, 13251 insertions(+), 800 deletions(-)
  create mode 100644 Documentation/ipipe-arm.rst
  create mode 100644 Documentation/ipipe.rst
  create mode 100644 arch/arm/include/asm/ipipe.h
@@ -231,7 +230,6 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  create mode 100644 include/ipipe/setup.h
  create mode 100644 include/ipipe/thread_info.h
  create mode 100644 include/linux/ipipe.h
- create mode 100644 include/linux/ipipe_base.h
  create mode 100644 include/linux/ipipe_debug.h
  create mode 100644 include/linux/ipipe_domain.h
  create mode 100644 include/linux/ipipe_lock.h
@@ -3302,7 +3300,7 @@ index d3e937dcee4d..2ae59624bb99 100644
  
  #endif /* __ASM_ARM_SWITCH_TO_H */
 diff --git a/arch/arm/include/asm/thread_info.h b/arch/arm/include/asm/thread_info.h
-index df8420672c7e..12055d5f4533 100644
+index df8420672c7e..dc76213c1ea2 100644
 --- a/arch/arm/include/asm/thread_info.h
 +++ b/arch/arm/include/asm/thread_info.h
 @@ -25,6 +25,7 @@
@@ -3342,7 +3340,7 @@ index df8420672c7e..12055d5f4533 100644
  /* Checks for any syscall work in entry-common.S */
  #define _TIF_SYSCALL_WORK (_TIF_SYSCALL_TRACE | _TIF_SYSCALL_AUDIT | \
  			   _TIF_SYSCALL_TRACEPOINT | _TIF_SECCOMP)
-@@ -169,5 +178,14 @@ extern int vfp_restore_user_hwstate(struct user_vfp *,
+@@ -169,5 +178,16 @@ extern int vfp_restore_user_hwstate(struct user_vfp *,
  #define _TIF_WORK_MASK		(_TIF_NEED_RESCHED | _TIF_SIGPENDING | \
  				 _TIF_NOTIFY_RESUME | _TIF_UPROBE)
  
@@ -3350,10 +3348,12 @@ index df8420672c7e..12055d5f4533 100644
 +#define TIP_MAYDAY	0	/* MAYDAY call is pending */
 +#define TIP_NOTIFY	1	/* Notify head domain about kernel events */
 +#define TIP_HEAD	2	/* Runs in head domain */
++#define TIP_USERINTRET	3	/* Notify on IRQ/trap return to root userspace */
 +
 +#define _TIP_MAYDAY	(1 << TIP_MAYDAY)
 +#define _TIP_NOTIFY	(1 << TIP_NOTIFY)
 +#define _TIP_HEAD	(1 << TIP_HEAD)
++#define _TIP_USERINTRET	(1 << TIP_USERINTRET)
 +
  #endif /* __KERNEL__ */
  #endif /* __ASM_ARM_THREAD_INFO_H */
@@ -3683,7 +3683,7 @@ index fbc707626b3e..311308e15485 100644
  	.if	(. - \sym) & 3
  	.rept	4 - (. - \sym) & 3
 diff --git a/arch/arm/kernel/entry-common.S b/arch/arm/kernel/entry-common.S
-index d7dc808a3d15..50c6772ad869 100644
+index d7dc808a3d15..47cd61d05031 100644
 --- a/arch/arm/kernel/entry-common.S
 +++ b/arch/arm/kernel/entry-common.S
 @@ -2,6 +2,7 @@
@@ -3744,21 +3744,38 @@ index d7dc808a3d15..50c6772ad869 100644
   UNWIND(.fnend		)
  ENDPROC(ret_fast_syscall)
  
-@@ -124,12 +155,7 @@ ENTRY(ret_to_user_from_irq)
+@@ -123,13 +154,25 @@ ENTRY(ret_to_user_from_irq)
+ 	tst	r1, #_TIF_WORK_MASK
  	bne	slow_work_pending
  no_work_pending:
++#ifdef CONFIG_IPIPE
++	get_thread_info tsk
++	ldr	r1, [tsk, #TI_IPIPE]
++	tst	r1, #_TIP_USERINTRET
++	bne	call_user_intret_notifier
++goto_user:
++#endif
  	asm_trace_hardirqs_on save = 0
--
++	slow_restore_user_regs
+ 
 -	/* perform architecture specific actions before user return */
 -	arch_ret_to_user r1, lr
 -	ct_user_enter save = 0
 -
 -	restore_user_regs fast = 0, offset = 0
-+	slow_restore_user_regs
++#ifdef CONFIG_IPIPE
++call_user_intret_notifier:
++	enable_irq_notrace
++	bl	__ipipe_notify_user_intreturn
++	cmp	r0, #0
++	beq	ret_slow_syscall
++	disable_irq_notrace
++	b	goto_user
++#endif
  ENDPROC(ret_to_user_from_irq)
  ENDPROC(ret_to_user)
  
-@@ -137,6 +163,7 @@ ENDPROC(ret_to_user)
+@@ -137,6 +180,7 @@ ENDPROC(ret_to_user)
   * This is how we return from a fork.
   */
  ENTRY(ret_from_fork)
@@ -3766,7 +3783,7 @@ index d7dc808a3d15..50c6772ad869 100644
  	bl	schedule_tail
  	cmp	r5, #0
  	movne	r0, r4
-@@ -146,6 +173,14 @@ ENTRY(ret_from_fork)
+@@ -146,6 +190,14 @@ ENTRY(ret_from_fork)
  	b	ret_slow_syscall
  ENDPROC(ret_from_fork)
  
@@ -3781,7 +3798,7 @@ index d7dc808a3d15..50c6772ad869 100644
  /*=============================================================================
   * SWI handler
   *-----------------------------------------------------------------------------
-@@ -169,6 +204,16 @@ ENTRY(vector_swi)
+@@ -169,6 +221,16 @@ ENTRY(vector_swi)
  	str	r0, [sp, #S_OLD_R0]		@ Save OLD_R0
  #endif
  	zero_fp
@@ -3798,7 +3815,7 @@ index d7dc808a3d15..50c6772ad869 100644
  	alignment_trap r10, ip, __cr_alignment
  	asm_trace_hardirqs_on save=0
  	enable_irq_notrace
-@@ -237,6 +282,55 @@ ENTRY(vector_swi)
+@@ -237,6 +299,55 @@ ENTRY(vector_swi)
   TRACE(	ldmia	sp, {r0 - r3}		)
  
  local_restart:
@@ -3854,7 +3871,7 @@ index d7dc808a3d15..50c6772ad869 100644
  	ldr	r10, [tsk, #TI_FLAGS]		@ check for syscall tracing
  	stmdb	sp!, {r4, r5}			@ push fifth and sixth args
  
-@@ -457,3 +551,27 @@ ENDPROC(sys_oabi_readahead)
+@@ -457,3 +568,27 @@ ENDPROC(sys_oabi_readahead)
  
  #endif
  
@@ -4426,7 +4443,7 @@ index 000000000000..53c4b301b38f
 +EXPORT_SYMBOL_GPL(cpu_architecture);
 diff --git a/arch/arm/kernel/ipipe_tsc.c b/arch/arm/kernel/ipipe_tsc.c
 new file mode 100644
-index 000000000000..0a8f79a0f24f
+index 000000000000..82107616e5c5
 --- /dev/null
 +++ b/arch/arm/kernel/ipipe_tsc.c
 @@ -0,0 +1,276 @@
@@ -4481,7 +4498,7 @@ index 000000000000..0a8f79a0f24f
 +	add_timer(&ipipe_tsc_update_timer);
 +}
 +
-+void __init __ipipe_tsc_register(struct __ipipe_tscinfo *info)
++void __ipipe_tsc_register(struct __ipipe_tscinfo *info)
 +{
 +	struct ipipe_tsc_value_t *vector_tsc_value;
 +	unsigned long long wrap_ms;
@@ -8247,7 +8264,7 @@ index 43f48c83cbd5..0af21304537f 100644
  	bank->irq = platform_get_irq(pdev, 0);
  	if (bank->irq <= 0) {
 diff --git a/drivers/gpio/gpio-pl061.c b/drivers/gpio/gpio-pl061.c
-index 6aaaab79c205..5f9be96f6301 100644
+index f6e1e0e306a3..d0651a001edf 100644
 --- a/drivers/gpio/gpio-pl061.c
 +++ b/drivers/gpio/gpio-pl061.c
 @@ -26,6 +26,7 @@
@@ -8270,7 +8287,7 @@ index 6aaaab79c205..5f9be96f6301 100644
  
  	void __iomem		*base;
  	struct gpio_chip	gc;
-@@ -221,14 +226,30 @@ static void pl061_irq_handler(struct irq_desc *desc)
+@@ -222,14 +227,30 @@ static void pl061_irq_handler(struct irq_desc *desc)
  	pending = readb(pl061->base + GPIOMIS);
  	if (pending) {
  		for_each_set_bit(offset, &pending, PL061_GPIO_NR)
@@ -8303,7 +8320,7 @@ index 6aaaab79c205..5f9be96f6301 100644
  {
  	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
  	struct pl061 *pl061 = gpiochip_get_data(gc);
-@@ -240,6 +261,7 @@ static void pl061_irq_mask(struct irq_data *d)
+@@ -241,6 +262,7 @@ static void pl061_irq_mask(struct irq_data *d)
  	writeb(gpioie, pl061->base + GPIOIE);
  	raw_spin_unlock(&pl061->lock);
  }
@@ -8311,17 +8328,17 @@ index 6aaaab79c205..5f9be96f6301 100644
  
  static void pl061_irq_unmask(struct irq_data *d)
  {
-@@ -288,6 +310,10 @@ static struct irq_chip pl061_irqchip = {
- 	.irq_unmask	= pl061_irq_unmask,
- 	.irq_set_type	= pl061_irq_type,
- 	.irq_set_wake	= pl061_irq_set_wake,
+@@ -326,6 +348,10 @@ static int pl061_probe(struct amba_device *adev, const struct amba_id *id)
+ 	pl061->irq_chip.irq_unmask = pl061_irq_unmask;
+ 	pl061->irq_chip.irq_set_type = pl061_irq_type;
+ 	pl061->irq_chip.irq_set_wake = pl061_irq_set_wake;
 +#ifdef CONFIG_IPIPE
-+	.irq_mask_ack	= pl061_irq_mask_ack,
-+	.flags		= IRQCHIP_PIPELINE_SAFE,
++	pl061->irq_chip.irq_mask_ack = pl061_irq_mask_ack;
++	pl061->irq_chip.flags = IRQCHIP_PIPELINE_SAFE;
 +#endif
- };
  
- static int pl061_probe(struct amba_device *adev, const struct amba_id *id)
+ 	writeb(0, pl061->base + GPIOIE); /* disable irqs */
+ 	irq = adev->irq[0];
 diff --git a/drivers/gpio/gpio-zynq.c b/drivers/gpio/gpio-zynq.c
 index b3cc948a2d8b..52d360e68497 100644
 --- a/drivers/gpio/gpio-zynq.c
@@ -10136,10 +10153,10 @@ index 70df958224d9..4612092394d2 100644
  	gpmc_irq_domain = irq_domain_add_linear(gpmc->dev->of_node,
  						gpmc->nirqs,
 diff --git a/drivers/pci/dwc/pcie-designware-host.c b/drivers/pci/dwc/pcie-designware-host.c
-index bc3e2d8d0cce..a5b8dd070636 100644
+index 58b38c54a7cf..aecf55c5ca4a 100644
 --- a/drivers/pci/dwc/pcie-designware-host.c
 +++ b/drivers/pci/dwc/pcie-designware-host.c
-@@ -51,6 +51,7 @@ static struct irq_chip dw_msi_irq_chip = {
+@@ -62,6 +62,7 @@ static struct irq_chip dw_msi_irq_chip = {
  	.irq_disable = pci_msi_mask_irq,
  	.irq_mask = pci_msi_mask_irq,
  	.irq_unmask = pci_msi_unmask_irq,
@@ -10523,19 +10540,6 @@ index 5abb08ffb74d..f5790ab70927 100644
  
  	pmu->irq_domain = domain;
  	pmu->irq_gc = gc;
-diff --git a/drivers/thermal/hisi_thermal.c b/drivers/thermal/hisi_thermal.c
-index 6d8906d65476..433d98834629 100644
---- a/drivers/thermal/hisi_thermal.c
-+++ b/drivers/thermal/hisi_thermal.c
-@@ -378,8 +378,6 @@ static int hisi_thermal_probe(struct platform_device *pdev)
- 		return ret;
- 	}
- 
--	enable_irq(data->irq);
--
- 	return 0;
- }
- 
 diff --git a/drivers/tty/serial/8250/8250_core.c b/drivers/tty/serial/8250/8250_core.c
 index d29b512a7d9f..b4cd94614b61 100644
 --- a/drivers/tty/serial/8250/8250_core.c
@@ -11333,14 +11337,15 @@ index 69c238210325..24d95e3b84be 100644
     tasklets are more than enough. F.e. all serial device BHs et
 diff --git a/include/linux/ipipe.h b/include/linux/ipipe.h
 new file mode 100644
-index 000000000000..692f59c20827
+index 000000000000..b8a80eeade4f
 --- /dev/null
 +++ b/include/linux/ipipe.h
-@@ -0,0 +1,478 @@
+@@ -0,0 +1,721 @@
 +/* -*- linux-c -*-
 + * include/linux/ipipe.h
 + *
 + * Copyright (C) 2002-2014 Philippe Gerum.
++ *               2007 Jan Kiszka.
 + *
 + * This program is free software; you can redistribute it and/or modify
 + * it under the terms of the GNU General Public License as published by
@@ -11366,7 +11371,6 @@ index 000000000000..692f59c20827
 +#include <linux/percpu.h>
 +#include <linux/irq.h>
 +#include <linux/thread_info.h>
-+#include <linux/ipipe_base.h>
 +#include <linux/ipipe_debug.h>
 +#include <asm/ptrace.h>
 +#ifdef CONFIG_HAVE_IPIPE_SUPPORT
@@ -11375,10 +11379,182 @@ index 000000000000..692f59c20827
 +
 +struct cpuidle_device;
 +struct cpuidle_state;
++struct kvm_vcpu;
++struct ipipe_vm_notifier;
++struct irq_desc;
++struct task_struct;
++struct mm_struct;
 +
 +#ifdef CONFIG_IPIPE
 +
 +#include <linux/ipipe_domain.h>
++
++#define IPIPE_CORE_APIREV  CONFIG_IPIPE_CORE_APIREV
++
++#include <linux/ipipe_domain.h>
++#include <linux/compiler.h>
++#include <linux/linkage.h>
++#include <asm/ipipe_base.h>
++
++struct pt_regs;
++struct ipipe_domain;
++
++struct ipipe_vm_notifier {
++	void (*handler)(struct ipipe_vm_notifier *nfy);
++};
++
++static inline int ipipe_virtual_irq_p(unsigned int irq)
++{
++	return irq >= IPIPE_VIRQ_BASE && irq < IPIPE_NR_IRQS;
++}
++
++void __ipipe_init_early(void);
++
++void __ipipe_init(void);
++
++#ifdef CONFIG_PROC_FS
++void __ipipe_init_proc(void);
++#ifdef CONFIG_IPIPE_TRACE
++void __ipipe_init_tracer(void);
++#else /* !CONFIG_IPIPE_TRACE */
++static inline void __ipipe_init_tracer(void) { }
++#endif /* CONFIG_IPIPE_TRACE */
++#else	/* !CONFIG_PROC_FS */
++static inline void __ipipe_init_proc(void) { }
++#endif	/* CONFIG_PROC_FS */
++
++void __ipipe_restore_root_nosync(unsigned long x);
++
++#define IPIPE_IRQF_NOACK    0x1
++#define IPIPE_IRQF_NOSYNC   0x2
++
++void __ipipe_dispatch_irq(unsigned int irq, int flags);
++
++void __ipipe_do_sync_stage(void);
++
++void __ipipe_do_sync_pipeline(struct ipipe_domain *top);
++
++void __ipipe_lock_irq(unsigned int irq);
++
++void __ipipe_unlock_irq(unsigned int irq);
++
++void __ipipe_do_critical_sync(unsigned int irq, void *cookie);
++
++void __ipipe_ack_edge_irq(struct irq_desc *desc);
++
++void __ipipe_nop_irq(struct irq_desc *desc);
++
++static inline void __ipipe_idle(void)
++{
++	ipipe_unstall_root();
++}
++
++#ifndef __ipipe_sync_check
++#define __ipipe_sync_check	1
++#endif
++
++static inline void __ipipe_sync_stage(void)
++{
++	if (likely(__ipipe_sync_check))
++		__ipipe_do_sync_stage();
++}
++
++#ifndef __ipipe_run_irqtail
++#define __ipipe_run_irqtail(irq) do { } while(0)
++#endif
++
++int __ipipe_log_printk(const char *fmt, va_list args);
++void __ipipe_flush_printk(unsigned int irq, void *cookie);
++
++#define __ipipe_get_cpu(flags)	({ (flags) = hard_preempt_disable(); ipipe_processor_id(); })
++#define __ipipe_put_cpu(flags)	hard_preempt_enable(flags)
++
++int __ipipe_notify_kevent(int event, void *data);
++
++#define __ipipe_report_sigwake(p)					\
++	do {								\
++		if (ipipe_notifier_enabled_p(p))			\
++			__ipipe_notify_kevent(IPIPE_KEVT_SIGWAKE, p);	\
++	} while (0)
++
++struct ipipe_cpu_migration_data {
++	struct task_struct *task;
++	int dest_cpu;
++};
++
++#define __ipipe_report_setaffinity(__p, __dest_cpu)			\
++	do {								\
++		struct ipipe_cpu_migration_data d = {			\
++			.task = (__p),					\
++			.dest_cpu = (__dest_cpu),			\
++		};							\
++		if (ipipe_notifier_enabled_p(__p))			\
++			__ipipe_notify_kevent(IPIPE_KEVT_SETAFFINITY, &d); \
++	} while (0)
++
++#define __ipipe_report_exit(p)						\
++	do {								\
++		if (ipipe_notifier_enabled_p(p))			\
++			__ipipe_notify_kevent(IPIPE_KEVT_EXIT, p);	\
++	} while (0)
++
++#define __ipipe_report_setsched(p)					\
++	do {								\
++		if (ipipe_notifier_enabled_p(p))			\
++			__ipipe_notify_kevent(IPIPE_KEVT_SETSCHED, p); \
++	} while (0)
++
++#define __ipipe_report_schedule(prev, next)				\
++do {									\
++	if (ipipe_notifier_enabled_p(next) ||				\
++	    ipipe_notifier_enabled_p(prev)) {				\
++		__this_cpu_write(ipipe_percpu.rqlock_owner, prev);	\
++		__ipipe_notify_kevent(IPIPE_KEVT_SCHEDULE, next);	\
++	}								\
++} while (0)
++
++#define __ipipe_report_cleanup(mm)					\
++	__ipipe_notify_kevent(IPIPE_KEVT_CLEANUP, mm)
++
++#define __ipipe_report_clockfreq_update(freq)				\
++	__ipipe_notify_kevent(IPIPE_KEVT_CLOCKFREQ, &(freq))
++
++struct ipipe_ptrace_resume_data {
++	struct task_struct *task;
++	long request;
++};
++
++#define __ipipe_report_ptrace_resume(__p, __request)			\
++	do {								\
++		struct ipipe_ptrace_resume_data d = {			\
++			.task = (__p),					\
++			.request = (__request),				\
++		};							\
++		if (ipipe_notifier_enabled_p(__p))			\
++			__ipipe_notify_kevent(IPIPE_KEVT_PTRESUME, &d); \
++	} while (0)
++
++int __ipipe_notify_syscall(struct pt_regs *regs);
++
++int __ipipe_notify_trap(int exception, struct pt_regs *regs);
++
++#define __ipipe_report_trap(exception, regs)				\
++	__ipipe_notify_trap(exception, regs)
++
++void __ipipe_call_mayday(struct pt_regs *regs);
++
++int __ipipe_notify_user_intreturn(void);
++
++#define __ipipe_serial_debug(__fmt, __args...)	raw_printk(__fmt, ##__args)
++
++#ifndef ipipe_root_nr_syscalls
++#define ipipe_root_nr_syscalls(ti)	NR_syscalls
++#endif
++
++struct ipipe_trap_data {
++	int exception;
++	struct pt_regs *regs;
++};
 +
 +/* ipipe_set_hooks(..., enables) */
 +#define IPIPE_SYSCALL	__IPIPE_SYSCALL_E
@@ -11748,6 +11924,15 @@ index 000000000000..692f59c20827
 +			ipipe_set_ti_thread_flag(ti, TIP_MAYDAY);	\
 +	} while (0)
 +
++#define ipipe_enable_user_intret_notifier()				\
++	ipipe_set_thread_flag(TIP_USERINTRET)
++
++#define ipipe_disable_user_intret_notifier()				\
++	ipipe_clear_thread_flag(TIP_USERINTRET)
++
++#define ipipe_user_intret_notifier_enabled(ti)				\
++	ipipe_test_ti_thread_flag(ti, TIP_USERINTRET)
++
 +#ifdef CONFIG_IPIPE_TRACE
 +void __ipipe_tracer_hrclock_initialized(void);
 +#else /* !CONFIG_IPIPE_TRACE */
@@ -11772,6 +11957,57 @@ index 000000000000..692f59c20827
 +			 struct cpuidle_state *state);
 +
 +#else	/* !CONFIG_IPIPE */
++
++static inline void __ipipe_init_early(void) { }
++
++static inline void __ipipe_init(void) { }
++
++static inline void __ipipe_init_proc(void) { }
++
++static inline void __ipipe_idle(void) { }
++
++static inline void __ipipe_report_sigwake(struct task_struct *p) { }
++
++static inline void __ipipe_report_setaffinity(struct task_struct *p,
++					      int dest_cpu) { }
++
++static inline void __ipipe_report_setsched(struct task_struct *p) { }
++
++static inline void __ipipe_report_exit(struct task_struct *p) { }
++
++static inline void __ipipe_report_cleanup(struct mm_struct *mm) { }
++
++static inline void __ipipe_report_ptrace_resume(struct task_struct *p,
++						long request) { }
++
++#define __ipipe_report_trap(exception, regs)  0
++
++#define hard_preempt_disable()		({ preempt_disable(); 0; })
++#define hard_preempt_enable(flags)	({ preempt_enable(); (void)(flags); })
++
++#define __ipipe_get_cpu(flags)		({ (void)(flags); get_cpu(); })
++#define __ipipe_put_cpu(flags)		\
++	do {				\
++		(void)(flags);		\
++		put_cpu();		\
++	} while (0)
++
++#define __ipipe_root_tick_p(regs)	1
++
++#define ipipe_handle_domain_irq(__domain, __hwirq, __regs)	\
++	handle_domain_irq(__domain, __hwirq, __regs)
++
++#define ipipe_handle_demuxed_irq(irq)		generic_handle_irq(irq)
++
++#define __ipipe_enter_vm(vmf)	do { } while (0)
++
++static inline void __ipipe_exit_vm(void) { }
++
++static inline void __ipipe_notify_vm_preemption(void) { }
++
++#define __ipipe_notify_user_intreturn()	0
++
++#define __ipipe_serial_debug(__fmt, __args...)	do { } while (0)
 +
 +#define __ipipe_root_p		1
 +#define ipipe_root_p		1
@@ -11812,244 +12048,7 @@ index 000000000000..692f59c20827
 +	return true;
 +}
 +
-+#endif	/* !CONFIG_IPIPE */
-+
-+#endif	/* !__LINUX_IPIPE_H */
-diff --git a/include/linux/ipipe_base.h b/include/linux/ipipe_base.h
-new file mode 100644
-index 000000000000..cbc3568bd0a7
---- /dev/null
-+++ b/include/linux/ipipe_base.h
-@@ -0,0 +1,242 @@
-+/* -*- linux-c -*-
-+ * include/linux/ipipe_base.h
-+ *
-+ * Copyright (C) 2002-2014 Philippe Gerum.
-+ *               2007 Jan Kiszka.
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation, Inc., 675 Mass Ave, Cambridge MA 02139,
-+ * USA; either version 2 of the License, or (at your option) any later
-+ * version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-+ */
-+
-+#ifndef __LINUX_IPIPE_BASE_H
-+#define __LINUX_IPIPE_BASE_H
-+
-+struct kvm_vcpu;
-+struct ipipe_vm_notifier;
-+struct irq_desc;
-+
-+#ifdef CONFIG_IPIPE
-+
-+#define IPIPE_CORE_APIREV  CONFIG_IPIPE_CORE_APIREV
-+
-+#include <linux/ipipe_domain.h>
-+#include <linux/compiler.h>
-+#include <linux/linkage.h>
-+#include <asm/ipipe_base.h>
-+
-+struct pt_regs;
-+struct ipipe_domain;
-+
-+struct ipipe_trap_data {
-+	int exception;
-+	struct pt_regs *regs;
-+};
-+
-+struct ipipe_vm_notifier {
-+	void (*handler)(struct ipipe_vm_notifier *nfy);
-+};
-+
-+static inline int ipipe_virtual_irq_p(unsigned int irq)
-+{
-+	return irq >= IPIPE_VIRQ_BASE && irq < IPIPE_NR_IRQS;
-+}
-+
-+void __ipipe_init_early(void);
-+
-+void __ipipe_init(void);
-+
-+#ifdef CONFIG_PROC_FS
-+void __ipipe_init_proc(void);
-+#ifdef CONFIG_IPIPE_TRACE
-+void __ipipe_init_tracer(void);
-+#else /* !CONFIG_IPIPE_TRACE */
-+static inline void __ipipe_init_tracer(void) { }
-+#endif /* CONFIG_IPIPE_TRACE */
-+#else	/* !CONFIG_PROC_FS */
-+static inline void __ipipe_init_proc(void) { }
-+#endif	/* CONFIG_PROC_FS */
-+
-+void __ipipe_restore_root_nosync(unsigned long x);
-+
-+#define IPIPE_IRQF_NOACK    0x1
-+#define IPIPE_IRQF_NOSYNC   0x2
-+
-+void __ipipe_dispatch_irq(unsigned int irq, int flags);
-+
-+void __ipipe_do_sync_stage(void);
-+
-+void __ipipe_do_sync_pipeline(struct ipipe_domain *top);
-+
-+void __ipipe_lock_irq(unsigned int irq);
-+
-+void __ipipe_unlock_irq(unsigned int irq);
-+
-+void __ipipe_do_critical_sync(unsigned int irq, void *cookie);
-+
-+void __ipipe_ack_edge_irq(struct irq_desc *desc);
-+
-+void __ipipe_nop_irq(struct irq_desc *desc);
-+
-+static inline void __ipipe_idle(void)
-+{
-+	ipipe_unstall_root();
-+}
-+
-+#ifndef __ipipe_sync_check
-+#define __ipipe_sync_check	1
-+#endif
-+
-+static inline void __ipipe_sync_stage(void)
-+{
-+	if (likely(__ipipe_sync_check))
-+		__ipipe_do_sync_stage();
-+}
-+
-+#ifndef __ipipe_run_irqtail
-+#define __ipipe_run_irqtail(irq) do { } while(0)
-+#endif
-+
-+int __ipipe_log_printk(const char *fmt, va_list args);
-+void __ipipe_flush_printk(unsigned int irq, void *cookie);
-+
-+#define __ipipe_get_cpu(flags)	({ (flags) = hard_preempt_disable(); ipipe_processor_id(); })
-+#define __ipipe_put_cpu(flags)	hard_preempt_enable(flags)
-+
-+int __ipipe_notify_kevent(int event, void *data);
-+
-+#define __ipipe_report_sigwake(p)					\
-+	do {								\
-+		if (ipipe_notifier_enabled_p(p))			\
-+			__ipipe_notify_kevent(IPIPE_KEVT_SIGWAKE, p);	\
-+	} while (0)
-+
-+struct ipipe_cpu_migration_data {
-+	struct task_struct *task;
-+	int dest_cpu;
-+};
-+
-+#define __ipipe_report_setaffinity(__p, __dest_cpu)			\
-+	do {								\
-+		struct ipipe_cpu_migration_data d = {			\
-+			.task = (__p),					\
-+			.dest_cpu = (__dest_cpu),			\
-+		};							\
-+		if (ipipe_notifier_enabled_p(__p))			\
-+			__ipipe_notify_kevent(IPIPE_KEVT_SETAFFINITY, &d); \
-+	} while (0)
-+
-+#define __ipipe_report_exit(p)						\
-+	do {								\
-+		if (ipipe_notifier_enabled_p(p))			\
-+			__ipipe_notify_kevent(IPIPE_KEVT_EXIT, p);	\
-+	} while (0)
-+
-+#define __ipipe_report_setsched(p)					\
-+	do {								\
-+		if (ipipe_notifier_enabled_p(p))			\
-+			__ipipe_notify_kevent(IPIPE_KEVT_SETSCHED, p); \
-+	} while (0)
-+
-+#define __ipipe_report_schedule(prev, next)				\
-+do {									\
-+	if (ipipe_notifier_enabled_p(next) ||				\
-+	    ipipe_notifier_enabled_p(prev)) {				\
-+		__this_cpu_write(ipipe_percpu.rqlock_owner, prev);	\
-+		__ipipe_notify_kevent(IPIPE_KEVT_SCHEDULE, next);	\
-+	}								\
-+} while (0)
-+
-+#define __ipipe_report_cleanup(mm)					\
-+	__ipipe_notify_kevent(IPIPE_KEVT_CLEANUP, mm)
-+
-+#define __ipipe_report_clockfreq_update(freq)				\
-+	__ipipe_notify_kevent(IPIPE_KEVT_CLOCKFREQ, &(freq))
-+
-+int __ipipe_notify_syscall(struct pt_regs *regs);
-+
-+int __ipipe_notify_trap(int exception, struct pt_regs *regs);
-+
-+#define __ipipe_report_trap(exception, regs)				\
-+	__ipipe_notify_trap(exception, regs)
-+
-+void __ipipe_call_mayday(struct pt_regs *regs);
-+
-+void __ipipe_notify_vm_preemption(void);
-+
-+#define __ipipe_serial_debug(__fmt, __args...)	raw_printk(__fmt, ##__args)
-+
-+#else /* !CONFIG_IPIPE */
-+
-+struct task_struct;
-+struct mm_struct;
-+
-+static inline void __ipipe_init_early(void) { }
-+
-+static inline void __ipipe_init(void) { }
-+
-+static inline void __ipipe_init_proc(void) { }
-+
-+static inline void __ipipe_idle(void) { }
-+
-+static inline void __ipipe_report_sigwake(struct task_struct *p) { }
-+
-+static inline void __ipipe_report_setaffinity(struct task_struct *p,
-+					      int dest_cpu) { }
-+
-+static inline void __ipipe_report_setsched(struct task_struct *p) { }
-+
-+static inline void __ipipe_report_exit(struct task_struct *p) { }
-+
-+static inline void __ipipe_report_cleanup(struct mm_struct *mm) { }
-+
-+#define __ipipe_report_trap(exception, regs)  0
-+
-+#define hard_preempt_disable()		({ preempt_disable(); 0; })
-+#define hard_preempt_enable(flags)	({ preempt_enable(); (void)(flags); })
-+
-+#define __ipipe_get_cpu(flags)		({ (void)(flags); get_cpu(); })
-+#define __ipipe_put_cpu(flags)		\
-+	do {				\
-+		(void)(flags);		\
-+		put_cpu();		\
-+	} while (0)
-+
-+#define __ipipe_root_tick_p(regs)	1
-+
-+#define ipipe_handle_domain_irq(__domain, __hwirq, __regs)	\
-+	handle_domain_irq(__domain, __hwirq, __regs)
-+
-+#define ipipe_handle_demuxed_irq(irq)		generic_handle_irq(irq)
-+
-+#define __ipipe_enter_vm(vmf)	do { } while (0)
-+
-+static inline void __ipipe_exit_vm(void) { }
-+
-+static inline void __ipipe_notify_vm_preemption(void) { }
-+
-+#define __ipipe_serial_debug(__fmt, __args...)	do { } while (0)
++#define ipipe_user_intret_notifier_enabled(ti)	0
 +
 +#endif	/* !CONFIG_IPIPE */
 +
@@ -12062,7 +12061,7 @@ index 000000000000..cbc3568bd0a7
 +{ }
 +#endif
 +
-+#endif	/* !__LINUX_IPIPE_BASE_H */
++#endif	/* !__LINUX_IPIPE_H */
 diff --git a/include/linux/ipipe_debug.h b/include/linux/ipipe_debug.h
 new file mode 100644
 index 000000000000..5d7efefbdddf
@@ -12171,10 +12170,10 @@ index 000000000000..5d7efefbdddf
 +#endif /* !__LINUX_IPIPE_DEBUG_H */
 diff --git a/include/linux/ipipe_domain.h b/include/linux/ipipe_domain.h
 new file mode 100644
-index 000000000000..bbc26e9592d5
+index 000000000000..2255659a9891
 --- /dev/null
 +++ b/include/linux/ipipe_domain.h
-@@ -0,0 +1,358 @@
+@@ -0,0 +1,360 @@
 +/*   -*- linux-c -*-
 + *   include/linux/ipipe_domain.h
 + *
@@ -12269,6 +12268,8 @@ index 000000000000..bbc26e9592d5
 +#define IPIPE_KEVT_CLEANUP	5
 +#define IPIPE_KEVT_HOSTRT	6
 +#define IPIPE_KEVT_CLOCKFREQ	7
++#define IPIPE_KEVT_USERINTRET	8
++#define IPIPE_KEVT_PTRESUME	9
 +
 +typedef void (*ipipe_irq_ackfn_t)(struct irq_desc *desc);
 +
@@ -12870,10 +12871,10 @@ index 000000000000..da6188d45501
 +#endif /* !__LINUX_IPIPE_LOCK_H */
 diff --git a/include/linux/ipipe_tickdev.h b/include/linux/ipipe_tickdev.h
 new file mode 100644
-index 000000000000..90395095e115
+index 000000000000..e222e839c3be
 --- /dev/null
 +++ b/include/linux/ipipe_tickdev.h
-@@ -0,0 +1,160 @@
+@@ -0,0 +1,165 @@
 +/* -*- linux-c -*-
 + * include/linux/ipipe_tickdev.h
 + *
@@ -12977,6 +12978,11 @@ index 000000000000..90395095e115
 + * ipipe timer, if there is one
 + */
 +void ipipe_host_timer_register(struct clock_event_device *clkevt);
++
++/*
++ * Called by tick_cleanup_dead_cpu, to drop per-CPU timer devices
++ */
++void ipipe_host_timer_cleanup(struct clock_event_device *clkevt);
 +
 +/*
 + * Register a standalone ipipe timer
@@ -14183,10 +14189,10 @@ index 000000000000..73755150634f
 +obj-$(CONFIG_IPIPE_TRACE) += tracer.o
 diff --git a/kernel/ipipe/core.c b/kernel/ipipe/core.c
 new file mode 100644
-index 000000000000..3b89fffd3a4d
+index 000000000000..ec751abeca53
 --- /dev/null
 +++ b/kernel/ipipe/core.c
-@@ -0,0 +1,1978 @@
+@@ -0,0 +1,1986 @@
 +/* -*- linux-c -*-
 + * linux/kernel/ipipe/core.c
 + *
@@ -15207,6 +15213,7 @@ index 000000000000..3b89fffd3a4d
 +			 unsigned long nr, struct pt_regs *regs)
 +{
 +	unsigned long local_flags = READ_ONCE(ti->ipipe_flags);
++	unsigned int nr_syscalls = ipipe_root_nr_syscalls(ti);
 +	int ret;
 +
 +	/*
@@ -15240,7 +15247,7 @@ index 000000000000..3b89fffd3a4d
 +	 * system call handler.
 +	 */
 +
-+	if (nr >= NR_syscalls && (local_flags & _TIP_HEAD)) {
++	if (nr >= nr_syscalls && (local_flags & _TIP_HEAD)) {
 +		ipipe_fastcall_hook(regs);
 +		local_flags = READ_ONCE(ti->ipipe_flags);
 +		if (local_flags & _TIP_HEAD) {
@@ -15253,7 +15260,7 @@ index 000000000000..3b89fffd3a4d
 +		}
 +	}
 +
-+	if ((local_flags & _TIP_NOTIFY) || nr >= NR_syscalls) {
++	if ((local_flags & _TIP_NOTIFY) || nr >= nr_syscalls) {
 +		ret =__ipipe_notify_syscall(regs);
 +		local_flags = READ_ONCE(ti->ipipe_flags);
 +		if (local_flags & _TIP_HEAD)
@@ -15351,6 +15358,13 @@ index 000000000000..3b89fffd3a4d
 +	hard_local_irq_restore(flags);
 +
 +	return ret;
++}
++
++int __ipipe_notify_user_intreturn(void)
++{
++	__ipipe_notify_kevent(IPIPE_KEVT_USERINTRET, current);
++
++	return !ipipe_root_p;
 +}
 +
 +int __weak ipipe_kevent_hook(int kevent, void *data)
@@ -16167,10 +16181,10 @@ index 000000000000..3b89fffd3a4d
 +#endif
 diff --git a/kernel/ipipe/timer.c b/kernel/ipipe/timer.c
 new file mode 100644
-index 000000000000..bbb3c8f4a7ab
+index 000000000000..22d5e5be874a
 --- /dev/null
 +++ b/kernel/ipipe/timer.c
-@@ -0,0 +1,630 @@
+@@ -0,0 +1,648 @@
 +/* -*- linux-c -*-
 + * linux/kernel/ipipe/timer.c
 + *
@@ -16317,6 +16331,21 @@ index 000000000000..bbb3c8f4a7ab
 +
 +	ipipe_timer_register(timer);
 +}
++
++#ifdef CONFIG_HOTPLUG_CPU
++void ipipe_host_timer_cleanup(struct clock_event_device *evtdev)
++{
++	struct ipipe_timer *timer = evtdev->ipipe_timer;
++	unsigned long flags;
++
++	if (timer == NULL)
++		return;
++
++	raw_spin_lock_irqsave(&lock, flags);
++	list_del(&timer->link);
++	raw_spin_unlock_irqrestore(&lock, flags);
++}
++#endif /* CONFIG_HOTPLUG_CPU */
 +
 +/*
 + * register a timer: maintain them in a list sorted by rating
@@ -16525,15 +16554,18 @@ index 000000000000..bbb3c8f4a7ab
 +{
 +	struct ipipe_timer *timer = __ipipe_raw_cpu_read(percpu_timer);
 +
++	/*
++	 * Pseudo-IRQs like pipelined IPIs have no descriptor, we have
++	 * to check for this.
++	 */
 +	if (desc)
 +		desc->ipipe_ack(desc);
 +
-+	if (timer->host_timer->ipipe_stolen) {
-+		if (timer->ack)
-+			timer->ack();
-+		if (desc)
-+			desc->ipipe_end(desc);
-+	}
++	if (timer->ack)
++		timer->ack();
++
++	if (desc)
++		desc->ipipe_end(desc);
 +}
 +
 +static int do_set_oneshot(struct clock_event_device *cdev)
@@ -16607,7 +16639,7 @@ index 000000000000..bbb3c8f4a7ab
 +		return;
 +	}
 +
-+	steal = evtdev != NULL && !clockevent_state_detached(evtdev);
++	steal = !clockevent_state_detached(evtdev);
 +	if (steal && evtdev->ipipe_stolen == 0) {
 +		timer->real_mult = evtdev->mult;
 +		timer->real_shift = evtdev->shift;
@@ -16803,7 +16835,7 @@ index 000000000000..bbb3c8f4a7ab
 +}
 diff --git a/kernel/ipipe/tracer.c b/kernel/ipipe/tracer.c
 new file mode 100644
-index 000000000000..2db8cbbddf05
+index 000000000000..2d75199b086b
 --- /dev/null
 +++ b/kernel/ipipe/tracer.c
 @@ -0,0 +1,1486 @@
@@ -17489,7 +17521,7 @@ index 000000000000..2db8cbbddf05
 +
 +	ipipe_context_check_off();
 +
-+	printk("I-pipe tracer log (%d points):\n", cnt);
++	printk(KERN_CONT "I-pipe tracer log (%d points):\n", cnt);
 +
 +	start = pos = WRAP_POINT_NO(panic_path->trace_pos-1);
 +
@@ -17499,11 +17531,11 @@ index 000000000000..2db8cbbddf05
 +		char info[16];
 +		int i;
 +
-+		printk(" %c",
++		printk(KERN_CONT " %c",
 +		       (point->flags & IPIPE_TFLG_HWIRQ_OFF) ? '|' : ' ');
 +
 +		for (i = IPIPE_TFLG_DOMSTATE_BITS; i >= 0; i--)
-+			printk("%c",
++			printk(KERN_CONT "%c",
 +			       (IPIPE_TFLG_CURRENT_DOMAIN(point) == i) ?
 +				(IPIPE_TFLG_DOMAIN_STALLED(point, i) ?
 +					'#' : '+') :
@@ -17511,40 +17543,40 @@ index 000000000000..2db8cbbddf05
 +					'*' : ' '));
 +
 +		if (!point->eip)
-+			printk("-<invalid>-\n");
++			printk(KERN_CONT "-<invalid>-\n");
 +		else {
 +			__ipipe_trace_point_type(buf, point);
-+			printk("%s", buf);
++			printk(KERN_CONT "%s", buf);
 +
 +			switch (point->type & IPIPE_TYPE_MASK) {
 +				case IPIPE_TRACE_FUNC:
-+					printk("           ");
++					printk(KERN_CONT "           ");
 +					break;
 +
 +				case IPIPE_TRACE_PID:
 +					__ipipe_get_task_info(info,
 +							      point, 1);
-+					printk("%s", info);
++					printk(KERN_CONT "%s", info);
 +					break;
 +
 +				case IPIPE_TRACE_EVENT:
 +					__ipipe_get_event_date(info,
 +							       panic_path, point);
-+					printk("%s", info);
++					printk(KERN_CONT "%s", info);
 +					break;
 +
 +				default:
-+					printk("0x%08lx ", point->v);
++					printk(KERN_CONT "0x%08lx ", point->v);
 +			}
 +
 +			time = __ipipe_signed_tsc2us(point->timestamp -
 +				panic_path->point[start].timestamp);
-+			printk(" %5ld ", time);
++			printk(KERN_CONT " %5ld ", time);
 +
 +			__ipipe_print_symname(NULL, point->eip);
-+			printk(" (");
++			printk(KERN_CONT " (");
 +			__ipipe_print_symname(NULL, point->parent_eip);
-+			printk(")\n");
++			printk(KERN_CONT ")\n");
 +		}
 +		pos = WRAP_POINT_NO(pos - 1);
 +	}
@@ -17651,7 +17683,7 @@ index 000000000000..2db8cbbddf05
 +{
 +	unsigned long delay = 0;
 +	int next;
-+	char *mark = "	";
++	char *mark = "  ";
 +
 +	next = WRAP_POINT_NO(point+1 - print_path->point);
 +
@@ -17687,11 +17719,11 @@ index 000000000000..2db8cbbddf05
 +	if (!m) {
 +		/* panic dump */
 +		if (sym_name) {
-+			printk("%s+0x%lx", sym_name, offset);
++			printk(KERN_CONT "%s+0x%lx", sym_name, offset);
 +			if (modname)
-+				printk(" [%s]", modname);
++				printk(KERN_CONT " [%s]", modname);
 +		} else
-+			printk("<%08lx>", eip);
++			printk(KERN_CONT "<%08lx>", eip);
 +	} else
 +#endif /* CONFIG_IPIPE_TRACE_PANIC */
 +	{
@@ -17725,12 +17757,12 @@ index 000000000000..2db8cbbddf05
 +			   " +----- Hard IRQs ('|': locked)\n"
 +			   " |+-- %s\n"
 +			   " ||+- %s%s\n"
-+			   " |||			  +---------- "
++		           " |||                        +---------- "
 +			       "Delay flag ('+': > %d us, '!': > %d us)\n"
-+			   " |||			  |	   +- "
++			   " |||                        |        +- "
 +			       "NMI noise ('N')\n"
-+			   " |||			  |	   |\n"
-+			   "	  Type	  User Val.   Time    Delay  Function "
++			   " |||                        |        |\n"
++			   "    Type    User Val.   Time    Delay  Function "
 +			       "(Parent)\n",
 +			   name[1], name[0],
 +			   " ('*': domain stalled, '+': current, "
@@ -17739,9 +17771,9 @@ index 000000000000..2db8cbbddf05
 +	} else
 +		seq_printf(m,
 +			   " +--------------- Hard IRQs ('|': locked)\n"
-+			   " |		   +- Delay flag "
++			   " |             +- Delay flag "
 +			       "('+': > %d us, '!': > %d us)\n"
-+			   " |		   |\n"
++			   " |             |\n"
 +			   "  Type     Time   Function (Parent)\n",
 +			   IPIPE_DELAY_NOTE/1000, IPIPE_DELAY_WARN/1000);
 +}
@@ -19409,6 +19441,19 @@ index 2e2c86dd226f..00181c48f6f5 100644
  	print_worker_info(log_lvl, current);
  }
  
+diff --git a/kernel/ptrace.c b/kernel/ptrace.c
+index 84b1367935e4..942d71363a0c 100644
+--- a/kernel/ptrace.c
++++ b/kernel/ptrace.c
+@@ -809,6 +809,8 @@ static int ptrace_resume(struct task_struct *child, long request,
+ 		user_disable_single_step(child);
+ 	}
+ 
++	__ipipe_report_ptrace_resume(child, request);
++
+ 	/*
+ 	 * Change ->exit_code and ->state under siglock to avoid the race
+ 	 * with wait_task_stopped() in between; a non-zero ->exit_code will
 diff --git a/kernel/rcu/Kconfig.debug b/kernel/rcu/Kconfig.debug
 index 0ec7d1d33a14..2034d02e8ee3 100644
 --- a/kernel/rcu/Kconfig.debug
@@ -19761,7 +19806,7 @@ index 067cb83f37ea..e2cc69db1379 100644
  
  		return ret;
 diff --git a/kernel/time/clockevents.c b/kernel/time/clockevents.c
-index 4237e0744e26..fd6894afff6b 100644
+index 4237e0744e26..1db5e25abde3 100644
 --- a/kernel/time/clockevents.c
 +++ b/kernel/time/clockevents.c
 @@ -17,6 +17,7 @@
@@ -19781,6 +19826,26 @@ index 4237e0744e26..fd6894afff6b 100644
  	if (!dev->cpumask) {
  		WARN_ON(num_possible_cpus() > 1);
  		dev->cpumask = cpumask_of(smp_processor_id());
+@@ -627,8 +630,10 @@ void tick_cleanup_dead_cpu(int cpu)
+ 	 * Unregister the clock event devices which were
+ 	 * released from the users in the notify chain.
+ 	 */
+-	list_for_each_entry_safe(dev, tmp, &clockevents_released, list)
++	list_for_each_entry_safe(dev, tmp, &clockevents_released, list) {
+ 		list_del(&dev->list);
++		ipipe_host_timer_cleanup(dev);
++	}
+ 	/*
+ 	 * Now check whether the CPU has left unused per cpu devices
+ 	 */
+@@ -638,6 +643,7 @@ void tick_cleanup_dead_cpu(int cpu)
+ 		    !tick_is_broadcast_device(dev)) {
+ 			BUG_ON(!clockevent_state_detached(dev));
+ 			list_del(&dev->list);
++			ipipe_host_timer_cleanup(dev);
+ 		}
+ 	}
+ 	raw_spin_unlock_irqrestore(&clockevents_lock, flags);
 diff --git a/kernel/time/timekeeping.c b/kernel/time/timekeeping.c
 index 1ce7c404d0b0..6027672ed909 100644
 --- a/kernel/time/timekeeping.c
@@ -20572,10 +20637,10 @@ index fb9f7737c1ff..fbd2b3eef5db 100644
  
  static struct kmem_cache *page_ptl_cachep;
 diff --git a/mm/mlock.c b/mm/mlock.c
-index 46af369c13e5..392a7567b577 100644
+index 46af369c13e5..7244eab0bcc3 100644
 --- a/mm/mlock.c
 +++ b/mm/mlock.c
-@@ -864,3 +864,27 @@ void user_shm_unlock(size_t size, struct user_struct *user)
+@@ -864,3 +864,29 @@ void user_shm_unlock(size_t size, struct user_struct *user)
  	spin_unlock(&shmlock_user_lock);
  	free_uid(user);
  }
@@ -20583,7 +20648,8 @@ index 46af369c13e5..392a7567b577 100644
 +#ifdef CONFIG_IPIPE
 +int __ipipe_pin_vma(struct mm_struct *mm, struct vm_area_struct *vma)
 +{
-+	int ret, write, len;
++	unsigned int gup_flags = 0;
++	int ret, len;
 +
 +	if (vma->vm_flags & (VM_IO | VM_PFNMAP))
 +		return 0;
@@ -20595,9 +20661,10 @@ index 46af369c13e5..392a7567b577 100644
 +		return ret < 0 ? ret : 0;
 +	}
 +
-+	write = (vma->vm_flags & (VM_WRITE | VM_SHARED)) == VM_WRITE;
++	if ((vma->vm_flags & (VM_WRITE | VM_SHARED)) == VM_WRITE)
++		gup_flags |= FOLL_WRITE;
 +	len = DIV_ROUND_UP(vma->vm_end, PAGE_SIZE) - vma->vm_start/PAGE_SIZE;
-+	ret = get_user_pages(vma->vm_start, len, write, 0, NULL);
++	ret = get_user_pages_locked(vma->vm_start, len, gup_flags, NULL, NULL);
 +	if (ret < 0)
 +		return ret;
 +	return ret == len ? 0 : -EFAULT;

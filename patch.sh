@@ -363,8 +363,8 @@ ti_pm_firmware
 #local_patch
 
 ipipe () {
-	kernel_base="v4.14.85"
-	xenomai_branch="stable/4.14.85-arm"
+	kernel_base="v4.14.96"
+	xenomai_branch="stable/4.14.96-arm"
 	echo "dir: ipipe"
 
 	${git_bin} revert --no-edit a8aac659b9652430ccf898dd61bc6f996e3aef9d
@@ -372,7 +372,7 @@ ipipe () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		#https://gitlab.denx.de/Xenomai/ipipe-arm
-		#https://gitlab.denx.de/Xenomai/ipipe-arm/tree/stable/4.14.85-arm
+		#https://gitlab.denx.de/Xenomai/ipipe-arm/tree/stable/4.14.96-arm
 		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
 		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
 		if [ "x${test_for_branch}" != "x" ] ; then
@@ -382,9 +382,7 @@ ipipe () {
 		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
 
 		cp -v drivers/pci/dwc/pcie-designware-host.c ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c
-		cp -v drivers/thermal/hisi_thermal.c ../patches/ipipe/drivers_thermal_hisi_thermal.c
 
-		cp -v drivers/gpio/gpio-pl061.c ../patches/ipipe/drivers_gpio_gpio-pl061.c
 		cp -v drivers/pinctrl/bcm/pinctrl-bcm2835.c ../patches/ipipe/drivers_pinctrl_bcm_pinctrl-bcm2835.c
 
 		echo "${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}"
@@ -402,9 +400,7 @@ ipipe () {
 		fi
 
 		cp -v ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c drivers/pci/dwc/pcie-designware-host.c
-		cp -v ../patches/ipipe/drivers_thermal_hisi_thermal.c drivers/thermal/hisi_thermal.c
 
-		cp -v ../patches/ipipe/drivers_gpio_gpio-pl061.c drivers/gpio/gpio-pl061.c
 		cp -v ../patches/ipipe/drivers_pinctrl_bcm_pinctrl-bcm2835.c drivers/pinctrl/bcm/pinctrl-bcm2835.c
 
 		#exit 2
