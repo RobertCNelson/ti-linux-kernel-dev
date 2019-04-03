@@ -425,7 +425,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
-	backport_tag="v5.0.5"
+	backport_tag="v5.0.6"
 
 	subsystem="vl53l0x"
 	#regenerate="enable"
