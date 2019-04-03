@@ -736,6 +736,7 @@ drivers
 soc
 beaglebone
 dir 'drivers/ti/sgx'
+dir 'drivers/ti/spi_symlink'
 
 packaging () {
 	echo "dir: packaging"
