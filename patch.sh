@@ -472,6 +472,7 @@ soc () {
 
 	dir 'soc/ti/beaglebone_ai'
 	dir 'soc/ti/roboticscape'
+	dir 'drivers/ti/spi_symlink'
 }
 
 dtb_makefile_append_am57xx () {
