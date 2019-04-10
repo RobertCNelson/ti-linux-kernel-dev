@@ -216,7 +216,7 @@ rt () {
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
@@ -321,10 +321,11 @@ ti_pm_firmware () {
 		fi
 		cd ./KERNEL/
 
+		mkdir -p ./firmware/ || true
 		cp -v ../ti-amx3-cm3-pm-firmware/bin/am* ./firmware/
 
 		${git_bin} add -f ./firmware/am*
-		${git_bin} commit -a -m 'add am33x firmware' -s
+		${git_bin} commit -a -m 'Add AM335x CM3 Power Managment Firmware' -s
 		${git_bin} format-patch -1 -o ../patches/drivers/ti/firmware/
 
 		rm -rf ../ti-amx3-cm3-pm-firmware/ || true
@@ -333,14 +334,14 @@ ti_pm_firmware () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
+		${git} "${DIR}/patches/drivers/ti/firmware/0001-Add-AM335x-CM3-Power-Managment-Firmware.patch"
 
 		wdir="drivers/ti/firmware"
 		number=1
 		cleanup
 	fi
 
-	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
+	${git} "${DIR}/patches/drivers/ti/firmware/0001-Add-AM335x-CM3-Power-Managment-Firmware.patch"
 }
 
 local_patch () {
