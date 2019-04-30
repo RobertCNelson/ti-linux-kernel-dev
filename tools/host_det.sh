@@ -39,7 +39,7 @@ check_rpm () {
 }
 
 redhat_reqs () {
-	pkgtool="yum"
+	pkgtool="dnf"
 
 	#https://fedoraproject.org/wiki/Releases
 	unset rpm_pkgs
@@ -53,30 +53,37 @@ redhat_reqs () {
 	check_rpm
 	pkg="wget"
 	check_rpm
+	pkg="fakeroot"
+	check_rpm
+	pkg="xz"
+	check_rpm
+	pkg="lzop"
+	check_rpm
+	pkg="bison"
+	check_rpm
+	pkg="flex"
+	check_rpm
+	pkg="uboot-tools"
+	check_rpm
+	pkg="openssl-devel"
+	check_rpm
 
 	arch=$(uname -m)
 	if [ "x${arch}" = "xx86_64" ] ; then
 		pkg="ncurses-devel.x86_64"
 		check_rpm
+		pkg="libmpc-devel.x86_64"
+		check_rpm
 		if [ "x${ignore_32bit}" = "xfalse" ] ; then
 			pkg="ncurses-devel.i686"
+			check_rpm
+			pkg="libmpc-devel.i686"
 			check_rpm
 			pkg="libstdc++.i686"
 			check_rpm
 			pkg="zlib.i686"
 			check_rpm
 		fi
-	fi
-
-	if [ "$(which lsb_release)" ] ; then
-		rpm_distro=$(lsb_release -rs)
-		echo "RPM distro version: [${rpm_distro}]"
-
-		case "${rpm_distro}" in
-		22|23|24|25)
-			pkgtool="dnf"
-			;;
-		esac
 	fi
 
 	if [ "${rpm_pkgs}" ] ; then
@@ -203,6 +210,20 @@ debian_regs () {
 			#Codename:       testing
 			if [ "x${deb_lsb_ds}" = "xSolydXK" ] ; then
 				deb_distro="jessie"
+			fi
+		fi
+
+		if [ "x${deb_distro}" = "xunstable" ] ; then
+			echo "+ Warning: [lsb_release -cs] just returned [unstable], so now testing [lsb_release -is] instead..."
+			deb_lsb_is=$(lsb_release -is | awk '{print $1}')
+
+			#lsb_release -a
+			#Distributor ID: Deepin
+			#Description:    Deepin 15.9.2
+			#Release:        15.9.2
+			#Codename:       unstable
+			if [ "x${deb_lsb_is}" = "xDeepin" ] ; then
+				deb_distro="stretch"
 			fi
 		fi
 
@@ -374,6 +395,16 @@ debian_regs () {
 			#http://blog.linuxmint.com/?p=2975
 			deb_distro="bionic"
 			;;
+		tessa)
+			#19.1
+			#https://blog.linuxmint.com/?p=3671
+			deb_distro="bionic"
+			;;
+		tina)
+			#19.2
+			#https://blog.linuxmint.com/?p=3736
+			deb_distro="bionic"
+			;;
 		esac
 
 		#Future Debian Code names:
@@ -405,9 +436,11 @@ debian_regs () {
 			warn_eol_distro=1
 			stop_pkg_search=1
 			;;
-		bionic|cosmic)
+		bionic|cosmic|disco|eoan)
 			#18.04 bionic: (EOL: April 2023) lts: bionic -> xyz
-			#18.10 cosmic: (EOL: )
+			#18.10 cosmic: (EOL: July 2019)
+			#19.04 disco: (EOL: )
+			#19.10 eoan: (EOL: )
 			unset warn_eol_distro
 			;;
 		yakkety|zesty|artful)
@@ -421,18 +454,7 @@ debian_regs () {
 			#16.04 xenial: (EOL: April 2021) lts: xenial -> bionic
 			unset warn_eol_distro
 			;;
-		utopic|vivid|wily)
-			#14.10 utopic: (EOL: July 23, 2015)
-			#15.04 vivid: (EOL: February 4, 2016)
-			#15.10 wily: (EOL: July 28, 2016)
-			warn_eol_distro=1
-			stop_pkg_search=1
-			;;
-		trusty)
-			#14.04 trusty: (EOL: April 2019) lts: trusty -> xenial
-			unset warn_eol_distro
-			;;
-		hardy|lucid|maverick|natty|oneiric|precise|quantal|raring|saucy)
+		hardy|lucid|maverick|natty|oneiric|precise|quantal|raring|saucy|trusty|utopic|vivid|wily)
 			#8.04 hardy: (EOL: May 2013) lts: hardy -> lucid
 			#10.04 lucid: (EOL: April 2015) lts: lucid -> precise
 			#10.10 maverick: (EOL: April 10, 2012)
@@ -442,6 +464,10 @@ debian_regs () {
 			#12.10 quantal: (EOL: May 16, 2014)
 			#13.04 raring: (EOL: January 27, 2014)
 			#13.10 saucy: (EOL: July 17, 2014)
+			#14.04 trusty: (EOL: April 25, 2019) lts: trusty -> xenial
+			#14.10 utopic: (EOL: July 23, 2015)
+			#15.04 vivid: (EOL: February 4, 2016)
+			#15.10 wily: (EOL: July 28, 2016)
 			warn_eol_distro=1
 			stop_pkg_search=1
 			;;
