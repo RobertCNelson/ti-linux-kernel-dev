@@ -488,8 +488,6 @@ drivers () {
 }
 
 soc () {
-	dir 'soc/ti/am335x'
-
 	dir 'soc/ti/blue'
 	dir 'soc/ti/abbbi'
 	dir 'soc/ti/pocketbeagle'
