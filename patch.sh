@@ -126,7 +126,6 @@ aufs_fail () {
 }
 
 aufs () {
-	echo "dir: aufs"
 	aufs_prefix="aufs4-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -193,12 +192,7 @@ aufs () {
 		cleanup
 	fi
 
-	${git} "${DIR}/patches/aufs/0001-merge-aufs-kbuild.patch"
-	${git} "${DIR}/patches/aufs/0002-merge-aufs-base.patch"
-	${git} "${DIR}/patches/aufs/0003-merge-aufs-mmap.patch"
-	${git} "${DIR}/patches/aufs/0004-merge-aufs-standalone.patch"
-	${git} "${DIR}/patches/aufs/0005-merge-aufs.patch"
-	${git} "${DIR}/patches/aufs/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
+	dir 'aufs'
 }
 
 rt_cleanup () {
@@ -207,7 +201,6 @@ rt_cleanup () {
 }
 
 rt () {
-	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
 	#${git_bin} revert --no-edit xyz
@@ -225,7 +218,7 @@ rt () {
 		exit 2
 	fi
 
-	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
+	dir 'rt'
 }
 
 ti_pm_firmware () {
