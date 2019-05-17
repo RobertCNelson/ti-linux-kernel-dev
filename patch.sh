@@ -349,6 +349,44 @@ ti_pm_firmware () {
 	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 }
 
+beagleboard_dtbs () {
+	bbdtbs="v4.14.x-ti"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./BeagleBoard-DeviceTrees ] ; then
+			${git_bin} clone -b ${bbdtbs} https://github.com/beagleboard/BeagleBoard-DeviceTrees --depth=1
+		else
+			rm -rf ./BeagleBoard-DeviceTrees || true
+			${git_bin} clone -b ${bbdtbs} https://github.com/beagleboard/BeagleBoard-DeviceTrees --depth=1
+		fi
+		cd ./KERNEL/
+
+		cp -vr ../BeagleBoard-DeviceTrees/src/arm/* arch/arm/boot/dts/
+		cp -vr ../BeagleBoard-DeviceTrees/include/dt-bindings/* ./include/dt-bindings/
+
+		${git_bin} add -f arch/arm/boot/dts/
+		${git_bin} add -f include/dt-bindings/
+		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
+		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
+
+		rm -rf ../BeagleBoard-DeviceTrees/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-DTBS-$bbdtbs.patch"
+
+		wdir="soc/ti/beagleboard_dtbs"
+		number=1
+		cleanup
+	fi
+
+	dir 'soc/ti/beagleboard_dtbs'
+}
+
+
 local_patch () {
 	echo "dir: dir"
 	${git} "${DIR}/patches/dir/0001-patch.patch"
@@ -360,6 +398,7 @@ aufs
 #backport_brcm80211
 wireguard
 ti_pm_firmware
+beagleboard_dtbs
 #local_patch
 
 pre_backports () {
