@@ -284,6 +284,8 @@ beagleboard_dtbs () {
 		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
+		device="am335x-abbbi.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -940,9 +942,6 @@ beaglebone () {
 	echo "dir: beaglebone/generated"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
-		device="am335x-abbbi.dtb" ; dtb_makefile_append
-
 		device="am335x-olimex-som.dtb" ; dtb_makefile_append
 
 		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
