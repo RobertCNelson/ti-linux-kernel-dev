@@ -258,6 +258,10 @@ ti_pm_firmware () {
 	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 }
 
+dtb_makefile_append () {
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
 beagleboard_dtbs () {
 	bbdtbs="v4.4.x-ti"
 	#regenerate="enable"
@@ -273,6 +277,12 @@ beagleboard_dtbs () {
 
 		cp -vr ../BeagleBoard-DeviceTrees/src/arm/* arch/arm/boot/dts/
 		cp -vr ../BeagleBoard-DeviceTrees/include/dt-bindings/* ./include/dt-bindings/
+
+		device="am335x-boneblack-emmc-overlay.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-hdmi-overlay.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
@@ -822,15 +832,10 @@ bbb_overlays () {
 	fi
 }
 
-dtb_makefile_append () {
-	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
-}
-
 beaglebone () {
 	dir 'beaglebone/dts'
 	dir 'beaglebone/pinmux-helper'
 	dir 'beaglebone/eqep'
-	dir 'beaglebone/overlays'
 	dir 'beaglebone/abbbi'
 	dir 'beaglebone/am335x_olimex_som'
 	dir 'beaglebone/bbgw'
@@ -935,12 +940,6 @@ beaglebone () {
 	echo "dir: beaglebone/generated"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
-		device="am335x-boneblack-emmc-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-hdmi-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
-		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
