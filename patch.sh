@@ -303,6 +303,8 @@ beagleboard_dtbs () {
 
 		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
 
+		device="am335x-siriusDEB.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -856,7 +858,6 @@ beaglebone () {
 	dir 'beaglebone/pinmux-helper'
 	dir 'beaglebone/eqep'
 	dir 'beaglebone/abbbi'
-	dir 'beaglebone/sirius'
 	dir 'beaglebone/ctag'
 	dir 'beaglebone/capes'
 	dir 'beaglebone/mctrl_gpio'
@@ -971,8 +972,6 @@ beaglebone () {
 		#already defined once...
 		#device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append
 		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
-
-		device="am335x-siriusDEB.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-modio.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-modio.dtb" ; dtb_makefile_append
