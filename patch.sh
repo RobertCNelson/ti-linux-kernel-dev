@@ -312,6 +312,9 @@ beagleboard_dtbs () {
 		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
 		device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append_am5
 
+		device="am571x-sndrblock.dtb" ; dtb_makefile_append_am5
+		device="am57xx-beagle-x15-revc.dtb" ; dtb_makefile_append_am5
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -865,6 +868,7 @@ beaglebone () {
 	dir 'beaglebone/pinmux-helper'
 	dir 'beaglebone/eqep'
 	dir 'beaglebone/abbbi'
+	dir 'beaglebone/ctag'
 	dir 'beaglebone/capes'
 	dir 'beaglebone/mctrl_gpio'
 	dir 'beaglebone/jtag'
