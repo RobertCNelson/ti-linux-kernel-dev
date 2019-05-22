@@ -292,6 +292,9 @@ beagleboard_dtbs () {
 
 		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
 
+		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -845,7 +848,6 @@ beaglebone () {
 	dir 'beaglebone/pinmux-helper'
 	dir 'beaglebone/eqep'
 	dir 'beaglebone/abbbi'
-	dir 'beaglebone/bbbw'
 	dir 'beaglebone/blue'
 	dir 'beaglebone/tre'
 	dir 'beaglebone/sirius'
@@ -950,8 +952,6 @@ beaglebone () {
 		device="am335x-bone-cape-bone-argus.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-cape-bone-argus.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
