@@ -258,6 +258,10 @@ ti_pm_firmware () {
 	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 }
 
+dtb_makefile_append_am5 () {
+	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
 dtb_makefile_append () {
 	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
@@ -304,6 +308,9 @@ beagleboard_dtbs () {
 		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
 
 		device="am335x-siriusDEB.dtb" ; dtb_makefile_append
+
+		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
+		device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append_am5
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
@@ -858,7 +865,6 @@ beaglebone () {
 	dir 'beaglebone/pinmux-helper'
 	dir 'beaglebone/eqep'
 	dir 'beaglebone/abbbi'
-	dir 'beaglebone/ctag'
 	dir 'beaglebone/capes'
 	dir 'beaglebone/mctrl_gpio'
 	dir 'beaglebone/jtag'
@@ -964,13 +970,10 @@ beaglebone () {
 
 
 		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
-		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
 
 		device="am335x-vsc8531bbb.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-lcd-ct43.dtb" ; dtb_makefile_append
 
-		#already defined once...
-		#device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append
 		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-modio.dtb" ; dtb_makefile_append
