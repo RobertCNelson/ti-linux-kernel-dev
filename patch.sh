@@ -941,7 +941,6 @@ beaglebone () {
 
 	dir 'soc/ti/ti_am335x_tsc'
 	dir 'soc/ti/audio'
-	dir 'beaglebone/fixes'
 	dir 'beaglebone/phy'
 }
 
