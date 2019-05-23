@@ -552,7 +552,6 @@ drivers () {
 	dir 'drivers/ti/mmc'
 	dir 'drivers/ti/pru'
 	dir 'drivers/ti/rpmsg'
-	dir 'drivers/ti/rtc'
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 #	dir 'drivers/ti/spi'
