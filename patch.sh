@@ -616,8 +616,6 @@ reverts
 drivers
 soc
 
-dir 'pocketbeagle'
-dir 'config_pin'
 dir 'pruss'
 dir 'fixes'
 
