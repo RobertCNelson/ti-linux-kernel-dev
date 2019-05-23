@@ -605,7 +605,6 @@ soc () {
 	dir 'soc/ti/abbbi'
 	dir 'soc/ti/beaglebone_capes'
 
-	dir 'soc/ti/x15'
 	dir 'soc/ti/audio'
 }
 
