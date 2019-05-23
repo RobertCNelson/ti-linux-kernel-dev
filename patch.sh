@@ -126,7 +126,6 @@ aufs_fail () {
 }
 
 aufs () {
-	echo "dir: aufs"
 	aufs_prefix="aufs4-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -193,12 +192,7 @@ aufs () {
 		cleanup
 	fi
 
-	${git} "${DIR}/patches/aufs/0001-merge-aufs-kbuild.patch"
-	${git} "${DIR}/patches/aufs/0002-merge-aufs-base.patch"
-	${git} "${DIR}/patches/aufs/0003-merge-aufs-mmap.patch"
-	${git} "${DIR}/patches/aufs/0004-merge-aufs-standalone.patch"
-	${git} "${DIR}/patches/aufs/0005-merge-aufs.patch"
-	${git} "${DIR}/patches/aufs/0006-aufs-call-mutex.owner-only-when-DEBUG_MUTEXES-or-MUT.patch"
+	dir 'aufs'
 }
 
 rt_cleanup () {
@@ -207,7 +201,6 @@ rt_cleanup () {
 }
 
 rt () {
-	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
 	#${git_bin} revert --no-edit xyz
@@ -225,7 +218,7 @@ rt () {
 		exit 2
 	fi
 
-	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
+	dir 'rt'
 }
 
 ti_pm_firmware () {
@@ -265,6 +258,109 @@ ti_pm_firmware () {
 	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 }
 
+dtb_makefile_append_am5 () {
+	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
+dtb_makefile_append () {
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
+beagleboard_dtbs () {
+	bbdtbs="v4.4.x-ti"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./BeagleBoard-DeviceTrees ] ; then
+			${git_bin} clone -b ${bbdtbs} https://github.com/beagleboard/BeagleBoard-DeviceTrees --depth=1
+		else
+			rm -rf ./BeagleBoard-DeviceTrees || true
+			${git_bin} clone -b ${bbdtbs} https://github.com/beagleboard/BeagleBoard-DeviceTrees --depth=1
+		fi
+		cd ./KERNEL/
+
+		cp -vr ../BeagleBoard-DeviceTrees/src/arm/* arch/arm/boot/dts/
+		cp -vr ../BeagleBoard-DeviceTrees/include/dt-bindings/* ./include/dt-bindings/
+
+		device="am335x-boneblack-emmc-overlay.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-hdmi-overlay.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
+
+		device="am335x-abbbi.dtb" ; dtb_makefile_append
+
+		device="am335x-olimex-som.dtb" ; dtb_makefile_append
+
+		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
+
+		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblue.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblue-ArduPilot.dtb" ; dtb_makefile_append
+		device="am335x-boneblue-mmap.dtb" ; dtb_makefile_append
+
+		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
+
+		device="am335x-siriusDEB.dtb" ; dtb_makefile_append
+
+		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
+		device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append_am5
+
+		device="am571x-sndrblock.dtb" ; dtb_makefile_append_am5
+		device="am57xx-beagle-x15-revc.dtb" ; dtb_makefile_append_am5
+
+		device="am335x-bone-cape-bone-argus.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-cape-bone-argus.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-lcd-ct43.dtb" ; dtb_makefile_append
+
+		device="am335x-pocketbone.dtb" ; dtb_makefile_append
+
+		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
+
+		device="am335x-vsc8531bbb.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-modio.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-modio.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
+		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append_am5
+
+		${git_bin} add -f arch/arm/boot/dts/
+		${git_bin} add -f include/dt-bindings/
+		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
+		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
+
+		rm -rf ../BeagleBoard-DeviceTrees/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-DTBS-$bbdtbs.patch"
+
+		wdir="soc/ti/beagleboard_dtbs"
+		number=1
+		cleanup
+	fi
+
+	dir 'soc/ti/beagleboard_dtbs'
+}
+
 local_patch () {
 	echo "dir: dir"
 	${git} "${DIR}/patches/dir/0001-patch.patch"
@@ -274,6 +370,7 @@ external_git
 aufs
 rt
 ti_pm_firmware
+beagleboard_dtbs
 #local_patch
 
 pre_backports () {
@@ -753,7 +850,7 @@ bbb_overlays () {
 	${git} "${DIR}/patches/bbb_overlays/0018-doc-dt-beaglebone-cape-manager-bindings.patch"
 	${git} "${DIR}/patches/bbb_overlays/0019-doc-ABI-bone_capemgr-sysfs-API.patch"
 	${git} "${DIR}/patches/bbb_overlays/0020-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
-	${git} "${DIR}/patches/bbb_overlays/0021-arm-dts-Enable-beaglebone-cape-manager.patch"
+
 	${git} "${DIR}/patches/bbb_overlays/0022-of-overlay-Implement-indirect-target-support.patch"
 	${git} "${DIR}/patches/bbb_overlays/0023-of-unittest-Add-indirect-overlay-target-test.patch"
 	${git} "${DIR}/patches/bbb_overlays/0024-doc-dt-Document-the-indirect-overlay-method.patch"
@@ -791,31 +888,16 @@ bbb_overlays () {
 	fi
 }
 
-dtb_makefile_append () {
-	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
-}
-
 beaglebone () {
 	dir 'beaglebone/dts'
 	dir 'beaglebone/pinmux-helper'
 	dir 'beaglebone/eqep'
-	dir 'beaglebone/overlays'
 	dir 'beaglebone/abbbi'
-	dir 'beaglebone/am335x_olimex_som'
-	dir 'beaglebone/bbgw'
-	dir 'beaglebone/sancloud'
-	dir 'beaglebone/bbbw'
-	dir 'beaglebone/blue'
-	dir 'beaglebone/tre'
-	dir 'beaglebone/sirius'
 	dir 'beaglebone/ctag'
 	dir 'beaglebone/capes'
 	dir 'beaglebone/mctrl_gpio'
-	dir 'beaglebone/jtag'
 	dir 'beaglebone/wl18xx'
 	dir 'beaglebone/pru'
-	dir 'beaglebone/pocketbone'
-	dir 'beaglebone/pocketbeagle'
 
 	echo "dir: beaglebone/vsc8531bbb"
 	#regenerate="enable"
@@ -857,132 +939,9 @@ beaglebone () {
 		cleanup
 	fi
 
-	echo "dir: beaglebone/modio"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/modio/0001-Add-device-tree-file-for-the-Modio-BB-cape.patch"
-	${git} "${DIR}/patches/beaglebone/modio/0002-add-am335x-boneblack-modio.dtb.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/modio"
-		number=1
-		cleanup
-	fi
-
-	dir 'soc/ti/uboot'
 	dir 'soc/ti/ti_am335x_tsc'
 	dir 'soc/ti/audio'
-
-	#This has to be last...
-	echo "dir: beaglebone/dtbs"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-		exit 2
-	fi
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/dtbs"
-		number=1
-		cleanup
-	fi
-
-	dir 'beaglebone/fixes'
-
-	####
-	#dtb makefile
-	echo "dir: beaglebone/generated"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-
-		device="am335x-boneblack-emmc-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-hdmi-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-nhdmi-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-overlay.dtb" ; dtb_makefile_append
-		device="am335x-bonegreen-overlay.dtb" ; dtb_makefile_append
-
-		device="am335x-abbbi.dtb" ; dtb_makefile_append
-
-		device="am335x-olimex-som.dtb" ; dtb_makefile_append
-
-		device="am335x-bonegreen-wireless.dtb" ; dtb_makefile_append
-
-		device="am335x-arduino-tre.dtb" ; dtb_makefile_append
-
-		device="am335x-bone-cape-bone-argus.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-cape-bone-argus.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblue.dtb" ; dtb_makefile_append
-		device="am335x-boneblue-mmap.dtb" ; dtb_makefile_append
-		device="am335x-boneblue-ArduPilot.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
-
-		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
-		device="am335x-bonegreen-ctag-face.dtb" ; dtb_makefile_append
-
-		device="am335x-vsc8531bbb.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-lcd-ct43.dtb" ; dtb_makefile_append
-
-		#already defined once...
-		#device="am57xx-beagle-x15-ctag.dtb" ; dtb_makefile_append
-		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
-
-		device="am335x-siriusDEB.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-modio.dtb" ; dtb_makefile_append
-		device="am335x-bonegreen-modio.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
-
-		device="am335x-pocketbone.dtb" ; dtb_makefile_append
-		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
-		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
-
-		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
-		git format-patch -1 -o ../patches/beaglebone/generated/
-		exit 2
-	else
-		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
-	fi
-
 	dir 'beaglebone/phy'
-}
-
-remoteproc_by_default () {
-	echo "dir: remoteproc_by_default"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	#sed -i -e 's/\/\* #include \"am33xx-pruss-rproc.dtsi\" \*\//#include \"am33xx-pruss-rproc.dtsi\"/' arch/arm/boot/dts/am335x-*.dts
-	${git} "${DIR}/patches/remoteproc_by_default/0001-enable-am33xx-pruss-rproc.dtsi-by-default.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
 }
 
 ###
@@ -995,13 +954,8 @@ beaglebone
 dir 'x15/fixes'
 dir 'brcmfmac'
 dir 'quieter'
-remoteproc_by_default
-dir 'soc/ti/am571x'
-dir 'x15_revc'
 dir 'drivers/ti/mmc'
-dir 'config_pin'
 dir 'drivers/snd_pwmsp'
-dir 'fixes'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
