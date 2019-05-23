@@ -656,10 +656,11 @@ drivers () {
 
 	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0040-bone_capemgr-uboot_capemgr_enabled-flag.patch"
 	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0041-bone_capemgr-kill-with-uboot-flag.patch"
+	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0042-fix-include-linux-of.h-add-linux-slab.h-include.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="drivers/ti/bbb_overlays"
-		number=41
+		number=42
 		cleanup
 	fi
 
