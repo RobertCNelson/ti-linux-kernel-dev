@@ -377,6 +377,9 @@ beagleboard_dtbs () {
 
 		device="am571x-sndrblock.dtb" ; dtb_makefile_append_am5
 
+		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
