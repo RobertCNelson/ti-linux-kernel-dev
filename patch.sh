@@ -954,7 +954,6 @@ beaglebone
 dir 'x15/fixes'
 dir 'brcmfmac'
 dir 'quieter'
-dir 'x15_revc'
 dir 'drivers/ti/mmc'
 dir 'config_pin'
 dir 'drivers/snd_pwmsp'
