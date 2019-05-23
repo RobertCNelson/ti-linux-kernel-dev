@@ -944,22 +944,6 @@ beaglebone () {
 	dir 'beaglebone/phy'
 }
 
-remoteproc_by_default () {
-	echo "dir: remoteproc_by_default"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	#sed -i -e 's/\/\* #include \"am33xx-pruss-rproc.dtsi\" \*\//#include \"am33xx-pruss-rproc.dtsi\"/' arch/arm/boot/dts/am335x-*.dts
-	${git} "${DIR}/patches/remoteproc_by_default/0001-enable-am33xx-pruss-rproc.dtsi-by-default.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-}
-
 ###
 lts44_backports
 reverts
@@ -970,7 +954,6 @@ beaglebone
 dir 'x15/fixes'
 dir 'brcmfmac'
 dir 'quieter'
-remoteproc_by_default
 dir 'soc/ti/am571x'
 dir 'x15_revc'
 dir 'drivers/ti/mmc'
