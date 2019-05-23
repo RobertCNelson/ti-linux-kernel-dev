@@ -324,6 +324,8 @@ beagleboard_dtbs () {
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-lcd-ct43.dtb" ; dtb_makefile_append
 
+		device="am335x-pocketbone.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -882,7 +884,6 @@ beaglebone () {
 	dir 'beaglebone/mctrl_gpio'
 	dir 'beaglebone/wl18xx'
 	dir 'beaglebone/pru'
-	dir 'beaglebone/pocketbone'
 	dir 'beaglebone/pocketbeagle'
 
 	echo "dir: beaglebone/vsc8531bbb"
@@ -984,7 +985,6 @@ beaglebone () {
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 
-		device="am335x-pocketbone.dtb" ; dtb_makefile_append
 		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
 		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
 
