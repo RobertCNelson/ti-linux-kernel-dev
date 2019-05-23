@@ -673,7 +673,6 @@ drivers () {
 
 soc () {
 	dir 'soc/ti'
-	dir 'soc/ti/mmc'
 	dir 'soc/ti/uboot'
 	dir 'soc/ti/blue'
 	dir 'soc/ti/sancloud'
