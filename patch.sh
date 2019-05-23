@@ -678,7 +678,6 @@ drivers () {
 }
 
 soc () {
-	dir 'soc/ti/blue'
 	dir 'soc/ti/sancloud'
 	dir 'soc/ti/abbbi'
 	dir 'soc/ti/am335x_olimex_som'
