@@ -317,6 +317,10 @@ ti_pm_firmware () {
 	dir 'drivers/ti/firmware'
 }
 
+dtb_makefile_append_am5 () {
+	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
 dtb_makefile_append () {
 	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
@@ -371,6 +375,8 @@ beagleboard_dtbs () {
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 
+		device="am571x-sndrblock.dtb" ; dtb_makefile_append_am5
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -391,7 +397,6 @@ beagleboard_dtbs () {
 
 	dir 'soc/ti/beagleboard_dtbs'
 }
-
 
 local_patch () {
 	echo "dir: dir"
@@ -600,13 +605,8 @@ soc () {
 	dir 'soc/ti/abbbi'
 	dir 'soc/ti/beaglebone_capes'
 
-	dir 'soc/ti/am571x'
 	dir 'soc/ti/x15'
 	dir 'soc/ti/audio'
-}
-
-dtb_makefile_append_am57xx () {
-	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
 
 beaglebone () {
@@ -628,20 +628,6 @@ beaglebone () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
-	fi
-
-	####
-	#dtb makefile
-	echo "dir: beaglebone/generated"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		device="am571x-sndrblock.dtb" ; dtb_makefile_append_am57xx
-
-		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
-		git format-patch -1 -o ../patches/beaglebone/generated/
-		exit 2
-	else
-		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
 	fi
 }
 
