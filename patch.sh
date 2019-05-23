@@ -880,7 +880,6 @@ beaglebone () {
 	dir 'beaglebone/ctag'
 	dir 'beaglebone/capes'
 	dir 'beaglebone/mctrl_gpio'
-	dir 'beaglebone/jtag'
 	dir 'beaglebone/wl18xx'
 	dir 'beaglebone/pru'
 	dir 'beaglebone/pocketbone'
