@@ -616,7 +616,6 @@ reverts
 drivers
 soc
 
-dir 'pruss'
 dir 'fixes'
 
 sync_mainline_dtc () {
