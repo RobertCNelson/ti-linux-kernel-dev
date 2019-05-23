@@ -337,6 +337,9 @@ beagleboard_dtbs () {
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 
+		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
+		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append_am5
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -938,46 +941,7 @@ beaglebone () {
 
 	dir 'soc/ti/ti_am335x_tsc'
 	dir 'soc/ti/audio'
-
-	#This has to be last...
-	echo "dir: beaglebone/dtbs"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-		exit 2
-	fi
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="beaglebone/dtbs"
-		number=1
-		cleanup
-	fi
-
 	dir 'beaglebone/fixes'
-
-	####
-	#dtb makefile
-	echo "dir: beaglebone/generated"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
-
-		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
-
-		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
-		git format-patch -1 -o ../patches/beaglebone/generated/
-		exit 2
-	else
-		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
-	fi
-
 	dir 'beaglebone/phy'
 }
 
