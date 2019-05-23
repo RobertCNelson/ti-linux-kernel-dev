@@ -334,6 +334,9 @@ beagleboard_dtbs () {
 		device="am335x-boneblack-modio.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-modio.dtb" ; dtb_makefile_append
 
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -933,7 +936,6 @@ beaglebone () {
 		cleanup
 	fi
 
-	dir 'soc/ti/uboot'
 	dir 'soc/ti/ti_am335x_tsc'
 	dir 'soc/ti/audio'
 
@@ -968,9 +970,6 @@ beaglebone () {
 		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
 
 		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 
 		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
 		git format-patch -1 -o ../patches/beaglebone/generated/
