@@ -373,6 +373,8 @@ beagleboard_dtbs () {
 
 		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
 
+		device="am335x-abbbi.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -728,8 +730,6 @@ beaglebone () {
 
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
-
-		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
 		device="am335x-olimex-som.dtb" ; dtb_makefile_append
 
