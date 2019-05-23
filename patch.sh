@@ -568,7 +568,7 @@ soc () {
 #	dir 'soc/imx/wandboard'
 #	dir 'soc/imx'
 #	dir 'soc/sunxi'
-	dir 'soc/ti/bbg'
+
 	dir 'soc/ti/bbgw'
 	dir 'soc/ti/bbbw'
 	dir 'soc/ti/blue'
