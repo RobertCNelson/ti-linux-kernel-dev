@@ -348,6 +348,12 @@ beagleboard_dtbs () {
 		device="am335x-boneblack-wireless.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-emmc-overlay.dtb" ; dtb_makefile_append
 
+		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblue-ArduPilot.dtb" ; dtb_makefile_append
+		device="am335x-boneblue.dtb" ; dtb_makefile_append
+		device="am335x-boneblue-mmap.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -615,7 +621,6 @@ beaglebone () {
 	echo "dir: beaglebone/generated"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
 		device="am335x-olimex-som.dtb" ; dtb_makefile_append
@@ -627,12 +632,6 @@ beaglebone () {
 		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblue.dtb" ; dtb_makefile_append
-		device="am335x-boneblue-mmap.dtb" ; dtb_makefile_append
-		device="am335x-boneblue-ArduPilot.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
 
 		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
 
