@@ -556,7 +556,7 @@ drivers () {
 	dir 'drivers/ti/tsc'
 #	dir 'drivers/ti/spi'
 	dir 'drivers/ti/uio'
-	dir 'drivers/ti/wireless'
+#	dir 'drivers/ti/wireless'
 
 	dir 'drivers/ti/gpio'
 	dir 'drivers/ti/beaglelogic'
