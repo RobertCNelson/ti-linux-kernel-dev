@@ -349,6 +349,10 @@ ti_pm_firmware () {
 	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 }
 
+dtb_makefile_append () {
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
 beagleboard_dtbs () {
 	bbdtbs="v4.14.x-ti"
 	#regenerate="enable"
@@ -364,6 +368,8 @@ beagleboard_dtbs () {
 
 		cp -vr ../BeagleBoard-DeviceTrees/src/arm/* arch/arm/boot/dts/
 		cp -vr ../BeagleBoard-DeviceTrees/include/dt-bindings/* ./include/dt-bindings/
+
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
@@ -672,8 +678,6 @@ drivers () {
 }
 
 soc () {
-	dir 'soc/ti'
-	dir 'soc/ti/uboot'
 	dir 'soc/ti/blue'
 	dir 'soc/ti/sancloud'
 	dir 'soc/ti/abbbi'
@@ -687,10 +691,6 @@ soc () {
 	dir 'soc/ti/evm'
 	dir 'soc/gssi'
 	dir 'soc/ti/beagleboneai'
-}
-
-dtb_makefile_append () {
-	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
 
 dtb_makefile_append_am57xx () {
@@ -723,9 +723,6 @@ beaglebone () {
 	echo "dir: beaglebone/generated"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
-		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
-
 		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
 

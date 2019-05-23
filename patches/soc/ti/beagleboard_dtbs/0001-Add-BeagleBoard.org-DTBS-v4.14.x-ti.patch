@@ -1,16 +1,18 @@
-From 505a54918bb139965a51ee6c2affd0eaf97bd8ae Mon Sep 17 00:00:00 2001
+From c4f62f6f5d3fc4a87fcccd0b5a8d2cd2d151dc1b Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 23 May 2019 18:27:43 -0500
+Date: Thu, 23 May 2019 18:32:52 -0500
 Subject: [PATCH] Add BeagleBoard.org DTBS: v4.14.x-ti
 
 https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/v4.14.x-ti
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
+ arch/arm/boot/dts/Makefile                    |    1 +
  .../dts/am335x-bone-common-no-capemgr.dtsi    |  373 +++
  .../dts/am335x-bone-common-universal.dtsi     | 2052 +++++++++++++++++
- arch/arm/boot/dts/am335x-bone-common.dtsi     |   43 +-
+ arch/arm/boot/dts/am335x-bone-common.dtsi     |  161 +-
  arch/arm/boot/dts/am335x-bone-jtag.dtsi       |   20 +
  arch/arm/boot/dts/am335x-bone.dts             |    1 +
+ arch/arm/boot/dts/am335x-boneblack-uboot.dts  |   37 +
  .../boot/dts/am335x-boneblack-wireless.dts    |    1 +
  arch/arm/boot/dts/am335x-boneblack.dts        |    1 +
  .../boot/dts/am335x-bonegreen-wireless.dts    |    1 +
@@ -19,12 +21,25 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../boot/dts/am57xx-beagle-x15-common.dtsi    |    4 +
  arch/arm/boot/dts/dra7.dtsi                   |   18 +-
  .../dt-bindings/board/am335x-bbw-bbb-base.h   |  103 +
- 13 files changed, 2782 insertions(+), 16 deletions(-)
+ 15 files changed, 2931 insertions(+), 23 deletions(-)
  create mode 100644 arch/arm/boot/dts/am335x-bone-common-no-capemgr.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-common-universal.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-jtag.dtsi
+ create mode 100644 arch/arm/boot/dts/am335x-boneblack-uboot.dts
  create mode 100644 include/dt-bindings/board/am335x-bbw-bbb-base.h
 
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index 7949c213a434..2c5cd0b78357 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -616,6 +616,7 @@ dtb-$(CONFIG_SOC_AM33XX) += \
+ 	am335x-base0033.dtb \
+ 	am335x-bone.dtb \
+ 	am335x-boneblack.dtb \
++	am335x-boneblack-uboot.dtb \
+ 	am335x-boneblack-wireless.dtb \
+ 	am335x-boneblue.dtb \
+ 	am335x-bonegreen.dtb \
 diff --git a/arch/arm/boot/dts/am335x-bone-common-no-capemgr.dtsi b/arch/arm/boot/dts/am335x-bone-common-no-capemgr.dtsi
 new file mode 100644
 index 000000000000..9abc9be057c5
@@ -2463,7 +2478,7 @@ index 000000000000..781e33fe3d26
 +	};
 +};
 diff --git a/arch/arm/boot/dts/am335x-bone-common.dtsi b/arch/arm/boot/dts/am335x-bone-common.dtsi
-index e13aed096328..c6b5fc8f1bdb 100644
+index e13aed096328..f3c5f54459d8 100644
 --- a/arch/arm/boot/dts/am335x-bone-common.dtsi
 +++ b/arch/arm/boot/dts/am335x-bone-common.dtsi
 @@ -29,14 +29,14 @@
@@ -2493,6 +2508,25 @@ index e13aed096328..c6b5fc8f1bdb 100644
  	user_leds_s0: user_leds_s0 {
  		pinctrl-single,pins = <
  			AM33XX_IOPAD(0x854, PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a5.gpio1_21 */
+@@ -85,12 +82,12 @@
+ 		>;
+ 	};
+ 
+-	i2c2_pins: pinmux_i2c2_pins {
+-		pinctrl-single,pins = <
+-			AM33XX_IOPAD(0x978, PIN_INPUT_PULLUP | MUX_MODE3)	/* uart1_ctsn.i2c2_sda */
+-			AM33XX_IOPAD(0x97c, PIN_INPUT_PULLUP | MUX_MODE3)	/* uart1_rtsn.i2c2_scl */
+-		>;
+-	};
++//	i2c2_pins: pinmux_i2c2_pins {
++//		pinctrl-single,pins = <
++//			AM33XX_IOPAD(0x978, PIN_INPUT_PULLUP | MUX_MODE3)	/* uart1_ctsn.i2c2_sda */
++//			AM33XX_IOPAD(0x97c, PIN_INPUT_PULLUP | MUX_MODE3)	/* uart1_rtsn.i2c2_scl */
++//		>;
++//	};
+ 
+ 	uart0_pins: pinmux_uart0_pins {
+ 		pinctrl-single,pins = <
 @@ -99,15 +96,11 @@
  		>;
  	};
@@ -2528,7 +2562,68 @@ index e13aed096328..c6b5fc8f1bdb 100644
  		>;
  	};
  
-@@ -432,3 +426,28 @@
+@@ -186,6 +180,50 @@
+ 			AM33XX_IOPAD(0x81c, PIN_INPUT_PULLUP | MUX_MODE1) /* gpmc_ad7.mmc1_dat7 */
+ 		>;
+ 	};
++
++	/* P9_19 (ZCZ ball D17) i2c2_scl */
++	P9_19_default_pin: pinmux_P9_19_default_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE3) >; };	/* uart1_rtsn.i2c2_scl */
++	P9_19_gpio_pin: pinmux_P9_19_gpio_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_OUTPUT | INPUT_EN | MUX_MODE7) >; };		/* uart1_rtsn.gpio0_13 */
++	P9_19_gpio_pu_pin: pinmux_P9_19_gpio_pu_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE7) >; };	/* uart1_rtsn.gpio0_13 */
++	P9_19_gpio_pd_pin: pinmux_P9_19_gpio_pd_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_OUTPUT_PULLDOWN | INPUT_EN | MUX_MODE7) >; };	/* uart1_rtsn.gpio0_13 */
++	P9_19_gpio_input_pin: pinmux_P9_19_gpio_input_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_INPUT | MUX_MODE7) >; };			/* uart1_rtsn.gpio0_13 */
++	P9_19_timer_pin: pinmux_P9_19_timer_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE1) >; };	/* uart1_rtsn.timer5 */
++	P9_19_can_pin: pinmux_P9_19_can_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_INPUT_PULLUP | MUX_MODE2) >; };		/* uart1_rtsn.dcan0_rx */
++	P9_19_i2c_pin: pinmux_P9_19_i2c_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE3) >; };	/* uart1_rtsn.i2c2_scl */
++	P9_19_spi_cs_pin: pinmux_P9_19_spi_cs_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE4) >; };	/* uart1_rtsn.spi1_cs1 */
++	P9_19_pru_uart_pin: pinmux_P9_19_pru_uart_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x097c, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE5) >; };	/* uart1_rtsn.pr1_uart0_rts_n */
++
++	/* P9_20 (ZCZ ball D18) i2c2_sda */
++	P9_20_default_pin: pinmux_P9_20_default_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE3) >; };	/* uart1_ctsn.i2c2_sda */
++	P9_20_gpio_pin: pinmux_P9_20_gpio_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_OUTPUT | INPUT_EN | MUX_MODE7) >; };		/* uart1_ctsn.gpio0_12 */
++	P9_20_gpio_pu_pin: pinmux_P9_20_gpio_pu_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE7) >; };	/* uart1_ctsn.gpio0_12 */
++	P9_20_gpio_pd_pin: pinmux_P9_20_gpio_pd_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_OUTPUT_PULLDOWN | INPUT_EN | MUX_MODE7) >; };	/* uart1_ctsn.gpio0_12 */
++	P9_20_gpio_input_pin: pinmux_P9_20_gpio_input_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_INPUT | MUX_MODE7) >; };			/* uart1_ctsn.gpio0_12 */
++	P9_20_timer_pin: pinmux_P9_20_timer_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE1) >; };	/* uart1_ctsn.timer6 */
++	P9_20_can_pin: pinmux_P9_20_can_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_OUTPUT_PULLUP | MUX_MODE2) >; };		/* uart1_ctsn.dcan0_tx */
++	P9_20_i2c_pin: pinmux_P9_20_i2c_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE3) >; };	/* uart1_ctsn.i2c2_sda */
++	P9_20_spi_cs_pin: pinmux_P9_20_spi_cs_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE4) >; };	/* uart1_ctsn.spi1_cs0 */
++	P9_20_pru_uart_pin: pinmux_P9_20_pru_uart_pin { pinctrl-single,pins = <
++		AM33XX_IOPAD(0x0978, PIN_OUTPUT_PULLUP | INPUT_EN | MUX_MODE5) >; };	/* uart1_ctsn.pr1_uart0_cts_n */
+ };
+ 
+ &uart0 {
+@@ -252,7 +290,8 @@
+ 
+ &i2c2 {
+ 	pinctrl-names = "default";
+-	pinctrl-0 = <&i2c2_pins>;
++	//pinctrl-0 = <&i2c2_pins>;
++	pinctrl-0 = <>;
+ 
+ 	status = "okay";
+ 	clock-frequency = <100000>;
+@@ -432,3 +471,87 @@
  		status = "okay";
  	};
  };
@@ -2555,6 +2650,65 @@ index e13aed096328..c6b5fc8f1bdb 100644
 +				compatible-name = "ti,beaglebone-black";
 +			};
 +		};
++	};
++};
++
++&ocp {
++	/* P9_19 (ZCZ ball D17) i2c */
++	P9_19_pinmux {
++		compatible = "bone-pinmux-helper";
++		status = "okay";
++		pinctrl-names = "default", "gpio", "gpio_pu", "gpio_pd", "gpio_input", "spi_cs", "can", "i2c", "pru_uart", "timer";
++		pinctrl-0 = <&P9_19_default_pin>;
++		pinctrl-1 = <&P9_19_gpio_pin>;
++		pinctrl-2 = <&P9_19_gpio_pu_pin>;
++		pinctrl-3 = <&P9_19_gpio_pd_pin>;
++		pinctrl-4 = <&P9_19_gpio_input_pin>;
++		pinctrl-5 = <&P9_19_spi_cs_pin>;
++		pinctrl-6 = <&P9_19_can_pin>;
++		pinctrl-7 = <&P9_19_i2c_pin>;
++		pinctrl-8 = <&P9_19_pru_uart_pin>;
++		pinctrl-9 = <&P9_19_timer_pin>;
++	};
++
++	/* P9_20 (ZCZ ball D18) i2c */
++	P9_20_pinmux {
++		compatible = "bone-pinmux-helper";
++		status = "okay";
++		pinctrl-names = "default", "gpio", "gpio_pu", "gpio_pd", "gpio_input", "spi_cs", "can", "i2c", "pru_uart", "timer";
++		pinctrl-0 = <&P9_20_default_pin>;
++		pinctrl-1 = <&P9_20_gpio_pin>;
++		pinctrl-2 = <&P9_20_gpio_pu_pin>;
++		pinctrl-3 = <&P9_20_gpio_pd_pin>;
++		pinctrl-4 = <&P9_20_gpio_input_pin>;
++		pinctrl-5 = <&P9_20_spi_cs_pin>;
++		pinctrl-6 = <&P9_20_can_pin>;
++		pinctrl-7 = <&P9_20_i2c_pin>;
++		pinctrl-8 = <&P9_20_pru_uart_pin>;
++		pinctrl-9 = <&P9_20_timer_pin>;
++	};
++
++
++	cape-universal {
++		compatible = "gpio-of-helper";
++		status = "okay";
++		pinctrl-names = "default";
++		pinctrl-0 = <>;
++
++		P9_19 {
++			gpio-name = "P9_19";
++			gpio = <&gpio0 13 0>;
++			input;
++			dir-changeable;
++		};
++
++		P9_20 {
++			gpio-name = "P9_20";
++			gpio = <&gpio0 12 0>;
++			input;
++			dir-changeable;
++		};
++
 +	};
 +};
 diff --git a/arch/arm/boot/dts/am335x-bone-jtag.dtsi b/arch/arm/boot/dts/am335x-bone-jtag.dtsi
@@ -2595,6 +2749,49 @@ index ce1b68a76363..84121aab44f4 100644
  
  / {
  	model = "TI AM335x BeagleBone";
+diff --git a/arch/arm/boot/dts/am335x-boneblack-uboot.dts b/arch/arm/boot/dts/am335x-boneblack-uboot.dts
+new file mode 100644
+index 000000000000..738fa396855b
+--- /dev/null
++++ b/arch/arm/boot/dts/am335x-boneblack-uboot.dts
+@@ -0,0 +1,37 @@
++/*
++ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++/dts-v1/;
++
++#include "am33xx.dtsi"
++#include "am335x-bone-common.dtsi"
++
++/ {
++	model = "TI AM335x BeagleBone Black";
++	compatible = "ti,am335x-bone-black", "ti,am335x-bone", "ti,am33xx";
++};
++
++&cpu0_opp_table {
++	/*
++	* All PG 2.0 silicon may not support 1GHz but some of the early
++	* BeagleBone Blacks have PG 2.0 silicon which is guaranteed
++	* to support 1GHz OPP so enable it for PG 2.0 on this board.
++	*/
++	oppnitro-1000000000 {
++		opp-supported-hw = <0x06 0x0100>;
++	};
++};
++
++&ldo3_reg {
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-always-on;
++};
++
++&mmc1 {
++	vmmc-supply = <&vmmcsd_fixed>;
++};
 diff --git a/arch/arm/boot/dts/am335x-boneblack-wireless.dts b/arch/arm/boot/dts/am335x-boneblack-wireless.dts
 index 83f49f616b19..4664f203b17c 100644
 --- a/arch/arm/boot/dts/am335x-boneblack-wireless.dts
