@@ -615,6 +615,7 @@ backports
 reverts
 drivers
 soc
+dir 'fixes'
 
 sync_mainline_dtc () {
 	echo "dir: dtc"
