@@ -329,6 +329,8 @@ beagleboard_dtbs () {
 		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
 		device="am335x-pocketbeagle-simplegaming.dtb" ; dtb_makefile_append
 
+		device="am335x-vsc8531bbb.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -976,8 +978,6 @@ beaglebone () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		device="am335x-boneblack-ctag-face.dtb" ; dtb_makefile_append
-
-		device="am335x-vsc8531bbb.dtb" ; dtb_makefile_append
 
 		device="am57xx-beagle-x15-revb1-ctag.dtb" ; dtb_makefile_append
 
