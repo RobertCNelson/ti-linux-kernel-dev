@@ -954,7 +954,6 @@ beaglebone
 dir 'x15/fixes'
 dir 'brcmfmac'
 dir 'quieter'
-dir 'soc/ti/am571x'
 dir 'x15_revc'
 dir 'drivers/ti/mmc'
 dir 'config_pin'
