@@ -402,7 +402,7 @@ beagleboard_dtbs () {
 
 		device="am57xx-evm.dtb" ; dtb_makefile_append_am5
 		device="am57xx-evm-reva3.dtb" ; dtb_makefile_append_am5
-		#device="am57xx-beagle-x15-gssi.dtb" ; dtb_makefile_append_am5
+		device="am57xx-beagle-x15-gssi.dtb" ; dtb_makefile_append_am5
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
