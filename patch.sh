@@ -705,7 +705,6 @@ drivers () {
 soc () {
 	dir 'soc/ti/abbbi'
 
-	dir 'soc/ti/x15'
 	dir 'soc/ti/evm'
 	dir 'soc/gssi'
 	dir 'soc/ti/beagleboneai'
@@ -739,7 +738,7 @@ beaglebone () {
 	####
 	#dtb makefile
 	echo "dir: beaglebone/generated"
-	regenerate="enable"
+	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 
 		device="am57xx-evm.dtb" ; dtb_makefile_append_am57xx
