@@ -387,6 +387,9 @@ beagleboard_dtbs () {
 		device="am335x-pocketbeagle-gamepup.dtb" ; dtb_makefile_append
 		device="am335x-pocketbeagle-techlab.dtb" ; dtb_makefile_append
 
+		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -695,7 +698,7 @@ drivers () {
 
 soc () {
 	dir 'soc/ti/abbbi'
-	dir 'soc/ti/roboticscape'
+
 	dir 'soc/ti/uboot_univ'
 	dir 'soc/ti/x15'
 	dir 'soc/ti/evm'
@@ -731,11 +734,8 @@ beaglebone () {
 	####
 	#dtb makefile
 	echo "dir: beaglebone/generated"
-	regenerate="enable"
+	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
-
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
 
