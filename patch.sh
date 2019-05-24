@@ -695,7 +695,6 @@ drivers () {
 
 soc () {
 	dir 'soc/ti/abbbi'
-	dir 'soc/ti/pruss'
 	dir 'soc/ti/roboticscape'
 	dir 'soc/ti/uboot_univ'
 	dir 'soc/ti/x15'
