@@ -126,7 +126,6 @@ aufs_fail () {
 }
 
 aufs () {
-	echo "dir: aufs"
 	aufs_prefix="aufs4-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -195,11 +194,7 @@ aufs () {
 		cleanup
 	fi
 
-	${git} "${DIR}/patches/aufs/0001-merge-aufs-kbuild.patch"
-	${git} "${DIR}/patches/aufs/0002-merge-aufs-base.patch"
-	${git} "${DIR}/patches/aufs/0003-merge-aufs-mmap.patch"
-	${git} "${DIR}/patches/aufs/0004-merge-aufs-standalone.patch"
-	${git} "${DIR}/patches/aufs/0005-merge-aufs.patch"
+	dir 'aufs'
 }
 
 rt_cleanup () {
@@ -208,7 +203,6 @@ rt_cleanup () {
 }
 
 rt () {
-	echo "dir: rt"
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
 	#v4.14.x
@@ -230,7 +224,7 @@ rt () {
 		exit 2
 	fi
 
-	${git} "${DIR}/patches/rt/0001-merge-CONFIG_PREEMPT_RT-Patch-Set.patch"
+	dir 'rt'
 }
 
 backport_brcm80211 () {
@@ -275,6 +269,11 @@ wireguard_fail () {
 
 wireguard () {
 	echo "dir: WireGuard"
+
+	#[    3.315290] NOHZ: local_softirq_pending 242
+	#[    3.319504] NOHZ: local_softirq_pending 242
+	${git_bin} revert --no-edit 2d898915ccf4838c04531c51a598469e921a5eb5
+
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
@@ -288,6 +287,7 @@ wireguard () {
 		#cd ./WireGuard/
 		#${git_bin}  revert --no-edit xyz
 		#cd ../
+
 		cd ./KERNEL/
 
 		../WireGuard/contrib/kernel-tree/create-patch.sh | patch -p1 || wireguard_fail
@@ -309,7 +309,7 @@ wireguard () {
 		cleanup
 	fi
 
-	${git} "${DIR}/patches/WireGuard/0001-merge-WireGuard.patch"
+	dir 'WireGuard'
 }
 
 ti_pm_firmware () {
@@ -349,6 +349,85 @@ ti_pm_firmware () {
 	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 }
 
+dtb_makefile_append_am5 () {
+	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
+dtb_makefile_append () {
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
+beagleboard_dtbs () {
+	bbdtbs="v4.14.x-ti"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./BeagleBoard-DeviceTrees ] ; then
+			${git_bin} clone -b ${bbdtbs} https://github.com/beagleboard/BeagleBoard-DeviceTrees --depth=1
+		else
+			rm -rf ./BeagleBoard-DeviceTrees || true
+			${git_bin} clone -b ${bbdtbs} https://github.com/beagleboard/BeagleBoard-DeviceTrees --depth=1
+		fi
+		cd ./KERNEL/
+
+		cp -vr ../BeagleBoard-DeviceTrees/src/arm/* arch/arm/boot/dts/
+		cp -vr ../BeagleBoard-DeviceTrees/include/dt-bindings/* ./include/dt-bindings/
+
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
+
+		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
+
+		device="am335x-abbbi.dtb" ; dtb_makefile_append
+
+		device="am335x-olimex-som.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
+
+		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle-gamepup.dtb" ; dtb_makefile_append
+		device="am335x-pocketbeagle-techlab.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
+
+		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
+
+		device="am57xx-evm.dtb" ; dtb_makefile_append_am5
+		device="am57xx-evm-reva3.dtb" ; dtb_makefile_append_am5
+		device="am57xx-beagle-x15-gssi.dtb" ; dtb_makefile_append_am5
+
+		device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am5
+		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am5
+
+		${git_bin} add -f arch/arm/boot/dts/
+		${git_bin} add -f include/dt-bindings/
+		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
+		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
+
+		rm -rf ../BeagleBoard-DeviceTrees/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-DTBS-$bbdtbs.patch"
+
+		wdir="soc/ti/beagleboard_dtbs"
+		number=1
+		cleanup
+	fi
+
+	dir 'soc/ti/beagleboard_dtbs'
+}
+
 local_patch () {
 	echo "dir: dir"
 	${git} "${DIR}/patches/dir/0001-patch.patch"
@@ -360,6 +439,7 @@ rt
 #backport_brcm80211
 #wireguard
 ti_pm_firmware
+beagleboard_dtbs
 #local_patch
 
 pre_backports () {
@@ -511,7 +591,7 @@ drivers () {
 	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0021-doc-dt-beaglebone-cape-manager-bindings.patch"
 	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0022-doc-ABI-bone_capemgr-sysfs-API.patch"
 	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0023-MAINTAINERS-Beaglebone-capemanager-maintainer.patch"
-	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0024-arm-dts-Enable-beaglebone-cape-manager.patch"
+
 	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0025-of-overlay-Implement-target-index-support.patch"
 	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0026-of-unittest-Add-indirect-overlay-target-test.patch"
 	${git} "${DIR}/patches/drivers/ti/bbb_overlays/0027-doc-dt-Document-the-indirect-overlay-method.patch"
@@ -546,7 +626,6 @@ drivers () {
 	dir 'drivers/ti/rpmsg'
 	dir 'drivers/ti/pru_rproc'
 	dir 'drivers/ti/serial'
-	dir 'drivers/ti/spi'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
@@ -634,101 +713,10 @@ drivers () {
 }
 
 soc () {
-	dir 'soc/ti'
-	dir 'soc/ti/mmc'
-	dir 'soc/ti/bone_common'
-	dir 'soc/ti/uboot'
-	dir 'soc/ti/blue'
-	dir 'soc/ti/sancloud'
 	dir 'soc/ti/abbbi'
-	dir 'soc/ti/am335x_olimex_som'
-	dir 'soc/ti/beaglebone_capes'
-	dir 'soc/ti/pocketbeagle'
-	dir 'soc/ti/pruss'
-	dir 'soc/ti/roboticscape'
-	dir 'soc/ti/uboot_univ'
-	dir 'soc/ti/x15'
-	dir 'soc/ti/evm'
+
 	dir 'soc/gssi'
 	dir 'soc/ti/beagleboneai'
-}
-
-dtb_makefile_append () {
-	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
-}
-
-dtb_makefile_append_am57xx () {
-	sed -i -e 's:am57xx-beagle-x15-revc.dtb \\:am57xx-beagle-x15-revc.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
-}
-
-beaglebone () {
-	#This has to be last...
-	echo "dir: beaglebone/dtbs"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-		exit 2
-	fi
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-
-	####
-	#dtb makefile
-	echo "dir: beaglebone/generated"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-
-		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
-
-		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
-
-		device="am335x-abbbi.dtb" ; dtb_makefile_append
-
-		device="am335x-olimex-som.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
-
-		device="am335x-pocketbeagle.dtb" ; dtb_makefile_append
-		device="am335x-pocketbeagle-gamepup.dtb" ; dtb_makefile_append
-		device="am335x-pocketbeagle-techlab.dtb" ; dtb_makefile_append
-
-		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
-		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
-
-		device="am57xx-evm.dtb" ; dtb_makefile_append_am57xx
-		device="am57xx-evm-reva3.dtb" ; dtb_makefile_append_am57xx
-		device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am57xx
-		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am57xx
-
-		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
-		git format-patch -1 -o ../patches/beaglebone/generated/
-		exit 2
-	else
-		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
-	fi
 }
 
 ###
@@ -736,9 +724,6 @@ backports
 reverts
 drivers
 soc
-beaglebone
-dir 'drivers/ti/sgx'
-dir 'drivers/ti/spi_symlink'
 
 packaging () {
 	echo "dir: packaging"
