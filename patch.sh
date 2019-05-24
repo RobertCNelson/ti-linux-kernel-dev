@@ -719,38 +719,12 @@ soc () {
 	dir 'soc/ti/beagleboneai'
 }
 
-dtb_makefile_append_am57xx () {
-	sed -i -e 's:am57xx-beagle-x15-revc.dtb \\:am57xx-beagle-x15-revc.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
-}
-
-beaglebone () {
-	#This has to be last...
-	echo "dir: beaglebone/dtbs"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		patch -p1 < "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-		exit 2
-	fi
-
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	${git} "${DIR}/patches/beaglebone/dtbs/0001-sync-am335x-peripheral-pinmux.patch"
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		number=1
-		cleanup
-	fi
-}
-
 ###
 backports
 reverts
 drivers
 soc
-beaglebone
+
 dir 'drivers/ti/sgx'
 dir 'drivers/ti/spi_symlink'
 
