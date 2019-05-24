@@ -404,6 +404,9 @@ beagleboard_dtbs () {
 		device="am57xx-evm-reva3.dtb" ; dtb_makefile_append_am5
 		device="am57xx-beagle-x15-gssi.dtb" ; dtb_makefile_append_am5
 
+		device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am5
+		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am5
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -739,21 +742,6 @@ beaglebone () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		number=1
 		cleanup
-	fi
-
-	####
-	#dtb makefile
-	echo "dir: beaglebone/generated"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am57xx
-		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am57xx
-
-		git commit -a -m 'auto generated: capes: add dtbs to makefile' -s
-		git format-patch -1 -o ../patches/beaglebone/generated/
-		exit 2
-	else
-		${git} "${DIR}/patches/beaglebone/generated/0001-auto-generated-capes-add-dtbs-to-makefile.patch"
 	fi
 }
 
