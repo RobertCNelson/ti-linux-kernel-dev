@@ -349,6 +349,10 @@ ti_pm_firmware () {
 	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
 }
 
+dtb_makefile_append_am5 () {
+	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
 dtb_makefile_append () {
 	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
@@ -396,6 +400,10 @@ beagleboard_dtbs () {
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
 
+		device="am57xx-evm.dtb" ; dtb_makefile_append_am5
+		device="am57xx-evm-reva3.dtb" ; dtb_makefile_append_am5
+		#device="am57xx-beagle-x15-gssi.dtb" ; dtb_makefile_append_am5
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $bbdtbs" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${bbdtbs}" -s
@@ -416,7 +424,6 @@ beagleboard_dtbs () {
 
 	dir 'soc/ti/beagleboard_dtbs'
 }
-
 
 local_patch () {
 	echo "dir: dir"
@@ -705,7 +712,6 @@ drivers () {
 soc () {
 	dir 'soc/ti/abbbi'
 
-	dir 'soc/ti/evm'
 	dir 'soc/gssi'
 	dir 'soc/ti/beagleboneai'
 }
@@ -740,9 +746,6 @@ beaglebone () {
 	echo "dir: beaglebone/generated"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
-		device="am57xx-evm.dtb" ; dtb_makefile_append_am57xx
-		device="am57xx-evm-reva3.dtb" ; dtb_makefile_append_am57xx
 		device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am57xx
 		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am57xx
 
