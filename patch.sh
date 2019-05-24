@@ -725,7 +725,6 @@ reverts
 drivers
 soc
 
-dir 'drivers/ti/sgx'
 dir 'drivers/ti/spi_symlink'
 
 packaging () {
