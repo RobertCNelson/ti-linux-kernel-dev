@@ -725,8 +725,6 @@ reverts
 drivers
 soc
 
-dir 'drivers/ti/spi_symlink'
-
 packaging () {
 	echo "dir: packaging"
 	#regenerate="enable"
