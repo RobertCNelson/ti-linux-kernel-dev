@@ -342,6 +342,10 @@ ti_pm_firmware () {
 	${git} "${DIR}/patches/drivers/ti/firmware/0001-Add-AM335x-CM3-Power-Managment-Firmware.patch"
 }
 
+dtb_makefile_append () {
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
 beagleboard_dtbs () {
 	bbdtbs="v4.19.x-ti"
 	#regenerate="enable"
@@ -357,6 +361,8 @@ beagleboard_dtbs () {
 
 		cp -vr ../BeagleBoard-DeviceTrees/src/arm/* arch/arm/boot/dts/
 		cp -vr ../BeagleBoard-DeviceTrees/include/dt-bindings/* ./include/dt-bindings/
+
+		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
@@ -378,7 +384,6 @@ beagleboard_dtbs () {
 
 	dir 'soc/ti/beagleboard_dtbs'
 }
-
 
 local_patch () {
 	echo "dir: dir"
@@ -488,7 +493,6 @@ drivers () {
 }
 
 soc () {
-	dir 'soc/ti/abbbi'
 	dir 'soc/ti/pocketbeagle'
 	dir 'soc/ti/osd3358'
 	dir 'soc/ti/beaglebone_capes'
@@ -514,10 +518,6 @@ dtb_makefile_append_am57xx () {
 	sed -i -e 's:am57xx-beagle-x15-revc.dtb \\:am57xx-beagle-x15-revc.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
 
-dtb_makefile_append () {
-	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
-}
-
 beaglebone () {
 	####
 	#dtb makefile
@@ -529,8 +529,6 @@ beaglebone () {
 
 		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
-
-		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 
