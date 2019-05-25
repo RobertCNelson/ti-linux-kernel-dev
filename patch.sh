@@ -522,8 +522,6 @@ soc () {
 	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0004-ARM-dts-dra7-am335x-add-outline-definitions-for-prus.patch"
 	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0005-ARM-dts-dra7-am335x-dtsi-files-for-enabling-uio-prus.patch"
 	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0006-ARM-dts-beagle-x15-enable-uio-pruss-by-default.patch"
-
-	dir 'drivers/ti/spi_symlink'
 }
 
 ###
