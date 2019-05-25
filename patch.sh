@@ -505,7 +505,6 @@ drivers () {
 
 soc () {
 #pruss:
-	dir 'soc/ti/uboot_pru_overlay'
 	#dir 'drivers/ti/uio_pruss'
 
 	${git} "${DIR}/patches/drivers/ti/uio_pruss/0001-uio-pruss-cleanups-and-pruss-v2-pru-icss-support.patch"
