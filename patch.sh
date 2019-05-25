@@ -493,7 +493,6 @@ drivers () {
 }
 
 soc () {
-	dir 'soc/ti/pocketbeagle'
 	dir 'soc/ti/osd3358'
 	dir 'soc/ti/beaglebone_capes'
 	dir 'soc/ti/uboot'
