@@ -348,7 +348,7 @@ dtb_makefile_append () {
 
 beagleboard_dtbs () {
 	bbdtbs="v4.19.x-ti"
-	regenerate="enable"
+	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./BeagleBoard-DeviceTrees ] ; then
