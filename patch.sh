@@ -488,7 +488,6 @@ drivers () {
 }
 
 soc () {
-	dir 'soc/ti/blue'
 	dir 'soc/ti/abbbi'
 	dir 'soc/ti/pocketbeagle'
 	dir 'soc/ti/osd3358'
