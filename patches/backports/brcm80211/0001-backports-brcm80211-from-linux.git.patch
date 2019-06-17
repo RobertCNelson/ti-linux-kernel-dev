@@ -1,0 +1,2941 @@
+From 882e886961f29e124756c725e7380e4a082f55a4 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Mon, 17 Jun 2019 15:30:51 -0500
+Subject: [PATCH] backports: brcm80211: from: linux.git
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ .../broadcom/brcm80211/brcmfmac/bcmsdh.c      |    1 -
+ .../broadcom/brcm80211/brcmfmac/btcoex.c      |    6 +-
+ .../broadcom/brcm80211/brcmfmac/bus.h         |   10 +
+ .../broadcom/brcm80211/brcmfmac/cfg80211.c    |  175 +-
+ .../broadcom/brcm80211/brcmfmac/cfg80211.h    |    2 -
+ .../broadcom/brcm80211/brcmfmac/common.c      |  154 ++
+ .../broadcom/brcm80211/brcmfmac/core.c        |   40 +
+ .../broadcom/brcm80211/brcmfmac/core.h        |    3 +
+ .../broadcom/brcm80211/brcmfmac/fweh.c        |    5 -
+ .../broadcom/brcm80211/brcmfmac/fwil_types.h  |   31 +
+ .../broadcom/brcm80211/brcmfmac/p2p.c         |   14 +-
+ .../broadcom/brcm80211/brcmfmac/pcie.c        |   19 +
+ .../broadcom/brcm80211/brcmfmac/sdio.c        |   51 +-
+ .../broadcom/brcm80211/brcmfmac/usb.c         |   18 +
+ .../broadcom/brcm80211/brcmsmac/phy/phy_cmn.c |    2 +-
+ .../broadcom/brcm80211/brcmsmac/phy/phy_n.c   | 1675 ++++++++---------
+ .../brcm80211/brcmsmac/phy/phy_qmath.c        |    2 +-
+ .../broadcom/brcm80211/brcmutil/d11.c         |   37 +-
+ .../broadcom/brcm80211/include/brcmu_wifi.h   |    2 -
+ 19 files changed, 1144 insertions(+), 1103 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+index dd6e27513cc1..cd587325e286 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+@@ -1098,7 +1098,6 @@ static const struct sdio_device_id brcmf_sdmmc_ids[] = {
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_43340),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_43341),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_43362),
+- 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_43364),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_4335_4339),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_4339),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_43430),
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/btcoex.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/btcoex.c
+index 3559fb5b8fb0..03aae6bc1838 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/btcoex.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/btcoex.c
+@@ -280,9 +280,9 @@ static void brcmf_btcoex_restore_part1(struct brcmf_btcoex_info *btci)
+ /**
+  * brcmf_btcoex_timerfunc() - BT coex timer callback
+  */
+-static void brcmf_btcoex_timerfunc(ulong data)
++static void brcmf_btcoex_timerfunc(struct timer_list *t)
+ {
+-	struct brcmf_btcoex_info *bt_local = (struct brcmf_btcoex_info *)data;
++	struct brcmf_btcoex_info *bt_local = from_timer(bt_local, t, timer);
+ 	brcmf_dbg(TRACE, "enter\n");
+ 
+ 	bt_local->timer_on = false;
+@@ -380,7 +380,7 @@ int brcmf_btcoex_attach(struct brcmf_cfg80211_info *cfg)
+ 	/* Set up timer for BT  */
+ 	btci->timer_on = false;
+ 	btci->timeout = BRCMF_BTCOEX_OPPR_WIN_TIME;
+-	setup_timer(&btci->timer, brcmf_btcoex_timerfunc, (ulong)btci);
++	timer_setup(&btci->timer, brcmf_btcoex_timerfunc, 0);
+ 	btci->cfg = cfg;
+ 	btci->saved_regs_part1 = false;
+ 	btci->saved_regs_part2 = false;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+index 163ddc49f951..0b76a615708e 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+@@ -71,6 +71,7 @@ struct brcmf_bus_dcmd {
+  * @wowl_config: specify if dongle is configured for wowl when going to suspend
+  * @get_ramsize: obtain size of device memory.
+  * @get_memdump: obtain device memory dump in provided buffer.
++ * @get_fwname: obtain firmware name.
+  *
+  * This structure provides an abstract interface towards the
+  * bus specific driver. For control messages to common driver
+@@ -87,6 +88,8 @@ struct brcmf_bus_ops {
+ 	void (*wowl_config)(struct device *dev, bool enabled);
+ 	size_t (*get_ramsize)(struct device *dev);
+ 	int (*get_memdump)(struct device *dev, void *data, size_t len);
++	int (*get_fwname)(struct device *dev, uint chip, uint chiprev,
++			  unsigned char *fw_name);
+ };
+ 
+ 
+@@ -224,6 +227,13 @@ int brcmf_bus_get_memdump(struct brcmf_bus *bus, void *data, size_t len)
+ 	return bus->ops->get_memdump(bus->dev, data, len);
+ }
+ 
++static inline
++int brcmf_bus_get_fwname(struct brcmf_bus *bus, uint chip, uint chiprev,
++			 unsigned char *fw_name)
++{
++	return bus->ops->get_fwname(bus->dev, chip, chiprev, fw_name);
++}
++
+ /*
+  * interface functions from common layer
+  */
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+index cd6c5ece9a5d..15fa00d79fc6 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -472,47 +472,6 @@ send_key_to_dongle(struct brcmf_if *ifp, struct brcmf_wsec_key *key)
+ 	return err;
+ }
+ 
+-static s32
+-brcmf_configure_arp_nd_offload(struct brcmf_if *ifp, bool enable)
+-{
+-	s32 err;
+-	u32 mode;
+-
+-	if (enable)
+-		mode = BRCMF_ARP_OL_AGENT | BRCMF_ARP_OL_PEER_AUTO_REPLY;
+-	else
+-		mode = 0;
+-
+-	/* Try to set and enable ARP offload feature, this may fail, then it  */
+-	/* is simply not supported and err 0 will be returned                 */
+-	err = brcmf_fil_iovar_int_set(ifp, "arp_ol", mode);
+-	if (err) {
+-		brcmf_dbg(TRACE, "failed to set ARP offload mode to 0x%x, err = %d\n",
+-			  mode, err);
+-		err = 0;
+-	} else {
+-		err = brcmf_fil_iovar_int_set(ifp, "arpoe", enable);
+-		if (err) {
+-			brcmf_dbg(TRACE, "failed to configure (%d) ARP offload err = %d\n",
+-				  enable, err);
+-			err = 0;
+-		} else
+-			brcmf_dbg(TRACE, "successfully configured (%d) ARP offload to 0x%x\n",
+-				  enable, mode);
+-	}
+-
+-	err = brcmf_fil_iovar_int_set(ifp, "ndoe", enable);
+-	if (err) {
+-		brcmf_dbg(TRACE, "failed to configure (%d) ND offload err = %d\n",
+-			  enable, err);
+-		err = 0;
+-	} else
+-		brcmf_dbg(TRACE, "successfully configured (%d) ND offload to 0x%x\n",
+-			  enable, mode);
+-
+-	return err;
+-}
+-
+ static void
+ brcmf_cfg80211_update_proto_addr_mode(struct wireless_dev *wdev)
+ {
+@@ -1084,7 +1043,6 @@ brcmf_do_escan(struct brcmf_if *ifp, struct cfg80211_scan_request *request)
+ {
+ 	struct brcmf_cfg80211_info *cfg = ifp->drvr->config;
+ 	s32 err;
+-	u32 passive_scan;
+ 	struct brcmf_scan_results *results;
+ 	struct escan_info *escan = &cfg->escan_info;
+ 
+@@ -1092,13 +1050,7 @@ brcmf_do_escan(struct brcmf_if *ifp, struct cfg80211_scan_request *request)
+ 	escan->ifp = ifp;
+ 	escan->wiphy = cfg->wiphy;
+ 	escan->escan_state = WL_ESCAN_STATE_SCANNING;
+-	passive_scan = cfg->active_scan ? 0 : 1;
+-	err = brcmf_fil_cmd_int_set(ifp, BRCMF_C_SET_PASSIVE_SCAN,
+-				    passive_scan);
+-	if (err) {
+-		brcmf_err("error (%d)\n", err);
+-		return err;
+-	}
++
+ 	brcmf_scan_config_mpc(ifp, 0);
+ 	results = (struct brcmf_scan_results *)cfg->escan_info.escan_buf;
+ 	results->version = 0;
+@@ -1112,21 +1064,16 @@ brcmf_do_escan(struct brcmf_if *ifp, struct cfg80211_scan_request *request)
+ }
+ 
+ static s32
+-brcmf_cfg80211_escan(struct wiphy *wiphy, struct brcmf_cfg80211_vif *vif,
+-		     struct cfg80211_scan_request *request,
+-		     struct cfg80211_ssid *this_ssid)
++brcmf_cfg80211_scan(struct wiphy *wiphy, struct cfg80211_scan_request *request)
+ {
+-	struct brcmf_if *ifp = vif->ifp;
+ 	struct brcmf_cfg80211_info *cfg = wiphy_to_cfg(wiphy);
+-	struct cfg80211_ssid *ssids;
+-	u32 passive_scan;
+-	bool escan_req;
+-	bool spec_scan;
+-	s32 err;
+-	struct brcmf_ssid_le ssid_le;
+-	u32 SSID_len;
++	struct brcmf_cfg80211_vif *vif;
++	s32 err = 0;
+ 
+-	brcmf_dbg(SCAN, "START ESCAN\n");
++	brcmf_dbg(TRACE, "Enter\n");
++	vif = container_of(request->wdev, struct brcmf_cfg80211_vif, wdev);
++	if (!check_vif_up(vif))
++		return -EIO;
+ 
+ 	if (test_bit(BRCMF_SCAN_STATUS_BUSY, &cfg->scan_status)) {
+ 		brcmf_err("Scanning already: status (%lu)\n", cfg->scan_status);
+@@ -1142,8 +1089,8 @@ brcmf_cfg80211_escan(struct wiphy *wiphy, struct brcmf_cfg80211_vif *vif,
+ 			  cfg->scan_status);
+ 		return -EAGAIN;
+ 	}
+-	if (test_bit(BRCMF_VIF_STATUS_CONNECTING, &ifp->vif->sme_state)) {
+-		brcmf_err("Connecting: status (%lu)\n", ifp->vif->sme_state);
++	if (test_bit(BRCMF_VIF_STATUS_CONNECTING, &vif->sme_state)) {
++		brcmf_err("Connecting: status (%lu)\n", vif->sme_state);
+ 		return -EAGAIN;
+ 	}
+ 
+@@ -1151,96 +1098,38 @@ brcmf_cfg80211_escan(struct wiphy *wiphy, struct brcmf_cfg80211_vif *vif,
+ 	if (vif == cfg->p2p.bss_idx[P2PAPI_BSSCFG_DEVICE].vif)
+ 		vif = cfg->p2p.bss_idx[P2PAPI_BSSCFG_PRIMARY].vif;
+ 
+-	escan_req = false;
+-	if (request) {
+-		/* scan bss */
+-		ssids = request->ssids;
+-		escan_req = true;
+-	} else {
+-		/* scan in ibss */
+-		/* we don't do escan in ibss */
+-		ssids = this_ssid;
+-	}
++	brcmf_dbg(SCAN, "START ESCAN\n");
+ 
+ 	cfg->scan_request = request;
+ 	set_bit(BRCMF_SCAN_STATUS_BUSY, &cfg->scan_status);
+-	if (escan_req) {
+-		cfg->escan_info.run = brcmf_run_escan;
+-		err = brcmf_p2p_scan_prep(wiphy, request, vif);
+-		if (err)
+-			goto scan_out;
+ 
+-		err = brcmf_do_escan(vif->ifp, request);
+-		if (err)
+-			goto scan_out;
+-	} else {
+-		brcmf_dbg(SCAN, "ssid \"%s\", ssid_len (%d)\n",
+-			  ssids->ssid, ssids->ssid_len);
+-		memset(&ssid_le, 0, sizeof(ssid_le));
+-		SSID_len = min_t(u8, sizeof(ssid_le.SSID), ssids->ssid_len);
+-		ssid_le.SSID_len = cpu_to_le32(0);
+-		spec_scan = false;
+-		if (SSID_len) {
+-			memcpy(ssid_le.SSID, ssids->ssid, SSID_len);
+-			ssid_le.SSID_len = cpu_to_le32(SSID_len);
+-			spec_scan = true;
+-		} else
+-			brcmf_dbg(SCAN, "Broadcast scan\n");
++	cfg->escan_info.run = brcmf_run_escan;
++	err = brcmf_p2p_scan_prep(wiphy, request, vif);
++	if (err)
++		goto scan_out;
+ 
+-		passive_scan = cfg->active_scan ? 0 : 1;
+-		err = brcmf_fil_cmd_int_set(ifp, BRCMF_C_SET_PASSIVE_SCAN,
+-					    passive_scan);
+-		if (err) {
+-			brcmf_err("WLC_SET_PASSIVE_SCAN error (%d)\n", err);
+-			goto scan_out;
+-		}
+-		brcmf_scan_config_mpc(ifp, 0);
+-		err = brcmf_fil_cmd_data_set(ifp, BRCMF_C_SCAN, &ssid_le,
+-					     sizeof(ssid_le));
+-		if (err) {
+-			if (err == -EBUSY)
+-				brcmf_dbg(INFO, "BUSY: scan for \"%s\" canceled\n",
+-					  ssid_le.SSID);
+-			else
+-				brcmf_err("WLC_SCAN error (%d)\n", err);
++	err = brcmf_vif_set_mgmt_ie(vif, BRCMF_VNDR_IE_PRBREQ_FLAG,
++				    request->ie, request->ie_len);
++	if (err)
++		goto scan_out;
+ 
+-			brcmf_scan_config_mpc(ifp, 1);
+-			goto scan_out;
+-		}
+-	}
++	err = brcmf_do_escan(vif->ifp, request);
++	if (err)
++		goto scan_out;
+ 
+ 	/* Arm scan timeout timer */
+-	mod_timer(&cfg->escan_timeout, jiffies +
+-			BRCMF_ESCAN_TIMER_INTERVAL_MS * HZ / 1000);
++	mod_timer(&cfg->escan_timeout,
++		  jiffies + msecs_to_jiffies(BRCMF_ESCAN_TIMER_INTERVAL_MS));
+ 
+ 	return 0;
+ 
+ scan_out:
++	brcmf_err("scan error (%d)\n", err);
+ 	clear_bit(BRCMF_SCAN_STATUS_BUSY, &cfg->scan_status);
+ 	cfg->scan_request = NULL;
+ 	return err;
+ }
+ 
+-static s32
+-brcmf_cfg80211_scan(struct wiphy *wiphy, struct cfg80211_scan_request *request)
+-{
+-	struct brcmf_cfg80211_vif *vif;
+-	s32 err = 0;
+-
+-	brcmf_dbg(TRACE, "Enter\n");
+-	vif = container_of(request->wdev, struct brcmf_cfg80211_vif, wdev);
+-	if (!check_vif_up(vif))
+-		return -EIO;
+-
+-	err = brcmf_cfg80211_escan(wiphy, vif, request, NULL);
+-
+-	if (err)
+-		brcmf_err("scan error (%d)\n", err);
+-
+-	brcmf_dbg(TRACE, "Exit\n");
+-	return err;
+-}
+-
+ static s32 brcmf_set_rts(struct net_device *ndev, u32 rts_threshold)
+ {
+ 	s32 err = 0;
+@@ -3094,10 +2983,10 @@ static void brcmf_cfg80211_escan_timeout_worker(struct work_struct *work)
+ 	brcmf_notify_escan_complete(cfg, cfg->escan_info.ifp, true, true);
+ }
+ 
+-static void brcmf_escan_timeout(unsigned long data)
++static void brcmf_escan_timeout(struct timer_list *t)
+ {
+ 	struct brcmf_cfg80211_info *cfg =
+-			(struct brcmf_cfg80211_info *)data;
++			from_timer(cfg, t, escan_timeout);
+ 
+ 	if (cfg->int_escan_map || cfg->scan_request) {
+ 		brcmf_err("timer expired\n");
+@@ -3261,9 +3150,7 @@ static void brcmf_init_escan(struct brcmf_cfg80211_info *cfg)
+ 			    brcmf_cfg80211_escan_handler);
+ 	cfg->escan_info.escan_state = WL_ESCAN_STATE_IDLE;
+ 	/* Init scan_timeout timer */
+-	init_timer(&cfg->escan_timeout);
+-	cfg->escan_timeout.data = (unsigned long) cfg;
+-	cfg->escan_timeout.function = brcmf_escan_timeout;
++	timer_setup(&cfg->escan_timeout, brcmf_escan_timeout, 0);
+ 	INIT_WORK(&cfg->escan_timeout_work,
+ 		  brcmf_cfg80211_escan_timeout_worker);
+ }
+@@ -5877,7 +5764,6 @@ static s32 wl_init_priv(struct brcmf_cfg80211_info *cfg)
+ 
+ 	cfg->scan_request = NULL;
+ 	cfg->pwr_save = true;
+-	cfg->active_scan = true;	/* we do active scan per default */
+ 	cfg->dongle_up = false;		/* dongle is not up yet */
+ 	err = brcmf_init_priv_mem(cfg);
+ 	if (err)
+@@ -6098,8 +5984,7 @@ static int brcmf_construct_chaninfo(struct brcmf_cfg80211_info *cfg,
+ 			 * for subsequent chanspecs.
+ 			 */
+ 			channel->flags = IEEE80211_CHAN_NO_HT40 |
+-					 IEEE80211_CHAN_NO_80MHZ |
+-					 IEEE80211_CHAN_NO_160MHZ;
++					 IEEE80211_CHAN_NO_80MHZ;
+ 			ch.bw = BRCMU_CHAN_BW_20;
+ 			cfg->d11inf.encchspec(&ch);
+ 			chaninfo = ch.chspec;
+@@ -6917,7 +6802,7 @@ static void brcmf_cfg80211_reg_notifier(struct wiphy *wiphy,
+ 		return;
+ 
+ 	/* ignore non-ISO3166 country codes */
+-	for (i = 0; i < 2; i++)
++	for (i = 0; i < sizeof(req->alpha2); i++)
+ 		if (req->alpha2[i] < 'A' || req->alpha2[i] > 'Z') {
+ 			brcmf_err("not an ISO3166 code (0x%02x 0x%02x)\n",
+ 				  req->alpha2[0], req->alpha2[1]);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
+index 7b2835e5e434..b5b5f0f10b63 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
+@@ -283,7 +283,6 @@ struct brcmf_cfg80211_wowl {
+  * @scan_status: scan activity on the dongle.
+  * @pub: common driver information.
+  * @channel: current channel.
+- * @active_scan: current scan mode.
+  * @int_escan_map: bucket map for which internal e-scan is done.
+  * @ibss_starter: indicates this sta is ibss starter.
+  * @pwr_save: indicate whether dongle to support power save mode.
+@@ -316,7 +315,6 @@ struct brcmf_cfg80211_info {
+ 	unsigned long scan_status;
+ 	struct brcmf_pub *pub;
+ 	u32 channel;
+-	bool active_scan;
+ 	u32 int_escan_map;
+ 	bool ibss_starter;
+ 	bool pwr_save;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index 7a2b49587b4d..9be0b051066a 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -18,6 +18,7 @@
+ #include <linux/string.h>
+ #include <linux/netdevice.h>
+ #include <linux/module.h>
++#include <linux/firmware.h>
+ #include <brcmu_wifi.h>
+ #include <brcmu_utils.h>
+ #include "core.h"
+@@ -28,6 +29,7 @@
+ #include "tracepoint.h"
+ #include "common.h"
+ #include "of.h"
++#include "firmware.h"
+ 
+ MODULE_AUTHOR("Broadcom Corporation");
+ MODULE_DESCRIPTION("Broadcom 802.11 wireless LAN fullmac driver.");
+@@ -104,12 +106,137 @@ void brcmf_c_set_joinpref_default(struct brcmf_if *ifp)
+ 		brcmf_err("Set join_pref error (%d)\n", err);
+ }
+ 
++static int brcmf_c_download(struct brcmf_if *ifp, u16 flag,
++			    struct brcmf_dload_data_le *dload_buf,
++			    u32 len)
++{
++	s32 err;
++
++	flag |= (DLOAD_HANDLER_VER << DLOAD_FLAG_VER_SHIFT);
++	dload_buf->flag = cpu_to_le16(flag);
++	dload_buf->dload_type = cpu_to_le16(DL_TYPE_CLM);
++	dload_buf->len = cpu_to_le32(len);
++	dload_buf->crc = cpu_to_le32(0);
++	len = sizeof(*dload_buf) + len - 1;
++
++	err = brcmf_fil_iovar_data_set(ifp, "clmload", dload_buf, len);
++
++	return err;
++}
++
++static int brcmf_c_get_clm_name(struct brcmf_if *ifp, u8 *clm_name)
++{
++	struct brcmf_bus *bus = ifp->drvr->bus_if;
++	struct brcmf_rev_info *ri = &ifp->drvr->revinfo;
++	u8 fw_name[BRCMF_FW_NAME_LEN];
++	u8 *ptr;
++	size_t len;
++	s32 err;
++
++	memset(fw_name, 0, BRCMF_FW_NAME_LEN);
++	err = brcmf_bus_get_fwname(bus, ri->chipnum, ri->chiprev, fw_name);
++	if (err) {
++		brcmf_err("get firmware name failed (%d)\n", err);
++		goto done;
++	}
++
++	/* generate CLM blob file name */
++	ptr = strrchr(fw_name, '.');
++	if (!ptr) {
++		err = -ENOENT;
++		goto done;
++	}
++
++	len = ptr - fw_name + 1;
++	if (len + strlen(".clm_blob") > BRCMF_FW_NAME_LEN) {
++		err = -E2BIG;
++	} else {
++		strlcpy(clm_name, fw_name, len);
++		strlcat(clm_name, ".clm_blob", BRCMF_FW_NAME_LEN);
++	}
++done:
++	return err;
++}
++
++static int brcmf_c_process_clm_blob(struct brcmf_if *ifp)
++{
++	struct device *dev = ifp->drvr->bus_if->dev;
++	struct brcmf_dload_data_le *chunk_buf;
++	const struct firmware *clm = NULL;
++	u8 clm_name[BRCMF_FW_NAME_LEN];
++	u32 chunk_len;
++	u32 datalen;
++	u32 cumulative_len;
++	u16 dl_flag = DL_BEGIN;
++	u32 status;
++	s32 err;
++
++	brcmf_dbg(TRACE, "Enter\n");
++
++	memset(clm_name, 0, BRCMF_FW_NAME_LEN);
++	err = brcmf_c_get_clm_name(ifp, clm_name);
++	if (err) {
++		brcmf_err("get CLM blob file name failed (%d)\n", err);
++		return err;
++	}
++
++	err = request_firmware(&clm, clm_name, dev);
++	if (err) {
++		brcmf_info("no clm_blob available(err=%d), device may have limited channels available\n",
++			   err);
++		return 0;
++	}
++
++	chunk_buf = kzalloc(sizeof(*chunk_buf) + MAX_CHUNK_LEN - 1, GFP_KERNEL);
++	if (!chunk_buf) {
++		err = -ENOMEM;
++		goto done;
++	}
++
++	datalen = clm->size;
++	cumulative_len = 0;
++	do {
++		if (datalen > MAX_CHUNK_LEN) {
++			chunk_len = MAX_CHUNK_LEN;
++		} else {
++			chunk_len = datalen;
++			dl_flag |= DL_END;
++		}
++		memcpy(chunk_buf->data, clm->data + cumulative_len, chunk_len);
++
++		err = brcmf_c_download(ifp, dl_flag, chunk_buf, chunk_len);
++
++		dl_flag &= ~DL_BEGIN;
++
++		cumulative_len += chunk_len;
++		datalen -= chunk_len;
++	} while ((datalen > 0) && (err == 0));
++
++	if (err) {
++		brcmf_err("clmload (%zu byte file) failed (%d); ",
++			  clm->size, err);
++		/* Retrieve clmload_status and print */
++		err = brcmf_fil_iovar_int_get(ifp, "clmload_status", &status);
++		if (err)
++			brcmf_err("get clmload_status failed (%d)\n", err);
++		else
++			brcmf_dbg(INFO, "clmload_status=%d\n", status);
++		err = -EIO;
++	}
++
++	kfree(chunk_buf);
++done:
++	release_firmware(clm);
++	return err;
++}
++
+ int brcmf_c_preinit_dcmds(struct brcmf_if *ifp)
+ {
+ 	s8 eventmask[BRCMF_EVENTING_MASK_LEN];
+ 	u8 buf[BRCMF_DCMD_SMLEN];
+ 	struct brcmf_rev_info_le revinfo;
+ 	struct brcmf_rev_info *ri;
++	char *clmver;
+ 	char *ptr;
+ 	s32 err;
+ 
+@@ -148,6 +275,13 @@ int brcmf_c_preinit_dcmds(struct brcmf_if *ifp)
+ 	}
+ 	ri->result = err;
+ 
++	/* Do any CLM downloading */
++	err = brcmf_c_process_clm_blob(ifp);
++	if (err < 0) {
++		brcmf_err("download CLM blob file failed, %d\n", err);
++		goto done;
++	}
++
+ 	/* query for 'ver' to get version info from firmware */
+ 	memset(buf, 0, sizeof(buf));
+ 	strcpy(buf, "ver");
+@@ -167,6 +301,26 @@ int brcmf_c_preinit_dcmds(struct brcmf_if *ifp)
+ 	ptr = strrchr(buf, ' ') + 1;
+ 	strlcpy(ifp->drvr->fwver, ptr, sizeof(ifp->drvr->fwver));
+ 
++	/* Query for 'clmver' to get CLM version info from firmware */
++	memset(buf, 0, sizeof(buf));
++	err = brcmf_fil_iovar_data_get(ifp, "clmver", buf, sizeof(buf));
++	if (err) {
++		brcmf_dbg(TRACE, "retrieving clmver failed, %d\n", err);
++	} else {
++		clmver = (char *)buf;
++		/* store CLM version for adding it to revinfo debugfs file */
++		memcpy(ifp->drvr->clmver, clmver, sizeof(ifp->drvr->clmver));
++
++		/* Replace all newline/linefeed characters with space
++		 * character
++		 */
++		ptr = clmver;
++		while ((ptr = strnchr(ptr, '\n', sizeof(buf))) != NULL)
++			*ptr = ' ';
++
++		brcmf_dbg(INFO, "CLM version = %s\n", clmver);
++	}
++
+ 	/* set mpc */
+ 	err = brcmf_fil_iovar_int_set(ifp, "mpc", 1);
+ 	if (err) {
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+index 5cc3a07dda9e..930e423f83a8 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -71,6 +71,43 @@ struct brcmf_if *brcmf_get_ifp(struct brcmf_pub *drvr, int ifidx)
+ 	return ifp;
+ }
+ 
++void brcmf_configure_arp_nd_offload(struct brcmf_if *ifp, bool enable)
++{
++	s32 err;
++	u32 mode;
++
++	if (enable)
++		mode = BRCMF_ARP_OL_AGENT | BRCMF_ARP_OL_PEER_AUTO_REPLY;
++	else
++		mode = 0;
++
++	/* Try to set and enable ARP offload feature, this may fail, then it  */
++	/* is simply not supported and err 0 will be returned                 */
++	err = brcmf_fil_iovar_int_set(ifp, "arp_ol", mode);
++	if (err) {
++		brcmf_dbg(TRACE, "failed to set ARP offload mode to 0x%x, err = %d\n",
++			  mode, err);
++	} else {
++		err = brcmf_fil_iovar_int_set(ifp, "arpoe", enable);
++		if (err) {
++			brcmf_dbg(TRACE, "failed to configure (%d) ARP offload err = %d\n",
++				  enable, err);
++		} else {
++			brcmf_dbg(TRACE, "successfully configured (%d) ARP offload to 0x%x\n",
++				  enable, mode);
++		}
++	}
++
++	err = brcmf_fil_iovar_int_set(ifp, "ndoe", enable);
++	if (err) {
++		brcmf_dbg(TRACE, "failed to configure (%d) ND offload err = %d\n",
++			  enable, err);
++	} else {
++		brcmf_dbg(TRACE, "successfully configured (%d) ND offload to 0x%x\n",
++			  enable, mode);
++	}
++}
++
+ static void _brcmf_set_multicast_list(struct work_struct *work)
+ {
+ 	struct brcmf_if *ifp;
+@@ -134,6 +171,7 @@ static void _brcmf_set_multicast_list(struct work_struct *work)
+ 	if (err < 0)
+ 		brcmf_err("Setting BRCMF_C_SET_PROMISC failed, %d\n",
+ 			  err);
++	brcmf_configure_arp_nd_offload(ifp, !cmd_value);
+ }
+ 
+ #if IS_ENABLED(CONFIG_IPV6)
+@@ -950,6 +988,8 @@ static int brcmf_revinfo_read(struct seq_file *s, void *data)
+ 	seq_printf(s, "anarev: %u\n", ri->anarev);
+ 	seq_printf(s, "nvramrev: %08x\n", ri->nvramrev);
+ 
++	seq_printf(s, "clmver: %s\n", bus_if->drvr->clmver);
++
+ 	return 0;
+ }
+ 
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
+index a4dd313140f3..df8a1ecb9924 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
+@@ -141,6 +141,8 @@ struct brcmf_pub {
+ 	struct notifier_block inetaddr_notifier;
+ 	struct notifier_block inet6addr_notifier;
+ 	struct brcmf_mp_device *settings;
++
++	u8 clmver[BRCMF_DCMD_SMLEN];
+ };
+ 
+ /* forward declarations */
+@@ -203,6 +205,7 @@ int brcmf_netdev_wait_pend8021x(struct brcmf_if *ifp);
+ /* Return pointer to interface name */
+ char *brcmf_ifname(struct brcmf_if *ifp);
+ struct brcmf_if *brcmf_get_ifp(struct brcmf_pub *drvr, int ifidx);
++void brcmf_configure_arp_nd_offload(struct brcmf_if *ifp, bool enable);
+ int brcmf_net_attach(struct brcmf_if *ifp, bool rtnl_locked);
+ struct brcmf_if *brcmf_add_if(struct brcmf_pub *drvr, s32 bsscfgidx, s32 ifidx,
+ 			      bool is_p2pdev, const char *name, u8 *mac_addr);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fweh.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fweh.c
+index ef72baf6dd96..e7eaa57d11d9 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fweh.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fweh.c
+@@ -257,11 +257,6 @@ static void brcmf_fweh_event_worker(struct work_struct *work)
+ 		brcmf_dbg_hex_dump(BRCMF_EVENT_ON(), event->data,
+ 				   min_t(u32, emsg.datalen, 64),
+ 				   "event payload, len=%d\n", emsg.datalen);
+-		if (emsg.datalen > event->datalen) {
+-			brcmf_err("event invalid length header=%d, msg=%d\n",
+-				  event->datalen, emsg.datalen);
+-			goto event_free;
+-		}
+ 
+ 		/* special handling of interface event */
+ 		if (event->code == BRCMF_E_IF) {
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
+index e0d22fedb2b4..4b290705e3e6 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
+@@ -155,6 +155,21 @@
+ #define BRCMF_MFP_CAPABLE		1
+ #define BRCMF_MFP_REQUIRED		2
+ 
++/* MAX_CHUNK_LEN is the maximum length for data passing to firmware in each
++ * ioctl. It is relatively small because firmware has small maximum size input
++ * playload restriction for ioctls.
++ */
++#define MAX_CHUNK_LEN			1400
++
++#define DLOAD_HANDLER_VER		1	/* Downloader version */
++#define DLOAD_FLAG_VER_MASK		0xf000	/* Downloader version mask */
++#define DLOAD_FLAG_VER_SHIFT		12	/* Downloader version shift */
++
++#define DL_BEGIN			0x0002
++#define DL_END				0x0004
++
++#define DL_TYPE_CLM			2
++
+ /* join preference types for join_pref iovar */
+ enum brcmf_join_pref_types {
+ 	BRCMF_JOIN_PREF_RSSI = 1,
+@@ -826,6 +841,22 @@ struct brcmf_pno_macaddr_le {
+ 	u8 mac[ETH_ALEN];
+ };
+ 
++/**
++ * struct brcmf_dload_data_le - data passing to firmware for downloading
++ * @flag: flags related to download data.
++ * @dload_type: type of download data.
++ * @len: length in bytes of download data.
++ * @crc: crc of download data.
++ * @data: download data.
++ */
++struct brcmf_dload_data_le {
++	__le16 flag;
++	__le16 dload_type;
++	__le32 len;
++	__le32 crc;
++	u8 data[1];
++};
++
+ /**
+  * struct brcmf_pno_bssid_le - bssid configuration for PNO scan.
+  *
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/p2p.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/p2p.c
+index 450f2216fac2..82064e909784 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/p2p.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/p2p.c
+@@ -690,10 +690,7 @@ static s32 brcmf_p2p_escan(struct brcmf_p2p_info *p2p, u32 num_chans,
+ 
+ 	/* determine the scan engine parameters */
+ 	sparams->bss_type = DOT11_BSSTYPE_ANY;
+-	if (p2p->cfg->active_scan)
+-		sparams->scan_type = 0;
+-	else
+-		sparams->scan_type = 1;
++	sparams->scan_type = BRCMF_SCANTYPE_ACTIVE;
+ 
+ 	eth_broadcast_addr(sparams->bssid);
+ 	sparams->home_time = cpu_to_le32(P2PAPI_SCAN_HOME_TIME_MS);
+@@ -882,7 +879,7 @@ int brcmf_p2p_scan_prep(struct wiphy *wiphy,
+ {
+ 	struct brcmf_cfg80211_info *cfg = wiphy_to_cfg(wiphy);
+ 	struct brcmf_p2p_info *p2p = &cfg->p2p;
+-	int err = 0;
++	int err;
+ 
+ 	if (brcmf_p2p_scan_is_p2p_request(request)) {
+ 		/* find my listen channel */
+@@ -905,9 +902,7 @@ int brcmf_p2p_scan_prep(struct wiphy *wiphy,
+ 		/* override .run_escan() callback. */
+ 		cfg->escan_info.run = brcmf_p2p_run_escan;
+ 	}
+-	err = brcmf_vif_set_mgmt_ie(vif, BRCMF_VNDR_IE_PRBREQ_FLAG,
+-				    request->ie, request->ie_len);
+-	return err;
++	return 0;
+ }
+ 
+ 
+@@ -1851,7 +1846,6 @@ s32 brcmf_p2p_notify_rx_mgmt_p2p_probereq(struct brcmf_if *ifp,
+ 	struct afx_hdl *afx_hdl = &p2p->afx_hdl;
+ 	struct brcmf_cfg80211_vif *vif = ifp->vif;
+ 	struct brcmf_rx_mgmt_data *rxframe = (struct brcmf_rx_mgmt_data *)data;
+-	u16 chanspec = be16_to_cpu(rxframe->chanspec);
+ 	struct brcmu_chan ch;
+ 	u8 *mgmt_frame;
+ 	u32 mgmt_frame_len;
+@@ -1904,7 +1898,7 @@ s32 brcmf_p2p_notify_rx_mgmt_p2p_probereq(struct brcmf_if *ifp,
+ 	cfg80211_rx_mgmt(&vif->wdev, freq, 0, mgmt_frame, mgmt_frame_len, 0);
+ 
+ 	brcmf_dbg(INFO, "mgmt_frame_len (%d) , e->datalen (%d), chanspec (%04x), freq (%d)\n",
+-		  mgmt_frame_len, e->datalen, chanspec, freq);
++		  mgmt_frame_len, e->datalen, ch.chspec, freq);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+index e6e9b00b79d7..3c87157f5b85 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+@@ -1350,6 +1350,24 @@ static int brcmf_pcie_get_memdump(struct device *dev, void *data, size_t len)
+ 	return 0;
+ }
+ 
++static int brcmf_pcie_get_fwname(struct device *dev, u32 chip, u32 chiprev,
++				 u8 *fw_name)
++{
++	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
++	struct brcmf_pciedev *buspub = bus_if->bus_priv.pcie;
++	struct brcmf_pciedev_info *devinfo = buspub->devinfo;
++	int ret = 0;
++
++	if (devinfo->fw_name[0] != '\0')
++		strlcpy(fw_name, devinfo->fw_name, BRCMF_FW_NAME_LEN);
++	else
++		ret = brcmf_fw_map_chip_to_name(chip, chiprev,
++						brcmf_pcie_fwnames,
++						ARRAY_SIZE(brcmf_pcie_fwnames),
++						fw_name, NULL);
++
++	return ret;
++}
+ 
+ static const struct brcmf_bus_ops brcmf_pcie_bus_ops = {
+ 	.txdata = brcmf_pcie_tx,
+@@ -1359,6 +1377,7 @@ static const struct brcmf_bus_ops brcmf_pcie_bus_ops = {
+ 	.wowl_config = brcmf_pcie_wowl_config,
+ 	.get_ramsize = brcmf_pcie_get_ramsize,
+ 	.get_memdump = brcmf_pcie_get_memdump,
++	.get_fwname = brcmf_pcie_get_fwname,
+ };
+ 
+ 
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index 4c28b04ea605..cdf9e4161592 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -260,10 +260,11 @@ struct rte_console {
+ #define I_HMB_HOST_INT	I_HMB_SW3	/* Miscellaneous Interrupt */
+ 
+ /* tohostmailboxdata */
+-#define HMB_DATA_NAKHANDLED	1	/* retransmit NAK'd frame */
+-#define HMB_DATA_DEVREADY	2	/* talk to host after enable */
+-#define HMB_DATA_FC		4	/* per prio flowcontrol update flag */
+-#define HMB_DATA_FWREADY	8	/* fw ready for protocol activity */
++#define HMB_DATA_NAKHANDLED	0x0001	/* retransmit NAK'd frame */
++#define HMB_DATA_DEVREADY	0x0002	/* talk to host after enable */
++#define HMB_DATA_FC		0x0004	/* per prio flowcontrol update flag */
++#define HMB_DATA_FWREADY	0x0008	/* fw ready for protocol activity */
++#define HMB_DATA_FWHALT		0x0010	/* firmware halted */
+ 
+ #define HMB_DATA_FCDATA_MASK	0xff000000
+ #define HMB_DATA_FCDATA_SHIFT	24
+@@ -1094,6 +1095,10 @@ static u32 brcmf_sdio_hostmail(struct brcmf_sdio *bus)
+ 			  offsetof(struct sdpcmd_regs, tosbmailbox));
+ 	bus->sdcnt.f1regdata += 2;
+ 
++	/* dongle indicates the firmware has halted/crashed */
++	if (hmb_data & HMB_DATA_FWHALT)
++		brcmf_err("mailbox indicates firmware halted\n");
++
+ 	/* Dongle recomposed rx frames, accept them again */
+ 	if (hmb_data & HMB_DATA_NAKHANDLED) {
+ 		brcmf_dbg(SDIO, "Dongle reports NAK handled, expect rtx of %d\n",
+@@ -1151,6 +1156,7 @@ static u32 brcmf_sdio_hostmail(struct brcmf_sdio *bus)
+ 			 HMB_DATA_NAKHANDLED |
+ 			 HMB_DATA_FC |
+ 			 HMB_DATA_FWREADY |
++			 HMB_DATA_FWHALT |
+ 			 HMB_DATA_FCDATA_MASK | HMB_DATA_VERSION_MASK))
+ 		brcmf_err("Unknown mailbox data content: 0x%02x\n",
+ 			  hmb_data);
+@@ -3628,7 +3634,7 @@ static void brcmf_sdio_dataworker(struct work_struct *work)
+ 
+ 	bus->dpc_running = true;
+ 	wmb();
+-	while (ACCESS_ONCE(bus->dpc_triggered)) {
++	while (READ_ONCE(bus->dpc_triggered)) {
+ 		bus->dpc_triggered = false;
+ 		brcmf_sdio_dpc(bus);
+ 		bus->idlecount = 0;
+@@ -3966,9 +3972,9 @@ brcmf_sdio_watchdog_thread(void *data)
+ }
+ 
+ static void
+-brcmf_sdio_watchdog(unsigned long data)
++brcmf_sdio_watchdog(struct timer_list *t)
+ {
+-	struct brcmf_sdio *bus = (struct brcmf_sdio *)data;
++	struct brcmf_sdio *bus = from_timer(bus, t, timer);
+ 
+ 	if (bus->watchdog_tsk) {
+ 		complete(&bus->watchdog_wait);
+@@ -3979,6 +3985,24 @@ brcmf_sdio_watchdog(unsigned long data)
+ 	}
+ }
+ 
++static int brcmf_sdio_get_fwname(struct device *dev, u32 chip, u32 chiprev,
++				 u8 *fw_name)
++{
++	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
++	struct brcmf_sdio_dev *sdiodev = bus_if->bus_priv.sdio;
++	int ret = 0;
++
++	if (sdiodev->fw_name[0] != '\0')
++		strlcpy(fw_name, sdiodev->fw_name, BRCMF_FW_NAME_LEN);
++	else
++		ret = brcmf_fw_map_chip_to_name(chip, chiprev,
++						brcmf_sdio_fwnames,
++						ARRAY_SIZE(brcmf_sdio_fwnames),
++						fw_name, NULL);
++
++	return ret;
++}
++
+ static const struct brcmf_bus_ops brcmf_sdio_bus_ops = {
+ 	.stop = brcmf_sdio_bus_stop,
+ 	.preinit = brcmf_sdio_bus_preinit,
+@@ -3989,6 +4013,7 @@ static const struct brcmf_bus_ops brcmf_sdio_bus_ops = {
+ 	.wowl_config = brcmf_sdio_wowl_config,
+ 	.get_ramsize = brcmf_sdio_bus_get_ramsize,
+ 	.get_memdump = brcmf_sdio_bus_get_memdump,
++	.get_fwname = brcmf_sdio_get_fwname,
+ };
+ 
+ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+@@ -4144,10 +4169,7 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+ 	init_waitqueue_head(&bus->dcmd_resp_wait);
+ 
+ 	/* Set up the watchdog timer */
+-	init_timer(&bus->timer);
+-	bus->timer.data = (unsigned long)bus;
+-	bus->timer.function = brcmf_sdio_watchdog;
+-
++	timer_setup(&bus->timer, brcmf_sdio_watchdog, 0);
+ 	/* Initialize watchdog thread */
+ 	init_completion(&bus->watchdog_wait);
+ 	bus->watchdog_tsk = kthread_run(brcmf_sdio_watchdog_thread,
+@@ -4245,13 +4267,6 @@ void brcmf_sdio_remove(struct brcmf_sdio *bus)
+ 	brcmf_dbg(TRACE, "Enter\n");
+ 
+ 	if (bus) {
+-		/* Stop watchdog task */
+-		if (bus->watchdog_tsk) {
+-			send_sig(SIGTERM, bus->watchdog_tsk, 1);
+-			kthread_stop(bus->watchdog_tsk);
+-			bus->watchdog_tsk = NULL;
+-		}
+-
+ 		/* De-register interrupt handler */
+ 		brcmf_sdiod_intr_unregister(bus->sdiodev);
+ 
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c
+index 11ffaa01599e..b27170c12482 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c
+@@ -1128,12 +1128,30 @@ static void brcmf_usb_wowl_config(struct device *dev, bool enabled)
+ 		device_set_wakeup_enable(devinfo->dev, false);
+ }
+ 
++static int brcmf_usb_get_fwname(struct device *dev, u32 chip, u32 chiprev,
++				u8 *fw_name)
++{
++	struct brcmf_usbdev_info *devinfo = brcmf_usb_get_businfo(dev);
++	int ret = 0;
++
++	if (devinfo->fw_name[0] != '\0')
++		strlcpy(fw_name, devinfo->fw_name, BRCMF_FW_NAME_LEN);
++	else
++		ret = brcmf_fw_map_chip_to_name(chip, chiprev,
++						brcmf_usb_fwnames,
++						ARRAY_SIZE(brcmf_usb_fwnames),
++						fw_name, NULL);
++
++	return ret;
++}
++
+ static const struct brcmf_bus_ops brcmf_usb_bus_ops = {
+ 	.txdata = brcmf_usb_tx,
+ 	.stop = brcmf_usb_down,
+ 	.txctl = brcmf_usb_tx_ctlpkt,
+ 	.rxctl = brcmf_usb_rx_ctlpkt,
+ 	.wowl_config = brcmf_usb_wowl_config,
++	.get_fwname = brcmf_usb_get_fwname,
+ };
+ 
+ static int brcmf_usb_bus_setup(struct brcmf_usbdev_info *devinfo)
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_cmn.c b/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_cmn.c
+index 1c4e9dd57960..3a13d176b221 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_cmn.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_cmn.c
+@@ -1916,7 +1916,7 @@ void wlc_phy_txpower_update_shm(struct brcms_phy *pi)
+ 				     pi->hwpwr_txcur);
+ 
+ 		for (j = TXP_FIRST_OFDM; j <= TXP_LAST_OFDM; j++) {
+-			const u8 ucode_ofdm_rates[] = {
++			static const u8 ucode_ofdm_rates[] = {
+ 				0x0c, 0x12, 0x18, 0x24, 0x30, 0x48, 0x60, 0x6c
+ 			};
+ 			offset = wlapi_bmac_rate_shm_offset(
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c b/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c
+index ef685465f80a..763e8ba6b178 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_n.c
+@@ -16061,52 +16061,8 @@ static void wlc_phy_workarounds_nphy_gainctrl(struct brcms_phy *pi)
+ 	}
+ }
+ 
+-static void wlc_phy_workarounds_nphy(struct brcms_phy *pi)
++static void wlc_phy_workarounds_nphy_rev7(struct brcms_phy *pi)
+ {
+-	static const u8 rfseq_rx2tx_events[] = {
+-		NPHY_RFSEQ_CMD_NOP,
+-		NPHY_RFSEQ_CMD_RXG_FBW,
+-		NPHY_RFSEQ_CMD_TR_SWITCH,
+-		NPHY_RFSEQ_CMD_CLR_HIQ_DIS,
+-		NPHY_RFSEQ_CMD_RXPD_TXPD,
+-		NPHY_RFSEQ_CMD_TX_GAIN,
+-		NPHY_RFSEQ_CMD_EXT_PA
+-	};
+-	u8 rfseq_rx2tx_dlys[] = { 8, 6, 6, 2, 4, 60, 1 };
+-	static const u8 rfseq_tx2rx_events[] = {
+-		NPHY_RFSEQ_CMD_NOP,
+-		NPHY_RFSEQ_CMD_EXT_PA,
+-		NPHY_RFSEQ_CMD_TX_GAIN,
+-		NPHY_RFSEQ_CMD_RXPD_TXPD,
+-		NPHY_RFSEQ_CMD_TR_SWITCH,
+-		NPHY_RFSEQ_CMD_RXG_FBW,
+-		NPHY_RFSEQ_CMD_CLR_HIQ_DIS
+-	};
+-	static const u8 rfseq_tx2rx_dlys[] = { 8, 6, 2, 4, 4, 6, 1 };
+-	static const u8 rfseq_tx2rx_events_rev3[] = {
+-		NPHY_REV3_RFSEQ_CMD_EXT_PA,
+-		NPHY_REV3_RFSEQ_CMD_INT_PA_PU,
+-		NPHY_REV3_RFSEQ_CMD_TX_GAIN,
+-		NPHY_REV3_RFSEQ_CMD_RXPD_TXPD,
+-		NPHY_REV3_RFSEQ_CMD_TR_SWITCH,
+-		NPHY_REV3_RFSEQ_CMD_RXG_FBW,
+-		NPHY_REV3_RFSEQ_CMD_CLR_HIQ_DIS,
+-		NPHY_REV3_RFSEQ_CMD_END
+-	};
+-	static const u8 rfseq_tx2rx_dlys_rev3[] = { 8, 4, 2, 2, 4, 4, 6, 1 };
+-	u8 rfseq_rx2tx_events_rev3[] = {
+-		NPHY_REV3_RFSEQ_CMD_NOP,
+-		NPHY_REV3_RFSEQ_CMD_RXG_FBW,
+-		NPHY_REV3_RFSEQ_CMD_TR_SWITCH,
+-		NPHY_REV3_RFSEQ_CMD_CLR_HIQ_DIS,
+-		NPHY_REV3_RFSEQ_CMD_RXPD_TXPD,
+-		NPHY_REV3_RFSEQ_CMD_TX_GAIN,
+-		NPHY_REV3_RFSEQ_CMD_INT_PA_PU,
+-		NPHY_REV3_RFSEQ_CMD_EXT_PA,
+-		NPHY_REV3_RFSEQ_CMD_END
+-	};
+-	u8 rfseq_rx2tx_dlys_rev3[] = { 8, 6, 6, 4, 4, 18, 42, 1, 1 };
+-
+ 	static const u8 rfseq_rx2tx_events_rev3_ipa[] = {
+ 		NPHY_REV3_RFSEQ_CMD_NOP,
+ 		NPHY_REV3_RFSEQ_CMD_RXG_FBW,
+@@ -16118,31 +16074,18 @@ static void wlc_phy_workarounds_nphy(struct brcms_phy *pi)
+ 		NPHY_REV3_RFSEQ_CMD_INT_PA_PU,
+ 		NPHY_REV3_RFSEQ_CMD_END
+ 	};
+-	static const u8 rfseq_rx2tx_dlys_rev3_ipa[] = { 8, 6, 6, 4, 4, 16, 43, 1, 1 };
++	static const u8 rfseq_rx2tx_dlys_rev3_ipa[] =
++		{ 8, 6, 6, 4, 4, 16, 43, 1, 1 };
+ 	static const u16 rfseq_rx2tx_dacbufpu_rev7[] = { 0x10f, 0x10f };
+-
+-	s16 alpha0, alpha1, alpha2;
+-	s16 beta0, beta1, beta2;
+-	u32 leg_data_weights, ht_data_weights, nss1_data_weights,
+-	    stbc_data_weights;
++	u32 leg_data_weights;
+ 	u8 chan_freq_range = 0;
+ 	static const u16 dac_control = 0x0002;
+ 	u16 aux_adc_vmid_rev7_core0[] = { 0x8e, 0x96, 0x96, 0x96 };
+ 	u16 aux_adc_vmid_rev7_core1[] = { 0x8f, 0x9f, 0x9f, 0x96 };
+-	u16 aux_adc_vmid_rev4[] = { 0xa2, 0xb4, 0xb4, 0x89 };
+-	u16 aux_adc_vmid_rev3[] = { 0xa2, 0xb4, 0xb4, 0x89 };
+-	u16 *aux_adc_vmid;
+ 	u16 aux_adc_gain_rev7[] = { 0x02, 0x02, 0x02, 0x02 };
+-	u16 aux_adc_gain_rev4[] = { 0x02, 0x02, 0x02, 0x00 };
+-	u16 aux_adc_gain_rev3[] = { 0x02, 0x02, 0x02, 0x00 };
+-	u16 *aux_adc_gain;
+-	static const u16 sk_adc_vmid[] = { 0xb4, 0xb4, 0xb4, 0x24 };
+-	static const u16 sk_adc_gain[] = { 0x02, 0x02, 0x02, 0x02 };
+ 	s32 min_nvar_val = 0x18d;
+ 	s32 min_nvar_offset_6mbps = 20;
+ 	u8 pdetrange;
+-	u8 triso;
+-	u16 regval;
+ 	u16 afectrl_adc_ctrl1_rev7 = 0x20;
+ 	u16 afectrl_adc_ctrl2_rev7 = 0x0;
+ 	u16 rfseq_rx2tx_lpf_h_hpc_rev7 = 0x77;
+@@ -16171,965 +16114,939 @@ static void wlc_phy_workarounds_nphy(struct brcms_phy *pi)
+ 	u16 freq;
+ 	int coreNum;
+ 
+-	if (CHSPEC_IS5G(pi->radio_chanspec))
+-		wlc_phy_classifier_nphy(pi, NPHY_ClassifierCtrl_cck_en, 0);
+-	else
+-		wlc_phy_classifier_nphy(pi, NPHY_ClassifierCtrl_cck_en, 1);
+ 
+-	if (pi->phyhang_avoid)
+-		wlc_phy_stay_in_carriersearch_nphy(pi, true);
++	if (NREV_IS(pi->pubpi.phy_rev, 7)) {
++		mod_phy_reg(pi, 0x221, (0x1 << 4), (1 << 4));
++
++		mod_phy_reg(pi, 0x160, (0x7f << 0), (32 << 0));
++		mod_phy_reg(pi, 0x160, (0x7f << 8), (39 << 8));
++		mod_phy_reg(pi, 0x161, (0x7f << 0), (46 << 0));
++		mod_phy_reg(pi, 0x161, (0x7f << 8), (51 << 8));
++		mod_phy_reg(pi, 0x162, (0x7f << 0), (55 << 0));
++		mod_phy_reg(pi, 0x162, (0x7f << 8), (58 << 8));
++		mod_phy_reg(pi, 0x163, (0x7f << 0), (60 << 0));
++		mod_phy_reg(pi, 0x163, (0x7f << 8), (62 << 8));
++		mod_phy_reg(pi, 0x164, (0x7f << 0), (62 << 0));
++		mod_phy_reg(pi, 0x164, (0x7f << 8), (63 << 8));
++		mod_phy_reg(pi, 0x165, (0x7f << 0), (63 << 0));
++		mod_phy_reg(pi, 0x165, (0x7f << 8), (64 << 8));
++		mod_phy_reg(pi, 0x166, (0x7f << 0), (64 << 0));
++		mod_phy_reg(pi, 0x166, (0x7f << 8), (64 << 8));
++		mod_phy_reg(pi, 0x167, (0x7f << 0), (64 << 0));
++		mod_phy_reg(pi, 0x167, (0x7f << 8), (64 << 8));
++	}
+ 
+-	or_phy_reg(pi, 0xb1, NPHY_IQFlip_ADC1 | NPHY_IQFlip_ADC2);
++	if (NREV_LE(pi->pubpi.phy_rev, 8)) {
++		write_phy_reg(pi, 0x23f, 0x1b0);
++		write_phy_reg(pi, 0x240, 0x1b0);
++	}
+ 
+-	if (NREV_GE(pi->pubpi.phy_rev, 7)) {
++	if (NREV_GE(pi->pubpi.phy_rev, 8))
++		mod_phy_reg(pi, 0xbd, (0xff << 0), (114 << 0));
+ 
+-		if (NREV_IS(pi->pubpi.phy_rev, 7)) {
+-			mod_phy_reg(pi, 0x221, (0x1 << 4), (1 << 4));
+-
+-			mod_phy_reg(pi, 0x160, (0x7f << 0), (32 << 0));
+-			mod_phy_reg(pi, 0x160, (0x7f << 8), (39 << 8));
+-			mod_phy_reg(pi, 0x161, (0x7f << 0), (46 << 0));
+-			mod_phy_reg(pi, 0x161, (0x7f << 8), (51 << 8));
+-			mod_phy_reg(pi, 0x162, (0x7f << 0), (55 << 0));
+-			mod_phy_reg(pi, 0x162, (0x7f << 8), (58 << 8));
+-			mod_phy_reg(pi, 0x163, (0x7f << 0), (60 << 0));
+-			mod_phy_reg(pi, 0x163, (0x7f << 8), (62 << 8));
+-			mod_phy_reg(pi, 0x164, (0x7f << 0), (62 << 0));
+-			mod_phy_reg(pi, 0x164, (0x7f << 8), (63 << 8));
+-			mod_phy_reg(pi, 0x165, (0x7f << 0), (63 << 0));
+-			mod_phy_reg(pi, 0x165, (0x7f << 8), (64 << 8));
+-			mod_phy_reg(pi, 0x166, (0x7f << 0), (64 << 0));
+-			mod_phy_reg(pi, 0x166, (0x7f << 8), (64 << 8));
+-			mod_phy_reg(pi, 0x167, (0x7f << 0), (64 << 0));
+-			mod_phy_reg(pi, 0x167, (0x7f << 8), (64 << 8));
+-		}
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x00, 16,
++				 &dac_control);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x10, 16,
++				 &dac_control);
+ 
+-		if (NREV_LE(pi->pubpi.phy_rev, 8)) {
+-			write_phy_reg(pi, 0x23f, 0x1b0);
+-			write_phy_reg(pi, 0x240, 0x1b0);
+-		}
++	wlc_phy_table_read_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
++				1, 0, 32, &leg_data_weights);
++	leg_data_weights = leg_data_weights & 0xffffff;
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
++				 1, 0, 32, &leg_data_weights);
+ 
+-		if (NREV_GE(pi->pubpi.phy_rev, 8))
+-			mod_phy_reg(pi, 0xbd, (0xff << 0), (114 << 0));
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ,
++				 2, 0x15e, 16, rfseq_rx2tx_dacbufpu_rev7);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 2, 0x16e, 16,
++				 rfseq_rx2tx_dacbufpu_rev7);
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x00, 16,
+-					 &dac_control);
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x10, 16,
+-					 &dac_control);
++	if (PHY_IPA(pi))
++		wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_RX2TX,
++				       rfseq_rx2tx_events_rev3_ipa,
++				       rfseq_rx2tx_dlys_rev3_ipa,
++				       ARRAY_SIZE
++				       (rfseq_rx2tx_events_rev3_ipa));
+ 
+-		wlc_phy_table_read_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
+-					1, 0, 32, &leg_data_weights);
+-		leg_data_weights = leg_data_weights & 0xffffff;
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
+-					 1, 0, 32, &leg_data_weights);
++	mod_phy_reg(pi, 0x299, (0x3 << 14), (0x1 << 14));
++	mod_phy_reg(pi, 0x29d, (0x3 << 14), (0x1 << 14));
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ,
+-					 2, 0x15e, 16,
+-					 rfseq_rx2tx_dacbufpu_rev7);
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 2, 0x16e, 16,
+-					 rfseq_rx2tx_dacbufpu_rev7);
++	tx_lpf_bw_ofdm_20mhz = wlc_phy_read_lpf_bw_ctl_nphy(pi, 0x154);
++	tx_lpf_bw_ofdm_40mhz = wlc_phy_read_lpf_bw_ctl_nphy(pi, 0x159);
++	tx_lpf_bw_11b = wlc_phy_read_lpf_bw_ctl_nphy(pi, 0x152);
+ 
+-		if (PHY_IPA(pi))
+-			wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_RX2TX,
+-					       rfseq_rx2tx_events_rev3_ipa,
+-					       rfseq_rx2tx_dlys_rev3_ipa,
+-					       ARRAY_SIZE(rfseq_rx2tx_events_rev3_ipa));
++	if (PHY_IPA(pi)) {
+ 
+-		mod_phy_reg(pi, 0x299, (0x3 << 14), (0x1 << 14));
+-		mod_phy_reg(pi, 0x29d, (0x3 << 14), (0x1 << 14));
++		if (((pi->pubpi.radiorev == 5)
++		     && (CHSPEC_IS40(pi->radio_chanspec) == 1))
++		    || (pi->pubpi.radiorev == 7)
++		    || (pi->pubpi.radiorev == 8)) {
+ 
+-		tx_lpf_bw_ofdm_20mhz = wlc_phy_read_lpf_bw_ctl_nphy(pi, 0x154);
+-		tx_lpf_bw_ofdm_40mhz = wlc_phy_read_lpf_bw_ctl_nphy(pi, 0x159);
+-		tx_lpf_bw_11b = wlc_phy_read_lpf_bw_ctl_nphy(pi, 0x152);
++			rccal_bcap_val =
++			    read_radio_reg(pi, RADIO_2057_RCCAL_BCAP_VAL);
++			rccal_scap_val =
++			    read_radio_reg(pi, RADIO_2057_RCCAL_SCAP_VAL);
+ 
+-		if (PHY_IPA(pi)) {
++			rccal_tx20_11b_bcap = rccal_bcap_val;
++			rccal_tx20_11b_scap = rccal_scap_val;
+ 
+-			if (((pi->pubpi.radiorev == 5)
+-			     && (CHSPEC_IS40(pi->radio_chanspec) == 1))
+-			    || (pi->pubpi.radiorev == 7)
+-			    || (pi->pubpi.radiorev == 8)) {
++			if ((pi->pubpi.radiorev == 5) &&
++			    (CHSPEC_IS40(pi->radio_chanspec) == 1)) {
+ 
+-				rccal_bcap_val =
+-					read_radio_reg(
+-						pi,
+-						RADIO_2057_RCCAL_BCAP_VAL);
+-				rccal_scap_val =
+-					read_radio_reg(
+-						pi,
+-						RADIO_2057_RCCAL_SCAP_VAL);
++				rccal_tx20_11n_bcap = rccal_bcap_val;
++				rccal_tx20_11n_scap = rccal_scap_val;
++				rccal_tx40_11n_bcap = 0xc;
++				rccal_tx40_11n_scap = 0xc;
+ 
+-				rccal_tx20_11b_bcap = rccal_bcap_val;
+-				rccal_tx20_11b_scap = rccal_scap_val;
++				rccal_ovrd = true;
+ 
+-				if ((pi->pubpi.radiorev == 5) &&
+-				    (CHSPEC_IS40(pi->radio_chanspec) == 1)) {
++			} else if ((pi->pubpi.radiorev == 7)
++				   || (pi->pubpi.radiorev == 8)) {
+ 
+-					rccal_tx20_11n_bcap = rccal_bcap_val;
+-					rccal_tx20_11n_scap = rccal_scap_val;
+-					rccal_tx40_11n_bcap = 0xc;
+-					rccal_tx40_11n_scap = 0xc;
++				tx_lpf_bw_ofdm_20mhz = 4;
++				tx_lpf_bw_11b = 1;
+ 
+-					rccal_ovrd = true;
++				if (CHSPEC_IS2G(pi->radio_chanspec)) {
++					rccal_tx20_11n_bcap = 0xc;
++					rccal_tx20_11n_scap = 0xc;
++					rccal_tx40_11n_bcap = 0xa;
++					rccal_tx40_11n_scap = 0xa;
++				} else {
++					rccal_tx20_11n_bcap = 0x14;
++					rccal_tx20_11n_scap = 0x14;
++					rccal_tx40_11n_bcap = 0xf;
++					rccal_tx40_11n_scap = 0xf;
++				}
+ 
+-				} else if ((pi->pubpi.radiorev == 7)
+-					   || (pi->pubpi.radiorev == 8)) {
++				rccal_ovrd = true;
++			}
++		}
+ 
+-					tx_lpf_bw_ofdm_20mhz = 4;
+-					tx_lpf_bw_11b = 1;
++	} else {
+ 
+-					if (CHSPEC_IS2G(pi->radio_chanspec)) {
+-						rccal_tx20_11n_bcap = 0xc;
+-						rccal_tx20_11n_scap = 0xc;
+-						rccal_tx40_11n_bcap = 0xa;
+-						rccal_tx40_11n_scap = 0xa;
+-					} else {
+-						rccal_tx20_11n_bcap = 0x14;
+-						rccal_tx20_11n_scap = 0x14;
+-						rccal_tx40_11n_bcap = 0xf;
+-						rccal_tx40_11n_scap = 0xf;
+-					}
++		if (pi->pubpi.radiorev == 5) {
+ 
+-					rccal_ovrd = true;
+-				}
+-			}
++			tx_lpf_bw_ofdm_20mhz = 1;
++			tx_lpf_bw_ofdm_40mhz = 3;
+ 
+-		} else {
++			rccal_bcap_val =
++			    read_radio_reg(pi, RADIO_2057_RCCAL_BCAP_VAL);
++			rccal_scap_val =
++			    read_radio_reg(pi, RADIO_2057_RCCAL_SCAP_VAL);
+ 
+-			if (pi->pubpi.radiorev == 5) {
++			rccal_tx20_11b_bcap = rccal_bcap_val;
++			rccal_tx20_11b_scap = rccal_scap_val;
+ 
+-				tx_lpf_bw_ofdm_20mhz = 1;
+-				tx_lpf_bw_ofdm_40mhz = 3;
++			rccal_tx20_11n_bcap = 0x13;
++			rccal_tx20_11n_scap = 0x11;
++			rccal_tx40_11n_bcap = 0x13;
++			rccal_tx40_11n_scap = 0x11;
+ 
+-				rccal_bcap_val =
+-					read_radio_reg(
+-						pi,
+-						RADIO_2057_RCCAL_BCAP_VAL);
+-				rccal_scap_val =
+-					read_radio_reg(
+-						pi,
+-						RADIO_2057_RCCAL_SCAP_VAL);
++			rccal_ovrd = true;
++		}
++	}
+ 
+-				rccal_tx20_11b_bcap = rccal_bcap_val;
+-				rccal_tx20_11b_scap = rccal_scap_val;
++	if (rccal_ovrd) {
+ 
+-				rccal_tx20_11n_bcap = 0x13;
+-				rccal_tx20_11n_scap = 0x11;
+-				rccal_tx40_11n_bcap = 0x13;
+-				rccal_tx40_11n_scap = 0x11;
++		rx2tx_lpf_rc_lut_tx20_11b =
++		    (rccal_tx20_11b_bcap << 8) |
++		    (rccal_tx20_11b_scap << 3) | tx_lpf_bw_11b;
++		rx2tx_lpf_rc_lut_tx20_11n =
++		    (rccal_tx20_11n_bcap << 8) |
++		    (rccal_tx20_11n_scap << 3) | tx_lpf_bw_ofdm_20mhz;
++		rx2tx_lpf_rc_lut_tx40_11n =
++		    (rccal_tx40_11n_bcap << 8) |
++		    (rccal_tx40_11n_scap << 3) | tx_lpf_bw_ofdm_40mhz;
+ 
+-				rccal_ovrd = true;
+-			}
++		for (coreNum = 0; coreNum <= 1; coreNum++) {
++			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1,
++						 0x152 + coreNum * 0x10, 16,
++						 &rx2tx_lpf_rc_lut_tx20_11b);
++			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1,
++						 0x153 + coreNum * 0x10, 16,
++						 &rx2tx_lpf_rc_lut_tx20_11n);
++			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1,
++						 0x154 + coreNum * 0x10, 16,
++						 &rx2tx_lpf_rc_lut_tx20_11n);
++			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1,
++						 0x155 + coreNum * 0x10, 16,
++						 &rx2tx_lpf_rc_lut_tx40_11n);
++			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1,
++						 0x156 + coreNum * 0x10, 16,
++						 &rx2tx_lpf_rc_lut_tx40_11n);
++			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1,
++						 0x157 + coreNum * 0x10, 16,
++						 &rx2tx_lpf_rc_lut_tx40_11n);
++			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1,
++						 0x158 + coreNum * 0x10, 16,
++						 &rx2tx_lpf_rc_lut_tx40_11n);
++			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1,
++						 0x159 + coreNum * 0x10, 16,
++						 &rx2tx_lpf_rc_lut_tx40_11n);
+ 		}
+ 
+-		if (rccal_ovrd) {
+-
+-			rx2tx_lpf_rc_lut_tx20_11b =
+-				(rccal_tx20_11b_bcap << 8) |
+-				(rccal_tx20_11b_scap << 3) |
+-				tx_lpf_bw_11b;
+-			rx2tx_lpf_rc_lut_tx20_11n =
+-				(rccal_tx20_11n_bcap << 8) |
+-				(rccal_tx20_11n_scap << 3) |
+-				tx_lpf_bw_ofdm_20mhz;
+-			rx2tx_lpf_rc_lut_tx40_11n =
+-				(rccal_tx40_11n_bcap << 8) |
+-				(rccal_tx40_11n_scap << 3) |
+-				tx_lpf_bw_ofdm_40mhz;
++		wlc_phy_rfctrl_override_nphy_rev7(pi, (0x1 << 4), 1, 0x3, 0,
++						  NPHY_REV7_RFCTRLOVERRIDE_ID2);
++	}
+ 
+-			for (coreNum = 0; coreNum <= 1; coreNum++) {
+-				wlc_phy_table_write_nphy(
+-					pi, NPHY_TBL_ID_RFSEQ,
+-					1,
+-					0x152 + coreNum * 0x10,
+-					16,
+-					&rx2tx_lpf_rc_lut_tx20_11b);
+-				wlc_phy_table_write_nphy(
+-					pi, NPHY_TBL_ID_RFSEQ,
+-					1,
+-					0x153 + coreNum * 0x10,
+-					16,
+-					&rx2tx_lpf_rc_lut_tx20_11n);
+-				wlc_phy_table_write_nphy(
+-					pi, NPHY_TBL_ID_RFSEQ,
+-					1,
+-					0x154 + coreNum * 0x10,
+-					16,
+-					&rx2tx_lpf_rc_lut_tx20_11n);
+-				wlc_phy_table_write_nphy(
+-					pi, NPHY_TBL_ID_RFSEQ,
+-					1,
+-					0x155 + coreNum * 0x10,
+-					16,
+-					&rx2tx_lpf_rc_lut_tx40_11n);
+-				wlc_phy_table_write_nphy(
+-					pi, NPHY_TBL_ID_RFSEQ,
+-					1,
+-					0x156 + coreNum * 0x10,
+-					16,
+-					&rx2tx_lpf_rc_lut_tx40_11n);
+-				wlc_phy_table_write_nphy(
+-					pi, NPHY_TBL_ID_RFSEQ,
+-					1,
+-					0x157 + coreNum * 0x10,
+-					16,
+-					&rx2tx_lpf_rc_lut_tx40_11n);
+-				wlc_phy_table_write_nphy(
+-					pi, NPHY_TBL_ID_RFSEQ,
+-					1,
+-					0x158 + coreNum * 0x10,
+-					16,
+-					&rx2tx_lpf_rc_lut_tx40_11n);
+-				wlc_phy_table_write_nphy(
+-					pi, NPHY_TBL_ID_RFSEQ,
+-					1,
+-					0x159 + coreNum * 0x10,
+-					16,
+-					&rx2tx_lpf_rc_lut_tx40_11n);
+-			}
++	write_phy_reg(pi, 0x32f, 0x3);
+ 
+-			wlc_phy_rfctrl_override_nphy_rev7(
+-				pi, (0x1 << 4),
+-				1, 0x3, 0,
+-				NPHY_REV7_RFCTRLOVERRIDE_ID2);
+-		}
++	if ((pi->pubpi.radiorev == 4) || (pi->pubpi.radiorev == 6))
++		wlc_phy_rfctrl_override_nphy_rev7(pi, (0x1 << 2), 1, 0x3, 0,
++						  NPHY_REV7_RFCTRLOVERRIDE_ID0);
+ 
+-		write_phy_reg(pi, 0x32f, 0x3);
++	if ((pi->pubpi.radiorev == 3) || (pi->pubpi.radiorev == 4) ||
++	    (pi->pubpi.radiorev == 6)) {
++		if ((pi->sh->sromrev >= 8)
++		    && (pi->sh->boardflags2 & BFL2_IPALVLSHIFT_3P3))
++			ipalvlshift_3p3_war_en = 1;
+ 
+-		if ((pi->pubpi.radiorev == 4) || (pi->pubpi.radiorev == 6))
+-			wlc_phy_rfctrl_override_nphy_rev7(
+-				pi, (0x1 << 2),
+-				1, 0x3, 0,
+-				NPHY_REV7_RFCTRLOVERRIDE_ID0);
++		if (ipalvlshift_3p3_war_en) {
++			write_radio_reg(pi, RADIO_2057_GPAIO_CONFIG, 0x5);
++			write_radio_reg(pi, RADIO_2057_GPAIO_SEL1, 0x30);
++			write_radio_reg(pi, RADIO_2057_GPAIO_SEL0, 0x0);
++			or_radio_reg(pi, RADIO_2057_RXTXBIAS_CONFIG_CORE0, 0x1);
++			or_radio_reg(pi, RADIO_2057_RXTXBIAS_CONFIG_CORE1, 0x1);
+ 
+-		if ((pi->pubpi.radiorev == 3) || (pi->pubpi.radiorev == 4) ||
+-		    (pi->pubpi.radiorev == 6)) {
+-			if ((pi->sh->sromrev >= 8)
+-			    && (pi->sh->boardflags2 & BFL2_IPALVLSHIFT_3P3))
+-				ipalvlshift_3p3_war_en = 1;
+-
+-			if (ipalvlshift_3p3_war_en) {
+-				write_radio_reg(pi, RADIO_2057_GPAIO_CONFIG,
+-						0x5);
+-				write_radio_reg(pi, RADIO_2057_GPAIO_SEL1,
+-						0x30);
+-				write_radio_reg(pi, RADIO_2057_GPAIO_SEL0, 0x0);
+-				or_radio_reg(pi,
+-					     RADIO_2057_RXTXBIAS_CONFIG_CORE0,
+-					     0x1);
+-				or_radio_reg(pi,
+-					     RADIO_2057_RXTXBIAS_CONFIG_CORE1,
+-					     0x1);
+-
+-				ipa2g_mainbias = 0x1f;
+-
+-				ipa2g_casconv = 0x6f;
+-
+-				ipa2g_biasfilt = 0xaa;
+-			} else {
++			ipa2g_mainbias = 0x1f;
+ 
+-				ipa2g_mainbias = 0x2b;
++			ipa2g_casconv = 0x6f;
+ 
+-				ipa2g_casconv = 0x7f;
++			ipa2g_biasfilt = 0xaa;
++		} else {
+ 
+-				ipa2g_biasfilt = 0xee;
+-			}
++			ipa2g_mainbias = 0x2b;
+ 
+-			if (CHSPEC_IS2G(pi->radio_chanspec)) {
+-				for (coreNum = 0; coreNum <= 1; coreNum++) {
+-					WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
+-							 coreNum, IPA2G_IMAIN,
+-							 ipa2g_mainbias);
+-					WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
+-							 coreNum, IPA2G_CASCONV,
+-							 ipa2g_casconv);
+-					WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
+-							 coreNum,
+-							 IPA2G_BIAS_FILTER,
+-							 ipa2g_biasfilt);
+-				}
+-			}
+-		}
++			ipa2g_casconv = 0x7f;
+ 
+-		if (PHY_IPA(pi)) {
+-			if (CHSPEC_IS2G(pi->radio_chanspec)) {
+-				if ((pi->pubpi.radiorev == 3)
+-				    || (pi->pubpi.radiorev == 4)
+-				    || (pi->pubpi.radiorev == 6))
+-					txgm_idac_bleed = 0x7f;
++			ipa2g_biasfilt = 0xee;
++		}
+ 
+-				for (coreNum = 0; coreNum <= 1; coreNum++) {
+-					if (txgm_idac_bleed != 0)
+-						WRITE_RADIO_REG4(
+-							pi, RADIO_2057,
+-							CORE, coreNum,
+-							TXGM_IDAC_BLEED,
+-							txgm_idac_bleed);
+-				}
++		if (CHSPEC_IS2G(pi->radio_chanspec)) {
++			for (coreNum = 0; coreNum <= 1; coreNum++) {
++				WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
++						 coreNum, IPA2G_IMAIN,
++						 ipa2g_mainbias);
++				WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
++						 coreNum, IPA2G_CASCONV,
++						 ipa2g_casconv);
++				WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
++						 coreNum,
++						 IPA2G_BIAS_FILTER,
++						 ipa2g_biasfilt);
++			}
++		}
++	}
+ 
+-				if (pi->pubpi.radiorev == 5) {
+-
+-					for (coreNum = 0; coreNum <= 1;
+-					     coreNum++) {
+-						WRITE_RADIO_REG4(pi, RADIO_2057,
+-								 CORE, coreNum,
+-								 IPA2G_CASCONV,
+-								 0x13);
+-						WRITE_RADIO_REG4(pi, RADIO_2057,
+-								 CORE, coreNum,
+-								 IPA2G_IMAIN,
+-								 0x1f);
+-						WRITE_RADIO_REG4(
+-							pi, RADIO_2057,
+-							CORE, coreNum,
+-							IPA2G_BIAS_FILTER,
+-							0xee);
+-						WRITE_RADIO_REG4(pi, RADIO_2057,
+-								 CORE, coreNum,
+-								 PAD2G_IDACS,
+-								 0x8a);
+-						WRITE_RADIO_REG4(
+-							pi, RADIO_2057,
+-							CORE, coreNum,
+-							PAD_BIAS_FILTER_BWS,
+-							0x3e);
+-					}
++	if (PHY_IPA(pi)) {
++		if (CHSPEC_IS2G(pi->radio_chanspec)) {
++			if ((pi->pubpi.radiorev == 3)
++			    || (pi->pubpi.radiorev == 4)
++			    || (pi->pubpi.radiorev == 6))
++				txgm_idac_bleed = 0x7f;
+ 
+-				} else if ((pi->pubpi.radiorev == 7)
+-					   || (pi->pubpi.radiorev == 8)) {
++			for (coreNum = 0; coreNum <= 1; coreNum++) {
++				if (txgm_idac_bleed != 0)
++					WRITE_RADIO_REG4(pi, RADIO_2057,
++							 CORE, coreNum,
++							 TXGM_IDAC_BLEED,
++							 txgm_idac_bleed);
++			}
+ 
+-					if (CHSPEC_IS40(pi->radio_chanspec) ==
+-					    0) {
+-						WRITE_RADIO_REG4(pi, RADIO_2057,
+-								 CORE, 0,
+-								 IPA2G_IMAIN,
+-								 0x14);
+-						WRITE_RADIO_REG4(pi, RADIO_2057,
+-								 CORE, 1,
+-								 IPA2G_IMAIN,
+-								 0x12);
+-					} else {
+-						WRITE_RADIO_REG4(pi, RADIO_2057,
+-								 CORE, 0,
+-								 IPA2G_IMAIN,
+-								 0x16);
+-						WRITE_RADIO_REG4(pi, RADIO_2057,
+-								 CORE, 1,
+-								 IPA2G_IMAIN,
+-								 0x16);
+-					}
++			if (pi->pubpi.radiorev == 5) {
++				for (coreNum = 0; coreNum <= 1; coreNum++) {
++					WRITE_RADIO_REG4(pi, RADIO_2057,
++							 CORE, coreNum,
++							 IPA2G_CASCONV,
++							 0x13);
++					WRITE_RADIO_REG4(pi, RADIO_2057,
++							 CORE, coreNum,
++							 IPA2G_IMAIN,
++							 0x1f);
++					WRITE_RADIO_REG4(pi, RADIO_2057,
++							 CORE, coreNum,
++							 IPA2G_BIAS_FILTER,
++							 0xee);
++					WRITE_RADIO_REG4(pi, RADIO_2057,
++							 CORE, coreNum,
++							 PAD2G_IDACS,
++							 0x8a);
++					WRITE_RADIO_REG4(pi, RADIO_2057,
++							 CORE, coreNum,
++							 PAD_BIAS_FILTER_BWS,
++							 0x3e);
+ 				}
++			} else if ((pi->pubpi.radiorev == 7) ||
++				   (pi->pubpi.radiorev == 8)) {
+ 
+-			} else {
+-				freq = CHAN5G_FREQ(CHSPEC_CHANNEL(
+-							pi->radio_chanspec));
+-				if (((freq >= 5180) && (freq <= 5230))
+-				    || ((freq >= 5745) && (freq <= 5805))) {
++				if (CHSPEC_IS40(pi->radio_chanspec) == 0) {
+ 					WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
+-							 0, IPA5G_BIAS_FILTER,
+-							 0xff);
++							 0, IPA2G_IMAIN, 0x14);
+ 					WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
+-							 1, IPA5G_BIAS_FILTER,
+-							 0xff);
+-				}
+-			}
+-		} else {
+-
+-			if (pi->pubpi.radiorev != 5) {
+-				for (coreNum = 0; coreNum <= 1; coreNum++) {
++							 1, IPA2G_IMAIN, 0x12);
++				} else {
+ 					WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
+-							 coreNum,
+-							 TXMIX2G_TUNE_BOOST_PU,
+-							 0x61);
++							 0, IPA2G_IMAIN, 0x16);
+ 					WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
+-							 coreNum,
+-							 TXGM_IDAC_BLEED, 0x70);
++							 1, IPA2G_IMAIN, 0x16);
+ 				}
+ 			}
+-		}
+ 
+-		if (pi->pubpi.radiorev == 4) {
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1,
+-						 0x05, 16,
+-						 &afectrl_adc_ctrl1_rev7);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1,
+-						 0x15, 16,
+-						 &afectrl_adc_ctrl1_rev7);
++		} else {
++			freq =
++			    CHAN5G_FREQ(CHSPEC_CHANNEL
++					(pi->radio_chanspec));
++			if (((freq >= 5180) && (freq <= 5230))
++			    || ((freq >= 5745) && (freq <= 5805))) {
++				WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
++						 0, IPA5G_BIAS_FILTER, 0xff);
++				WRITE_RADIO_REG4(pi, RADIO_2057, CORE,
++						 1, IPA5G_BIAS_FILTER, 0xff);
++			}
++		}
++	} else {
+ 
++		if (pi->pubpi.radiorev != 5) {
+ 			for (coreNum = 0; coreNum <= 1; coreNum++) {
+ 				WRITE_RADIO_REG4(pi, RADIO_2057, CORE, coreNum,
+-						 AFE_VCM_CAL_MASTER, 0x0);
+-				WRITE_RADIO_REG4(pi, RADIO_2057, CORE, coreNum,
+-						 AFE_SET_VCM_I, 0x3f);
++						 TXMIX2G_TUNE_BOOST_PU, 0x61);
+ 				WRITE_RADIO_REG4(pi, RADIO_2057, CORE, coreNum,
+-						 AFE_SET_VCM_Q, 0x3f);
++						 TXGM_IDAC_BLEED, 0x70);
+ 			}
+-		} else {
+-			mod_phy_reg(pi, 0xa6, (0x1 << 2), (0x1 << 2));
+-			mod_phy_reg(pi, 0x8f, (0x1 << 2), (0x1 << 2));
+-			mod_phy_reg(pi, 0xa7, (0x1 << 2), (0x1 << 2));
+-			mod_phy_reg(pi, 0xa5, (0x1 << 2), (0x1 << 2));
+-
+-			mod_phy_reg(pi, 0xa6, (0x1 << 0), 0);
+-			mod_phy_reg(pi, 0x8f, (0x1 << 0), (0x1 << 0));
+-			mod_phy_reg(pi, 0xa7, (0x1 << 0), 0);
+-			mod_phy_reg(pi, 0xa5, (0x1 << 0), (0x1 << 0));
+-
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1,
+-						 0x05, 16,
+-						 &afectrl_adc_ctrl2_rev7);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1,
+-						 0x15, 16,
+-						 &afectrl_adc_ctrl2_rev7);
+-
+-			mod_phy_reg(pi, 0xa6, (0x1 << 2), 0);
+-			mod_phy_reg(pi, 0x8f, (0x1 << 2), 0);
+-			mod_phy_reg(pi, 0xa7, (0x1 << 2), 0);
+-			mod_phy_reg(pi, 0xa5, (0x1 << 2), 0);
+ 		}
++	}
+ 
+-		write_phy_reg(pi, 0x6a, 0x2);
++	if (pi->pubpi.radiorev == 4) {
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x05, 16,
++					 &afectrl_adc_ctrl1_rev7);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x15, 16,
++					 &afectrl_adc_ctrl1_rev7);
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 256, 32,
+-					 &min_nvar_offset_6mbps);
++		for (coreNum = 0; coreNum <= 1; coreNum++) {
++			WRITE_RADIO_REG4(pi, RADIO_2057, CORE, coreNum,
++					 AFE_VCM_CAL_MASTER, 0x0);
++			WRITE_RADIO_REG4(pi, RADIO_2057, CORE, coreNum,
++					 AFE_SET_VCM_I, 0x3f);
++			WRITE_RADIO_REG4(pi, RADIO_2057, CORE, coreNum,
++					 AFE_SET_VCM_Q, 0x3f);
++		}
++	} else {
++		mod_phy_reg(pi, 0xa6, (0x1 << 2), (0x1 << 2));
++		mod_phy_reg(pi, 0x8f, (0x1 << 2), (0x1 << 2));
++		mod_phy_reg(pi, 0xa7, (0x1 << 2), (0x1 << 2));
++		mod_phy_reg(pi, 0xa5, (0x1 << 2), (0x1 << 2));
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 2, 0x138, 16,
+-					 &rfseq_pktgn_lpf_hpc_rev7);
++		mod_phy_reg(pi, 0xa6, (0x1 << 0), 0);
++		mod_phy_reg(pi, 0x8f, (0x1 << 0), (0x1 << 0));
++		mod_phy_reg(pi, 0xa7, (0x1 << 0), 0);
++		mod_phy_reg(pi, 0xa5, (0x1 << 0), (0x1 << 0));
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1, 0x141, 16,
+-					 &rfseq_pktgn_lpf_h_hpc_rev7);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x05, 16,
++					 &afectrl_adc_ctrl2_rev7);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x15, 16,
++					 &afectrl_adc_ctrl2_rev7);
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 3, 0x133, 16,
+-					 &rfseq_htpktgn_lpf_hpc_rev7);
++		mod_phy_reg(pi, 0xa6, (0x1 << 2), 0);
++		mod_phy_reg(pi, 0x8f, (0x1 << 2), 0);
++		mod_phy_reg(pi, 0xa7, (0x1 << 2), 0);
++		mod_phy_reg(pi, 0xa5, (0x1 << 2), 0);
++	}
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 2, 0x146, 16,
+-					 &rfseq_cckpktgn_lpf_hpc_rev7);
++	write_phy_reg(pi, 0x6a, 0x2);
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1, 0x123, 16,
+-					 &rfseq_tx2rx_lpf_h_hpc_rev7);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 256, 32,
++				 &min_nvar_offset_6mbps);
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1, 0x12A, 16,
+-					 &rfseq_rx2tx_lpf_h_hpc_rev7);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 2, 0x138, 16,
++				 &rfseq_pktgn_lpf_hpc_rev7);
+ 
+-		if (CHSPEC_IS40(pi->radio_chanspec) == 0) {
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 3,
+-						 32, &min_nvar_val);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1,
+-						 127, 32, &min_nvar_val);
+-		} else {
+-			min_nvar_val = noise_var_tbl_rev7[3];
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 3,
+-						 32, &min_nvar_val);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1, 0x141, 16,
++				 &rfseq_pktgn_lpf_h_hpc_rev7);
+ 
+-			min_nvar_val = noise_var_tbl_rev7[127];
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1,
+-						 127, 32, &min_nvar_val);
+-		}
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 3, 0x133, 16,
++				 &rfseq_htpktgn_lpf_hpc_rev7);
+ 
+-		wlc_phy_workarounds_nphy_gainctrl(pi);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 2, 0x146, 16,
++				 &rfseq_cckpktgn_lpf_hpc_rev7);
+ 
+-		pdetrange =
+-			(CHSPEC_IS5G(pi->radio_chanspec)) ? pi->srom_fem5g.
+-			pdetrange : pi->srom_fem2g.pdetrange;
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1, 0x123, 16,
++				 &rfseq_tx2rx_lpf_h_hpc_rev7);
+ 
+-		if (pdetrange == 0) {
+-			chan_freq_range =
+-				wlc_phy_get_chan_freq_range_nphy(pi, 0);
+-			if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
+-				aux_adc_vmid_rev7_core0[3] = 0x70;
+-				aux_adc_vmid_rev7_core1[3] = 0x70;
+-				aux_adc_gain_rev7[3] = 2;
+-			} else {
+-				aux_adc_vmid_rev7_core0[3] = 0x80;
+-				aux_adc_vmid_rev7_core1[3] = 0x80;
+-				aux_adc_gain_rev7[3] = 3;
+-			}
+-		} else if (pdetrange == 1) {
+-			if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
+-				aux_adc_vmid_rev7_core0[3] = 0x7c;
+-				aux_adc_vmid_rev7_core1[3] = 0x7c;
+-				aux_adc_gain_rev7[3] = 2;
+-			} else {
+-				aux_adc_vmid_rev7_core0[3] = 0x8c;
+-				aux_adc_vmid_rev7_core1[3] = 0x8c;
+-				aux_adc_gain_rev7[3] = 1;
+-			}
+-		} else if (pdetrange == 2) {
+-			if (pi->pubpi.radioid == BCM2057_ID) {
+-				if ((pi->pubpi.radiorev == 5)
+-				    || (pi->pubpi.radiorev == 7)
+-				    || (pi->pubpi.radiorev == 8)) {
+-					if (chan_freq_range ==
+-					    WL_CHAN_FREQ_RANGE_2G) {
+-						aux_adc_vmid_rev7_core0[3] =
+-							0x8c;
+-						aux_adc_vmid_rev7_core1[3] =
+-							0x8c;
+-						aux_adc_gain_rev7[3] = 0;
+-					} else {
+-						aux_adc_vmid_rev7_core0[3] =
+-							0x96;
+-						aux_adc_vmid_rev7_core1[3] =
+-							0x96;
+-						aux_adc_gain_rev7[3] = 0;
+-					}
+-				}
+-			}
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_RFSEQ, 1, 0x12A, 16,
++				 &rfseq_rx2tx_lpf_h_hpc_rev7);
+ 
+-		} else if (pdetrange == 3) {
+-			if (chan_freq_range == WL_CHAN_FREQ_RANGE_2G) {
+-				aux_adc_vmid_rev7_core0[3] = 0x89;
+-				aux_adc_vmid_rev7_core1[3] = 0x89;
+-				aux_adc_gain_rev7[3] = 0;
+-			}
++	if (CHSPEC_IS40(pi->radio_chanspec) == 0) {
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 3,
++					 32, &min_nvar_val);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1,
++					 127, 32, &min_nvar_val);
++	} else {
++		min_nvar_val = noise_var_tbl_rev7[3];
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 3,
++					 32, &min_nvar_val);
+ 
+-		} else if (pdetrange == 5) {
++		min_nvar_val = noise_var_tbl_rev7[127];
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1,
++					 127, 32, &min_nvar_val);
++	}
+ 
+-			if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
+-				aux_adc_vmid_rev7_core0[3] = 0x80;
+-				aux_adc_vmid_rev7_core1[3] = 0x80;
+-				aux_adc_gain_rev7[3] = 3;
+-			} else {
+-				aux_adc_vmid_rev7_core0[3] = 0x70;
+-				aux_adc_vmid_rev7_core1[3] = 0x70;
+-				aux_adc_gain_rev7[3] = 2;
++	wlc_phy_workarounds_nphy_gainctrl(pi);
++
++	pdetrange = (CHSPEC_IS5G(pi->radio_chanspec)) ?
++		    pi->srom_fem5g.pdetrange : pi->srom_fem2g.pdetrange;
++
++	if (pdetrange == 0) {
++		chan_freq_range = wlc_phy_get_chan_freq_range_nphy(pi, 0);
++		if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
++			aux_adc_vmid_rev7_core0[3] = 0x70;
++			aux_adc_vmid_rev7_core1[3] = 0x70;
++			aux_adc_gain_rev7[3] = 2;
++		} else {
++			aux_adc_vmid_rev7_core0[3] = 0x80;
++			aux_adc_vmid_rev7_core1[3] = 0x80;
++			aux_adc_gain_rev7[3] = 3;
++		}
++	} else if (pdetrange == 1) {
++		if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
++			aux_adc_vmid_rev7_core0[3] = 0x7c;
++			aux_adc_vmid_rev7_core1[3] = 0x7c;
++			aux_adc_gain_rev7[3] = 2;
++		} else {
++			aux_adc_vmid_rev7_core0[3] = 0x8c;
++			aux_adc_vmid_rev7_core1[3] = 0x8c;
++			aux_adc_gain_rev7[3] = 1;
++		}
++	} else if (pdetrange == 2) {
++		if (pi->pubpi.radioid == BCM2057_ID) {
++			if ((pi->pubpi.radiorev == 5)
++			    || (pi->pubpi.radiorev == 7)
++			    || (pi->pubpi.radiorev == 8)) {
++				if (chan_freq_range ==
++				    WL_CHAN_FREQ_RANGE_2G) {
++					aux_adc_vmid_rev7_core0[3] = 0x8c;
++					aux_adc_vmid_rev7_core1[3] = 0x8c;
++					aux_adc_gain_rev7[3] = 0;
++				} else {
++					aux_adc_vmid_rev7_core0[3] = 0x96;
++					aux_adc_vmid_rev7_core1[3] = 0x96;
++					aux_adc_gain_rev7[3] = 0;
++				}
+ 			}
+ 		}
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4, 0x08, 16,
+-					 &aux_adc_vmid_rev7_core0);
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4, 0x18, 16,
+-					 &aux_adc_vmid_rev7_core1);
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4, 0x0c, 16,
+-					 &aux_adc_gain_rev7);
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4, 0x1c, 16,
+-					 &aux_adc_gain_rev7);
++	} else if (pdetrange == 3) {
++		if (chan_freq_range == WL_CHAN_FREQ_RANGE_2G) {
++			aux_adc_vmid_rev7_core0[3] = 0x89;
++			aux_adc_vmid_rev7_core1[3] = 0x89;
++			aux_adc_gain_rev7[3] = 0;
++		}
+ 
+-	} else if (NREV_GE(pi->pubpi.phy_rev, 3)) {
++	} else if (pdetrange == 5) {
+ 
+-		write_phy_reg(pi, 0x23f, 0x1f8);
+-		write_phy_reg(pi, 0x240, 0x1f8);
+-
+-		wlc_phy_table_read_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
+-					1, 0, 32, &leg_data_weights);
+-		leg_data_weights = leg_data_weights & 0xffffff;
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
+-					 1, 0, 32, &leg_data_weights);
+-
+-		alpha0 = 293;
+-		alpha1 = 435;
+-		alpha2 = 261;
+-		beta0 = 366;
+-		beta1 = 205;
+-		beta2 = 32;
+-		write_phy_reg(pi, 0x145, alpha0);
+-		write_phy_reg(pi, 0x146, alpha1);
+-		write_phy_reg(pi, 0x147, alpha2);
+-		write_phy_reg(pi, 0x148, beta0);
+-		write_phy_reg(pi, 0x149, beta1);
+-		write_phy_reg(pi, 0x14a, beta2);
+-
+-		write_phy_reg(pi, 0x38, 0xC);
+-		write_phy_reg(pi, 0x2ae, 0xC);
+-
+-		wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_TX2RX,
+-				       rfseq_tx2rx_events_rev3,
+-				       rfseq_tx2rx_dlys_rev3,
+-				       ARRAY_SIZE(rfseq_tx2rx_events_rev3));
+-
+-		if (PHY_IPA(pi))
+-			wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_RX2TX,
+-					       rfseq_rx2tx_events_rev3_ipa,
+-					       rfseq_rx2tx_dlys_rev3_ipa,
+-					       ARRAY_SIZE(rfseq_rx2tx_events_rev3_ipa));
+-
+-		if ((pi->sh->hw_phyrxchain != 0x3) &&
+-		    (pi->sh->hw_phyrxchain != pi->sh->hw_phytxchain)) {
++		if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
++			aux_adc_vmid_rev7_core0[3] = 0x80;
++			aux_adc_vmid_rev7_core1[3] = 0x80;
++			aux_adc_gain_rev7[3] = 3;
++		} else {
++			aux_adc_vmid_rev7_core0[3] = 0x70;
++			aux_adc_vmid_rev7_core1[3] = 0x70;
++			aux_adc_gain_rev7[3] = 2;
++		}
++	}
+ 
+-			if (PHY_IPA(pi)) {
+-				rfseq_rx2tx_dlys_rev3[5] = 59;
+-				rfseq_rx2tx_dlys_rev3[6] = 1;
+-				rfseq_rx2tx_events_rev3[7] =
+-					NPHY_REV3_RFSEQ_CMD_END;
+-			}
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4, 0x08, 16,
++				 &aux_adc_vmid_rev7_core0);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4, 0x18, 16,
++				 &aux_adc_vmid_rev7_core1);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4, 0x0c, 16,
++				 &aux_adc_gain_rev7);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4, 0x1c, 16,
++				 &aux_adc_gain_rev7);
++}
+ 
+-			wlc_phy_set_rfseq_nphy(
+-				pi, NPHY_RFSEQ_RX2TX,
+-				rfseq_rx2tx_events_rev3,
+-				rfseq_rx2tx_dlys_rev3,
+-				ARRAY_SIZE(rfseq_rx2tx_events_rev3));
+-		}
++static void wlc_phy_workarounds_nphy_rev3(struct brcms_phy *pi)
++{
++	static const u8 rfseq_tx2rx_events_rev3[] = {
++		NPHY_REV3_RFSEQ_CMD_EXT_PA,
++		NPHY_REV3_RFSEQ_CMD_INT_PA_PU,
++		NPHY_REV3_RFSEQ_CMD_TX_GAIN,
++		NPHY_REV3_RFSEQ_CMD_RXPD_TXPD,
++		NPHY_REV3_RFSEQ_CMD_TR_SWITCH,
++		NPHY_REV3_RFSEQ_CMD_RXG_FBW,
++		NPHY_REV3_RFSEQ_CMD_CLR_HIQ_DIS,
++		NPHY_REV3_RFSEQ_CMD_END
++	};
++	static const u8 rfseq_tx2rx_dlys_rev3[] = { 8, 4, 2, 2, 4, 4, 6, 1 };
++	u8 rfseq_rx2tx_events_rev3[] = {
++		NPHY_REV3_RFSEQ_CMD_NOP,
++		NPHY_REV3_RFSEQ_CMD_RXG_FBW,
++		NPHY_REV3_RFSEQ_CMD_TR_SWITCH,
++		NPHY_REV3_RFSEQ_CMD_CLR_HIQ_DIS,
++		NPHY_REV3_RFSEQ_CMD_RXPD_TXPD,
++		NPHY_REV3_RFSEQ_CMD_TX_GAIN,
++		NPHY_REV3_RFSEQ_CMD_INT_PA_PU,
++		NPHY_REV3_RFSEQ_CMD_EXT_PA,
++		NPHY_REV3_RFSEQ_CMD_END
++	};
++	u8 rfseq_rx2tx_dlys_rev3[] = { 8, 6, 6, 4, 4, 18, 42, 1, 1 };
++	static const u8 rfseq_rx2tx_events_rev3_ipa[] = {
++		NPHY_REV3_RFSEQ_CMD_NOP,
++		NPHY_REV3_RFSEQ_CMD_RXG_FBW,
++		NPHY_REV3_RFSEQ_CMD_TR_SWITCH,
++		NPHY_REV3_RFSEQ_CMD_CLR_HIQ_DIS,
++		NPHY_REV3_RFSEQ_CMD_RXPD_TXPD,
++		NPHY_REV3_RFSEQ_CMD_TX_GAIN,
++		NPHY_REV3_RFSEQ_CMD_CLR_RXRX_BIAS,
++		NPHY_REV3_RFSEQ_CMD_INT_PA_PU,
++		NPHY_REV3_RFSEQ_CMD_END
++	};
++	static const u8 rfseq_rx2tx_dlys_rev3_ipa[] =
++	    { 8, 6, 6, 4, 4, 16, 43, 1, 1 };
++	s16 alpha0, alpha1, alpha2;
++	s16 beta0, beta1, beta2;
++	u32 leg_data_weights, ht_data_weights, nss1_data_weights,
++	    stbc_data_weights;
++	u8 chan_freq_range = 0;
++	static const u16 dac_control = 0x0002;
++	u16 aux_adc_vmid_rev4[] = { 0xa2, 0xb4, 0xb4, 0x89 };
++	u16 aux_adc_vmid_rev3[] = { 0xa2, 0xb4, 0xb4, 0x89 };
++	u16 *aux_adc_vmid;
++	u16 aux_adc_gain_rev4[] = { 0x02, 0x02, 0x02, 0x00 };
++	u16 aux_adc_gain_rev3[] = { 0x02, 0x02, 0x02, 0x00 };
++	u16 *aux_adc_gain;
++	static const u16 sk_adc_vmid[] = { 0xb4, 0xb4, 0xb4, 0x24 };
++	static const u16 sk_adc_gain[] = { 0x02, 0x02, 0x02, 0x02 };
++	s32 min_nvar_val = 0x18d;
++	u8 pdetrange;
++	u8 triso;
+ 
+-		if (CHSPEC_IS2G(pi->radio_chanspec))
+-			write_phy_reg(pi, 0x6a, 0x2);
+-		else
+-			write_phy_reg(pi, 0x6a, 0x9c40);
++	write_phy_reg(pi, 0x23f, 0x1f8);
++	write_phy_reg(pi, 0x240, 0x1f8);
++
++	wlc_phy_table_read_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
++				1, 0, 32, &leg_data_weights);
++	leg_data_weights = leg_data_weights & 0xffffff;
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
++				 1, 0, 32, &leg_data_weights);
++
++	alpha0 = 293;
++	alpha1 = 435;
++	alpha2 = 261;
++	beta0 = 366;
++	beta1 = 205;
++	beta2 = 32;
++	write_phy_reg(pi, 0x145, alpha0);
++	write_phy_reg(pi, 0x146, alpha1);
++	write_phy_reg(pi, 0x147, alpha2);
++	write_phy_reg(pi, 0x148, beta0);
++	write_phy_reg(pi, 0x149, beta1);
++	write_phy_reg(pi, 0x14a, beta2);
++
++	write_phy_reg(pi, 0x38, 0xC);
++	write_phy_reg(pi, 0x2ae, 0xC);
++
++	wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_TX2RX,
++			       rfseq_tx2rx_events_rev3,
++			       rfseq_tx2rx_dlys_rev3,
++			       ARRAY_SIZE(rfseq_tx2rx_events_rev3));
+ 
+-		mod_phy_reg(pi, 0x294, (0xf << 8), (7 << 8));
++	if (PHY_IPA(pi))
++		wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_RX2TX,
++				       rfseq_rx2tx_events_rev3_ipa,
++				       rfseq_rx2tx_dlys_rev3_ipa,
++				       ARRAY_SIZE (rfseq_rx2tx_events_rev3_ipa));
+ 
+-		if (CHSPEC_IS40(pi->radio_chanspec) == 0) {
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 3,
+-						 32, &min_nvar_val);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1,
+-						 127, 32, &min_nvar_val);
+-		} else {
+-			min_nvar_val = noise_var_tbl_rev3[3];
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 3,
+-						 32, &min_nvar_val);
++	if ((pi->sh->hw_phyrxchain != 0x3) &&
++	    (pi->sh->hw_phyrxchain != pi->sh->hw_phytxchain)) {
+ 
+-			min_nvar_val = noise_var_tbl_rev3[127];
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1,
+-						 127, 32, &min_nvar_val);
++		if (PHY_IPA(pi)) {
++			rfseq_rx2tx_dlys_rev3[5] = 59;
++			rfseq_rx2tx_dlys_rev3[6] = 1;
++			rfseq_rx2tx_events_rev3[7] = NPHY_REV3_RFSEQ_CMD_END;
+ 		}
+ 
+-		wlc_phy_workarounds_nphy_gainctrl(pi);
++		wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_RX2TX,
++				       rfseq_rx2tx_events_rev3,
++				       rfseq_rx2tx_dlys_rev3,
++				       ARRAY_SIZE (rfseq_rx2tx_events_rev3));
++	}
+ 
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x00, 16,
+-					 &dac_control);
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x10, 16,
+-					 &dac_control);
++	if (CHSPEC_IS2G(pi->radio_chanspec))
++		write_phy_reg(pi, 0x6a, 0x2);
++	else
++		write_phy_reg(pi, 0x6a, 0x9c40);
+ 
+-		pdetrange =
+-			(CHSPEC_IS5G(pi->radio_chanspec)) ? pi->srom_fem5g.
+-			pdetrange : pi->srom_fem2g.pdetrange;
++	mod_phy_reg(pi, 0x294, (0xf << 8), (7 << 8));
+ 
+-		if (pdetrange == 0) {
+-			if (NREV_GE(pi->pubpi.phy_rev, 4)) {
+-				aux_adc_vmid = aux_adc_vmid_rev4;
+-				aux_adc_gain = aux_adc_gain_rev4;
+-			} else {
+-				aux_adc_vmid = aux_adc_vmid_rev3;
+-				aux_adc_gain = aux_adc_gain_rev3;
+-			}
+-			chan_freq_range =
+-				wlc_phy_get_chan_freq_range_nphy(pi, 0);
+-			if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
+-				switch (chan_freq_range) {
+-				case WL_CHAN_FREQ_RANGE_5GL:
+-					aux_adc_vmid[3] = 0x89;
+-					aux_adc_gain[3] = 0;
+-					break;
+-				case WL_CHAN_FREQ_RANGE_5GM:
+-					aux_adc_vmid[3] = 0x89;
+-					aux_adc_gain[3] = 0;
+-					break;
+-				case WL_CHAN_FREQ_RANGE_5GH:
+-					aux_adc_vmid[3] = 0x89;
+-					aux_adc_gain[3] = 0;
+-					break;
+-				default:
+-					break;
+-				}
+-			}
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x08, 16, aux_adc_vmid);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x18, 16, aux_adc_vmid);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x0c, 16, aux_adc_gain);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x1c, 16, aux_adc_gain);
+-		} else if (pdetrange == 1) {
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x08, 16, sk_adc_vmid);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x18, 16, sk_adc_vmid);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x0c, 16, sk_adc_gain);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x1c, 16, sk_adc_gain);
+-		} else if (pdetrange == 2) {
++	if (CHSPEC_IS40(pi->radio_chanspec) == 0) {
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 3,
++					 32, &min_nvar_val);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1,
++					 127, 32, &min_nvar_val);
++	} else {
++		min_nvar_val = noise_var_tbl_rev3[3];
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1, 3,
++					 32, &min_nvar_val);
+ 
+-			u16 bcm_adc_vmid[] = { 0xa2, 0xb4, 0xb4, 0x74 };
+-			u16 bcm_adc_gain[] = { 0x02, 0x02, 0x02, 0x04 };
++		min_nvar_val = noise_var_tbl_rev3[127];
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_NOISEVAR, 1,
++					 127, 32, &min_nvar_val);
++	}
+ 
+-			if (NREV_GE(pi->pubpi.phy_rev, 6)) {
+-				chan_freq_range =
+-					wlc_phy_get_chan_freq_range_nphy(pi, 0);
+-				if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
+-					bcm_adc_vmid[3] = 0x8e;
+-					bcm_adc_gain[3] = 0x03;
+-				} else {
+-					bcm_adc_vmid[3] = 0x94;
+-					bcm_adc_gain[3] = 0x03;
+-				}
+-			} else if (NREV_IS(pi->pubpi.phy_rev, 5)) {
+-				bcm_adc_vmid[3] = 0x84;
+-				bcm_adc_gain[3] = 0x02;
+-			}
++	wlc_phy_workarounds_nphy_gainctrl(pi);
+ 
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x08, 16, bcm_adc_vmid);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x18, 16, bcm_adc_vmid);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x0c, 16, bcm_adc_gain);
+-			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x1c, 16, bcm_adc_gain);
+-		} else if (pdetrange == 3) {
+-			chan_freq_range =
+-				wlc_phy_get_chan_freq_range_nphy(pi, 0);
+-			if ((NREV_GE(pi->pubpi.phy_rev, 4))
+-			    && (chan_freq_range == WL_CHAN_FREQ_RANGE_2G)) {
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x00, 16,
++				 &dac_control);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 1, 0x10, 16,
++				 &dac_control);
+ 
+-				u16 auxadc_vmid[] = {
+-					0xa2, 0xb4, 0xb4, 0x270
+-				};
+-				u16 auxadc_gain[] = {
+-					0x02, 0x02, 0x02, 0x00
+-				};
++	pdetrange = (CHSPEC_IS5G(pi->radio_chanspec)) ?
++			pi->srom_fem5g.pdetrange : pi->srom_fem2g.pdetrange;
+ 
+-				wlc_phy_table_write_nphy(pi,
+-							 NPHY_TBL_ID_AFECTRL, 4,
+-							 0x08, 16, auxadc_vmid);
+-				wlc_phy_table_write_nphy(pi,
+-							 NPHY_TBL_ID_AFECTRL, 4,
+-							 0x18, 16, auxadc_vmid);
+-				wlc_phy_table_write_nphy(pi,
+-							 NPHY_TBL_ID_AFECTRL, 4,
+-							 0x0c, 16, auxadc_gain);
+-				wlc_phy_table_write_nphy(pi,
+-							 NPHY_TBL_ID_AFECTRL, 4,
+-							 0x1c, 16, auxadc_gain);
++	if (pdetrange == 0) {
++		if (NREV_GE(pi->pubpi.phy_rev, 4)) {
++			aux_adc_vmid = aux_adc_vmid_rev4;
++			aux_adc_gain = aux_adc_gain_rev4;
++		} else {
++			aux_adc_vmid = aux_adc_vmid_rev3;
++			aux_adc_gain = aux_adc_gain_rev3;
++		}
++		chan_freq_range = wlc_phy_get_chan_freq_range_nphy(pi, 0);
++		if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
++			switch (chan_freq_range) {
++			case WL_CHAN_FREQ_RANGE_5GL:
++				aux_adc_vmid[3] = 0x89;
++				aux_adc_gain[3] = 0;
++				break;
++			case WL_CHAN_FREQ_RANGE_5GM:
++				aux_adc_vmid[3] = 0x89;
++				aux_adc_gain[3] = 0;
++				break;
++			case WL_CHAN_FREQ_RANGE_5GH:
++				aux_adc_vmid[3] = 0x89;
++				aux_adc_gain[3] = 0;
++				break;
++			default:
++				break;
+ 			}
+-		} else if ((pdetrange == 4) || (pdetrange == 5)) {
+-			u16 bcm_adc_vmid[] = { 0xa2, 0xb4, 0xb4, 0x0 };
+-			u16 bcm_adc_gain[] = { 0x02, 0x02, 0x02, 0x0 };
+-			u16 Vmid[2], Av[2];
++		}
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x08, 16, aux_adc_vmid);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x18, 16, aux_adc_vmid);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x0c, 16, aux_adc_gain);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x1c, 16, aux_adc_gain);
++	} else if (pdetrange == 1) {
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x08, 16, sk_adc_vmid);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x18, 16, sk_adc_vmid);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x0c, 16, sk_adc_gain);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x1c, 16, sk_adc_gain);
++	} else if (pdetrange == 2) {
++
++		u16 bcm_adc_vmid[] = { 0xa2, 0xb4, 0xb4, 0x74 };
++		u16 bcm_adc_gain[] = { 0x02, 0x02, 0x02, 0x04 };
+ 
++		if (NREV_GE(pi->pubpi.phy_rev, 6)) {
+ 			chan_freq_range =
+-				wlc_phy_get_chan_freq_range_nphy(pi, 0);
++			    wlc_phy_get_chan_freq_range_nphy(pi, 0);
+ 			if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
+-				Vmid[0] = (pdetrange == 4) ? 0x8e : 0x89;
+-				Vmid[1] = (pdetrange == 4) ? 0x96 : 0x89;
+-				Av[0] = (pdetrange == 4) ? 2 : 0;
+-				Av[1] = (pdetrange == 4) ? 2 : 0;
++				bcm_adc_vmid[3] = 0x8e;
++				bcm_adc_gain[3] = 0x03;
+ 			} else {
+-				Vmid[0] = (pdetrange == 4) ? 0x89 : 0x74;
+-				Vmid[1] = (pdetrange == 4) ? 0x8b : 0x70;
+-				Av[0] = (pdetrange == 4) ? 2 : 0;
+-				Av[1] = (pdetrange == 4) ? 2 : 0;
++				bcm_adc_vmid[3] = 0x94;
++				bcm_adc_gain[3] = 0x03;
+ 			}
++		} else if (NREV_IS(pi->pubpi.phy_rev, 5)) {
++			bcm_adc_vmid[3] = 0x84;
++			bcm_adc_gain[3] = 0x02;
++		}
++
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x08, 16, bcm_adc_vmid);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x18, 16, bcm_adc_vmid);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x0c, 16, bcm_adc_gain);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x1c, 16, bcm_adc_gain);
++	} else if (pdetrange == 3) {
++		chan_freq_range = wlc_phy_get_chan_freq_range_nphy(pi, 0);
++		if ((NREV_GE(pi->pubpi.phy_rev, 4)) &&
++		    (chan_freq_range == WL_CHAN_FREQ_RANGE_2G)) {
++			u16 auxadc_vmid[] = { 0xa2, 0xb4, 0xb4, 0x270 };
++			u16 auxadc_gain[] = { 0x02, 0x02, 0x02, 0x00 };
+ 
+-			bcm_adc_vmid[3] = Vmid[0];
+-			bcm_adc_gain[3] = Av[0];
+ 			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x08, 16, bcm_adc_vmid);
++						 0x08, 16, auxadc_vmid);
+ 			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x0c, 16, bcm_adc_gain);
+-
+-			bcm_adc_vmid[3] = Vmid[1];
+-			bcm_adc_gain[3] = Av[1];
++						 0x18, 16, auxadc_vmid);
+ 			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x18, 16, bcm_adc_vmid);
++						 0x0c, 16, auxadc_gain);
+ 			wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
+-						 0x1c, 16, bcm_adc_gain);
++						 0x1c, 16, auxadc_gain);
+ 		}
++	} else if ((pdetrange == 4) || (pdetrange == 5)) {
++		u16 bcm_adc_vmid[] = { 0xa2, 0xb4, 0xb4, 0x0 };
++		u16 bcm_adc_gain[] = { 0x02, 0x02, 0x02, 0x0 };
++		u16 Vmid[2], Av[2];
+ 
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_MAST_BIAS | RADIO_2056_RX0),
+-				0x0);
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_MAST_BIAS | RADIO_2056_RX1),
+-				0x0);
++		chan_freq_range = wlc_phy_get_chan_freq_range_nphy(pi, 0);
++		if (chan_freq_range != WL_CHAN_FREQ_RANGE_2G) {
++			Vmid[0] = (pdetrange == 4) ? 0x8e : 0x89;
++			Vmid[1] = (pdetrange == 4) ? 0x96 : 0x89;
++			Av[0] = (pdetrange == 4) ? 2 : 0;
++			Av[1] = (pdetrange == 4) ? 2 : 0;
++		} else {
++			Vmid[0] = (pdetrange == 4) ? 0x89 : 0x74;
++			Vmid[1] = (pdetrange == 4) ? 0x8b : 0x70;
++			Av[0] = (pdetrange == 4) ? 2 : 0;
++			Av[1] = (pdetrange == 4) ? 2 : 0;
++		}
+ 
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_BIAS_MAIN | RADIO_2056_RX0),
+-				0x6);
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_BIAS_MAIN | RADIO_2056_RX1),
+-				0x6);
++		bcm_adc_vmid[3] = Vmid[0];
++		bcm_adc_gain[3] = Av[0];
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x08, 16, bcm_adc_vmid);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x0c, 16, bcm_adc_gain);
++
++		bcm_adc_vmid[3] = Vmid[1];
++		bcm_adc_gain[3] = Av[1];
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x18, 16, bcm_adc_vmid);
++		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_AFECTRL, 4,
++					 0x1c, 16, bcm_adc_gain);
++	}
+ 
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_BIAS_AUX | RADIO_2056_RX0),
+-				0x7);
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_BIAS_AUX | RADIO_2056_RX1),
+-				0x7);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_MAST_BIAS | RADIO_2056_RX0), 0x0);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_MAST_BIAS | RADIO_2056_RX1), 0x0);
+ 
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_LOB_BIAS | RADIO_2056_RX0),
+-				0x88);
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_LOB_BIAS | RADIO_2056_RX1),
+-				0x88);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_BIAS_MAIN | RADIO_2056_RX0), 0x6);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_BIAS_MAIN | RADIO_2056_RX1), 0x6);
+ 
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_CMFB_IDAC | RADIO_2056_RX0),
+-				0x0);
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXA_CMFB_IDAC | RADIO_2056_RX1),
+-				0x0);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_BIAS_AUX | RADIO_2056_RX0), 0x7);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_BIAS_AUX | RADIO_2056_RX1), 0x7);
+ 
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXG_CMFB_IDAC | RADIO_2056_RX0),
+-				0x0);
+-		write_radio_reg(pi,
+-				(RADIO_2056_RX_MIXG_CMFB_IDAC | RADIO_2056_RX1),
+-				0x0);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_LOB_BIAS | RADIO_2056_RX0), 0x88);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_LOB_BIAS | RADIO_2056_RX1), 0x88);
+ 
+-		triso =
+-			(CHSPEC_IS5G(pi->radio_chanspec)) ? pi->srom_fem5g.
+-			triso : pi->srom_fem2g.triso;
+-		if (triso == 7) {
+-			wlc_phy_war_force_trsw_to_R_cliplo_nphy(pi, PHY_CORE_0);
+-			wlc_phy_war_force_trsw_to_R_cliplo_nphy(pi, PHY_CORE_1);
+-		}
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_CMFB_IDAC | RADIO_2056_RX0), 0x0);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXA_CMFB_IDAC | RADIO_2056_RX1), 0x0);
+ 
+-		wlc_phy_war_txchain_upd_nphy(pi, pi->sh->hw_phytxchain);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXG_CMFB_IDAC | RADIO_2056_RX0), 0x0);
++	write_radio_reg(pi, (RADIO_2056_RX_MIXG_CMFB_IDAC | RADIO_2056_RX1), 0x0);
+ 
+-		if (((pi->sh->boardflags2 & BFL2_APLL_WAR) &&
+-		     (CHSPEC_IS5G(pi->radio_chanspec))) ||
+-		    (((pi->sh->boardflags2 & BFL2_GPLL_WAR) ||
+-		      (pi->sh->boardflags2 & BFL2_GPLL_WAR2)) &&
+-		     (CHSPEC_IS2G(pi->radio_chanspec)))) {
+-			nss1_data_weights = 0x00088888;
+-			ht_data_weights = 0x00088888;
+-			stbc_data_weights = 0x00088888;
+-		} else {
+-			nss1_data_weights = 0x88888888;
+-			ht_data_weights = 0x88888888;
+-			stbc_data_weights = 0x88888888;
+-		}
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
+-					 1, 1, 32, &nss1_data_weights);
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
+-					 1, 2, 32, &ht_data_weights);
+-		wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
+-					 1, 3, 32, &stbc_data_weights);
+-
+-		if (NREV_IS(pi->pubpi.phy_rev, 4)) {
+-			if (CHSPEC_IS5G(pi->radio_chanspec)) {
+-				write_radio_reg(pi,
+-						RADIO_2056_TX_GMBB_IDAC |
+-						RADIO_2056_TX0, 0x70);
+-				write_radio_reg(pi,
+-						RADIO_2056_TX_GMBB_IDAC |
+-						RADIO_2056_TX1, 0x70);
+-			}
+-		}
++	triso = (CHSPEC_IS5G(pi->radio_chanspec)) ?
++		 pi->srom_fem5g.triso : pi->srom_fem2g.triso;
++	if (triso == 7) {
++		wlc_phy_war_force_trsw_to_R_cliplo_nphy(pi, PHY_CORE_0);
++		wlc_phy_war_force_trsw_to_R_cliplo_nphy(pi, PHY_CORE_1);
++	}
++
++	wlc_phy_war_txchain_upd_nphy(pi, pi->sh->hw_phytxchain);
+ 
+-		if (!pi->edcrs_threshold_lock) {
+-			write_phy_reg(pi, 0x224, 0x3eb);
+-			write_phy_reg(pi, 0x225, 0x3eb);
+-			write_phy_reg(pi, 0x226, 0x341);
+-			write_phy_reg(pi, 0x227, 0x341);
+-			write_phy_reg(pi, 0x228, 0x42b);
+-			write_phy_reg(pi, 0x229, 0x42b);
+-			write_phy_reg(pi, 0x22a, 0x381);
+-			write_phy_reg(pi, 0x22b, 0x381);
+-			write_phy_reg(pi, 0x22c, 0x42b);
+-			write_phy_reg(pi, 0x22d, 0x42b);
+-			write_phy_reg(pi, 0x22e, 0x381);
+-			write_phy_reg(pi, 0x22f, 0x381);
++	if (((pi->sh->boardflags2 & BFL2_APLL_WAR) &&
++	     (CHSPEC_IS5G(pi->radio_chanspec))) ||
++	    (((pi->sh->boardflags2 & BFL2_GPLL_WAR) ||
++	      (pi->sh->boardflags2 & BFL2_GPLL_WAR2)) &&
++	     (CHSPEC_IS2G(pi->radio_chanspec)))) {
++		nss1_data_weights = 0x00088888;
++		ht_data_weights = 0x00088888;
++		stbc_data_weights = 0x00088888;
++	} else {
++		nss1_data_weights = 0x88888888;
++		ht_data_weights = 0x88888888;
++		stbc_data_weights = 0x88888888;
++	}
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
++				 1, 1, 32, &nss1_data_weights);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
++				 1, 2, 32, &ht_data_weights);
++	wlc_phy_table_write_nphy(pi, NPHY_TBL_ID_CMPMETRICDATAWEIGHTTBL,
++				 1, 3, 32, &stbc_data_weights);
++
++	if (NREV_IS(pi->pubpi.phy_rev, 4)) {
++		if (CHSPEC_IS5G(pi->radio_chanspec)) {
++			write_radio_reg(pi,
++					RADIO_2056_TX_GMBB_IDAC |
++					RADIO_2056_TX0, 0x70);
++			write_radio_reg(pi,
++					RADIO_2056_TX_GMBB_IDAC |
++					RADIO_2056_TX1, 0x70);
+ 		}
++	}
+ 
+-		if (NREV_GE(pi->pubpi.phy_rev, 6)) {
++	if (!pi->edcrs_threshold_lock) {
++		write_phy_reg(pi, 0x224, 0x3eb);
++		write_phy_reg(pi, 0x225, 0x3eb);
++		write_phy_reg(pi, 0x226, 0x341);
++		write_phy_reg(pi, 0x227, 0x341);
++		write_phy_reg(pi, 0x228, 0x42b);
++		write_phy_reg(pi, 0x229, 0x42b);
++		write_phy_reg(pi, 0x22a, 0x381);
++		write_phy_reg(pi, 0x22b, 0x381);
++		write_phy_reg(pi, 0x22c, 0x42b);
++		write_phy_reg(pi, 0x22d, 0x42b);
++		write_phy_reg(pi, 0x22e, 0x381);
++		write_phy_reg(pi, 0x22f, 0x381);
++	}
+ 
+-			if (pi->sh->boardflags2 & BFL2_SINGLEANT_CCK)
+-				wlapi_bmac_mhf(pi->sh->physhim, MHF4,
+-					      MHF4_BPHY_TXCORE0,
+-					      MHF4_BPHY_TXCORE0, BRCM_BAND_ALL);
+-		}
+-	} else {
++	if (NREV_GE(pi->pubpi.phy_rev, 6)) {
+ 
+-		if (pi->sh->boardflags2 & BFL2_SKWRKFEM_BRD ||
+-		    (pi->sh->boardtype == 0x8b)) {
+-			uint i;
+-			u8 war_dlys[] = { 1, 6, 6, 2, 4, 20, 1 };
+-			for (i = 0; i < ARRAY_SIZE(rfseq_rx2tx_dlys); i++)
+-				rfseq_rx2tx_dlys[i] = war_dlys[i];
+-		}
++		if (pi->sh->boardflags2 & BFL2_SINGLEANT_CCK)
++			wlapi_bmac_mhf(pi->sh->physhim, MHF4,
++				       MHF4_BPHY_TXCORE0,
++				       MHF4_BPHY_TXCORE0, BRCM_BAND_ALL);
++	}
++}
+ 
+-		if (CHSPEC_IS5G(pi->radio_chanspec) && pi->phy_5g_pwrgain) {
+-			and_radio_reg(pi, RADIO_2055_CORE1_TX_RF_SPARE, 0xf7);
+-			and_radio_reg(pi, RADIO_2055_CORE2_TX_RF_SPARE, 0xf7);
+-		} else {
+-			or_radio_reg(pi, RADIO_2055_CORE1_TX_RF_SPARE, 0x8);
+-			or_radio_reg(pi, RADIO_2055_CORE2_TX_RF_SPARE, 0x8);
+-		}
++void wlc_phy_workarounds_nphy_rev1(struct brcms_phy *pi)
++{
++	static const u8 rfseq_rx2tx_events[] = {
++		NPHY_RFSEQ_CMD_NOP,
++		NPHY_RFSEQ_CMD_RXG_FBW,
++		NPHY_RFSEQ_CMD_TR_SWITCH,
++		NPHY_RFSEQ_CMD_CLR_HIQ_DIS,
++		NPHY_RFSEQ_CMD_RXPD_TXPD,
++		NPHY_RFSEQ_CMD_TX_GAIN,
++		NPHY_RFSEQ_CMD_EXT_PA
++	};
++	u8 rfseq_rx2tx_dlys[] = { 8, 6, 6, 2, 4, 60, 1 };
++	static const u8 rfseq_tx2rx_events[] = {
++		NPHY_RFSEQ_CMD_NOP,
++		NPHY_RFSEQ_CMD_EXT_PA,
++		NPHY_RFSEQ_CMD_TX_GAIN,
++		NPHY_RFSEQ_CMD_RXPD_TXPD,
++		NPHY_RFSEQ_CMD_TR_SWITCH,
++		NPHY_RFSEQ_CMD_RXG_FBW,
++		NPHY_RFSEQ_CMD_CLR_HIQ_DIS
++	};
++	static const u8 rfseq_tx2rx_dlys[] = { 8, 6, 2, 4, 4, 6, 1 };
++	s16 alpha0, alpha1, alpha2;
++	s16 beta0, beta1, beta2;
++	u16 regval;
+ 
+-		regval = 0x000a;
+-		wlc_phy_table_write_nphy(pi, 8, 1, 0, 16, &regval);
+-		wlc_phy_table_write_nphy(pi, 8, 1, 0x10, 16, &regval);
++	if (pi->sh->boardflags2 & BFL2_SKWRKFEM_BRD ||
++	    (pi->sh->boardtype == 0x8b)) {
++		uint i;
++		u8 war_dlys[] = { 1, 6, 6, 2, 4, 20, 1 };
++		for (i = 0; i < ARRAY_SIZE(rfseq_rx2tx_dlys); i++)
++			rfseq_rx2tx_dlys[i] = war_dlys[i];
++	}
+ 
+-		if (NREV_LT(pi->pubpi.phy_rev, 3)) {
+-			regval = 0xcdaa;
+-			wlc_phy_table_write_nphy(pi, 8, 1, 0x02, 16, &regval);
+-			wlc_phy_table_write_nphy(pi, 8, 1, 0x12, 16, &regval);
+-		}
++	if (CHSPEC_IS5G(pi->radio_chanspec) && pi->phy_5g_pwrgain) {
++		and_radio_reg(pi, RADIO_2055_CORE1_TX_RF_SPARE, 0xf7);
++		and_radio_reg(pi, RADIO_2055_CORE2_TX_RF_SPARE, 0xf7);
++	} else {
++		or_radio_reg(pi, RADIO_2055_CORE1_TX_RF_SPARE, 0x8);
++		or_radio_reg(pi, RADIO_2055_CORE2_TX_RF_SPARE, 0x8);
++	}
+ 
+-		if (NREV_LT(pi->pubpi.phy_rev, 2)) {
+-			regval = 0x0000;
+-			wlc_phy_table_write_nphy(pi, 8, 1, 0x08, 16, &regval);
+-			wlc_phy_table_write_nphy(pi, 8, 1, 0x18, 16, &regval);
++	regval = 0x000a;
++	wlc_phy_table_write_nphy(pi, 8, 1, 0, 16, &regval);
++	wlc_phy_table_write_nphy(pi, 8, 1, 0x10, 16, &regval);
+ 
+-			regval = 0x7aab;
+-			wlc_phy_table_write_nphy(pi, 8, 1, 0x07, 16, &regval);
+-			wlc_phy_table_write_nphy(pi, 8, 1, 0x17, 16, &regval);
++	if (NREV_LT(pi->pubpi.phy_rev, 3)) {
++		regval = 0xcdaa;
++		wlc_phy_table_write_nphy(pi, 8, 1, 0x02, 16, &regval);
++		wlc_phy_table_write_nphy(pi, 8, 1, 0x12, 16, &regval);
++	}
+ 
+-			regval = 0x0800;
+-			wlc_phy_table_write_nphy(pi, 8, 1, 0x06, 16, &regval);
+-			wlc_phy_table_write_nphy(pi, 8, 1, 0x16, 16, &regval);
+-		}
++	if (NREV_LT(pi->pubpi.phy_rev, 2)) {
++		regval = 0x0000;
++		wlc_phy_table_write_nphy(pi, 8, 1, 0x08, 16, &regval);
++		wlc_phy_table_write_nphy(pi, 8, 1, 0x18, 16, &regval);
+ 
+-		write_phy_reg(pi, 0xf8, 0x02d8);
+-		write_phy_reg(pi, 0xf9, 0x0301);
+-		write_phy_reg(pi, 0xfa, 0x02d8);
+-		write_phy_reg(pi, 0xfb, 0x0301);
++		regval = 0x7aab;
++		wlc_phy_table_write_nphy(pi, 8, 1, 0x07, 16, &regval);
++		wlc_phy_table_write_nphy(pi, 8, 1, 0x17, 16, &regval);
+ 
+-		wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_RX2TX, rfseq_rx2tx_events,
+-				       rfseq_rx2tx_dlys,
+-				       ARRAY_SIZE(rfseq_rx2tx_events));
++		regval = 0x0800;
++		wlc_phy_table_write_nphy(pi, 8, 1, 0x06, 16, &regval);
++		wlc_phy_table_write_nphy(pi, 8, 1, 0x16, 16, &regval);
++	}
+ 
+-		wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_TX2RX, rfseq_tx2rx_events,
+-				       rfseq_tx2rx_dlys,
+-				       ARRAY_SIZE(rfseq_tx2rx_events));
++	write_phy_reg(pi, 0xf8, 0x02d8);
++	write_phy_reg(pi, 0xf9, 0x0301);
++	write_phy_reg(pi, 0xfa, 0x02d8);
++	write_phy_reg(pi, 0xfb, 0x0301);
+ 
+-		wlc_phy_workarounds_nphy_gainctrl(pi);
++	wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_RX2TX, rfseq_rx2tx_events,
++			       rfseq_rx2tx_dlys,
++			       ARRAY_SIZE(rfseq_rx2tx_events));
+ 
+-		if (NREV_LT(pi->pubpi.phy_rev, 2)) {
++	wlc_phy_set_rfseq_nphy(pi, NPHY_RFSEQ_TX2RX, rfseq_tx2rx_events,
++			       rfseq_tx2rx_dlys,
++			       ARRAY_SIZE(rfseq_tx2rx_events));
+ 
+-			if (read_phy_reg(pi, 0xa0) & NPHY_MLenable)
+-				wlapi_bmac_mhf(pi->sh->physhim, MHF3,
+-					       MHF3_NPHY_MLADV_WAR,
+-					       MHF3_NPHY_MLADV_WAR,
+-					       BRCM_BAND_ALL);
++	wlc_phy_workarounds_nphy_gainctrl(pi);
+ 
+-		} else if (NREV_IS(pi->pubpi.phy_rev, 2)) {
+-			write_phy_reg(pi, 0x1e3, 0x0);
+-			write_phy_reg(pi, 0x1e4, 0x0);
+-		}
++	if (NREV_LT(pi->pubpi.phy_rev, 2)) {
+ 
+-		if (NREV_LT(pi->pubpi.phy_rev, 2))
+-			mod_phy_reg(pi, 0x90, (0x1 << 7), 0);
+-
+-		alpha0 = 293;
+-		alpha1 = 435;
+-		alpha2 = 261;
+-		beta0 = 366;
+-		beta1 = 205;
+-		beta2 = 32;
+-		write_phy_reg(pi, 0x145, alpha0);
+-		write_phy_reg(pi, 0x146, alpha1);
+-		write_phy_reg(pi, 0x147, alpha2);
+-		write_phy_reg(pi, 0x148, beta0);
+-		write_phy_reg(pi, 0x149, beta1);
+-		write_phy_reg(pi, 0x14a, beta2);
+-
+-		if (NREV_LT(pi->pubpi.phy_rev, 3)) {
+-			mod_phy_reg(pi, 0x142, (0xf << 12), 0);
+-
+-			write_phy_reg(pi, 0x192, 0xb5);
+-			write_phy_reg(pi, 0x193, 0xa4);
+-			write_phy_reg(pi, 0x194, 0x0);
+-		}
++		if (read_phy_reg(pi, 0xa0) & NPHY_MLenable)
++			wlapi_bmac_mhf(pi->sh->physhim, MHF3,
++				       MHF3_NPHY_MLADV_WAR,
++				       MHF3_NPHY_MLADV_WAR, BRCM_BAND_ALL);
+ 
+-		if (NREV_IS(pi->pubpi.phy_rev, 2))
+-			mod_phy_reg(pi, 0x221,
+-				    NPHY_FORCESIG_DECODEGATEDCLKS,
+-				    NPHY_FORCESIG_DECODEGATEDCLKS);
++	} else if (NREV_IS(pi->pubpi.phy_rev, 2)) {
++		write_phy_reg(pi, 0x1e3, 0x0);
++		write_phy_reg(pi, 0x1e4, 0x0);
++	}
++
++	if (NREV_LT(pi->pubpi.phy_rev, 2))
++		mod_phy_reg(pi, 0x90, (0x1 << 7), 0);
++
++	alpha0 = 293;
++	alpha1 = 435;
++	alpha2 = 261;
++	beta0 = 366;
++	beta1 = 205;
++	beta2 = 32;
++	write_phy_reg(pi, 0x145, alpha0);
++	write_phy_reg(pi, 0x146, alpha1);
++	write_phy_reg(pi, 0x147, alpha2);
++	write_phy_reg(pi, 0x148, beta0);
++	write_phy_reg(pi, 0x149, beta1);
++	write_phy_reg(pi, 0x14a, beta2);
++
++	if (NREV_LT(pi->pubpi.phy_rev, 3)) {
++		mod_phy_reg(pi, 0x142, (0xf << 12), 0);
++
++		write_phy_reg(pi, 0x192, 0xb5);
++		write_phy_reg(pi, 0x193, 0xa4);
++		write_phy_reg(pi, 0x194, 0x0);
+ 	}
+ 
++	if (NREV_IS(pi->pubpi.phy_rev, 2))
++		mod_phy_reg(pi, 0x221,
++			    NPHY_FORCESIG_DECODEGATEDCLKS,
++			    NPHY_FORCESIG_DECODEGATEDCLKS);
++}
++
++static void wlc_phy_workarounds_nphy(struct brcms_phy *pi)
++{
++	if (CHSPEC_IS5G(pi->radio_chanspec))
++		wlc_phy_classifier_nphy(pi, NPHY_ClassifierCtrl_cck_en, 0);
++	else
++		wlc_phy_classifier_nphy(pi, NPHY_ClassifierCtrl_cck_en, 1);
++
++	if (pi->phyhang_avoid)
++		wlc_phy_stay_in_carriersearch_nphy(pi, true);
++
++	or_phy_reg(pi, 0xb1, NPHY_IQFlip_ADC1 | NPHY_IQFlip_ADC2);
++
++	if (NREV_GE(pi->pubpi.phy_rev, 7))
++		wlc_phy_workarounds_nphy_rev7(pi);
++	else if (NREV_GE(pi->pubpi.phy_rev, 3))
++		wlc_phy_workarounds_nphy_rev3(pi);
++	else
++		wlc_phy_workarounds_nphy_rev1(pi);
++
+ 	if (pi->phyhang_avoid)
+ 		wlc_phy_stay_in_carriersearch_nphy(pi, false);
+ }
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_qmath.c b/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_qmath.c
+index b24bc57ca91b..b9672da24a9d 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_qmath.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmsmac/phy/phy_qmath.c
+@@ -213,7 +213,7 @@ static const s16 log_table[] = {
+ 	30498,
+ 	31267,
+ 	32024,
+-	32767
++	32768
+ };
+ 
+ #define LOG_TABLE_SIZE 32       /* log_table size */
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmutil/d11.c b/drivers/net/wireless/broadcom/brcm80211/brcmutil/d11.c
+index eb5db94f5745..d8b79cb72b58 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmutil/d11.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmutil/d11.c
+@@ -77,8 +77,6 @@ static u16 d11ac_bw(enum brcmu_chan_bw bw)
+ 		return BRCMU_CHSPEC_D11AC_BW_40;
+ 	case BRCMU_CHAN_BW_80:
+ 		return BRCMU_CHSPEC_D11AC_BW_80;
+-	case BRCMU_CHAN_BW_160:
+-		return BRCMU_CHSPEC_D11AC_BW_160;
+ 	default:
+ 		WARN_ON(1);
+ 	}
+@@ -192,41 +190,8 @@ static void brcmu_d11ac_decchspec(struct brcmu_chan *ch)
+ 			break;
+ 		}
+ 		break;
+-	case BRCMU_CHSPEC_D11AC_BW_160:
+-		ch->bw = BRCMU_CHAN_BW_160;
+-		ch->sb = brcmu_maskget16(ch->chspec, BRCMU_CHSPEC_D11AC_SB_MASK,
+-					 BRCMU_CHSPEC_D11AC_SB_SHIFT);
+-		switch (ch->sb) {
+-		case BRCMU_CHAN_SB_LLL:
+-			ch->control_ch_num -= CH_70MHZ_APART;
+-			break;
+-		case BRCMU_CHAN_SB_LLU:
+-			ch->control_ch_num -= CH_50MHZ_APART;
+-			break;
+-		case BRCMU_CHAN_SB_LUL:
+-			ch->control_ch_num -= CH_30MHZ_APART;
+-			break;
+-		case BRCMU_CHAN_SB_LUU:
+-			ch->control_ch_num -= CH_10MHZ_APART;
+-			break;
+-		case BRCMU_CHAN_SB_ULL:
+-			ch->control_ch_num += CH_10MHZ_APART;
+-			break;
+-		case BRCMU_CHAN_SB_ULU:
+-			ch->control_ch_num += CH_30MHZ_APART;
+-			break;
+-		case BRCMU_CHAN_SB_UUL:
+-			ch->control_ch_num += CH_50MHZ_APART;
+-			break;
+-		case BRCMU_CHAN_SB_UUU:
+-			ch->control_ch_num += CH_70MHZ_APART;
+-			break;
+-		default:
+-			WARN_ON_ONCE(1);
+-			break;
+-		}
+-		break;
+ 	case BRCMU_CHSPEC_D11AC_BW_8080:
++	case BRCMU_CHSPEC_D11AC_BW_160:
+ 	default:
+ 		WARN_ON_ONCE(1);
+ 		break;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h b/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
+index 75b2a0438cfa..7b9a77981df1 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
++++ b/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
+@@ -29,8 +29,6 @@
+ #define CH_UPPER_SB			0x01
+ #define CH_LOWER_SB			0x02
+ #define CH_EWA_VALID			0x04
+-#define CH_70MHZ_APART			14
+-#define CH_50MHZ_APART			10
+ #define CH_30MHZ_APART			6
+ #define CH_20MHZ_APART			4
+ #define CH_10MHZ_APART			2
+-- 
+2.20.1
+

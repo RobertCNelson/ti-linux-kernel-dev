@@ -516,6 +516,20 @@ backports () {
 	fi
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
+
+	backport_tag="v4.15.18"
+	subsystem="brcm80211"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 }
 
 reverts () {
@@ -632,7 +646,9 @@ drivers () {
 
 	cdir="patches/cypress/v4.14.77-2019_0503/cypress-patch"
 
-	${git} "${DIR}/${cdir}/0001-brcmfmac-add-CLM-download-support.patch"
+	echo "dir: cypress/v4.14.77-2019_0503/cypress-patch"
+
+#	${git} "${DIR}/${cdir}/0001-brcmfmac-add-CLM-download-support.patch" # v4.15.x
 	${git} "${DIR}/${cdir}/0002-brcmfmac-Set-F2-blksz-and-Watermark-to-256-for-4373.patch"
 	${git} "${DIR}/${cdir}/0003-brcmfmac-Add-sg-parameters-dts-parsing.patch"
 	${git} "${DIR}/${cdir}/0004-brcmfmac-return-EPERM-when-getting-error-in-vendor-c.patch"
@@ -640,7 +656,7 @@ drivers () {
 	${git} "${DIR}/${cdir}/0006-brcmfmac-set-apsta-to-0-when-AP-starts-on-primary-in.patch"
 	${git} "${DIR}/${cdir}/0007-brcmfmac-Saverestore-support-changes-for-43012.patch"
 	${git} "${DIR}/${cdir}/0008-brcmfmac-Support-43455-save-restore-SR-feature-if-FW.patch"
-	${git} "${DIR}/${cdir}/0009-brcmfmac-fix-CLM-load-error-for-legacy-chips-when-us.patch"
+#	${git} "${DIR}/${cdir}/0009-brcmfmac-fix-CLM-load-error-for-legacy-chips-when-us.patch" # v4.15.x
 	${git} "${DIR}/${cdir}/0010-brcmfmac-enlarge-buffer-size-of-caps-to-512-bytes.patch"
 	${git} "${DIR}/${cdir}/0011-brcmfmac-calling-skb_orphan-before-sending-skb-to-SD.patch"
 	${git} "${DIR}/${cdir}/0012-brcmfmac-43012-Update-F2-Watermark-to-0x60-to-fix-DM.patch"
@@ -662,8 +678,8 @@ drivers () {
 	${git} "${DIR}/${cdir}/0028-brcmfmac-remove-arp_hostip_clear-from-brcmf_netdev_s.patch"
 	${git} "${DIR}/${cdir}/0029-brcmfmac-fix-unused-variable-building-warning-messag.patch"
 	${git} "${DIR}/${cdir}/0030-brcmfmac-disable-command-decode-in-sdio_aos-for-4339.patch"
-	${git} "${DIR}/${cdir}/0031-Revert-brcmfmac-fix-CLM-load-error-for-legacy-chips-.patch"
-	${git} "${DIR}/${cdir}/0032-brcmfmac-fix-CLM-load-error-for-legacy-chips-when-us.patch"
+#	${git} "${DIR}/${cdir}/0031-Revert-brcmfmac-fix-CLM-load-error-for-legacy-chips-.patch" # v4.15.x
+#	${git} "${DIR}/${cdir}/0032-brcmfmac-fix-CLM-load-error-for-legacy-chips-when-us.patch" # v4.15.x
 	${git} "${DIR}/${cdir}/0033-brcmfmac-set-WIPHY_FLAG_HAVE_AP_SME-flag.patch"
 	${git} "${DIR}/${cdir}/0034-brcmfmac-P2P-CERT-6.1.9-Support-GOUT-handling-P2P-Pr.patch"
 	${git} "${DIR}/${cdir}/0035-brcmfmac-only-generate-random-p2p-address-when-neede.patch"
@@ -725,7 +741,7 @@ drivers () {
 	${git} "${DIR}/${cdir}/0091-brcmfmac-make-compatible-with-Fully-Preemptile-Kerne.patch"
 	${git} "${DIR}/${cdir}/0092-brcmfmac-remove-the-duplicate-line-of-writing-BRCMF_.patch"
 	${git} "${DIR}/${cdir}/0093-brcmfmac-43012-reloading-FAMC-driver-failure-on-BU-m.patch"
-	${git} "${DIR}/${cdir}/0094-brcmfmac-handle-FWHALT-mailbox-indication.patch"
+#	${git} "${DIR}/${cdir}/0094-brcmfmac-handle-FWHALT-mailbox-indication.patch" # v4.15.x
 	${git} "${DIR}/${cdir}/0095-brcmfmac-validate-user-provided-data-for-memdump-bef.patch"
 	${git} "${DIR}/${cdir}/0096-brcmfmac-Use-FW-priority-definition-to-initialize-WM.patch"
 	${git} "${DIR}/${cdir}/0097-brcmfmac-Fix-P2P-Group-Formation-failure-via-Go-neg-.patch"
