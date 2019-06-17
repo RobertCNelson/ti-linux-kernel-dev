@@ -517,7 +517,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
-	backport_tag="v4.18.20"
+	backport_tag="v4.19.52"
 	subsystem="brcm80211"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -532,6 +532,7 @@ backports () {
 	fi
 
 	${git} "${DIR}/patches/backports/brcm80211/0002-revert-brcmfmac-add-debugfs-entry-for-reading-firmwa.patch"
+	${git} "${DIR}/patches/backports/brcm80211/0003-revert-brcmfmac-Use-firmware_request_nowarn-for-the-.patch"
 }
 
 reverts () {
