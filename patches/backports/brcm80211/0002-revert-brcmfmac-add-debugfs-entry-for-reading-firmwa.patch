@@ -1,0 +1,221 @@
+From b47dcefa3d6618e697e149c1b905879ca6acf703 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Mon, 17 Jun 2019 17:29:35 -0500
+Subject: [PATCH 2/2] revert: brcmfmac: add debugfs entry for reading firmware
+ capabilities
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ .../broadcom/brcm80211/brcmfmac/bcmsdh.c      |  1 -
+ .../broadcom/brcm80211/brcmfmac/bus.h         |  2 --
+ .../broadcom/brcm80211/brcmfmac/common.c      |  2 ++
+ .../broadcom/brcm80211/brcmfmac/common.h      |  2 ++
+ .../broadcom/brcm80211/brcmfmac/core.c        |  8 -----
+ .../broadcom/brcm80211/brcmfmac/debug.c       |  3 +-
+ .../broadcom/brcm80211/brcmfmac/feature.c     | 36 -------------------
+ .../broadcom/brcm80211/brcmfmac/flowring.c    |  2 --
+ .../broadcom/brcm80211/brcmfmac/pcie.c        |  6 ----
+ .../broadcom/brcm80211/brcmfmac/sdio.c        |  4 +--
+ 10 files changed, 6 insertions(+), 60 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+index d2f788d88668..a1915411c280 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+@@ -1165,7 +1165,6 @@ static struct sdio_driver brcmf_sdmmc_driver = {
+ #ifdef CONFIG_PM_SLEEP
+ 		.pm = &brcmf_sdio_pm_ops,
+ #endif	/* CONFIG_PM_SLEEP */
+-		.coredump = brcmf_dev_coredump,
+ 	},
+ };
+ 
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+index c4965184cdf3..27e693e93f21 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+@@ -250,8 +250,6 @@ int brcmf_attach(struct device *dev, struct brcmf_mp_device *settings);
+ void brcmf_detach(struct device *dev);
+ /* Indication from bus module that dongle should be reset */
+ void brcmf_dev_reset(struct device *dev);
+-/* Request from bus module to initiate a coredump */
+-void brcmf_dev_coredump(struct device *dev);
+ 
+ /* Configure the "global" bus state used by upper layers */
+ void brcmf_bus_change_state(struct brcmf_bus *bus, enum brcmf_bus_state state);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index cd3651069d0c..105b8774fca9 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -36,6 +36,8 @@ MODULE_AUTHOR("Broadcom Corporation");
+ MODULE_DESCRIPTION("Broadcom 802.11 wireless LAN fullmac driver.");
+ MODULE_LICENSE("Dual BSD/GPL");
+ 
++const u8 ALLFFMAC[ETH_ALEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
++
+ #define BRCMF_DEFAULT_SCAN_CHANNEL_TIME	40
+ #define BRCMF_DEFAULT_SCAN_UNASSOC_TIME	40
+ 
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
+index a34642cb4d2f..ef914619e8e1 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
+@@ -19,6 +19,8 @@
+ #include <linux/platform_data/brcmfmac.h>
+ #include "fwil_types.h"
+ 
++extern const u8 ALLFFMAC[ETH_ALEN];
++
+ #define BRCMF_FW_ALTPATH_LEN			256
+ 
+ /* Definitions for the module global and device specific settings are defined
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+index 72954fd6df3b..8d4511eaa9b9 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -1180,14 +1180,6 @@ void brcmf_dev_reset(struct device *dev)
+ 		brcmf_fil_cmd_int_set(drvr->iflist[0], BRCMF_C_TERMINATED, 1);
+ }
+ 
+-void brcmf_dev_coredump(struct device *dev)
+-{
+-	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
+-
+-	if (brcmf_debug_create_memdump(bus_if, NULL, 0) < 0)
+-		brcmf_dbg(TRACE, "failed to create coredump\n");
+-}
+-
+ void brcmf_detach(struct device *dev)
+ {
+ 	s32 i;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.c
+index 489b5dfdf5b9..504832084eca 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.c
+@@ -40,8 +40,7 @@ int brcmf_debug_create_memdump(struct brcmf_bus *bus, const void *data,
+ 	if (!dump)
+ 		return -ENOMEM;
+ 
+-	if (data && len > 0)
+-		memcpy(dump, data, len);
++	memcpy(dump, data, len);
+ 	err = brcmf_bus_get_memdump(bus, dump + len, ramsize);
+ 	if (err) {
+ 		vfree(dump);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
+index 800a423c7bc2..876731c57bf5 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
+@@ -165,41 +165,6 @@ static void brcmf_feat_firmware_capabilities(struct brcmf_if *ifp)
+ 	}
+ }
+ 
+-/**
+- * brcmf_feat_fwcap_debugfs_read() - expose firmware capabilities to debugfs.
+- *
+- * @seq: sequence for debugfs entry.
+- * @data: raw data pointer.
+- */
+-static int brcmf_feat_fwcap_debugfs_read(struct seq_file *seq, void *data)
+-{
+-	struct brcmf_bus *bus_if = dev_get_drvdata(seq->private);
+-	struct brcmf_if *ifp = brcmf_get_ifp(bus_if->drvr, 0);
+-	char caps[MAX_CAPS_BUFFER_SIZE + 1] = { };
+-	char *tmp;
+-	int err;
+-
+-	err = brcmf_fil_iovar_data_get(ifp, "cap", caps, sizeof(caps));
+-	if (err) {
+-		brcmf_err("could not get firmware cap (%d)\n", err);
+-		return err;
+-	}
+-
+-	/* Put every capability in a new line */
+-	for (tmp = caps; *tmp; tmp++) {
+-		if (*tmp == ' ')
+-			*tmp = '\n';
+-	}
+-
+-	/* Usually there is a space at the end of capabilities string */
+-	seq_printf(seq, "%s", caps);
+-	/* So make sure we don't print two line breaks */
+-	if (tmp > caps && *(tmp - 1) != '\n')
+-		seq_printf(seq, "\n");
+-
+-	return 0;
+-}
+-
+ void brcmf_feat_attach(struct brcmf_pub *drvr)
+ {
+ 	struct brcmf_if *ifp = brcmf_get_ifp(drvr, 0);
+@@ -268,7 +233,6 @@ void brcmf_feat_attach(struct brcmf_pub *drvr)
+ void brcmf_feat_debugfs_create(struct brcmf_pub *drvr)
+ {
+ 	brcmf_debugfs_add_entry(drvr, "features", brcmf_feat_debugfs_read);
+-	brcmf_debugfs_add_entry(drvr, "fwcap", brcmf_feat_fwcap_debugfs_read);
+ }
+ 
+ bool brcmf_feat_is_enabled(struct brcmf_if *ifp, enum brcmf_feat_id id)
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/flowring.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/flowring.c
+index d0d8b32af7d0..d0b738da2458 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/flowring.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/flowring.c
+@@ -46,8 +46,6 @@ static const u8 brcmf_flowring_prio2fifo[] = {
+ 	3
+ };
+ 
+-static const u8 ALLFFMAC[ETH_ALEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+-
+ 
+ static bool
+ brcmf_flowring_is_tdls_mac(struct brcmf_flowring *flow, u8 mac[ETH_ALEN])
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+index 4fffa6988087..8e1a761d6848 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+@@ -182,7 +182,6 @@ static const struct brcmf_firmware_mapping brcmf_pcie_fwnames[] = {
+ #define BRCMF_D2H_DEV_D3_ACK			0x00000001
+ #define BRCMF_D2H_DEV_DS_ENTER_REQ		0x00000002
+ #define BRCMF_D2H_DEV_DS_EXIT_NOTE		0x00000004
+-#define BRCMF_D2H_DEV_FWHALT			0x10000000
+ 
+ #define BRCMF_H2D_HOST_D3_INFORM		0x00000001
+ #define BRCMF_H2D_HOST_DS_ACK			0x00000002
+@@ -718,10 +717,6 @@ static void brcmf_pcie_handle_mb_data(struct brcmf_pciedev_info *devinfo)
+ 		devinfo->mbdata_completed = true;
+ 		wake_up(&devinfo->mbdata_resp_wait);
+ 	}
+-	if (dtoh_mb_data & BRCMF_D2H_DEV_FWHALT) {
+-		brcmf_dbg(PCIE, "D2H_MB_DATA: FW HALT\n");
+-		brcmf_dev_coredump(&devinfo->pdev->dev);
+-	}
+ }
+ 
+ 
+@@ -2050,7 +2045,6 @@ static struct pci_driver brcmf_pciedrvr = {
+ #ifdef CONFIG_PM
+ 	.driver.pm = &brcmf_pciedrvr_pm,
+ #endif
+-	.driver.coredump = brcmf_dev_coredump,
+ };
+ 
+ 
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index a907d7b065fa..061f69da0812 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -1072,10 +1072,8 @@ static u32 brcmf_sdio_hostmail(struct brcmf_sdio *bus)
+ 	bus->sdcnt.f1regdata += 2;
+ 
+ 	/* dongle indicates the firmware has halted/crashed */
+-	if (hmb_data & HMB_DATA_FWHALT) {
++	if (hmb_data & HMB_DATA_FWHALT)
+ 		brcmf_err("mailbox indicates firmware halted\n");
+-		brcmf_dev_coredump(&sdiod->func1->dev);
+-	}
+ 
+ 	/* Dongle recomposed rx frames, accept them again */
+ 	if (hmb_data & HMB_DATA_NAKHANDLED) {
+-- 
+2.20.1
+
