@@ -525,6 +525,7 @@ backports () {
 
 		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
 		cp -v ~/linux-src/include/linux/mmc/sdio_ids.h ./include/linux/mmc/sdio_ids.h
+		#cp -v ~/linux-src/include/linux/firmware.h ./include/linux/firmware.h
 
 		post_backports
 		exit 2
@@ -533,10 +534,10 @@ backports () {
 	fi
 
 	${git} "${DIR}/patches/backports/brcm80211/0002-revert-brcmfmac-add-debugfs-entry-for-reading-firmwa.patch"
-#	${git} "${DIR}/patches/backports/brcm80211/0003-revert-brcmfmac-Use-firmware_request_nowarn-for-the-.patch"
 	${git} "${DIR}/patches/backports/brcm80211/0004-revert-brcmfmac-Use-__skb_peek.patch"
 	${git} "${DIR}/patches/backports/brcm80211/0005-revert-brcmfmac-Use-firmware_request_nowarn-for-the-.patch"
 	${git} "${DIR}/patches/backports/brcm80211/0006-revert-brcmfmac-Use-standard-SKB-list-accessors-in-b.patch"
+	${git} "${DIR}/patches/backports/brcm80211/0007-revert-brcmfmac-Use-struct_size-in-kzalloc.patch"
 }
 
 reverts () {
