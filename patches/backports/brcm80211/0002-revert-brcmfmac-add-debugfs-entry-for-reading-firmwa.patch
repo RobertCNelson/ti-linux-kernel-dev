@@ -10,19 +10,18 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../broadcom/brcm80211/brcmfmac/bus.h         |  2 -
  .../broadcom/brcm80211/brcmfmac/common.c      |  2 +
  .../broadcom/brcm80211/brcmfmac/common.h      |  2 +
- .../broadcom/brcm80211/brcmfmac/core.c        |  8 ----
+ .../broadcom/brcm80211/brcmfmac/core.c        | 10 -----
  .../broadcom/brcm80211/brcmfmac/debug.c       |  3 +-
  .../broadcom/brcm80211/brcmfmac/feature.c     | 37 -------------------
  .../broadcom/brcm80211/brcmfmac/flowring.c    |  2 -
  .../broadcom/brcm80211/brcmfmac/pcie.c        |  6 ---
- .../broadcom/brcm80211/brcmfmac/sdio.c        |  4 +-
- 10 files changed, 6 insertions(+), 61 deletions(-)
+ 9 files changed, 5 insertions(+), 60 deletions(-)
 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
-index ec129864cc9c..ee45e79e15dc 100644
+index 60aede5abb4d..cca68dfa879d 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
-@@ -1177,7 +1177,6 @@ static struct sdio_driver brcmf_sdmmc_driver = {
+@@ -1175,7 +1175,6 @@ static struct sdio_driver brcmf_sdmmc_driver = {
  #ifdef CONFIG_PM_SLEEP
  		.pm = &brcmf_sdio_pm_ops,
  #endif	/* CONFIG_PM_SLEEP */
@@ -31,18 +30,18 @@ index ec129864cc9c..ee45e79e15dc 100644
  };
  
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
-index 3d441c5c745c..b0f88e09e469 100644
+index 2fe167eae22c..a981bcc54f2a 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
-@@ -260,8 +260,6 @@ int brcmf_attach(struct device *dev, struct brcmf_mp_device *settings);
+@@ -270,8 +270,6 @@ int brcmf_attach(struct device *dev, struct brcmf_mp_device *settings);
  void brcmf_detach(struct device *dev);
  /* Indication from bus module that dongle should be reset */
  void brcmf_dev_reset(struct device *dev);
 -/* Request from bus module to initiate a coredump */
 -void brcmf_dev_coredump(struct device *dev);
+ /* Indication that firmware has halted or crashed */
+ void brcmf_fw_crashed(struct device *dev);
  
- /* Configure the "global" bus state used by upper layers */
- void brcmf_bus_change_state(struct brcmf_bus *bus, enum brcmf_bus_state state);
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
 index 96b8d5b3aeed..9be0d435f289 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
@@ -70,10 +69,10 @@ index 4ce56be90b74..d2fa5d701ea2 100644
  
  /* Definitions for the module global and device specific settings are defined
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-index 52da307087e1..558365087238 100644
+index 7d6a08779693..c8f15272d2b8 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-@@ -1269,14 +1269,6 @@ void brcmf_dev_reset(struct device *dev)
+@@ -1279,14 +1279,6 @@ void brcmf_dev_reset(struct device *dev)
  		brcmf_fil_cmd_int_set(drvr->iflist[0], BRCMF_C_TERMINATED, 1);
  }
  
@@ -85,9 +84,18 @@ index 52da307087e1..558365087238 100644
 -		brcmf_dbg(TRACE, "failed to create coredump\n");
 -}
 -
- void brcmf_detach(struct device *dev)
+ void brcmf_fw_crashed(struct device *dev)
  {
- 	s32 i;
+ 	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
+@@ -1294,8 +1286,6 @@ void brcmf_fw_crashed(struct device *dev)
+ 
+ 	bphy_err(drvr, "Firmware has halted or crashed\n");
+ 
+-	brcmf_dev_coredump(dev);
+-
+ 	schedule_work(&drvr->bus_reset);
+ }
+ 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.c
 index 489b5dfdf5b9..504832084eca 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.c
@@ -171,7 +179,7 @@ index d0d8b32af7d0..d0b738da2458 100644
  static bool
  brcmf_flowring_is_tdls_mac(struct brcmf_flowring *flow, u8 mac[ETH_ALEN])
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-index 58a6bc379358..df90849f9bcf 100644
+index 83e4938527f4..d5136c0faa0b 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
 @@ -191,7 +191,6 @@ static const struct brcmf_firmware_mapping brcmf_pcie_fwnames[] = {
@@ -182,18 +190,18 @@ index 58a6bc379358..df90849f9bcf 100644
  
  #define BRCMF_H2D_HOST_D3_INFORM		0x00000001
  #define BRCMF_H2D_HOST_DS_ACK			0x00000002
-@@ -728,10 +727,6 @@ static void brcmf_pcie_handle_mb_data(struct brcmf_pciedev_info *devinfo)
+@@ -737,10 +736,6 @@ static void brcmf_pcie_handle_mb_data(struct brcmf_pciedev_info *devinfo)
  		devinfo->mbdata_completed = true;
  		wake_up(&devinfo->mbdata_resp_wait);
  	}
 -	if (dtoh_mb_data & BRCMF_D2H_DEV_FWHALT) {
 -		brcmf_dbg(PCIE, "D2H_MB_DATA: FW HALT\n");
--		brcmf_dev_coredump(&devinfo->pdev->dev);
+-		brcmf_fw_crashed(&devinfo->pdev->dev);
 -	}
  }
  
  
-@@ -2071,7 +2066,6 @@ static struct pci_driver brcmf_pciedrvr = {
+@@ -2123,7 +2118,6 @@ static struct pci_driver brcmf_pciedrvr = {
  #ifdef CONFIG_PM
  	.driver.pm = &brcmf_pciedrvr_pm,
  #endif
@@ -201,22 +209,6 @@ index 58a6bc379358..df90849f9bcf 100644
  };
  
  
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
-index 4d104ab80fd8..3ddd1ead291a 100644
---- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
-+++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
-@@ -1089,10 +1089,8 @@ static u32 brcmf_sdio_hostmail(struct brcmf_sdio *bus)
- 	bus->sdcnt.f1regdata += 2;
- 
- 	/* dongle indicates the firmware has halted/crashed */
--	if (hmb_data & HMB_DATA_FWHALT) {
-+	if (hmb_data & HMB_DATA_FWHALT)
- 		brcmf_err("mailbox indicates firmware halted\n");
--		brcmf_dev_coredump(&sdiod->func1->dev);
--	}
- 
- 	/* Dongle recomposed rx frames, accept them again */
- 	if (hmb_data & HMB_DATA_NAKHANDLED) {
 -- 
 2.20.1
 
