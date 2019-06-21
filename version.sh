@@ -33,10 +33,10 @@ toolchain="gcc_arm_gnueabihf_8"
 
 #Kernel
 KERNEL_REL=4.19
-KERNEL_TAG=${KERNEL_REL}.31
-kernel_rt=".31-rt18"
+KERNEL_TAG=${KERNEL_REL}.50
+kernel_rt=".50-rt22"
 #Kernel Build
-BUILD=${build_prefix}19
+BUILD=${build_prefix}19.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -50,5 +50,5 @@ DEBARCH=armhf
 
 ti_git_old_release="89d67eb8ec82c58b9b4263d0b722f3dc2ccb33b1"
         ti_git_pre="89d67eb8ec82c58b9b4263d0b722f3dc2ccb33b1"
-       ti_git_post="89d67eb8ec82c58b9b4263d0b722f3dc2ccb33b1"
+       ti_git_post="566bdcbaedf38d343bf68ef47682e664c027c365"
 #
