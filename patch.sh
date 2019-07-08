@@ -306,7 +306,6 @@ wireguard () {
 
 ti_pm_firmware () {
 	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y-next
-	echo "dir: drivers/ti/firmware"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 
@@ -339,7 +338,7 @@ ti_pm_firmware () {
 		cleanup
 	fi
 
-	${git} "${DIR}/patches/drivers/ti/firmware/0001-Add-AM335x-CM3-Power-Managment-Firmware.patch"
+	dir 'drivers/ti/firmware'
 }
 
 dtb_makefile_append_am5 () {
@@ -455,7 +454,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.2-rc5"
+	backport_tag="v5.2"
 
 	subsystem="brcm80211"
 	#regenerate="enable"
