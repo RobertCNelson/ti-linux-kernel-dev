@@ -807,7 +807,7 @@ readme () {
 		git add -f README.md
 		git add -f jenkins_build.sh
 		git add -f Jenkinsfile
-		git commit -a -m 'enable: Jenkins: http://rcn-ee.online:8080' -s
+		git commit -a -m 'enable: Jenkins: http://gfnd.rcn-ee.org:8080' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
 	else
