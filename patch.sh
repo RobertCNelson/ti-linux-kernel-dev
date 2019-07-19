@@ -454,7 +454,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.2-rc6"
+	backport_tag="v5.2.1"
 
 	subsystem="brcm80211"
 	#regenerate="enable"
