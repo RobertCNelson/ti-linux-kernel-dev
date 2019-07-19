@@ -454,7 +454,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.2-rc5"
+	backport_tag="v5.2-rc6"
 
 	subsystem="brcm80211"
 	#regenerate="enable"
@@ -473,6 +473,8 @@ backports () {
 
 	${git} "${DIR}/patches/backports/brcm80211/0004-revert-brcmfmac-Use-__skb_peek.patch"
 	${git} "${DIR}/patches/backports/brcm80211/0006-revert-brcmfmac-Use-standard-SKB-list-accessors-in-b.patch"
+	${git} "${DIR}/patches/backports/brcm80211/0007-revert-sdio_retune_hold_now-sdio_retune_release.patch"
+	${git} "${DIR}/patches/backports/brcm80211/0008-revert-sdio_retune_crc_disable-sdio_retune_crc_enabl.patch"
 }
 
 reverts () {
