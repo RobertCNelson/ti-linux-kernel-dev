@@ -517,27 +517,30 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
-	backport_tag="v5.2-rc5"
-	subsystem="brcm80211"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
 
-		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
-		cp -v ~/linux-src/include/linux/mmc/sdio_ids.h ./include/linux/mmc/sdio_ids.h
-		#cp -v ~/linux-src/include/linux/firmware.h ./include/linux/firmware.h
+	dir 'cypress/brcmfmac'
 
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	${git} "${DIR}/patches/backports/brcm80211/0002-revert-brcmfmac-add-debugfs-entry-for-reading-firmwa.patch"
-	${git} "${DIR}/patches/backports/brcm80211/0004-revert-brcmfmac-Use-__skb_peek.patch"
-	${git} "${DIR}/patches/backports/brcm80211/0005-revert-brcmfmac-Use-firmware_request_nowarn-for-the-.patch"
-	${git} "${DIR}/patches/backports/brcm80211/0006-revert-brcmfmac-Use-standard-SKB-list-accessors-in-b.patch"
-	${git} "${DIR}/patches/backports/brcm80211/0007-revert-brcmfmac-Use-struct_size-in-kzalloc.patch"
+#	backport_tag="v5.2-rc5"
+#	subsystem="brcm80211"
+#	#regenerate="enable"
+#	if [ "x${regenerate}" = "xenable" ] ; then
+#		pre_backports
+#
+#		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
+#		cp -v ~/linux-src/include/linux/mmc/sdio_ids.h ./include/linux/mmc/sdio_ids.h
+#		#cp -v ~/linux-src/include/linux/firmware.h ./include/linux/firmware.h
+#
+#		post_backports
+#		exit 2
+#	else
+#		patch_backports
+#	fi
+#
+#	${git} "${DIR}/patches/backports/brcm80211/0002-revert-brcmfmac-add-debugfs-entry-for-reading-firmwa.patch"
+#	${git} "${DIR}/patches/backports/brcm80211/0004-revert-brcmfmac-Use-__skb_peek.patch"
+#	${git} "${DIR}/patches/backports/brcm80211/0005-revert-brcmfmac-Use-firmware_request_nowarn-for-the-.patch"
+#	${git} "${DIR}/patches/backports/brcm80211/0006-revert-brcmfmac-Use-standard-SKB-list-accessors-in-b.patch"
+#	${git} "${DIR}/patches/backports/brcm80211/0007-revert-brcmfmac-Use-struct_size-in-kzalloc.patch"
 }
 
 reverts () {
@@ -652,121 +655,9 @@ drivers () {
 	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
 
-	cdir="patches/cypress/v4.14.77-2019_0503/cypress-patch"
-
-	echo "dir: cypress/v4.14.77-2019_0503/cypress-patch"
-
-#	${git} "${DIR}/${cdir}/0001-brcmfmac-add-CLM-download-support.patch" # v4.15.x
-#	${git} "${DIR}/${cdir}/0002-brcmfmac-Set-F2-blksz-and-Watermark-to-256-for-4373.patch" # not us...
-	${git} "${DIR}/${cdir}/0003-brcmfmac-Add-sg-parameters-dts-parsing.patch"
-#	${git} "${DIR}/${cdir}/0004-brcmfmac-return-EPERM-when-getting-error-in-vendor-c.patch" # v4.16.x
-#	${git} "${DIR}/${cdir}/0005-brcmfmac-Add-support-for-CYW43012-SDIO-chipset.patch" # not us...
-#	${git} "${DIR}/${cdir}/0006-brcmfmac-set-apsta-to-0-when-AP-starts-on-primary-in.patch"
-#	${git} "${DIR}/${cdir}/0007-brcmfmac-Saverestore-support-changes-for-43012.patch" # v4.16.x
-#	${git} "${DIR}/${cdir}/0008-brcmfmac-Support-43455-save-restore-SR-feature-if-FW.patch" # v4.16.x
-#	${git} "${DIR}/${cdir}/0009-brcmfmac-fix-CLM-load-error-for-legacy-chips-when-us.patch" # v4.15.x
-#	${git} "${DIR}/${cdir}/0010-brcmfmac-enlarge-buffer-size-of-caps-to-512-bytes.patch" # v4.16.x
-#	${git} "${DIR}/${cdir}/0011-brcmfmac-calling-skb_orphan-before-sending-skb-to-SD.patch"
-#	${git} "${DIR}/${cdir}/0012-brcmfmac-43012-Update-F2-Watermark-to-0x60-to-fix-DM.patch" # not us...
-#	${git} "${DIR}/${cdir}/0013-brcmfmac-DS1-Exit-should-re-download-the-firmware.patch"
-#	${git} "${DIR}/${cdir}/0014-brcmfmac-add-FT-based-AKMs-in-brcmf_set_key_mgmt-for.patch"
-#	${git} "${DIR}/${cdir}/0015-brcmfmac-support-AP-isolation.patch"
-#	${git} "${DIR}/${cdir}/0016-brcmfmac-do-not-print-ulp_sdioctrl-get-error.patch"
-#	${git} "${DIR}/${cdir}/0017-brcmfmac-fix-system-warning-message-during-wowl-susp.patch"
-#	${git} "${DIR}/${cdir}/0018-brcmfmac-add-a-module-parameter-to-set-scheduling-pr.patch"
-#	${git} "${DIR}/${cdir}/0019-brcmfmac-make-firmware-eap_restrict-a-module-paramet.patch"
-#	${git} "${DIR}/${cdir}/0020-brcmfmac-Support-wake-on-ping-packet.patch"
-#	${git} "${DIR}/${cdir}/0021-brcmfmac-Remove-WOWL-configuration-in-disconnect-sta.patch"
-#	${git} "${DIR}/${cdir}/0022-brcmfmac-add-CYW89342-PCIE-device.patch"
-#	${git} "${DIR}/${cdir}/0023-brcmfmac-handle-compressed-tx-status-signal.patch"
-#	${git} "${DIR}/${cdir}/0024-revert-brcmfmac-add-a-module-parameter-to-set-schedu.patch"
-#	${git} "${DIR}/${cdir}/0025-brcmfmac-make-setting-SDIO-workqueue-WQ_HIGHPRI-a-mo.patch"
-#	${git} "${DIR}/${cdir}/0026-brcmfmac-add-credit-map-updating-support.patch"
-#	${git} "${DIR}/${cdir}/0027-brcmfmac-add-4-way-handshake-offload-detection-for-F.patch"
-#	${git} "${DIR}/${cdir}/0028-brcmfmac-remove-arp_hostip_clear-from-brcmf_netdev_s.patch"
-#	${git} "${DIR}/${cdir}/0029-brcmfmac-fix-unused-variable-building-warning-messag.patch"
-#	${git} "${DIR}/${cdir}/0030-brcmfmac-disable-command-decode-in-sdio_aos-for-4339.patch"
-#	${git} "${DIR}/${cdir}/0031-Revert-brcmfmac-fix-CLM-load-error-for-legacy-chips-.patch" # v4.15.x
-#	${git} "${DIR}/${cdir}/0032-brcmfmac-fix-CLM-load-error-for-legacy-chips-when-us.patch" # v4.15.x
-#	${git} "${DIR}/${cdir}/0033-brcmfmac-set-WIPHY_FLAG_HAVE_AP_SME-flag.patch"
-#	${git} "${DIR}/${cdir}/0034-brcmfmac-P2P-CERT-6.1.9-Support-GOUT-handling-P2P-Pr.patch"
-#	${git} "${DIR}/${cdir}/0035-brcmfmac-only-generate-random-p2p-address-when-neede.patch"
-#	${git} "${DIR}/${cdir}/0036-brcmfmac-disable-command-decode-in-sdio_aos-for-4354.patch"
-#	${git} "${DIR}/${cdir}/0037-brcmfmac-increase-max-hanger-slots-from-1K-to-3K-in-.patch"
-#	${git} "${DIR}/${cdir}/0038-brcmfmac-reduce-timeout-for-action-frame-scan.patch"
-#	${git} "${DIR}/${cdir}/0039-brcmfmac-fix-full-timeout-waiting-for-action-frame-o.patch"
-#	${git} "${DIR}/${cdir}/0040-brcmfmac-4373-save-restore-support.patch"
-#	${git} "${DIR}/${cdir}/0041-brcmfmac-map-802.1d-priority-to-precedence-level-bas.patch"
-#	${git} "${DIR}/${cdir}/0042-brcmfmac-allow-GCI-core-enumuration.patch"
-#	${git} "${DIR}/${cdir}/0043-brcmfmac-make-firmware-frameburst-mode-a-module-para.patch"
-#	${git} "${DIR}/${cdir}/0044-brcmfmac-set-state-of-hanger-slot-to-FREE-when-flush.patch"
-#	${git} "${DIR}/${cdir}/0045-brcmfmac-add-creating-station-interface-support.patch"
-#	${git} "${DIR}/${cdir}/0046-brcmfmac-add-RSDB-condition-when-setting-interface-c.patch"
-#	${git} "${DIR}/${cdir}/0047-brcmfmac-not-set-mbss-in-vif-if-firmware-does-not-su.patch"
-#	${git} "${DIR}/${cdir}/0048-brcmfmac-support-the-second-p2p-connection.patch"
-#	${git} "${DIR}/${cdir}/0049-brcmfmac-Add-support-for-BCM4359-SDIO-chipset.patch"
-#	${git} "${DIR}/${cdir}/0050-cfg80211-nl80211-add-a-port-authorized-event.patch"
-#	${git} "${DIR}/${cdir}/0051-nl80211-add-NL80211_ATTR_IFINDEX-to-port-authorized-.patch"
-#	${git} "${DIR}/${cdir}/0052-brcmfmac-send-port-authorized-event-for-802.1X-4-way.patch"
-#	${git} "${DIR}/${cdir}/0053-brcmfmac-send-port-authorized-event-for-FT-802.1X.patch"
-#	${git} "${DIR}/${cdir}/0054-brcmfmac-Support-DS1-TX-Exit-in-FMAC.patch"
-#	${git} "${DIR}/${cdir}/0055-brcmfmac-disable-command-decode-in-sdio_aos-for-4373.patch"
-#	${git} "${DIR}/${cdir}/0056-brcmfmac-add-vendor-ie-for-association-responses.patch"
-#	${git} "${DIR}/${cdir}/0057-brcmfmac-fix-43012-insmod-after-rmmod-in-DS1-failure.patch"
-#	${git} "${DIR}/${cdir}/0058-brcmfmac-Set-SDIO-F1-MesBusyCtrl-for-CYW4373.patch"
-#	${git} "${DIR}/${cdir}/0059-brcmfmac-add-4354-raw-pcie-device-id.patch"
-#	${git} "${DIR}/${cdir}/0060-nl80211-Allow-SAE-Authentication-for-NL80211_CMD_CON.patch"
-#	${git} "${DIR}/${cdir}/0061-non-upstream-update-enum-nl80211_attrs-and-nl80211_e.patch"
-#	${git} "${DIR}/${cdir}/0062-nl80211-add-WPA3-definition-for-SAE-authentication.patch"
-#	${git} "${DIR}/${cdir}/0063-cfg80211-add-support-for-SAE-authentication-offload.patch"
-#	${git} "${DIR}/${cdir}/0064-brcmfmac-add-support-for-SAE-authentication-offload.patch"
-#	${git} "${DIR}/${cdir}/0065-brcmfmac-fix-4339-CRC-error-under-SDIO-3.0-SDR104-mo.patch"
-#	${git} "${DIR}/${cdir}/0066-brcmfmac-fix-the-incorrect-return-value-in-brcmf_inf.patch"
-#	${git} "${DIR}/${cdir}/0067-brcmfmac-Fix-double-freeing-in-the-fmac-usb-data-pat.patch"
-#	${git} "${DIR}/${cdir}/0068-brcmfmac-Fix-driver-crash-on-USB-control-transfer-ti.patch"
-#	${git} "${DIR}/${cdir}/0069-brcmfmac-avoid-network-disconnection-during-suspend-.patch"
-#	${git} "${DIR}/${cdir}/0070-brcmfmac-Allow-credit-borrowing-for-all-access-categ.patch"
-#	${git} "${DIR}/${cdir}/0071-non-upstream-Changes-to-improve-USB-Tx-throughput.patch"
-#	${git} "${DIR}/${cdir}/0072-non-upstream-reset-two-D11-cores-if-chip-has-two-D11.patch"
-#	${git} "${DIR}/${cdir}/0073-brcmfmac-reset-PMU-backplane-all-cores-in-CYW4373-du.patch"
-#	${git} "${DIR}/${cdir}/0074-brcmfmac-introduce-module-parameter-to-configure-def.patch"
-#	${git} "${DIR}/${cdir}/0075-brcmfmac-configure-wowl-parameters-in-suspend-functi.patch"
-#	${git} "${DIR}/${cdir}/0076-brcmfmac-discard-user-space-RSNE-for-SAE-authenticat.patch"
-#	${git} "${DIR}/${cdir}/0077-brcmfmac-keep-SDIO-watchdog-running-when-console_int.patch"
-#	${git} "${DIR}/${cdir}/0078-brcmfmac-To-fix-kernel-crash-on-out-of-boundary-acce.patch"
-#	${git} "${DIR}/${cdir}/0079-brcmfmac-reduce-maximum-station-interface-from-2-to-.patch"
-#	${git} "${DIR}/${cdir}/0080-Revert-brcmfmac-add-creating-station-interface-suppo.patch"
-#	${git} "${DIR}/${cdir}/0081-brcmfmac-validate-ifp-pointer-in-brcmf_txfinalize.patch"
-#	${git} "${DIR}/${cdir}/0082-brcmfmac-clean-up-iface-mac-descriptor-before-de-ini.patch"
-#	${git} "${DIR}/${cdir}/0083-brcmfmac-To-support-printing-USB-console-messages.patch"
-#	${git} "${DIR}/${cdir}/0084-brcmfmac-To-fix-Bss-Info-flag-definition-Bug.patch"
-#	${git} "${DIR}/${cdir}/0085-brcmfmac-disable-command-decode-in-sdio_aos-for-4356.patch"
-#	${git} "${DIR}/${cdir}/0086-brcmfmac-increase-default-max-WOWL-patterns-to-16.patch"
-#	${git} "${DIR}/${cdir}/0087-brcmfmac-Enable-Process-and-forward-PHY_TEMP-event.patch"
-#	${git} "${DIR}/${cdir}/0088-brcmfmac-add-USB-autosuspend-feature-support.patch"
-#	${git} "${DIR}/${cdir}/0089-non-upstream-workaround-for-4373-USB-WMM-5.2.27-test.patch"
-#	${git} "${DIR}/${cdir}/0090-brcmfmac-Fix-access-point-mode.patch"
-#	${git} "${DIR}/${cdir}/0091-brcmfmac-make-compatible-with-Fully-Preemptile-Kerne.patch"
-#	${git} "${DIR}/${cdir}/0092-brcmfmac-remove-the-duplicate-line-of-writing-BRCMF_.patch"
-#	${git} "${DIR}/${cdir}/0093-brcmfmac-43012-reloading-FAMC-driver-failure-on-BU-m.patch"
-#	${git} "${DIR}/${cdir}/0094-brcmfmac-handle-FWHALT-mailbox-indication.patch" # v4.15.x
-#	${git} "${DIR}/${cdir}/0095-brcmfmac-validate-user-provided-data-for-memdump-bef.patch"
-#	${git} "${DIR}/${cdir}/0096-brcmfmac-Use-FW-priority-definition-to-initialize-WM.patch"
-#	${git} "${DIR}/${cdir}/0097-brcmfmac-Fix-P2P-Group-Formation-failure-via-Go-neg-.patch"
-#	${git} "${DIR}/${cdir}/0098-nl80211-add-authorized-flag-back-to-ROAM-event.patch"
-#	${git} "${DIR}/${cdir}/0099-brcmfmac-set-authorized-flag-in-ROAM-event-for-offlo.patch"
-#	${git} "${DIR}/${cdir}/0100-brcmfmac-allocate-msgbuf-pktid-from-1-to-size-of-pkt.patch"
-#	${git} "${DIR}/${cdir}/0101-brcmfmac-Add-P2P-Action-Frame-retry-delay-to-fix-GAS.patch"
-#	${git} "${DIR}/${cdir}/0102-brcmfmac-Use-default-FW-priority-when-EDCA-params-sa.patch"
-#	${git} "${DIR}/${cdir}/0103-brcmfmac-set-authorized-flag-in-ROAM-event-for-PMK-c.patch"
-#	${git} "${DIR}/${cdir}/0104-brcmfmac-fix-continuous-802.1x-tx-pending-timeout-er.patch"
-#	${git} "${DIR}/${cdir}/0105-brcmfmac-add-sleep-in-bus-suspend-and-cfg80211-resum.patch"
-#	${git} "${DIR}/${cdir}/0106-brcmfmac-fix-43455-CRC-error-under-SDIO-3.0-SDR104-m.patch"
-#	${git} "${DIR}/${cdir}/0107-brcmfmac-set-F2-blocksize-and-watermark-for-4359.patch"
-#	${git} "${DIR}/${cdir}/0108-brcmfmac-add-subtype-check-for-event-handling-in-dat.patch"
-#	${git} "${DIR}/${cdir}/0109-brcmfmac-assure-SSID-length-from-firmware-is-limited.patch"
-#	${git} "${DIR}/${cdir}/0110-nl80211-add-authorized-flag-to-CONNECT-event.patch"
-#	${git} "${DIR}/${cdir}/0111-brcmfmac-set-authorized-flag-in-CONNECT-event-for-PM.patch"
+#	cdir="patches/cypress/v4.14.77-2019_0503/cypress-patch"
+#	echo "dir: cypress/v4.14.77-2019_0503/cypress-patch"
+#	${git} "${DIR}/${cdir}/0003-brcmfmac-Add-sg-parameters-dts-parsing.patch"
 }
 
 soc () {
