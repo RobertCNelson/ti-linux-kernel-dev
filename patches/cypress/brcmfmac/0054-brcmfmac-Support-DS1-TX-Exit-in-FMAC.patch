@@ -1,4 +1,4 @@
-From ee109e4dddee09ea5e937b03dc10f257c047fb19 Mon Sep 17 00:00:00 2001
+From ffb2cf9ca58164d80a0309a16758b35fb44732dc Mon Sep 17 00:00:00 2001
 From: Praveen Babu C <pucn@cypress.com>
 Date: Mon, 6 Aug 2018 16:15:23 +0530
 Subject: [PATCH 054/111] brcmfmac: Support DS1 TX Exit in FMAC
@@ -16,15 +16,15 @@ mechanism)
 
 Signed-off-by: Praveen Babu Chandran <pucn@cypress.com>
 ---
- .../wireless/broadcom/brcm80211/brcmfmac/common.c  |  40 +++++
- .../wireless/broadcom/brcm80211/brcmfmac/debug.h   |   1 +
- .../wireless/broadcom/brcm80211/brcmfmac/fweh.h    |  27 ++-
- .../wireless/broadcom/brcm80211/brcmfmac/sdio.c    | 182 +++++++++++++++------
- .../wireless/broadcom/brcm80211/brcmfmac/sdio.h    |  80 +++++++--
+ .../broadcom/brcm80211/brcmfmac/common.c      |  40 ++++
+ .../broadcom/brcm80211/brcmfmac/debug.h       |   1 +
+ .../broadcom/brcm80211/brcmfmac/fweh.h        |  27 ++-
+ .../broadcom/brcm80211/brcmfmac/sdio.c        | 182 +++++++++++++-----
+ .../broadcom/brcm80211/brcmfmac/sdio.h        |  80 ++++++--
  5 files changed, 265 insertions(+), 65 deletions(-)
 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
-index 803264c..f65f2a5 100644
+index 803264c500ec..f65f2a5df97d 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
 @@ -30,6 +30,8 @@
@@ -89,7 +89,7 @@ index 803264c..f65f2a5 100644
  	err = brcmf_fil_cmd_int_set(ifp, BRCMF_C_SET_SCAN_CHANNEL_TIME,
  				    BRCMF_DEFAULT_SCAN_CHANNEL_TIME);
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.h
-index 35919d9..23a290f 100644
+index 35919d9e8e13..23a290f13a88 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/debug.h
 @@ -40,6 +40,7 @@
@@ -101,10 +101,10 @@ index 35919d9..23a290f 100644
  /* set default print format */
  #undef pr_fmt
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fweh.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fweh.h
-index 816f80e..47bd34e 100644
+index 816f80ea925b..47bd34e901a7 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fweh.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fweh.h
-@@ -101,7 +101,8 @@
+@@ -101,7 +101,8 @@ struct brcmf_cfg80211_info;
  	BRCMF_ENUM_DEF(FIFO_CREDIT_MAP, 74) \
  	BRCMF_ENUM_DEF(ACTION_FRAME_RX, 75) \
  	BRCMF_ENUM_DEF(TDLS_PEER_EVENT, 92) \
@@ -153,7 +153,7 @@ index 816f80e..47bd34e 100644
  				    const struct brcmf_event_msg *evtmsg,
  				    void *data);
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
-index 8958cb8..517d6fc 100644
+index 8958cb865899..517d6fcde065 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
 @@ -327,6 +327,10 @@ struct rte_console {
@@ -186,7 +186,7 @@ index 8958cb8..517d6fc 100644
  
  	return intstatus;
  }
-@@ -2561,19 +2568,20 @@ static int brcmf_sdio_intr_rstatus(struct brcmf_sdio *bus)
+@@ -2561,19 +2568,20 @@ brcmf_sdio_ulp_preinit(struct device *dev)
  	struct brcmf_sdio_dev *sdiodev = bus_if->bus_priv.sdio;
  	struct brcmf_if *ifp = bus_if->drvr->iflist[0];
  
@@ -215,7 +215,7 @@ index 8958cb8..517d6fc 100644
  }
  
  /* Reinitialize ARM because In DS1 mode ARM got off */
-@@ -2601,41 +2609,68 @@ static int brcmf_sdio_intr_rstatus(struct brcmf_sdio *bus)
+@@ -2601,41 +2609,68 @@ brcmf_sdio_ulp_reinit_fw(struct brcmf_sdio *bus)
  
  /* Check if device is in DS1 mode and handshake with ULP UCODE */
  static bool
@@ -300,7 +300,7 @@ index 8958cb8..517d6fc 100644
  				  &err);
  			val32 = D11REG_RD(bus->sdiodev,
  					  D11_MACCONTROL_REG, &err);
-@@ -2644,37 +2679,38 @@ static int brcmf_sdio_intr_rstatus(struct brcmf_sdio *bus)
+@@ -2644,37 +2679,38 @@ brcmf_sdio_ulp_pre_redownload_check(struct brcmf_sdio *bus)
  				  D11_MACCONTROL_REG, val32, &err);
  
  			/* Poll for PROC_DONE to be set by ucode */
@@ -463,7 +463,7 @@ index 8958cb8..517d6fc 100644
 +	return err;
 +}
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h
-index 36c662b..8b9fd24 100644
+index 36c662be0cce..8b9fd24820a9 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h
 @@ -182,12 +182,30 @@ struct ulp_shm_info {
@@ -507,7 +507,7 @@ index 36c662b..8b9fd24 100644
  	bool ulp;
  };
  
-@@ -393,6 +411,7 @@ static inline void brcmf_sdiod_freezer_uncount(struct brcmf_sdio_dev *sdiodev)
+@@ -393,6 +411,7 @@ void brcmf_sdio_trigger_dpc(struct brcmf_sdio *bus);
  #define M_DS1_CTRL_SDIO(ptr)	((ptr).ulp_shm_offset.m_ulp_ctrl_sdio)
  #define M_WAKEEVENT_IND(ptr)	((ptr).ulp_shm_offset.m_ulp_wakeevt_ind)
  #define M_ULP_WAKE_IND(ptr)		((ptr).ulp_shm_offset.m_ulp_wakeind)
@@ -515,7 +515,7 @@ index 36c662b..8b9fd24 100644
  
  #define D11_BASE_ADDR			0x18001000
  #define D11_AXI_BASE_ADDR		0xE8000000
-@@ -406,17 +425,7 @@ static inline void brcmf_sdiod_freezer_uncount(struct brcmf_sdio_dev *sdiodev)
+@@ -406,17 +425,7 @@ void brcmf_sdio_trigger_dpc(struct brcmf_sdio *bus);
  #define D11_MACCONTROL_REG			D11REG_ADDR(0x120)
  #define D11_MACCONTROL_REG_WAKE		0x4000000
  
@@ -534,7 +534,7 @@ index 36c662b..8b9fd24 100644
  #define	C_DS1_CTRL_SDIO_DS1_SLEEP		0x1
  #define	C_DS1_CTRL_SDIO_MAC_ON			0x2
  #define	C_DS1_CTRL_SDIO_RADIO_PHY_ON	0x4
-@@ -424,12 +433,53 @@ static inline void brcmf_sdiod_freezer_uncount(struct brcmf_sdio_dev *sdiodev)
+@@ -424,12 +433,53 @@ void brcmf_sdio_trigger_dpc(struct brcmf_sdio *bus);
  #define	C_DS1_CTRL_PROC_DONE			0x100
  #define	C_DS1_CTRL_REQ_VALID			0x200
  
@@ -591,5 +591,5 @@ index 36c662b..8b9fd24 100644
  	brcmf_sdiod_regwl(sdh, addr, val, ret)
  
 -- 
-1.9.1
+2.20.1
 

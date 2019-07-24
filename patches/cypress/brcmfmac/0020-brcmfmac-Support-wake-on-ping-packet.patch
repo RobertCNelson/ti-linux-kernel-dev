@@ -1,4 +1,4 @@
-From 02d29492ced19e2de783825c17fe3f0cda4458d5 Mon Sep 17 00:00:00 2001
+From 17bb07864332e9e4ae555e24c5b50457aaf5dbc1 Mon Sep 17 00:00:00 2001
 From: Double Lo <dblo@cypress.com>
 Date: Tue, 6 Feb 2018 05:07:05 -0600
 Subject: [PATCH 020/111] brcmfmac: Support wake on ping packet
@@ -12,18 +12,17 @@ Enable unicast packet filter before system suspend and
 disable it after resume.
 
 Signed-off-by: Lo-Hsiang Lo <double.lo@cypress.com>
-
 ---
- .../broadcom/brcm80211/brcmfmac/cfg80211.c         |  31 +++-
- .../broadcom/brcm80211/brcmfmac/cfg80211.h         |   7 +
- .../wireless/broadcom/brcm80211/brcmfmac/common.c  |  12 +-
- .../wireless/broadcom/brcm80211/brcmfmac/core.c    | 175 +++++++++++++++++++++
- .../wireless/broadcom/brcm80211/brcmfmac/core.h    |   9 +-
- .../broadcom/brcm80211/brcmfmac/fwil_types.h       |  13 ++
+ .../broadcom/brcm80211/brcmfmac/cfg80211.c    |  31 +++-
+ .../broadcom/brcm80211/brcmfmac/cfg80211.h    |   7 +
+ .../broadcom/brcm80211/brcmfmac/common.c      |  12 +-
+ .../broadcom/brcm80211/brcmfmac/core.c        | 175 ++++++++++++++++++
+ .../broadcom/brcm80211/brcmfmac/core.h        |   9 +-
+ .../broadcom/brcm80211/brcmfmac/fwil_types.h  |  13 ++
  6 files changed, 241 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-index 466d3a7..2dd64f0 100644
+index f2860b5729d6..756a47f45632 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 @@ -3706,6 +3706,10 @@ static s32 brcmf_cfg80211_resume(struct wiphy *wiphy)
@@ -56,7 +55,7 @@ index 466d3a7..2dd64f0 100644
  		brcmf_configure_wowl(cfg, ifp, wowl);
  	}
  
-@@ -6571,6 +6578,7 @@ static void brcmf_wiphy_wowl_params(struct wiphy *wiphy, struct brcmf_if *ifp)
+@@ -6572,6 +6579,7 @@ static void brcmf_wiphy_wowl_params(struct wiphy *wiphy, struct brcmf_if *ifp)
  #ifdef CONFIG_PM
  	struct brcmf_cfg80211_info *cfg = wiphy_to_cfg(wiphy);
  	struct wiphy_wowlan_support *wowl;
@@ -64,7 +63,7 @@ index 466d3a7..2dd64f0 100644
  
  	wowl = kmemdup(&brcmf_wowlan_support, sizeof(brcmf_wowlan_support),
  		       GFP_KERNEL);
-@@ -6593,6 +6601,27 @@ static void brcmf_wiphy_wowl_params(struct wiphy *wiphy, struct brcmf_if *ifp)
+@@ -6594,6 +6602,27 @@ static void brcmf_wiphy_wowl_params(struct wiphy *wiphy, struct brcmf_if *ifp)
  	}
  
  	wiphy->wowlan = wowl;
@@ -93,7 +92,7 @@ index 466d3a7..2dd64f0 100644
  }
  
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
-index 7b2835e..606eaeb 100644
+index 7b2835e5e434..606eaeb66fae 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
 @@ -86,6 +86,13 @@
@@ -111,7 +110,7 @@ index 7b2835e..606eaeb 100644
   * enum brcmf_scan_status - scan engine status
   *
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
-index 7328e44..8038a66 100644
+index 7328e44a0d72..8038a6605910 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
 @@ -261,7 +261,7 @@ int brcmf_c_preinit_dcmds(struct brcmf_if *ifp)
@@ -155,7 +154,7 @@ index 7328e44..8038a66 100644
  
  	/* Continue the initialization by registering the different busses */
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-index e6b87a7..4778aeb 100644
+index e6b87a73599b..4778aeb11d51 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 @@ -1198,3 +1198,178 @@ void __exit brcmf_core_exit(void)
@@ -338,7 +337,7 @@ index e6b87a7..4778aeb 100644
 +	return ret;
 +}
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
-index ae39128..e38f78e 100644
+index ae39128406cb..e38f78e4d92c 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
 @@ -23,6 +23,7 @@
@@ -367,7 +366,7 @@ index ae39128..e38f78e 100644
  };
  
  /* forward declarations */
-@@ -216,5 +219,7 @@ void brcmf_txflowblock_if(struct brcmf_if *ifp,
+@@ -216,5 +219,7 @@ void brcmf_netif_rx(struct brcmf_if *ifp, struct sk_buff *skb);
  void brcmf_net_setcarrier(struct brcmf_if *ifp, bool on);
  int __init brcmf_core_init(void);
  void __exit brcmf_core_exit(void);
@@ -377,7 +376,7 @@ index ae39128..e38f78e 100644
 +int brcmf_pktfilter_enable(struct net_device *ndev, bool enable);
  #endif /* BRCMFMAC_CORE_H */
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
-index 4b29070..9616c94 100644
+index 4b290705e3e6..9616c94afb76 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
 @@ -128,6 +128,19 @@
@@ -401,5 +400,5 @@ index 4b29070..9616c94 100644
  #define BRCMF_ANT_MAX			4
  
 -- 
-1.9.1
+2.20.1
 

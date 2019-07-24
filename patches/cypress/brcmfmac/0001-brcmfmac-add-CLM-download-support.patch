@@ -1,4 +1,4 @@
-From b3f46b327564754d933387089028b7a98d0de1fe Mon Sep 17 00:00:00 2001
+From e17f115ba1bdc40f84b333413b277d339e5aa97a Mon Sep 17 00:00:00 2001
 From: Chung-Hsien Hsu <stanley.hsu@cypress.com>
 Date: Fri, 10 Nov 2017 17:27:15 +0800
 Subject: [PATCH 001/111] brcmfmac: add CLM download support
@@ -17,18 +17,18 @@ Reviewed-by: Arend van Spriel <arend.vanspriel@broadcom.com>
 Signed-off-by: Chung-Hsien Hsu <stanley.hsu@cypress.com>
 Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
 ---
- .../net/wireless/broadcom/brcm80211/brcmfmac/bus.h |  10 ++
- .../wireless/broadcom/brcm80211/brcmfmac/common.c  | 157 +++++++++++++++++++++
- .../wireless/broadcom/brcm80211/brcmfmac/core.c    |   2 +
- .../wireless/broadcom/brcm80211/brcmfmac/core.h    |   2 +
- .../broadcom/brcm80211/brcmfmac/fwil_types.h       |  31 ++++
- .../wireless/broadcom/brcm80211/brcmfmac/pcie.c    |  19 +++
- .../wireless/broadcom/brcm80211/brcmfmac/sdio.c    |  19 +++
- .../net/wireless/broadcom/brcm80211/brcmfmac/usb.c |  18 +++
+ .../broadcom/brcm80211/brcmfmac/bus.h         |  10 ++
+ .../broadcom/brcm80211/brcmfmac/common.c      | 157 ++++++++++++++++++
+ .../broadcom/brcm80211/brcmfmac/core.c        |   2 +
+ .../broadcom/brcm80211/brcmfmac/core.h        |   2 +
+ .../broadcom/brcm80211/brcmfmac/fwil_types.h  |  31 ++++
+ .../broadcom/brcm80211/brcmfmac/pcie.c        |  19 +++
+ .../broadcom/brcm80211/brcmfmac/sdio.c        |  19 +++
+ .../broadcom/brcm80211/brcmfmac/usb.c         |  18 ++
  8 files changed, 258 insertions(+)
 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
-index 163ddc4..0b76a61 100644
+index 163ddc49f951..0b76a615708e 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
 @@ -71,6 +71,7 @@ struct brcmf_bus_dcmd {
@@ -63,7 +63,7 @@ index 163ddc4..0b76a61 100644
   * interface functions from common layer
   */
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
-index 7a2b495..6a59d06 100644
+index 7a2b49587b4d..6a59d0609d30 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
 @@ -18,6 +18,7 @@
@@ -265,7 +265,7 @@ index 7a2b495..6a59d06 100644
  	err = brcmf_fil_iovar_int_set(ifp, "mpc", 1);
  	if (err) {
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-index 5cc3a07..e6b87a7 100644
+index 5cc3a07dda9e..e6b87a73599b 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 @@ -950,6 +950,8 @@ static int brcmf_revinfo_read(struct seq_file *s, void *data)
@@ -278,7 +278,7 @@ index 5cc3a07..e6b87a7 100644
  }
  
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
-index a4dd313..ae39128 100644
+index a4dd313140f3..ae39128406cb 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
 @@ -141,6 +141,8 @@ struct brcmf_pub {
@@ -291,7 +291,7 @@ index a4dd313..ae39128 100644
  
  /* forward declarations */
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
-index e0d22fe..4b29070 100644
+index e0d22fedb2b4..4b290705e3e6 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
 @@ -155,6 +155,21 @@
@@ -316,10 +316,11 @@ index e0d22fe..4b29070 100644
  /* join preference types for join_pref iovar */
  enum brcmf_join_pref_types {
  	BRCMF_JOIN_PREF_RSSI = 1,
-@@ -827,6 +842,22 @@ struct brcmf_pno_macaddr_le {
+@@ -826,6 +841,22 @@ struct brcmf_pno_macaddr_le {
+ 	u8 mac[ETH_ALEN];
  };
  
- /**
++/**
 + * struct brcmf_dload_data_le - data passing to firmware for downloading
 + * @flag: flags related to download data.
 + * @dload_type: type of download data.
@@ -335,12 +336,11 @@ index e0d22fe..4b29070 100644
 +	u8 data[1];
 +};
 +
-+/**
+ /**
   * struct brcmf_pno_bssid_le - bssid configuration for PNO scan.
   *
-  * @bssid: BSS network identifier.
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-index e6e9b00..3c87157 100644
+index e6e9b00b79d7..3c87157f5b85 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
 @@ -1350,6 +1350,24 @@ static int brcmf_pcie_get_memdump(struct device *dev, void *data, size_t len)
@@ -368,7 +368,7 @@ index e6e9b00..3c87157 100644
  
  static const struct brcmf_bus_ops brcmf_pcie_bus_ops = {
  	.txdata = brcmf_pcie_tx,
-@@ -1359,6 +1377,7 @@ static int brcmf_pcie_get_memdump(struct device *dev, void *data, size_t len)
+@@ -1359,6 +1377,7 @@ static const struct brcmf_bus_ops brcmf_pcie_bus_ops = {
  	.wowl_config = brcmf_pcie_wowl_config,
  	.get_ramsize = brcmf_pcie_get_ramsize,
  	.get_memdump = brcmf_pcie_get_memdump,
@@ -377,10 +377,10 @@ index e6e9b00..3c87157 100644
  
  
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
-index 4c28b04..36b1d9a 100644
+index 4c28b04ea605..36b1d9a5713c 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
-@@ -3979,6 +3979,24 @@ static void brcmf_sdio_buscore_write32(void *ctx, u32 addr, u32 val)
+@@ -3979,6 +3979,24 @@ brcmf_sdio_watchdog(unsigned long data)
  	}
  }
  
@@ -405,7 +405,7 @@ index 4c28b04..36b1d9a 100644
  static const struct brcmf_bus_ops brcmf_sdio_bus_ops = {
  	.stop = brcmf_sdio_bus_stop,
  	.preinit = brcmf_sdio_bus_preinit,
-@@ -3989,6 +4007,7 @@ static void brcmf_sdio_buscore_write32(void *ctx, u32 addr, u32 val)
+@@ -3989,6 +4007,7 @@ static const struct brcmf_bus_ops brcmf_sdio_bus_ops = {
  	.wowl_config = brcmf_sdio_wowl_config,
  	.get_ramsize = brcmf_sdio_bus_get_ramsize,
  	.get_memdump = brcmf_sdio_bus_get_memdump,
@@ -414,7 +414,7 @@ index 4c28b04..36b1d9a 100644
  
  static void brcmf_sdio_firmware_callback(struct device *dev, int err,
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c
-index 11ffaa0..b27170c 100644
+index 11ffaa01599e..b27170c12482 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c
 @@ -1128,12 +1128,30 @@ static void brcmf_usb_wowl_config(struct device *dev, bool enabled)
@@ -449,5 +449,5 @@ index 11ffaa0..b27170c 100644
  
  static int brcmf_usb_bus_setup(struct brcmf_usbdev_info *devinfo)
 -- 
-1.9.1
+2.20.1
 
