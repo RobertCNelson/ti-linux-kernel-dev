@@ -78,6 +78,7 @@ dir () {
 
 		number=
 		for p in "${DIR}/patches/$wdir/"*.patch; do
+			#echo "$p"
 			${git} "$p"
 			number=$(( $number + 1 ))
 		done
@@ -517,6 +518,21 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
+#	backport_tag="v4.15.18"
+#	subsystem="brcm80211"
+#	#regenerate="enable"
+#	if [ "x${regenerate}" = "xenable" ] ; then
+#		pre_backports
+#
+#		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
+#		cp -v ~/linux-src/include/linux/mmc/sdio_ids.h ./include/linux/mmc/sdio_ids.h
+#		#cp -v ~/linux-src/include/linux/firmware.h ./include/linux/firmware.h
+#
+#		post_backports
+#		exit 2
+#	else
+#		patch_backports
+#	fi
 
 	#regenerate="enable"
 	dir 'cypress/brcmfmac'
