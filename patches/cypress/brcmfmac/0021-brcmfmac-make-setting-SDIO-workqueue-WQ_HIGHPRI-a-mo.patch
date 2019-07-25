@@ -16,10 +16,10 @@ Signed-off-by: Wright Feng <wright.feng@cypress.com>
  3 files changed, 22 insertions(+), 8 deletions(-)
 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
-index 33d3c76bbbdb..df13bb7cb51e 100644
+index 2faabc594897..ac209fe10025 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
-@@ -79,6 +79,10 @@ static int brcmf_eap_restrict;
+@@ -83,6 +83,10 @@ static int brcmf_eap_restrict;
  module_param_named(eap_restrict, brcmf_eap_restrict, int, 0400);
  MODULE_PARM_DESC(eap_restrict, "Block non-802.1X frames until auth finished");
  
@@ -30,16 +30,16 @@ index 33d3c76bbbdb..df13bb7cb51e 100644
  #ifdef DEBUG
  /* always succeed brcmf_bus_started() */
  static int brcmf_ignore_probe_fail;
-@@ -452,6 +456,7 @@ struct brcmf_mp_device *brcmf_get_module_param(struct device *dev,
- 	settings->fcmode = brcmf_fcmode;
+@@ -457,6 +461,7 @@ struct brcmf_mp_device *brcmf_get_module_param(struct device *dev,
  	settings->roamoff = !!brcmf_roamoff;
+ 	settings->iapp = !!brcmf_iapp_enable;
  	settings->eap_restrict = !!brcmf_eap_restrict;
 +	settings->sdio_wq_highpri = !!brcmf_sdio_wq_highpri;
  #ifdef DEBUG
  	settings->ignore_probe_fail = !!brcmf_ignore_probe_fail;
  #endif
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
-index 5ad699468b09..39230ca16a26 100644
+index c62ea0f3deb4..11e7f4ab33fc 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
 @@ -50,6 +50,7 @@ extern struct brcmf_mp_global_t brcmf_mp_global;
@@ -50,19 +50,19 @@ index 5ad699468b09..39230ca16a26 100644
   * @ignore_probe_fail: Ignore probe failure.
   * @country_codes: If available, pointer to struct for translating country codes
   * @bus: Bus specific platform data. Only SDIO at the mmoment.
-@@ -60,6 +61,7 @@ struct brcmf_mp_device {
- 	int		fcmode;
+@@ -61,6 +62,7 @@ struct brcmf_mp_device {
  	bool		roamoff;
+ 	bool		iapp;
  	bool		eap_restrict;
 +	bool		sdio_wq_highpri;
  	bool		ignore_probe_fail;
  	struct brcmfmac_pd_cc *country_codes;
  	union {
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
-index 5388deb72bee..27de6cfc0cff 100644
+index 1bbc9cca4d32..55dc6992d024 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
-@@ -4357,6 +4357,7 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+@@ -4136,6 +4136,7 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
  	int ret;
  	struct brcmf_sdio *bus;
  	struct workqueue_struct *wq;
@@ -70,7 +70,7 @@ index 5388deb72bee..27de6cfc0cff 100644
  
  	brcmf_dbg(TRACE, "Enter\n");
  
-@@ -4373,9 +4374,21 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+@@ -4152,9 +4153,21 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
  	bus->txminmax = BRCMF_TXMINMAX;
  	bus->tx_seq = SDPCM_SEQ_WRAP - 1;
  
@@ -82,19 +82,19 @@ index 5388deb72bee..27de6cfc0cff 100644
 +
  	/* single-threaded workqueue */
 -	wq = alloc_ordered_workqueue("brcmf_wq/%s", WQ_MEM_RECLAIM,
--				     dev_name(&sdiodev->func[1]->dev));
+-				     dev_name(&sdiodev->func1->dev));
 +	if (sdiodev->settings->sdio_wq_highpri) {
 +		wq = alloc_workqueue("brcmf_wq/%s",
 +				     WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_UNBOUND,
-+				     1, dev_name(&sdiodev->func[1]->dev));
++				     1, dev_name(&sdiodev->func1->dev));
 +	} else {
 +		wq = alloc_ordered_workqueue("brcmf_wq/%s", WQ_MEM_RECLAIM,
-+					     dev_name(&sdiodev->func[1]->dev));
++					     dev_name(&sdiodev->func1->dev));
 +	}
  	if (!wq) {
  		brcmf_err("insufficient memory to create txworkqueue\n");
  		goto fail;
-@@ -4384,12 +4397,6 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+@@ -4163,12 +4176,6 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
  	INIT_WORK(&bus->datawork, brcmf_sdio_dataworker);
  	bus->brcmf_wq = wq;
  
