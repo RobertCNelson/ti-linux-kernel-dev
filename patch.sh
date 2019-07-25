@@ -611,9 +611,26 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
+	backport_tag="v4.16.18"
+	subsystem="brcm80211"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
+		cp -v ~/linux-src/include/linux/mmc/sdio_ids.h ./include/linux/mmc/sdio_ids.h
+		#cp -v ~/linux-src/include/linux/firmware.h ./include/linux/firmware.h
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 
 	#regenerate="enable"
 	dir 'cypress/brcmfmac'
+
+	${git} "${DIR}/patches/backports/brcm80211/0002-wip.patch"
 
 #	backport_tag="v5.2-rc5"
 #	subsystem="brcm80211"
@@ -636,6 +653,21 @@ backports () {
 #	${git} "${DIR}/patches/backports/brcm80211/0005-revert-brcmfmac-Use-firmware_request_nowarn-for-the-.patch"
 #	${git} "${DIR}/patches/backports/brcm80211/0006-revert-brcmfmac-Use-standard-SKB-list-accessors-in-b.patch"
 #	${git} "${DIR}/patches/backports/brcm80211/0007-revert-brcmfmac-Use-struct_size-in-kzalloc.patch"
+
+	backport_tag="v4.16.18"
+
+	subsystem="led_trigger"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/leds/trigger/* ./drivers/leds/trigger/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 }
 
 reverts () {

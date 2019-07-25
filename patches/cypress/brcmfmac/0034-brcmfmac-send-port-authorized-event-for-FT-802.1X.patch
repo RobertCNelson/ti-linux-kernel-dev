@@ -1,0 +1,68 @@
+From 40384626997435867d005e484c980a12a9c4a4a7 Mon Sep 17 00:00:00 2001
+From: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+Date: Thu, 2 Aug 2018 16:05:39 +0800
+Subject: [PATCH 34/75] brcmfmac: send port authorized event for FT-802.1X
+
+With FT-802.1X, driver should send a port authorized event right after
+sending a roamed event. It is used to indicate that a new AP is already
+authorized so 802.1X is not required.
+
+Signed-off-by: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+---
+ .../net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c   | 8 ++++++++
+ .../net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h   | 1 +
+ 2 files changed, 9 insertions(+)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+index eb2b4d69c347..9d4fcb0a4b3d 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -1607,6 +1607,7 @@ brcmf_set_key_mgmt(struct net_device *ndev, struct cfg80211_connect_params *sme)
+ 	u16 count;
+ 
+ 	profile->use_fwsup = BRCMF_PROFILE_FWSUP_NONE;
++	profile->is_ft = false;
+ 
+ 	if (!sme->crypto.n_akm_suites)
+ 		return 0;
+@@ -1651,11 +1652,13 @@ brcmf_set_key_mgmt(struct net_device *ndev, struct cfg80211_connect_params *sme)
+ 			break;
+ 		case WLAN_AKM_SUITE_FT_8021X:
+ 			val = WPA2_AUTH_UNSPECIFIED | WPA2_AUTH_FT;
++			profile->is_ft = true;
+ 			if (sme->want_1x)
+ 				profile->use_fwsup = BRCMF_PROFILE_FWSUP_1X;
+ 			break;
+ 		case WLAN_AKM_SUITE_FT_PSK:
+ 			val = WPA2_AUTH_PSK | WPA2_AUTH_FT;
++			profile->is_ft = true;
+ 			break;
+ 		default:
+ 			brcmf_err("invalid cipher group (%d)\n",
+@@ -5604,6 +5607,11 @@ brcmf_bss_roaming_done(struct brcmf_cfg80211_info *cfg,
+ 	cfg80211_roamed(ndev, &roam_info, GFP_KERNEL);
+ 	brcmf_dbg(CONN, "Report roaming result\n");
+ 
++	if (profile->use_fwsup == BRCMF_PROFILE_FWSUP_1X && profile->is_ft) {
++		cfg80211_port_authorized(ndev, profile->bssid, GFP_KERNEL);
++		brcmf_dbg(CONN, "Report port authorized\n");
++	}
++
+ 	set_bit(BRCMF_VIF_STATUS_CONNECTED, &ifp->vif->sme_state);
+ 	brcmf_dbg(TRACE, "Exit\n");
+ 	return err;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
+index 9e2f1e6a70ba..b110e32b8c91 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
+@@ -157,6 +157,7 @@ struct brcmf_cfg80211_profile {
+ 	struct brcmf_cfg80211_security sec;
+ 	struct brcmf_wsec_key key[BRCMF_MAX_DEFAULT_KEYS];
+ 	enum brcmf_profile_fwsup use_fwsup;
++	bool is_ft;
+ };
+ 
+ /**
+-- 
+2.20.1
+
