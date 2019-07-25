@@ -560,6 +560,21 @@ backports () {
 #	${git} "${DIR}/patches/backports/brcm80211/0005-revert-brcmfmac-Use-firmware_request_nowarn-for-the-.patch"
 #	${git} "${DIR}/patches/backports/brcm80211/0006-revert-brcmfmac-Use-standard-SKB-list-accessors-in-b.patch"
 #	${git} "${DIR}/patches/backports/brcm80211/0007-revert-brcmfmac-Use-struct_size-in-kzalloc.patch"
+
+	backport_tag="v4.16.18"
+
+	subsystem="led_trigger"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/leds/trigger/* ./drivers/leds/trigger/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 }
 
 reverts () {
