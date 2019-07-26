@@ -465,6 +465,25 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
+	backport_tag="v5.3-rc1"
+
+	subsystem="stmpe"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/iio/adc/stmpe-adc.c ./drivers/iio/adc/
+		cp -v ~/linux-src/drivers/mfd/stmpe.c ./drivers/mfd/
+		cp -v ~/linux-src/include/linux/mfd/stmpe.h ./include/linux/mfd/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	${git} "${DIR}/patches/backports/stmpe/0002-stmpe-wire-up-adc-Kconfig-Makefile.patch"
+
 	backport_tag="v5.0.6"
 
 	subsystem="vl53l0x"
