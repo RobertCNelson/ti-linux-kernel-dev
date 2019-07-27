@@ -227,41 +227,6 @@ rt () {
 	dir 'rt'
 }
 
-backport_brcm80211 () {
-	echo "dir: brcm80211"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		cd ../
-		if [ ! -d ./brcm80211 ] ; then
-			${git_bin} clone -b rpi-4.14.y https://github.com/raspberrypi/linux brcm80211 --depth=1 --reference ./KERNEL/
-		else
-			rm -rf ./brcm80211 || true
-			${git_bin} clone -b rpi-4.14.y https://github.com/raspberrypi/linux brcm80211 --depth=1 --reference ./KERNEL/
-		fi
-		cd ./KERNEL/
-
-		cp -rv ../brcm80211/drivers/net/wireless/broadcom/brcm80211/ ./drivers/net/wireless/broadcom/
-
-		${git_bin} add .
-		${git_bin} commit -a -m 'merge: brcm80211' -s
-		${git_bin} format-patch -1 -o ../patches/brcm80211/
-
-		rm -rf ../brcm80211/ || true
-
-		${git_bin} reset --hard HEAD^
-
-		start_cleanup
-
-		${git} "${DIR}/patches/brcm80211/0001-merge-brcm80211.patch"
-
-		wdir="brcm80211"
-		number=1
-		cleanup
-	fi
-
-	${git} "${DIR}/patches/brcm80211/0001-merge-brcm80211.patch"
-}
-
 wireguard_fail () {
 	echo "WireGuard failed"
 	exit 2
@@ -436,7 +401,6 @@ local_patch () {
 external_git
 aufs
 #rt
-#backport_brcm80211
 #wireguard
 ti_pm_firmware
 beagleboard_dtbs
@@ -594,6 +558,25 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
+	backport_tag="v5.3-rc1"
+
+	subsystem="stmpe"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/iio/adc/stmpe-adc.c ./drivers/iio/adc/
+		cp -v ~/linux-src/drivers/mfd/stmpe.c ./drivers/mfd/
+		cp -v ~/linux-src/include/linux/mfd/stmpe.h ./include/linux/mfd/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	${git} "${DIR}/patches/backports/stmpe/0002-stmpe-wire-up-adc-Kconfig-Makefile.patch"
+
 	backport_tag="v5.0.6"
 
 	subsystem="vl53l0x"
@@ -611,7 +594,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
-	backport_tag="v4.16.18"
+	backport_tag="v4.14.77"
 	subsystem="brcm80211"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -629,30 +612,6 @@ backports () {
 
 	#regenerate="enable"
 	dir 'cypress/brcmfmac'
-
-	${git} "${DIR}/patches/backports/brcm80211/0002-wip.patch"
-
-#	backport_tag="v5.2-rc5"
-#	subsystem="brcm80211"
-#	#regenerate="enable"
-#	if [ "x${regenerate}" = "xenable" ] ; then
-#		pre_backports
-#
-#		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
-#		cp -v ~/linux-src/include/linux/mmc/sdio_ids.h ./include/linux/mmc/sdio_ids.h
-#		#cp -v ~/linux-src/include/linux/firmware.h ./include/linux/firmware.h
-#
-#		post_backports
-#		exit 2
-#	else
-#		patch_backports
-#	fi
-#
-#	${git} "${DIR}/patches/backports/brcm80211/0002-revert-brcmfmac-add-debugfs-entry-for-reading-firmwa.patch"
-#	${git} "${DIR}/patches/backports/brcm80211/0004-revert-brcmfmac-Use-__skb_peek.patch"
-#	${git} "${DIR}/patches/backports/brcm80211/0005-revert-brcmfmac-Use-firmware_request_nowarn-for-the-.patch"
-#	${git} "${DIR}/patches/backports/brcm80211/0006-revert-brcmfmac-Use-standard-SKB-list-accessors-in-b.patch"
-#	${git} "${DIR}/patches/backports/brcm80211/0007-revert-brcmfmac-Use-struct_size-in-kzalloc.patch"
 
 	backport_tag="v4.16.18"
 
@@ -697,7 +656,6 @@ reverts () {
 
 drivers () {
 	dir 'drivers/ar1021_i2c'
-#	dir 'drivers/bcmdhd'
 	dir 'drivers/btrfs'
 	dir 'drivers/mcp23s08'
 	dir 'drivers/pwm'
@@ -781,10 +739,6 @@ drivers () {
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
-
-#	cdir="patches/cypress/v4.14.77-2019_0503/cypress-patch"
-#	echo "dir: cypress/v4.14.77-2019_0503/cypress-patch"
-#	${git} "${DIR}/${cdir}/0003-brcmfmac-Add-sg-parameters-dts-parsing.patch"
 }
 
 soc () {
