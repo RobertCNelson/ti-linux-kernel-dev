@@ -57,10 +57,10 @@ cleanup () {
 		if [ "x${wdir}" = "x" ] ; then
 			${git_bin} format-patch -${number} -o ${DIR}/patches/
 		else
-			if [ ! -d ${DIR}/patches/${wdir}a/ ] ; then
-				mkdir -p ${DIR}/patches/${wdir}a/
+			if [ ! -d ${DIR}/patches/${wdir}/ ] ; then
+				mkdir -p ${DIR}/patches/${wdir}/
 			fi
-			${git_bin} format-patch -${number} -o ${DIR}/patches/${wdir}a/
+			${git_bin} format-patch -${number} -o ${DIR}/patches/${wdir}/
 			unset wdir
 		fi
 	fi
