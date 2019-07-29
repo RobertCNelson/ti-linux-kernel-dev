@@ -39,21 +39,21 @@ make ARCH=arm clean
 make ARCH=arm bb.org_defconfig
 
 echo "[make ARCH=arm -j2 CROSS_COMPILE=\"${binary}\" zImage]"
-make ARCH=arm -j2 CROSS_COMPILE="ccache ${CC}" zImage
+make ARCH=arm -j2 CROSS_COMPILE="${CC}" zImage
 if [ ! -f arch/arm/boot/zImage ] ; then
 	echo "failed: [arch/arm/boot/zImage]"
 	exit 1
 fi
 
 echo "[make ARCH=arm -j2 CROSS_COMPILE=\"${binary}\" modules]"
-make ARCH=arm -j2 CROSS_COMPILE="ccache ${CC}" modules
+make ARCH=arm -j2 CROSS_COMPILE="${CC}" modules
 if [ ! -f drivers/spi/spidev.ko ] ; then
 	echo "failed: [drivers/spi/spidev.ko]"
 	exit 1
 fi
 
 echo "[make ARCH=arm -j2 CROSS_COMPILE=\"${binary}\" dtbs]"
-make ARCH=arm -j2 CROSS_COMPILE="ccache ${CC}" dtbs
+make ARCH=arm -j2 CROSS_COMPILE="${CC}" dtbs
 if [ ! -f arch/arm/boot/dts/am335x-boneblack.dtb ] ; then
 	echo "failed: [arch/arm/boot/dts/am335x-boneblack.dtb]"
 	exit 1

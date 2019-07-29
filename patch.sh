@@ -224,42 +224,6 @@ rt () {
 	dir 'rt'
 }
 
-backport_brcm80211 () {
-	echo "dir: brcm80211"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		cd ../
-		if [ ! -d ./brcm80211 ] ; then
-			${git_bin} clone -b rpi-4.19.y https://github.com/raspberrypi/linux brcm80211 --depth=1 --reference ./KERNEL/
-		else
-			rm -rf ./brcm80211 || true
-			${git_bin} clone -b rpi-4.19.y https://github.com/raspberrypi/linux brcm80211 --depth=1 --reference ./KERNEL/
-		fi
-		cd ./KERNEL/
-
-		cp -rv ../brcm80211/drivers/net/wireless/broadcom/brcm80211/ ./drivers/net/wireless/broadcom/
-
-		${git_bin} add .
-		${git_bin} commit -a -m 'merge: brcm80211' -s
-		${git_bin} format-patch -1 -o ../patches/brcm80211/
-
-		rm -rf ../brcm80211/ || true
-
-		${git_bin} reset --hard HEAD^
-
-		start_cleanup
-
-		${git} "${DIR}/patches/brcm80211/0001-merge-brcm80211.patch"
-
-		wdir="brcm80211"
-		number=1
-		cleanup
-	fi
-
-	${git} "${DIR}/patches/brcm80211/0001-merge-brcm80211.patch"
-	dir 'backports/brcm80211_sg'
-}
-
 wireguard_fail () {
 	echo "WireGuard failed"
 	exit 2
@@ -379,6 +343,7 @@ beagleboard_dtbs () {
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
 
 		device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am5
+		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am5
 
 		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
@@ -414,7 +379,6 @@ local_patch () {
 external_git
 aufs
 #rt
-#backport_brcm80211
 wireguard
 ti_pm_firmware
 beagleboard_dtbs
@@ -454,8 +418,7 @@ patch_backports (){
 }
 
 backports () {
-	#backport_tag="v5.2.1"
-	backport_tag="3bfe1fc46794631366faa3ef075e1b0ff7ba120a"
+	backport_tag="v5.2-rc5"
 
 	subsystem="brcm80211"
 	#regenerate="enable"
@@ -474,8 +437,6 @@ backports () {
 
 	${git} "${DIR}/patches/backports/brcm80211/0004-revert-brcmfmac-Use-__skb_peek.patch"
 	${git} "${DIR}/patches/backports/brcm80211/0006-revert-brcmfmac-Use-standard-SKB-list-accessors-in-b.patch"
-	${git} "${DIR}/patches/backports/brcm80211/0007-revert-sdio_retune_hold_now-sdio_retune_release.patch"
-	${git} "${DIR}/patches/backports/brcm80211/0008-revert-sdio_retune_crc_disable-sdio_retune_crc_enabl.patch"
 }
 
 reverts () {
