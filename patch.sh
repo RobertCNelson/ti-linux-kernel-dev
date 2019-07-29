@@ -456,25 +456,21 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.2-rc5"
+	backport_tag="v4.x-y"
 
-	subsystem="brcm80211"
+	subsystem="xyz"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
-		cp -v ~/linux-src/include/linux/mmc/sdio_ids.h ./include/linux/mmc/sdio_ids.h
-		#cp -v ~/linux-src/include/linux/firmware.h ./include/linux/firmware.h
+		mkdir -p ./x/
+		cp -v ~/linux-src/x/* ./x/
 
 		post_backports
 		exit 2
 	else
 		patch_backports
 	fi
-
-	${git} "${DIR}/patches/backports/brcm80211/0004-revert-brcmfmac-Use-__skb_peek.patch"
-	${git} "${DIR}/patches/backports/brcm80211/0006-revert-brcmfmac-Use-standard-SKB-list-accessors-in-b.patch"
 }
 
 reverts () {
@@ -539,7 +535,7 @@ soc () {
 }
 
 ###
-backports
+#backports
 #reverts
 drivers
 soc
