@@ -777,6 +777,7 @@ drivers () {
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
+	dir 'drivers/uio_pruss_shmem'
 }
 
 soc () {
