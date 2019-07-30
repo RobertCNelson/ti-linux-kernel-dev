@@ -317,7 +317,6 @@ wireguard () {
 
 ti_pm_firmware () {
 	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y-next
-	echo "dir: drivers/ti/firmware"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 
@@ -330,10 +329,11 @@ ti_pm_firmware () {
 		fi
 		cd ./KERNEL/
 
+		mkdir -p ./firmware/ || true
 		cp -v ../ti-amx3-cm3-pm-firmware/bin/am* ./firmware/
 
 		${git_bin} add -f ./firmware/am*
-		${git_bin} commit -a -m 'add am33x firmware' -s
+		${git_bin} commit -a -m 'Add AM335x CM3 Power Managment Firmware' -s
 		${git_bin} format-patch -1 -o ../patches/drivers/ti/firmware/
 
 		rm -rf ../ti-amx3-cm3-pm-firmware/ || true
@@ -342,14 +342,14 @@ ti_pm_firmware () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
+		${git} "${DIR}/patches/drivers/ti/firmware/0001-Add-AM335x-CM3-Power-Managment-Firmware.patch"
 
 		wdir="drivers/ti/firmware"
 		number=1
 		cleanup
 	fi
 
-	${git} "${DIR}/patches/drivers/ti/firmware/0001-add-am33x-firmware.patch"
+	dir 'drivers/ti/firmware'
 }
 
 dtb_makefile_append_am5 () {
