@@ -503,7 +503,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
-	backport_tag="v5.3-rc1"
+	backport_tag="v5.3-rc6"
 
 	subsystem="stmpe"
 	#regenerate="enable"
@@ -566,6 +566,21 @@ backports () {
 		pre_backports
 
 		cp -rv ~/linux-src/drivers/leds/trigger/* ./drivers/leds/trigger/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v4.14.140"
+
+	subsystem="greybus"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/staging/greybus/* ./drivers/staging/greybus/
 
 		post_backports
 		exit 2
@@ -685,6 +700,7 @@ drivers () {
 	dir 'drivers/ti/uio'
 	dir 'drivers/ti/gpio'
 	dir 'drivers/uio_pruss_shmem'
+	dir 'drivers/greybus'
 }
 
 soc () {
