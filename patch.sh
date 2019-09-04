@@ -573,7 +573,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.14.140"
+	backport_tag="v4.19.69"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -586,6 +586,7 @@ backports () {
 		exit 2
 	else
 		patch_backports
+		${git} "${DIR}/patches/backports/greybus/0002-greybus-drivers-staging-greybus-module.c-no-struct_s.patch"
 	fi
 }
 
