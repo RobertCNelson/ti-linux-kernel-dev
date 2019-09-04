@@ -456,21 +456,27 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.x-y"
+	backport_tag="v4.14.77"
 
-	subsystem="xyz"
+	subsystem="brcm80211"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		mkdir -p ./x/
-		cp -v ~/linux-src/x/* ./x/
+		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
 
 		post_backports
 		exit 2
 	else
 		patch_backports
+		${git} "${DIR}/patches/backports/brcm80211/0002-drivers-net-brcm80211-use-setup_timer-helper.patch"
+		${git} "${DIR}/patches/backports/brcm80211/0003-brcmfmac-use-setup_timer-helper.patch"
+		${git} "${DIR}/patches/backports/brcm80211/0004-treewide-setup_timer-timer_setup.patch"
+		${git} "${DIR}/patches/backports/brcm80211/0005-Revert-compiler.h-Remove-ACCESS_ONCE.patch"
 	fi
+
+	#regenerate="enable"
+	dir 'cypress/brcmfmac'
 }
 
 reverts () {
@@ -515,11 +521,7 @@ drivers () {
 	#[PATCH v3 1/4] mfd: stmpe: Move ADC related defines to header of mfd
 	dir 'drivers/iio/stmpe'
 
-	cdir="patches/cypress/v4.14.77-2019_0503/cypress-patch"
-
-	echo "dir: cypress/v4.14.77-2019_0503/cypress-patch"
-
-	${git} "${DIR}/${cdir}/0003-brcmfmac-Add-sg-parameters-dts-parsing.patch"
+	dir 'drivers/uio_pruss_shmem'
 	dir 'drivers/greybus'
 }
 
@@ -536,7 +538,7 @@ soc () {
 }
 
 ###
-#backports
+backports
 #reverts
 drivers
 soc
