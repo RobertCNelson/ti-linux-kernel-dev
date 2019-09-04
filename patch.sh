@@ -520,6 +520,7 @@ drivers () {
 	echo "dir: cypress/v4.14.77-2019_0503/cypress-patch"
 
 	${git} "${DIR}/${cdir}/0003-brcmfmac-Add-sg-parameters-dts-parsing.patch"
+	dir 'drivers/greybus'
 }
 
 soc () {
