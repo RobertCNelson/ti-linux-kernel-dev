@@ -129,7 +129,7 @@ aufs () {
 	aufs_prefix="aufs4-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=4.19.17+
+		KERNEL_REL=4.19.63+
 		wget https://raw.githubusercontent.com/sfjro/${aufs_prefix}standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
 		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
 		rm -rf ${aufs_prefix}kbuild.patch
@@ -242,8 +242,8 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v4.19.x
-	#${git_bin} revert --no-edit xyz
+	#v4.19.73
+	${git_bin} revert --no-edit 652993a5aae5ffa1d59188058c07e8f0e5d2461f
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
