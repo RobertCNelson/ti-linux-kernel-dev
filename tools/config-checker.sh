@@ -71,6 +71,11 @@ cd ${DIR}/KERNEL/
 #
 config="CONFIG_SYSTEM_TRUSTED_KEYS" ; option="" ; config_value
 
+#
+# Compile-time checks and compiler options
+#
+config="CONFIG_DEBUG_INFO" ; config_disable
+
 exit 2
 
 cd ${DIR}/
@@ -1791,11 +1796,6 @@ config="CONFIG_NFS_V4" ; config_enable
 config="CONFIG_ROOT_NFS" ; config_enable
 
 #exit
-
-#
-# Compile-time checks and compiler options
-#
-config="CONFIG_DEBUG_INFO" ; config_disable
 
 #
 # Runtime Testing
