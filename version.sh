@@ -7,7 +7,7 @@ config="omap2plus_defconfig"
 build_prefix="-ti-r"
 branch_prefix="ti-linux-"
 branch_postfix=".y"
-bborg_branch="4.19"
+bborg_branch="5.4"
 
 #arm
 KERNEL_ARCH=arm
@@ -32,11 +32,11 @@ toolchain="gcc_arm_gnueabihf_8"
 #toolchain="gcc_arm_aarch64_gnu_8"
 
 #Kernel
-KERNEL_REL=4.19
-KERNEL_TAG=${KERNEL_REL}.73
-kernel_rt=".72-rt25"
+KERNEL_REL=5.4
+KERNEL_TAG=${KERNEL_REL}-rc2
+kernel_rt=".X-rtY"
 #Kernel Build
-BUILD=${build_prefix}28
+BUILD=${build_prefix}0
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -48,7 +48,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 DEBARCH=armhf
 
-ti_git_old_release="6d3fccc80071fc69a3fa5cd6c5ddff0781ea6bcd"
-        ti_git_pre="6d3fccc80071fc69a3fa5cd6c5ddff0781ea6bcd"
-       ti_git_post="33b5313f5e9c3f0de838363ae938e64b3077ae1a"
+ti_git_old_release="da0c9ea146cbe92b832f1b0f694840ea8eb33cce"
+        ti_git_pre="da0c9ea146cbe92b832f1b0f694840ea8eb33cce"
+       ti_git_post="da0c9ea146cbe92b832f1b0f694840ea8eb33cce"
 #

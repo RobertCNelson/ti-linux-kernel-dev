@@ -126,10 +126,10 @@ aufs_fail () {
 }
 
 aufs () {
-	aufs_prefix="aufs4-"
+	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=4.19.63+
+		#KERNEL_REL=5.4.x+
 		wget https://raw.githubusercontent.com/sfjro/${aufs_prefix}standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
 		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
 		rm -rf ${aufs_prefix}kbuild.patch
@@ -164,7 +164,7 @@ aufs () {
 			${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/${aufs_prefix}standalone --depth=1
 		fi
 		cd ./KERNEL/
-		KERNEL_REL=4.19
+		#KERNEL_REL=5.4
 
 		cp -v ../${aufs_prefix}standalone/Documentation/ABI/testing/*aufs ./Documentation/ABI/testing/
 		mkdir -p ./Documentation/filesystems/aufs/
@@ -242,8 +242,7 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v4.19.73
-	${git_bin} revert --no-edit 652993a5aae5ffa1d59188058c07e8f0e5d2461f
+	#${git_bin} revert --no-edit xyz
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -351,7 +350,7 @@ dtb_makefile_append () {
 }
 
 beagleboard_dtbs () {
-	bbdtbs="v4.19.x-ti"
+	bbdtbs="v5.4.x-ti"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
@@ -414,12 +413,12 @@ local_patch () {
 }
 
 external_git
-aufs
+#aufs
 can_isotp
 #rt
 wireguard
 ti_pm_firmware
-beagleboard_dtbs
+#beagleboard_dtbs
 #local_patch
 
 pre_backports () {
@@ -456,27 +455,21 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.77"
+	backport_tag="v4.x-y"
 
-	subsystem="brcm80211"
+	subsystem="xyz"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
+		mkdir -p ./x/
+		cp -v ~/linux-src/x/* ./x/
 
 		post_backports
 		exit 2
 	else
 		patch_backports
-		${git} "${DIR}/patches/backports/brcm80211/0002-drivers-net-brcm80211-use-setup_timer-helper.patch"
-		${git} "${DIR}/patches/backports/brcm80211/0003-brcmfmac-use-setup_timer-helper.patch"
-		${git} "${DIR}/patches/backports/brcm80211/0004-treewide-setup_timer-timer_setup.patch"
-		${git} "${DIR}/patches/backports/brcm80211/0005-Revert-compiler.h-Remove-ACCESS_ONCE.patch"
 	fi
-
-	#regenerate="enable"
-	dir 'cypress/brcmfmac'
 }
 
 reverts () {
@@ -499,57 +492,24 @@ reverts () {
 }
 
 drivers () {
-	dir 'drivers/ar1021_i2c'
-	dir 'drivers/btrfs'
-	dir 'drivers/pwm'
-	dir 'drivers/sound'
-	dir 'drivers/spi'
-	dir 'drivers/ssd1306'
-	dir 'drivers/tps65217'
-	dir 'drivers/opp'
-	dir 'drivers/wiznet'
-
-	dir 'drivers/ti/overlays'
-	dir 'drivers/ti/cpsw'
-	dir 'drivers/ti/etnaviv'
-	dir 'drivers/ti/eqep'
-	dir 'drivers/ti/rpmsg'
-	dir 'drivers/ti/serial'
-	dir 'drivers/ti/tsc'
-	dir 'drivers/ti/gpio'
-
-	#[PATCH v3 1/4] mfd: stmpe: Move ADC related defines to header of mfd
-	dir 'drivers/iio/stmpe'
-
-	dir 'drivers/uio_pruss_shmem'
-	dir 'drivers/greybus'
+	echo "blank"
 }
 
 soc () {
-#pruss:
-	#dir 'drivers/ti/uio_pruss'
-
-	${git} "${DIR}/patches/drivers/ti/uio_pruss/0001-uio-pruss-cleanups-and-pruss-v2-pru-icss-support.patch"
-	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0002-ARM-DRA7-hwmod_data-Add-PRU-ICSS-data-for-AM57xx-var.patch"
-	${git} "${DIR}/patches/drivers/ti/uio_pruss/0003-ARM-omap2-support-deasserting-reset-from-dts.patch"
-	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0004-ARM-dts-dra7-am335x-add-outline-definitions-for-prus.patch"
-	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0005-ARM-dts-dra7-am335x-dtsi-files-for-enabling-uio-prus.patch"
-	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0006-ARM-dts-beagle-x15-enable-uio-pruss-by-default.patch"
+	echo "blank"
 }
 
 ###
-backports
+#backports
 #reverts
-drivers
-soc
+#drivers
+#soc
 
 packaging () {
 	echo "dir: packaging"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		cp -v "${DIR}/3rdparty/packaging/Makefile" "${DIR}/KERNEL/scripts/package"
 		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
-		cp -v "${DIR}/3rdparty/packaging/mkdebian" "${DIR}/KERNEL/scripts/package"
 		${git_bin} commit -a -m 'packaging: sync builddeb changes' -s
 		${git_bin} format-patch -1 -o "${DIR}/patches/packaging"
 		exit 2
