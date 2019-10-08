@@ -64,6 +64,19 @@ config_value () {
 
 cd ${DIR}/KERNEL/
 
+#Start New:
+
+#
+# Certificates for signature checking
+#
+config="CONFIG_SYSTEM_TRUSTED_KEYS" ; option="" ; config_value
+
+exit 2
+
+cd ${DIR}/
+
+#END
+
 #
 # General setup
 #
