@@ -67,6 +67,11 @@ cd ${DIR}/KERNEL/
 #Start New:
 
 #
+# Bus support
+#
+config="CONFIG_PCI" ; config_disable
+
+#
 # Certificates for signature checking
 #
 config="CONFIG_SYSTEM_TRUSTED_KEYS" ; option="" ; config_value
@@ -139,11 +144,6 @@ config="CONFIG_CACHE_L2X0_PMU" ; config_enable
 config="CONFIG_PL310_ERRATA_753970" ; config_disable
 config="CONFIG_ARM_ERRATA_754327" ; config_disable
 config="CONFIG_ARM_ERRATA_773022" ; config_disable
-
-#
-# Bus support
-#
-config="CONFIG_PCI" ; config_disable
 
 #
 # Kernel Features
