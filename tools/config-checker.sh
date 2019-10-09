@@ -86,6 +86,12 @@ config="CONFIG_ARCH_OMAP4" ; config_disable
 config="CONFIG_SOC_AM43XX" ; config_enable
 
 #
+# OMAP Legacy Platform Data Board Type
+#
+# end of TI OMAP2/3/4 Specific Features
+config="CONFIG_OMAP5_ERRATA_801819" ; config_enable
+
+#
 # Bus support
 #
 config="CONFIG_PCI" ; config_disable
@@ -131,7 +137,6 @@ config="CONFIG_MODULE_SIG" ; config_disable
 #
 # OMAP Legacy Platform Data Board Type
 #
-config="CONFIG_OMAP5_ERRATA_801819" ; config_enable
 config="CONFIG_ARCH_ROCKCHIP" ; config_disable
 config="CONFIG_ARCH_SOCFPGA" ; config_disable
 config="CONFIG_ARCH_SUNXI" ; config_disable
