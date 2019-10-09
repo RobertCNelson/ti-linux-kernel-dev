@@ -39,8 +39,8 @@ cat_files () {
 		cat ./patches/git/RT >> /tmp/git_msg
 	fi
 
-	if [ -f ./patches/git/TI_AMX3_CM ] ; then
-		cat ./patches/git/TI_AMX3_CM >> /tmp/git_msg
+	if [ -f ./patches/git/TI_AMX3_CM3 ] ; then
+		cat ./patches/git/TI_AMX3_CM3 >> /tmp/git_msg
 	fi
 }
 
