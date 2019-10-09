@@ -83,6 +83,7 @@ config="CONFIG_ARCH_MVEBU" ; config_disable
 #
 config="CONFIG_ARCH_OMAP3" ; config_disable
 config="CONFIG_ARCH_OMAP4" ; config_disable
+config="CONFIG_SOC_AM43XX" ; config_enable
 
 #
 # Bus support
@@ -126,8 +127,6 @@ config="CONFIG_EMBEDDED" ; config_enable
 # GCOV-based kernel profiling
 #
 config="CONFIG_MODULE_SIG" ; config_disable
-
-config="CONFIG_SOC_AM43XX" ; config_enable
 
 #
 # OMAP Legacy Platform Data Board Type
