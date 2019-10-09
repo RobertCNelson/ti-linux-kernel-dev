@@ -62,7 +62,7 @@ if [ -e ${DIR}/version.sh ]; then
 	cat_files
 
 	${git_bin} commit -a -F /tmp/git_msg -s
-	${git_bin} tag -a "${KERNEL_TAG}${BUILD}" -m "${KERNEL_TAG}${BUILD}" -F /tmp/git_msg -f
+	${git_bin} tag -a "${KERNEL_TAG}${BUILD}" -m "${KERNEL_TAG}${BUILD}" -f
 
 	${git_bin} push -f origin ${BRANCH}
 	${git_bin} push -f origin ${BRANCH} --tags
