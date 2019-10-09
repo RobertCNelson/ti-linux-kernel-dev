@@ -74,6 +74,7 @@ config="CONFIG_ARCH_BCM" ; config_disable
 config="CONFIG_ARCH_EXYNOS" ; config_disable
 config="CONFIG_ARCH_HIGHBANK" ; config_disable
 config="CONFIG_ARCH_MXC" ; config_disable
+config="CONFIG_ARCH_MESON" ; config_disable
 
 #
 # Bus support
