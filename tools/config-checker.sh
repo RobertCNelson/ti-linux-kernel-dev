@@ -93,6 +93,7 @@ config="CONFIG_OMAP5_ERRATA_801819" ; config_enable
 
 # end of TI OMAP/AM/DM/DRA Family
 config="CONFIG_ARCH_ROCKCHIP" ; config_disable
+config="CONFIG_ARCH_SOCFPGA" ; config_disable
 
 #
 # Bus support
@@ -140,7 +141,6 @@ config="CONFIG_MODULE_SIG" ; config_disable
 #
 # OMAP Legacy Platform Data Board Type
 #
-config="CONFIG_ARCH_SOCFPGA" ; config_disable
 config="CONFIG_ARCH_SUNXI" ; config_disable
 config="CONFIG_ARCH_TEGRA" ; config_disable
 config="CONFIG_ARCH_VEXPRESS" ; config_disable
