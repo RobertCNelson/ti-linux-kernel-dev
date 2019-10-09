@@ -67,6 +67,11 @@ cd ${DIR}/KERNEL/
 #Start New:
 
 #
+# General setup
+#
+config="CONFIG_KERNEL_LZO" ; config_enable
+
+#
 # CPU Core family selection
 #
 config="CONFIG_ARCH_VIRT" ; config_disable
@@ -119,11 +124,6 @@ exit 2
 cd ${DIR}/
 
 #END
-
-#
-# General setup
-#
-config="CONFIG_KERNEL_LZO" ; config_enable
 
 #
 # RCU Subsystem
