@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2009-2017 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2019 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,28 @@
 
 #yeah, i'm getting lazy..
 
+cat_files () {
+	if [ -f ./patches/git/AUFS ] ; then
+		cat ./patches/git/AUFS >> /tmp/git_msg
+	fi
+
+	if [ -f ./patches/git/BBDTBS ] ; then
+		cat ./patches/git/BBDTBS >> /tmp/git_msg
+	fi
+
+	if [ -f ./patches/git/CAN-ISOTP ] ; then
+		cat ./patches/git/CAN-ISOTP >> /tmp/git_msg
+	fi
+
+	if [ -f ./patches/git/RT ] ; then
+		cat ./patches/git/RT >> /tmp/git_msg
+	fi
+
+	if [ -f ./patches/git/TI_AMX3_CM3 ] ; then
+		cat ./patches/git/TI_AMX3_CM3 >> /tmp/git_msg
+	fi
+}
+
 DIR=$PWD
 git_bin=$(which git)
 
@@ -42,10 +64,14 @@ if [ -e ${DIR}/version.sh ]; then
 	${git_bin} add arch/${KERNEL_ARCH}/configs/${example}_defconfig
 
 	if [ "x${ti_git_old_release}" = "x${ti_git_post}" ] ; then
-		${git_bin} commit -a -m "${KERNEL_TAG}${BUILD} ${example}_defconfig" -s
+		echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" > /tmp/git_msg
+		cat_files
 	else
-		${git_bin} commit -a -m "${KERNEL_TAG}${BUILD} ${example}_defconfig" -m "${KERNEL_REL} TI Delta: ${compare}/${ti_git_old_release}...${ti_git_post}" -s
+		echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" > /tmp/git_msg
+		echo "${KERNEL_REL} TI Delta: ${compare}/${ti_git_old_release}...${ti_git_post}" >> /tmp/git_msg
+		cat_files
 	fi
+	${git_bin} commit -a -F /tmp/git_msg -s
 
 	${git_bin} tag -a "${KERNEL_TAG}${BUILD}" -m "${KERNEL_TAG}${BUILD}" -f
 

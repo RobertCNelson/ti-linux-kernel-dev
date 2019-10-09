@@ -22,6 +22,28 @@
 
 #yeah, i'm getting lazy..
 
+cat_files () {
+	if [ -f ./patches/git/AUFS ] ; then
+		cat ./patches/git/AUFS >> /tmp/git_msg
+	fi
+
+	if [ -f ./patches/git/BBDTBS ] ; then
+		cat ./patches/git/BBDTBS >> /tmp/git_msg
+	fi
+
+	if [ -f ./patches/git/CAN-ISOTP ] ; then
+		cat ./patches/git/CAN-ISOTP >> /tmp/git_msg
+	fi
+
+	if [ -f ./patches/git/RT ] ; then
+		cat ./patches/git/RT >> /tmp/git_msg
+	fi
+
+	if [ -f ./patches/git/TI_AMX3_CM3 ] ; then
+		cat ./patches/git/TI_AMX3_CM3 >> /tmp/git_msg
+	fi
+}
+
 DIR=$PWD
 git_bin=$(which git)
 
@@ -32,8 +54,11 @@ if [ -e ${DIR}/version.sh ]; then
 	unset BRANCH
 	. ${DIR}/version.sh
 
-	${git_bin} commit -a -m "${KERNEL_TAG}${BUILD} release" -s
-	${git_bin} tag -a "${KERNEL_TAG}${BUILD}" -m "${KERNEL_TAG}${BUILD}" -f
+	echo "${KERNEL_TAG}${BUILD} release" > /tmp/git_msg
+	cat_files
+
+	${git_bin} commit -a -F /tmp/git_msg -s
+	${git_bin} tag -a "${KERNEL_TAG}${BUILD}" -m "${KERNEL_TAG}${BUILD}" -F /tmp/git_msg -f
 
 	${git_bin} push -f origin ${BRANCH}
 	${git_bin} push -f origin ${BRANCH} --tags
@@ -46,7 +71,10 @@ if [ -e ${DIR}/version.sh ]; then
 	cp ${DIR}/KERNEL/defconfig ${DIR}/KERNEL/arch/${KERNEL_ARCH}/configs/${example}_defconfig
 	${git_bin} add arch/${KERNEL_ARCH}/configs/${example}_defconfig
 
-	${git_bin} commit -a -m "${KERNEL_TAG}${BUILD} ${example}_defconfig" -s
+	echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" > /tmp/git_msg
+	cat_files
+
+	${git_bin} commit -a -F /tmp/git_msg -s
 	${git_bin} tag -a "${KERNEL_TAG}${BUILD}" -m "${KERNEL_TAG}${BUILD}" -f
 
 	#push tag
