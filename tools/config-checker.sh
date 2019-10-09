@@ -72,6 +72,7 @@ cd ${DIR}/KERNEL/
 config="CONFIG_ARCH_VIRT" ; config_disable
 config="CONFIG_ARCH_BCM" ; config_disable
 config="CONFIG_ARCH_EXYNOS" ; config_disable
+config="CONFIG_ARCH_HIGHBANK" ; config_disable
 
 #
 # Bus support
@@ -117,7 +118,6 @@ config="CONFIG_EMBEDDED" ; config_enable
 config="CONFIG_MODULE_SIG" ; config_disable
 
 config="CONFIG_ARCH_MVEBU" ; config_disable
-config="CONFIG_ARCH_HIGHBANK" ; config_disable
 config="CONFIG_ARCH_MXC" ; config_disable
 
 #
