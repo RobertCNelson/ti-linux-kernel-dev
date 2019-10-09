@@ -76,6 +76,7 @@ config="CONFIG_ARCH_HIGHBANK" ; config_disable
 config="CONFIG_ARCH_MXC" ; config_disable
 config="CONFIG_ARCH_MESON" ; config_disable
 config="CONFIG_ARCH_MMP" ; config_disable
+config="CONFIG_ARCH_MVEBU" ; config_disable
 
 #
 # Bus support
@@ -119,8 +120,6 @@ config="CONFIG_EMBEDDED" ; config_enable
 # GCOV-based kernel profiling
 #
 config="CONFIG_MODULE_SIG" ; config_disable
-
-config="CONFIG_ARCH_MVEBU" ; config_disable
 
 #
 # TI OMAP/AM/DM/DRA Family
