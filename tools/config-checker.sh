@@ -71,6 +71,7 @@ cd ${DIR}/KERNEL/
 #
 config="CONFIG_ARCH_VIRT" ; config_disable
 config="CONFIG_ARCH_BCM" ; config_disable
+config="CONFIG_ARCH_EXYNOS" ; config_disable
 
 #
 # Bus support
@@ -132,7 +133,6 @@ config="CONFIG_SOC_AM43XX" ; config_enable
 config="CONFIG_OMAP5_ERRATA_801819" ; config_enable
 config="CONFIG_ARCH_ROCKCHIP" ; config_disable
 config="CONFIG_ARCH_SOCFPGA" ; config_disable
-config="CONFIG_ARCH_EXYNOS" ; config_disable
 config="CONFIG_ARCH_SUNXI" ; config_disable
 config="CONFIG_ARCH_TEGRA" ; config_disable
 config="CONFIG_ARCH_VEXPRESS" ; config_disable
