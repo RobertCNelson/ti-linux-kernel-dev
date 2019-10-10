@@ -163,6 +163,46 @@ config="CONFIG_MMC_OMAP_HS" ; config_enable
 config="CONFIG_INPUT_TPS65218_PWRBUTTON" ; config_enable
 
 #
+# I2C HID support
+#
+config="CONFIG_USB" ; config_enable
+
+#
+# Miscellaneous USB options
+#
+config="CONFIG_USB_OTG" ; config_enable
+
+#
+# USB Imaging devices
+#
+config="CONFIG_USB_MUSB_HDRC" ; config_enable
+config="CONFIG_USB_MUSB_HOST" ; config_disable
+config="CONFIG_USB_MUSB_GADGET" ; config_disable
+
+#
+# Platform Glue Layer
+#
+config="CONFIG_USB_MUSB_TUSB6010" ; config_disable
+config="CONFIG_USB_MUSB_OMAP2PLUS" ; config_disable
+config="CONFIG_USB_MUSB_AM35X" ; config_disable
+config="CONFIG_USB_MUSB_DSPS" ; config_enable
+config="CONFIG_USB_MUSB_AM335X_CHILD" ; config_enable
+
+#
+# MUSB DMA mode
+#
+config="CONFIG_MUSB_PIO_ONLY" ; config_enable
+
+#
+# USB Physical Layer drivers
+#
+config="CONFIG_NOP_USB_XCEIV" ; config_enable
+config="CONFIG_AM335X_CONTROL_USB" ; config_enable
+config="CONFIG_AM335X_PHY_USB" ; config_enable
+#config="CONFIG_USB_GPIO_VBUS" ; config_enable
+config="CONFIG_USB_GADGET" ; config_enable
+
+#
 # File systems
 #
 config="CONFIG_EXT4_FS" ; config_enable
