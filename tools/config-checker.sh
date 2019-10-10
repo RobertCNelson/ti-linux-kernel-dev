@@ -153,6 +153,13 @@ config="CONFIG_SERIAL_8250_OMAP" ; config_enable
 config="CONFIG_SERIAL_OMAP" ; config_disable
 
 #
+# EEPROM support
+#
+config="CONFIG_EEPROM_AT24" ; config_enable
+config="CONFIG_EEPROM_AT25" ; config_enable
+config="CONFIG_EEPROM_93XX46" ; config_module
+
+#
 # MMC/SD/SDIO Host Controller Drivers
 #
 config="CONFIG_MMC_OMAP_HS" ; config_enable
@@ -404,13 +411,6 @@ config="CONFIG_PARPORT" ; config_disable
 #
 config="CONFIG_BONE_CAPEMGR" ; config_enable
 config="CONFIG_TIEQEP" ; config_module
-
-#
-# EEPROM support
-#
-config="CONFIG_EEPROM_AT24" ; config_enable
-config="CONFIG_EEPROM_AT25" ; config_enable
-config="CONFIG_EEPROM_93XX46" ; config_module
 
 #
 # Texas Instruments shared transport line discipline
