@@ -152,6 +152,10 @@ config="CONFIG_SERIAL_8250_OMAP" ; config_enable
 #
 config="CONFIG_SERIAL_OMAP" ; config_disable
 
+# end of Serial drivers
+config="CONFIG_HW_RANDOM" ; config_enable
+config="CONFIG_HW_RANDOM_OMAP" ; config_enable
+
 #
 # EEPROM support
 #
