@@ -309,6 +309,9 @@ config="CONFIG_WKUP_M3_IPC" ; config_enable
 # File systems
 #
 config="CONFIG_EXT4_FS" ; config_enable
+config="CONFIG_BTRFS_FS" ; config_enable
+config="CONFIG_F2FS_FS" ; config_enable
+config="CONFIG_OVERLAY_FS" ; config_enable
 config="CONFIG_AUTOFS4_FS" ; config_enable
 
 #
@@ -344,6 +347,11 @@ config="CONFIG_USB_G_MULTI_RNDIS" ; config_enable
 config="CONFIG_USB_G_HID" ; config_module
 config="CONFIG_USB_G_DBGP" ; config_module
 config="CONFIG_USB_G_DBGP_SERIAL" ; config_enable
+
+#
+# Library routines
+#
+config="CONFIG_RAID6_PQ_BENCHMARK" ; config_disable
 
 #
 # Compile-time checks and compiler options
