@@ -120,6 +120,11 @@ config="CONFIG_PCI" ; config_disable
 config="CONFIG_MMC_OMAP_HS" ; config_enable
 
 #
+# File systems
+#
+config="CONFIG_EXT4_FS" ; config_enable
+
+#
 # Certificates for signature checking
 #
 config="CONFIG_SYSTEM_TRUSTED_KEYS" ; option="" ; config_value
