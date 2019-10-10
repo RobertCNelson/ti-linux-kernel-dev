@@ -134,6 +134,11 @@ config="CONFIG_SYSTEM_TRUSTED_KEYS" ; option="" ; config_value
 #
 config="CONFIG_DEBUG_INFO" ; config_disable
 
+#
+# Security options
+#
+config="CONFIG_SECURITY_DMESG_RESTRICT" ; config_disable
+
 exit 2
 
 cd ${DIR}/
