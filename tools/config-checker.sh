@@ -195,6 +195,22 @@ config="CONFIG_LEDS_GPIO" ; config_enable
 config="CONFIG_INPUT_TPS65218_PWRBUTTON" ; config_enable
 
 #
+# Graphics support
+#
+config="CONFIG_DRM" ; config_enable
+config="CONFIG_DRM_KMS_HELPER" ; config_enable
+
+#
+# I2C encoder or helper chips
+#
+config="CONFIG_DRM_I2C_NXP_TDA998X" ; config_enable
+
+#
+# OMAPDRM External Display Device Drivers
+#
+config="CONFIG_DRM_TILCDC" ; config_enable
+
+#
 # I2C HID support
 #
 config="CONFIG_USB" ; config_enable
