@@ -138,6 +138,11 @@ config="CONFIG_REGULATOR_TPS65217" ; config_enable
 config="CONFIG_MMC_OMAP_HS" ; config_enable
 
 #
+# Input Device Drivers
+#
+config="CONFIG_INPUT_TPS65218_PWRBUTTON" ; config_enable
+
+#
 # File systems
 #
 config="CONFIG_EXT4_FS" ; config_enable
@@ -191,9 +196,6 @@ config="CONFIG_ARM_ERRATA_773022" ; config_disable
 #
 # Kernel Features
 #
-config="CONFIG_HZ_100" ; config_disable
-config="CONFIG_HZ_250" ; config_enable
-config="CONFIG_HZ" ; option="250" ; config_value
 #config="CONFIG_THUMB2_KERNEL" ; config_enable
 config="CONFIG_PARAVIRT" ; config_disable
 
@@ -572,7 +574,6 @@ config="CONFIG_INPUT_GPIO_DECODER" ; config_module
 config="CONFIG_INPUT_KXTJ9" ; config_module
 config="CONFIG_INPUT_KXTJ9_POLLED_MODE" ; config_enable
 config="CONFIG_INPUT_REGULATOR_HAPTIC" ; config_module
-config="CONFIG_INPUT_TPS65218_PWRBUTTON" ; config_enable
 config="CONFIG_INPUT_AXP20X_PEK" ; config_enable
 config="CONFIG_INPUT_TWL4030_PWRBUTTON" ; config_enable
 config="CONFIG_INPUT_TWL4030_VIBRA" ; config_enable
