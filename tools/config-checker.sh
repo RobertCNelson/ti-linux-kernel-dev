@@ -302,6 +302,11 @@ config="CONFIG_EXT4_FS" ; config_enable
 config="CONFIG_AUTOFS4_FS" ; config_enable
 
 #
+# Pseudo filesystems
+#
+config="CONFIG_CONFIGFS_FS" ; config_enable
+
+#
 # Extcon Device Drivers
 #
 config="CONFIG_TI_EMIF" ; config_enable
