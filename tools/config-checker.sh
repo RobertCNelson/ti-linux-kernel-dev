@@ -133,6 +133,19 @@ config="CONFIG_MFD_TPS65217" ; config_enable
 config="CONFIG_REGULATOR_TPS65217" ; config_enable
 
 #
+# Serial drivers
+#
+config="CONFIG_SERIAL_8250_DMA" ; config_disable
+config="CONFIG_SERIAL_8250_NR_UARTS" ; option="6" ; config_value
+config="CONFIG_SERIAL_8250_RUNTIME_UARTS" ; option="6" ; config_value
+config="CONFIG_SERIAL_8250_OMAP" ; config_enable
+
+#
+# Non-8250 serial port support
+#
+config="CONFIG_SERIAL_OMAP" ; config_disable
+
+#
 # MMC/SD/SDIO Host Controller Drivers
 #
 config="CONFIG_MMC_OMAP_HS" ; config_enable
