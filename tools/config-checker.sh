@@ -321,6 +321,24 @@ config="CONFIG_TI_EMIF_SRAM" ; config_enable
 config="CONFIG_SYSTEM_TRUSTED_KEYS" ; option="" ; config_value
 
 #
+# USB Peripheral Controller
+#
+#old:
+config="CONFIG_USB_ZERO" ; config_module
+config="CONFIG_USB_AUDIO" ; config_module
+config="CONFIG_USB_G_NCM" ; config_module
+config="CONFIG_USB_MASS_STORAGE" ; config_module
+config="CONFIG_USB_MIDI_GADGET" ; config_module
+config="CONFIG_USB_G_PRINTER" ; config_module
+config="CONFIG_USB_CDC_COMPOSITE" ; config_module
+config="CONFIG_USB_G_ACM_MS" ; config_module
+config="CONFIG_USB_G_MULTI" ; config_module
+config="CONFIG_USB_G_MULTI_RNDIS" ; config_enable
+config="CONFIG_USB_G_HID" ; config_module
+config="CONFIG_USB_G_DBGP" ; config_module
+config="CONFIG_USB_G_DBGP_SERIAL" ; config_enable
+
+#
 # Compile-time checks and compiler options
 #
 config="CONFIG_DEBUG_INFO" ; config_disable
@@ -1269,39 +1287,6 @@ config="CONFIG_AM335X_PHY_USB" ; config_enable
 config="CONFIG_USB_GPIO_VBUS" ; config_enable
 config="CONFIG_USB_GADGET" ; config_enable
 config="CONFIG_USB_GADGET_VBUS_DRAW" ; option="500" ; config_value
-
-#
-# USB Peripheral Controller
-#
-config="CONFIG_USB_CONFIGFS" ; config_module
-config="CONFIG_USB_CONFIGFS_SERIAL" ; config_enable
-config="CONFIG_USB_CONFIGFS_ACM" ; config_enable
-config="CONFIG_USB_CONFIGFS_OBEX" ; config_enable
-config="CONFIG_USB_CONFIGFS_NCM" ; config_enable
-config="CONFIG_USB_CONFIGFS_ECM" ; config_enable
-config="CONFIG_USB_CONFIGFS_ECM_SUBSET" ; config_enable
-config="CONFIG_USB_CONFIGFS_RNDIS" ; config_enable
-
-config="CONFIG_USB_FUNCTIONFS" ; config_module
-config="CONFIG_USB_FUNCTIONFS_ETH" ; config_enable
-config="CONFIG_USB_FUNCTIONFS_RNDIS" ; config_enable
-config="CONFIG_USB_FUNCTIONFS_GENERIC" ; config_enable
-
-#old:
-config="CONFIG_USB_ZERO" ; config_module
-config="CONFIG_USB_AUDIO" ; config_module
-config="CONFIG_USB_G_NCM" ; config_module
-config="CONFIG_USB_MASS_STORAGE" ; config_module
-config="CONFIG_USB_G_SERIAL" ; config_module
-config="CONFIG_USB_MIDI_GADGET" ; config_module
-config="CONFIG_USB_G_PRINTER" ; config_module
-config="CONFIG_USB_CDC_COMPOSITE" ; config_module
-config="CONFIG_USB_G_ACM_MS" ; config_module
-config="CONFIG_USB_G_MULTI" ; config_module
-config="CONFIG_USB_G_MULTI_RNDIS" ; config_enable
-config="CONFIG_USB_G_HID" ; config_module
-config="CONFIG_USB_G_DBGP" ; config_module
-config="CONFIG_USB_G_DBGP_SERIAL" ; config_enable
 
 #
 # MMC/SD/SDIO Card Drivers
