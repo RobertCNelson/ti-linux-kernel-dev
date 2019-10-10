@@ -272,6 +272,9 @@ config="CONFIG_USB_GADGET" ; config_enable
 #
 config="CONFIG_TI_CPPI41" ; config_enable
 
+# end of IRQ chip support
+config="CONFIG_RESET_TI_SYSCON" ; config_enable
+
 #
 # Remoteproc drivers
 #
