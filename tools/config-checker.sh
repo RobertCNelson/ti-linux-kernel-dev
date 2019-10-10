@@ -160,6 +160,11 @@ config="CONFIG_EEPROM_AT25" ; config_enable
 config="CONFIG_EEPROM_93XX46" ; config_module
 
 #
+# Watchdog Device Drivers
+#
+config="CONFIG_OMAP_WATCHDOG" ; config_enable
+
+#
 # MMC/SD/SDIO Host Controller Drivers
 #
 config="CONFIG_MMC_OMAP_HS" ; config_enable
