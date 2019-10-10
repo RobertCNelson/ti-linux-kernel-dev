@@ -224,6 +224,11 @@ config="CONFIG_AM335X_PHY_USB" ; config_enable
 config="CONFIG_USB_GADGET" ; config_enable
 
 #
+# DMA Devices
+#
+config="CONFIG_TI_CPPI41" ; config_enable
+
+#
 # File systems
 #
 config="CONFIG_EXT4_FS" ; config_enable
