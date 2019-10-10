@@ -72,6 +72,12 @@ cd ${DIR}/KERNEL/
 config="CONFIG_KERNEL_LZO" ; config_enable
 
 #
+# Timers subsystem
+#
+# end of Timers subsystem
+config="CONFIG_PREEMPT" ; config_enable
+
+#
 # CPU Core family selection
 #
 config="CONFIG_ARCH_VIRT" ; config_disable
@@ -185,7 +191,6 @@ config="CONFIG_ARM_ERRATA_773022" ; config_disable
 #
 # Kernel Features
 #
-config="CONFIG_PREEMPT" ; config_enable
 config="CONFIG_HZ_100" ; config_disable
 config="CONFIG_HZ_250" ; config_enable
 config="CONFIG_HZ" ; option="250" ; config_value
