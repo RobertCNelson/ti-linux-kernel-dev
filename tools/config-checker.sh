@@ -115,6 +115,11 @@ config="CONFIG_MODULE_COMPRESS_XZ" ; config_enable
 config="CONFIG_PCI" ; config_disable
 
 #
+# MMC/SD/SDIO Host Controller Drivers
+#
+config="CONFIG_MMC_OMAP_HS" ; config_enable
+
+#
 # Certificates for signature checking
 #
 config="CONFIG_SYSTEM_TRUSTED_KEYS" ; option="" ; config_value
