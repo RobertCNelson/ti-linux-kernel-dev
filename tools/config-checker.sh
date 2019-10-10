@@ -326,6 +326,14 @@ config="CONFIG_SYSTEM_TRUSTED_KEYS" ; option="" ; config_value
 config="CONFIG_DEBUG_INFO" ; config_disable
 
 #
+# Random Number Generation
+#
+config="CONFIG_CRYPTO_DEV_OMAP" ; config_module
+config="CONFIG_CRYPTO_DEV_OMAP_SHAM" ; config_module
+config="CONFIG_CRYPTO_DEV_OMAP_AES" ; config_module
+config="CONFIG_CRYPTO_DEV_OMAP_DES" ; config_module
+
+#
 # Security options
 #
 config="CONFIG_SECURITY_DMESG_RESTRICT" ; config_disable
@@ -2025,10 +2033,6 @@ config="CONFIG_CRYPTO_MANAGER_DISABLE_TESTS" ; config_enable
 #
 config="CONFIG_CRYPTO_DEFLATE" ; config_enable
 
-#
-# Random Number Generation
-#
-config="CONFIG_CRYPTO_DEV_OMAP_DES" ; config_module
 
 #
 # Certificates for signature checking
