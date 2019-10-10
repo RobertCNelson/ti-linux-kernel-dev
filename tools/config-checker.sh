@@ -108,7 +108,7 @@ config="CONFIG_ARCH_WM8850" ; config_disable
 # Kernel Features
 #
 config="CONFIG_NR_CPUS" ; option="2" ; config_value
-
+config="CONFIG_XEN" ; config_disable
 
 # end of GCC plugins
 # end of General architecture-dependent options
@@ -185,14 +185,12 @@ config="CONFIG_ARM_ERRATA_773022" ; config_disable
 #
 # Kernel Features
 #
-config="CONFIG_NR_CPUS" ; option="2" ; config_value
 config="CONFIG_PREEMPT" ; config_enable
 config="CONFIG_HZ_100" ; config_disable
 config="CONFIG_HZ_250" ; config_enable
 config="CONFIG_HZ" ; option="250" ; config_value
 #config="CONFIG_THUMB2_KERNEL" ; config_enable
 config="CONFIG_PARAVIRT" ; config_disable
-config="CONFIG_XEN" ; config_disable
 
 #
 # Boot options
