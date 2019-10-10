@@ -259,6 +259,7 @@ config="CONFIG_TI_CPPI41" ; config_enable
 # File systems
 #
 config="CONFIG_EXT4_FS" ; config_enable
+config="CONFIG_AUTOFS4_FS" ; config_enable
 
 #
 # Certificates for signature checking
@@ -1906,7 +1907,6 @@ config="CONFIG_XFS_FS" ; config_enable
 config="CONFIG_BTRFS_FS" ; config_enable
 config="CONFIG_F2FS_FS" ; config_enable
 config="CONFIG_FS_ENCRYPTION" ; config_enable
-config="CONFIG_AUTOFS4_FS" ; config_enable
 config="CONFIG_FUSE_FS" ; config_enable
 config="CONFIG_OVERLAY_FS" ; config_enable
 
