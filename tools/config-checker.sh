@@ -351,6 +351,11 @@ config="CONFIG_USB_G_DBGP_SERIAL" ; config_enable
 config="CONFIG_DEBUG_INFO" ; config_disable
 
 #
+# Crypto core or helper
+#
+config="CONFIG_CRYPTO_MANAGER_DISABLE_TESTS" ; config_enable
+
+#
 # Random Number Generation
 #
 config="CONFIG_CRYPTO_DEV_OMAP" ; config_module
