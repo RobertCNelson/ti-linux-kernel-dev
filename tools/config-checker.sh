@@ -104,6 +104,12 @@ config="CONFIG_ARCH_TEGRA" ; config_disable
 config="CONFIG_ARCH_VEXPRESS" ; config_disable
 config="CONFIG_ARCH_WM8850" ; config_disable
 
+#
+# Kernel Features
+#
+config="CONFIG_NR_CPUS" ; option="2" ; config_value
+
+
 # end of GCC plugins
 # end of General architecture-dependent options
 config="CONFIG_MODULE_COMPRESS" ; config_enable
