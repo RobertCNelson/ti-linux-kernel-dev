@@ -174,6 +174,11 @@ config="CONFIG_OMAP_WATCHDOG" ; config_enable
 config="CONFIG_MMC_OMAP_HS" ; config_enable
 
 #
+# LED drivers
+#
+config="CONFIG_LEDS_GPIO" ; config_enable
+
+#
 # Input Device Drivers
 #
 config="CONFIG_INPUT_TPS65218_PWRBUTTON" ; config_enable
