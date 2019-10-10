@@ -174,6 +174,17 @@ config="CONFIG_OMAP_WATCHDOG" ; config_enable
 config="CONFIG_MMC_OMAP_HS" ; config_enable
 
 #
+# Distributed Switch Architecture drivers
+#
+config="CONFIG_TI_DAVINCI_MDIO" ; config_enable
+config="CONFIG_TI_CPSW" ; config_enable
+
+#
+# MII PHY device drivers
+#
+config="CONFIG_SMSC_PHY" ; config_enable
+
+#
 # LED drivers
 #
 config="CONFIG_LEDS_GPIO" ; config_enable
