@@ -122,6 +122,13 @@ config="CONFIG_MODULE_COMPRESS" ; config_enable
 config="CONFIG_MODULE_COMPRESS_XZ" ; config_enable
 
 #
+# CPU frequency scaling drivers
+#
+config="CONFIG_CPUFREQ_DT" ; config_enable
+config="CONFIG_ARM_OMAP2PLUS_CPUFREQ" ; config_disable
+config="CONFIG_ARM_TI_CPUFREQ" ; config_enable
+
+#
 # Bus support
 #
 config="CONFIG_PCI" ; config_disable
@@ -224,13 +231,6 @@ config="CONFIG_EFI" ; config_disable
 # CPU Frequency scaling
 #
 config="CONFIG_CPU_FREQ_STAT_DETAILS" ; config_enable
-
-#
-# CPU frequency scaling drivers
-#
-config="CONFIG_CPUFREQ_DT" ; config_enable
-config="CONFIG_ARM_OMAP2PLUS_CPUFREQ" ; config_disable
-config="CONFIG_ARM_TI_CPUFREQ" ; config_enable
 
 #
 # CPU Idle
