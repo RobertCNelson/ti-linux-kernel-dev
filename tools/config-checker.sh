@@ -115,6 +115,12 @@ config="CONFIG_MODULE_COMPRESS_XZ" ; config_enable
 config="CONFIG_PCI" ; config_disable
 
 #
+# Multifunction device drivers
+#
+config="CONFIG_MFD_TPS65217" ; config_enable
+config="CONFIG_REGULATOR_TPS65217" ; config_enable
+
+#
 # MMC/SD/SDIO Host Controller Drivers
 #
 config="CONFIG_MMC_OMAP_HS" ; config_enable
