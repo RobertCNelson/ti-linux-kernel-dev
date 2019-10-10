@@ -72,6 +72,13 @@ cd ${DIR}/KERNEL/
 config="CONFIG_KERNEL_LZO" ; config_enable
 
 #
+# RCU Subsystem
+#
+config="CONFIG_IKCONFIG" ; config_enable
+config="CONFIG_IKHEADERS" ; config_module
+config="CONFIG_IKCONFIG_PROC" ; config_enable
+
+#
 # Timers subsystem
 #
 # end of Timers subsystem
@@ -365,8 +372,6 @@ cd ${DIR}/
 #
 # RCU Subsystem
 #
-config="CONFIG_IKCONFIG" ; config_enable
-config="CONFIG_IKCONFIG_PROC" ; config_enable
 config="CONFIG_MEMCG_SWAP_ENABLED" ; config_enable
 config="CONFIG_RT_GROUP_SCHED" ; config_enable
 config="CONFIG_SYSFS_SYSCALL" ; config_enable
