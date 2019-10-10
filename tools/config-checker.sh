@@ -134,6 +134,12 @@ config="CONFIG_ARM_TI_CPUFREQ" ; config_enable
 config="CONFIG_PCI" ; config_disable
 
 #
+# Firmware loader
+#
+config="CONFIG_EXTRA_FIRMWARE" ; option="am335x-pm-firmware.elf am335x-bone-scale-data.bin am335x-evm-scale-data.bin am43x-evm-scale-data.bin" ; config_string
+config="CONFIG_EXTRA_FIRMWARE_DIR" ; option="firmware" ; config_string
+
+#
 # Multifunction device drivers
 #
 config="CONFIG_MFD_TPS65217" ; config_enable
@@ -256,10 +262,39 @@ config="CONFIG_USB_GADGET" ; config_enable
 config="CONFIG_TI_CPPI41" ; config_enable
 
 #
+# Remoteproc drivers
+#
+# CONFIG_REMOTEPROC is not set
+# end of Remoteproc drivers
+config="CONFIG_REMOTEPROC" ; config_enable
+config="CONFIG_OMAP_REMOTEPROC" ; config_enable
+config="CONFIG_WKUP_M3_RPROC" ; config_enable
+
+#
+# Rpmsg drivers
+#
+# CONFIG_RPMSG_QCOM_GLINK_RPM is not set
+# CONFIG_RPMSG_VIRTIO is not set
+# end of Rpmsg drivers
+
+#
+# SOC (System On Chip) specific Drivers
+#
+config="CONFIG_SOC_TI" ; config_enable
+config="CONFIG_AMX3_PM" ; config_enable
+config="CONFIG_WKUP_M3_IPC" ; config_enable
+
+#
 # File systems
 #
 config="CONFIG_EXT4_FS" ; config_enable
 config="CONFIG_AUTOFS4_FS" ; config_enable
+
+#
+# Extcon Device Drivers
+#
+config="CONFIG_TI_EMIF" ; config_enable
+config="CONFIG_TI_EMIF_SRAM" ; config_enable
 
 #
 # Certificates for signature checking
