@@ -129,6 +129,17 @@ config="CONFIG_ARM_OMAP2PLUS_CPUFREQ" ; config_disable
 config="CONFIG_ARM_TI_CPUFREQ" ; config_enable
 
 #
+# CPU Idle
+#
+config="CONFIG_CPU_IDLE" ; config_enable
+config="CONFIG_CPU_IDLE_GOV_LADDER" ; config_enable
+
+#
+# ARM CPU Idle Drivers
+#
+config="CONFIG_ARM_CPUIDLE" ; config_enable
+
+#
 # Bus support
 #
 config="CONFIG_PCI" ; config_disable
