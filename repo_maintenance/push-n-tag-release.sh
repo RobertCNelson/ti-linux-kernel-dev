@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2009-2017 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2019 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,8 @@
 
 #yeah, i'm getting lazy..
 
-wfile="/tmp/4_14_normal_git_msg"
+wfile=$(mktemp /tmp/builder.XXXXXXXXX)
+echo "Working on temp $wfile ..."
 
 cat_files () {
 	if [ -f ./patches/git/AUFS ] ; then
@@ -90,3 +91,5 @@ if [ -e ${DIR}/version.sh ]; then
 	cd ${DIR}/
 fi
 
+echo "Deleting $wfile ..."
+rm -f "$wfile"
