@@ -1,6 +1,6 @@
-From d292696a0a2b4319bfb66b348b3d996c7fbed7a0 Mon Sep 17 00:00:00 2001
+From f34cba00d5f85497d0f1e1f7fb4f312229cdd86a Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 3 Apr 2019 15:57:49 -0500
+Date: Wed, 16 Oct 2019 15:14:46 -0500
 Subject: [PATCH 2/2] xenomai ipipe patchset
 
 ---
@@ -26,7 +26,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  arch/arm/include/asm/setup.h             |    6 +
  arch/arm/include/asm/switch_to.h         |    9 +
  arch/arm/include/asm/thread_info.h       |   20 +
- arch/arm/include/asm/uaccess.h           |    8 +-
+ arch/arm/include/asm/uaccess.h           |    9 +-
  arch/arm/include/uapi/asm/unistd.h       |    6 +
  arch/arm/kernel/Makefile                 |    3 +
  arch/arm/kernel/asm-offsets.c            |    3 +
@@ -106,9 +106,10 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  drivers/irqchip/irq-versatile-fpga.c     |    8 +-
  drivers/irqchip/irq-vic.c                |   11 +-
  drivers/memory/omap-gpmc.c               |   13 +-
+ drivers/mfd/tps65217.c                   |    1 +
  drivers/pci/dwc/pcie-designware-host.c   |    1 +
  drivers/pci/host/pcie-altera.c           |    2 +-
- drivers/pinctrl/bcm/pinctrl-bcm2835.c    |   63 +-
+ drivers/pinctrl/bcm/pinctrl-bcm2835.c    |   47 +-
  drivers/pinctrl/pinctrl-rockchip.c       |    8 +-
  drivers/pinctrl/pinctrl-single.c         |   15 +-
  drivers/pinctrl/sunxi/pinctrl-sunxi.c    |   26 +-
@@ -215,7 +216,7 @@ Subject: [PATCH 2/2] xenomai ipipe patchset
  mm/mmu_context.c                         |    4 +
  mm/mprotect.c                            |   11 +-
  mm/vmalloc.c                             |    2 +
- 211 files changed, 13251 insertions(+), 800 deletions(-)
+ 212 files changed, 13245 insertions(+), 792 deletions(-)
  create mode 100644 Documentation/ipipe-arm.rst
  create mode 100644 Documentation/ipipe.rst
  create mode 100644 arch/arm/include/asm/ipipe.h
@@ -2399,7 +2400,7 @@ index cecc13214ef1..955fc440be06 100644
  #endif
 diff --git a/arch/arm/include/asm/ipipe.h b/arch/arm/include/asm/ipipe.h
 new file mode 100644
-index 000000000000..9d41976dd979
+index 000000000000..5357b0f49dbd
 --- /dev/null
 +++ b/arch/arm/include/asm/ipipe.h
 @@ -0,0 +1,225 @@
@@ -2449,7 +2450,7 @@ index 000000000000..9d41976dd979
 +#include <linux/jump_label.h>
 +#include <linux/ipipe_trace.h>
 +
-+#define IPIPE_CORE_RELEASE	6
++#define IPIPE_CORE_RELEASE	7
 +
 +struct ipipe_domain;
 +struct timekeeper;
@@ -3358,7 +3359,7 @@ index df8420672c7e..dc76213c1ea2 100644
  #endif /* __KERNEL__ */
  #endif /* __ASM_ARM_THREAD_INFO_H */
 diff --git a/arch/arm/include/asm/uaccess.h b/arch/arm/include/asm/uaccess.h
-index a5807b67ca8a..90f62abe9d3b 100644
+index a5807b67ca8a..e2745821a75e 100644
 --- a/arch/arm/include/asm/uaccess.h
 +++ b/arch/arm/include/asm/uaccess.h
 @@ -16,6 +16,7 @@
@@ -3404,6 +3405,14 @@ index a5807b67ca8a..90f62abe9d3b 100644
  		__ua_flags = uaccess_save_and_enable();			\
  		switch (sizeof(*(ptr))) {				\
  		case 1: __fn(__pu_val, __pu_ptr, __err, 1); break;	\
+@@ -492,6 +494,7 @@ do {									\
+ 
+ #endif /* !CONFIG_CPU_SPECTRE */
+ 
++
+ #ifdef CONFIG_MMU
+ extern unsigned long __must_check
+ arm_copy_from_user(void *to, const void __user *from, unsigned long n);
 diff --git a/arch/arm/include/uapi/asm/unistd.h b/arch/arm/include/uapi/asm/unistd.h
 index 39b2ad997e91..4967abf4d2e6 100644
 --- a/arch/arm/include/uapi/asm/unistd.h
@@ -10152,6 +10161,18 @@ index 70df958224d9..4612092394d2 100644
  
  	gpmc_irq_domain = irq_domain_add_linear(gpmc->dev->of_node,
  						gpmc->nirqs,
+diff --git a/drivers/mfd/tps65217.c b/drivers/mfd/tps65217.c
+index f769c7d4e335..740a6b6f64a1 100644
+--- a/drivers/mfd/tps65217.c
++++ b/drivers/mfd/tps65217.c
+@@ -84,6 +84,7 @@ static struct irq_chip tps65217_irq_chip = {
+ 	.irq_bus_sync_unlock	= tps65217_irq_sync_unlock,
+ 	.irq_enable		= tps65217_irq_enable,
+ 	.irq_disable		= tps65217_irq_disable,
++	.flags			= IRQCHIP_PIPELINE_SAFE,
+ };
+ 
+ static struct mfd_cell tps65217s[] = {
 diff --git a/drivers/pci/dwc/pcie-designware-host.c b/drivers/pci/dwc/pcie-designware-host.c
 index 58b38c54a7cf..aecf55c5ca4a 100644
 --- a/drivers/pci/dwc/pcie-designware-host.c
@@ -10178,7 +10199,7 @@ index b468b8cccf8d..67a465ecfc0b 100644
  				dev_err(dev, "unexpected IRQ, INT%d\n", bit);
  		}
 diff --git a/drivers/pinctrl/bcm/pinctrl-bcm2835.c b/drivers/pinctrl/bcm/pinctrl-bcm2835.c
-index ff782445dfb7..cb6f96886891 100644
+index e72bf2502eca..cb6f96886891 100644
 --- a/drivers/pinctrl/bcm/pinctrl-bcm2835.c
 +++ b/drivers/pinctrl/bcm/pinctrl-bcm2835.c
 @@ -27,6 +27,7 @@
@@ -10193,11 +10214,10 @@ index ff782445dfb7..cb6f96886891 100644
  	struct gpio_chip gpio_chip;
  	struct pinctrl_gpio_range gpio_range;
  
--	spinlock_t irq_lock[BCM2835_NUM_BANKS];
 +#ifdef CONFIG_IPIPE
 +	ipipe_spinlock_t irq_lock[BCM2835_NUM_BANKS];
 +#else
-+	raw_spinlock_t irq_lock[BCM2835_NUM_BANKS];
+ 	raw_spinlock_t irq_lock[BCM2835_NUM_BANKS];
 +#endif
  };
  
@@ -10211,54 +10231,22 @@ index ff782445dfb7..cb6f96886891 100644
  						     gpio));
  	}
  }
-@@ -471,10 +476,11 @@ static void bcm2835_gpio_irq_enable(struct irq_data *data)
- 	unsigned bank = GPIO_REG_OFFSET(gpio);
- 	unsigned long flags;
- 
--	spin_lock_irqsave(&pc->irq_lock[bank], flags);
-+	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
+@@ -474,6 +479,7 @@ static void bcm2835_gpio_irq_enable(struct irq_data *data)
+ 	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
  	set_bit(offset, &pc->enabled_irq_map[bank]);
  	bcm2835_gpio_irq_config(pc, gpio, true);
--	spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
 +	ipipe_unlock_irq(data->irq);
-+	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
+ 	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
  }
  
- static void bcm2835_gpio_irq_disable(struct irq_data *data)
-@@ -486,12 +492,13 @@ static void bcm2835_gpio_irq_disable(struct irq_data *data)
- 	unsigned bank = GPIO_REG_OFFSET(gpio);
- 	unsigned long flags;
- 
--	spin_lock_irqsave(&pc->irq_lock[bank], flags);
-+	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
- 	bcm2835_gpio_irq_config(pc, gpio, false);
+@@ -491,6 +497,7 @@ static void bcm2835_gpio_irq_disable(struct irq_data *data)
  	/* Clear events that were latched prior to clearing event sources */
  	bcm2835_gpio_set_bit(pc, GPEDS0, gpio);
  	clear_bit(offset, &pc->enabled_irq_map[bank]);
--	spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
 +	ipipe_lock_irq(data->irq);
-+	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
+ 	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
  }
  
- static int __bcm2835_gpio_irq_set_type_disabled(struct bcm2835_pinctrl *pc,
-@@ -594,7 +601,7 @@ static int bcm2835_gpio_irq_set_type(struct irq_data *data, unsigned int type)
- 	unsigned long flags;
- 	int ret;
- 
--	spin_lock_irqsave(&pc->irq_lock[bank], flags);
-+	raw_spin_lock_irqsave(&pc->irq_lock[bank], flags);
- 
- 	if (test_bit(offset, &pc->enabled_irq_map[bank]))
- 		ret = __bcm2835_gpio_irq_set_type_enabled(pc, gpio, type);
-@@ -606,7 +613,7 @@ static int bcm2835_gpio_irq_set_type(struct irq_data *data, unsigned int type)
- 	else
- 		irq_set_handler_locked(data, handle_level_irq);
- 
--	spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
-+	raw_spin_unlock_irqrestore(&pc->irq_lock[bank], flags);
- 
- 	return ret;
- }
 @@ -620,6 +627,39 @@ static void bcm2835_gpio_irq_ack(struct irq_data *data)
  	bcm2835_gpio_set_bit(pc, GPEDS0, gpio);
  }
@@ -10311,15 +10299,6 @@ index ff782445dfb7..cb6f96886891 100644
  };
  
  static int bcm2835_pctl_get_groups_count(struct pinctrl_dev *pctldev)
-@@ -1021,7 +1066,7 @@ static int bcm2835_pinctrl_probe(struct platform_device *pdev)
- 		for_each_set_bit(offset, &events, 32)
- 			bcm2835_gpio_wr(pc, GPEDS0 + i * 4, BIT(offset));
- 
--		spin_lock_init(&pc->irq_lock[i]);
-+		raw_spin_lock_init(&pc->irq_lock[i]);
- 	}
- 
- 	err = gpiochip_add_data(&pc->gpio_chip, pc);
 diff --git a/drivers/pinctrl/pinctrl-rockchip.c b/drivers/pinctrl/pinctrl-rockchip.c
 index a9bc1e01f982..7ffeea02ee6e 100644
 --- a/drivers/pinctrl/pinctrl-rockchip.c
@@ -11280,7 +11259,7 @@ index 424e5139ff10..028ba4aefce6 100644
  	unsigned long bgpio_dir;
  #endif
 diff --git a/include/linux/hardirq.h b/include/linux/hardirq.h
-index 0fbbcdf0c178..4c9217373014 100644
+index da0af631ded5..1b8f0fd221a1 100644
 --- a/include/linux/hardirq.h
 +++ b/include/linux/hardirq.h
 @@ -6,6 +6,7 @@
@@ -11291,18 +11270,18 @@ index 0fbbcdf0c178..4c9217373014 100644
  #include <asm/hardirq.h>
  
  
-@@ -62,6 +63,7 @@ extern void irq_exit(void);
+@@ -67,6 +68,7 @@ extern void irq_exit(void);
  
  #define nmi_enter()						\
  	do {							\
 +		__ipipe_nmi_enter();				\
+ 		arch_nmi_enter();				\
  		printk_nmi_enter();				\
  		lockdep_off();					\
- 		ftrace_nmi_enter();				\
-@@ -80,6 +82,7 @@ extern void irq_exit(void);
- 		ftrace_nmi_exit();				\
+@@ -87,6 +89,7 @@ extern void irq_exit(void);
  		lockdep_on();					\
  		printk_nmi_exit();				\
+ 		arch_nmi_exit();				\
 +		__ipipe_nmi_exit();				\
  	} while (0)
  
@@ -19003,7 +18982,7 @@ index 3fa4bd59f569..026777e82655 100644
  		chip->irq_set_affinity = msi_domain_set_affinity;
  }
 diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
-index 28e6c758e49c..6a0092ac2dbb 100644
+index a0e25b28df94..2eb29df31596 100644
 --- a/kernel/locking/lockdep.c
 +++ b/kernel/locking/lockdep.c
 @@ -2888,6 +2888,9 @@ static void __trace_hardirqs_on_caller(unsigned long ip)
@@ -20765,5 +20744,5 @@ index 8d9f636d0c98..22608bf8ac87 100644
  }
  
 -- 
-2.20.1
+2.23.0
 

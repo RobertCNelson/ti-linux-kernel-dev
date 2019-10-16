@@ -118,6 +118,8 @@ external_git () {
 	else
 		echo "${top_of_branch}"
 	fi
+	${git} "${DIR}/patches/patch-4.14.108-109"
+	${git} "${DIR}/patches/patch-4.14.109-110"
 }
 
 aufs_fail () {
@@ -481,16 +483,15 @@ beagleboard_dtbs
 #local_patch
 
 ipipe () {
-	kernel_base="v4.14.96"
-	xenomai_branch="stable/4.14.96-arm"
+	kernel_base="v4.14.110"
+	xenomai_branch="ipipe-core-4.14.110-arm-7"
 	echo "dir: ipipe"
 
-	${git_bin} revert --no-edit a8aac659b9652430ccf898dd61bc6f996e3aef9d
+	#${git_bin} revert --no-edit a8aac659b9652430ccf898dd61bc6f996e3aef9d
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		#https://gitlab.denx.de/Xenomai/ipipe-arm
-		#https://gitlab.denx.de/Xenomai/ipipe-arm/tree/stable/4.14.96-arm
 		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
 		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
 		if [ "x${test_for_branch}" != "x" ] ; then
@@ -500,8 +501,6 @@ ipipe () {
 		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
 
 		cp -v drivers/pci/dwc/pcie-designware-host.c ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c
-
-		cp -v drivers/pinctrl/bcm/pinctrl-bcm2835.c ../patches/ipipe/drivers_pinctrl_bcm_pinctrl-bcm2835.c
 
 		echo "${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}"
 		${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}
@@ -518,8 +517,6 @@ ipipe () {
 		fi
 
 		cp -v ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c drivers/pci/dwc/pcie-designware-host.c
-
-		cp -v ../patches/ipipe/drivers_pinctrl_bcm_pinctrl-bcm2835.c drivers/pinctrl/bcm/pinctrl-bcm2835.c
 
 		#exit 2
 
