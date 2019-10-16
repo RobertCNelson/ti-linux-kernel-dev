@@ -610,7 +610,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.78"
+	backport_tag="v4.19.79"
 
 	subsystem="greybus"
 	#regenerate="enable"
