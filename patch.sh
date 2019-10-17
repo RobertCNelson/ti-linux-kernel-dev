@@ -626,10 +626,10 @@ backports () {
 		${git} "${DIR}/patches/backports/greybus/0002-greybus-drivers-staging-greybus-module.c-no-struct_s.patch"
 	fi
 
-	backport_tag="v4.18.20"
+	backport_tag="v4.19.79"
 
 	subsystem="gpu_drm_panel"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
