@@ -1,0 +1,2225 @@
+From a18c178b9fb8be9a78b391b1a2d2c8303208e28a Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Thu, 17 Oct 2019 15:05:57 -0500
+Subject: [PATCH] backports: gpu_drm_panel: from: linux.git
+
+Reference: v4.15.18
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/gpu/drm/panel/Kconfig                 |  33 ++
+ drivers/gpu/drm/panel/Makefile                |   4 +
+ .../gpu/drm/panel/panel-orisetech-otm8009a.c  | 491 ++++++++++++++++
+ .../drm/panel/panel-raspberrypi-touchscreen.c | 514 +++++++++++++++++
+ .../gpu/drm/panel/panel-samsung-s6e63j0x03.c  | 532 ++++++++++++++++++
+ drivers/gpu/drm/panel/panel-samsung-s6e8aa0.c |   2 +-
+ drivers/gpu/drm/panel/panel-seiko-43wvf1g.c   | 372 ++++++++++++
+ drivers/gpu/drm/panel/panel-simple.c          |  83 ++-
+ 8 files changed, 1988 insertions(+), 43 deletions(-)
+ create mode 100644 drivers/gpu/drm/panel/panel-orisetech-otm8009a.c
+ create mode 100644 drivers/gpu/drm/panel/panel-raspberrypi-touchscreen.c
+ create mode 100644 drivers/gpu/drm/panel/panel-samsung-s6e63j0x03.c
+ create mode 100644 drivers/gpu/drm/panel/panel-seiko-43wvf1g.c
+
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+index d84a031fae24..726f3fb3312d 100644
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -63,6 +63,15 @@ config DRM_PANEL_LG_LG4573
+ 	  Say Y here if you want to enable support for LG4573 RGB panel.
+ 	  To compile this driver as a module, choose M here.
+ 
++config DRM_PANEL_ORISETECH_OTM8009A
++	tristate "Orise Technology otm8009a 480x800 dsi 2dl panel"
++	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for Orise Technology
++	  otm8009a 480x800 dsi 2dl panel.
++
+ config DRM_PANEL_PANASONIC_VVX10F034N00
+ 	tristate "Panasonic VVX10F034N00 1920x1200 video mode panel"
+ 	depends on OF
+@@ -73,6 +82,14 @@ config DRM_PANEL_PANASONIC_VVX10F034N00
+ 	  WUXGA (1920x1200) Novatek NT1397-based DSI panel as found in some
+ 	  Xperia Z2 tablets
+ 
++config DRM_PANEL_RASPBERRYPI_TOUCHSCREEN
++	tristate "Raspberry Pi 7-inch touchscreen panel"
++	depends on DRM_MIPI_DSI
++	help
++	  Say Y here if you want to enable support for the Raspberry
++	  Pi 7" Touchscreen.  To compile this driver as a module,
++	  choose M here.
++
+ config DRM_PANEL_SAMSUNG_S6E3HA2
+ 	tristate "Samsung S6E3HA2 DSI video mode panel"
+ 	depends on OF
+@@ -80,12 +97,28 @@ config DRM_PANEL_SAMSUNG_S6E3HA2
+ 	depends on BACKLIGHT_CLASS_DEVICE
+ 	select VIDEOMODE_HELPERS
+ 
++config DRM_PANEL_SAMSUNG_S6E63J0X03
++	tristate "Samsung S6E63J0X03 DSI command mode panel"
++	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	select VIDEOMODE_HELPERS
++
+ config DRM_PANEL_SAMSUNG_S6E8AA0
+ 	tristate "Samsung S6E8AA0 DSI video mode panel"
+ 	depends on OF
+ 	select DRM_MIPI_DSI
+ 	select VIDEOMODE_HELPERS
+ 
++config DRM_PANEL_SEIKO_43WVF1G
++	tristate "Seiko 43WVF1G panel"
++	depends on OF
++	depends on BACKLIGHT_CLASS_DEVICE
++	select VIDEOMODE_HELPERS
++	help
++	  Say Y here if you want to enable support for the Seiko
++	  43WVF1G controller for 800x480 LCD panels
++
+ config DRM_PANEL_SHARP_LQ101R1SX01
+ 	tristate "Sharp LQ101R1SX01 panel"
+ 	depends on OF
+diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
+index d73d3e661cec..2c4e1a93e05f 100644
+--- a/drivers/gpu/drm/panel/Makefile
++++ b/drivers/gpu/drm/panel/Makefile
+@@ -4,10 +4,14 @@ obj-$(CONFIG_DRM_PANEL_SIMPLE) += panel-simple.o
+ obj-$(CONFIG_DRM_PANEL_INNOLUX_P079ZCA) += panel-innolux-p079zca.o
+ obj-$(CONFIG_DRM_PANEL_JDI_LT070ME05000) += panel-jdi-lt070me05000.o
+ obj-$(CONFIG_DRM_PANEL_LG_LG4573) += panel-lg-lg4573.o
++obj-$(CONFIG_DRM_PANEL_ORISETECH_OTM8009A) += panel-orisetech-otm8009a.o
+ obj-$(CONFIG_DRM_PANEL_PANASONIC_VVX10F034N00) += panel-panasonic-vvx10f034n00.o
++obj-$(CONFIG_DRM_PANEL_RASPBERRYPI_TOUCHSCREEN) += panel-raspberrypi-touchscreen.o
+ obj-$(CONFIG_DRM_PANEL_SAMSUNG_LD9040) += panel-samsung-ld9040.o
+ obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E3HA2) += panel-samsung-s6e3ha2.o
++obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E63J0X03) += panel-samsung-s6e63j0x03.o
+ obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E8AA0) += panel-samsung-s6e8aa0.o
++obj-$(CONFIG_DRM_PANEL_SEIKO_43WVF1G) += panel-seiko-43wvf1g.o
+ obj-$(CONFIG_DRM_PANEL_SHARP_LQ101R1SX01) += panel-sharp-lq101r1sx01.o
+ obj-$(CONFIG_DRM_PANEL_SHARP_LS043T1LE01) += panel-sharp-ls043t1le01.o
+ obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7789V) += panel-sitronix-st7789v.o
+diff --git a/drivers/gpu/drm/panel/panel-orisetech-otm8009a.c b/drivers/gpu/drm/panel/panel-orisetech-otm8009a.c
+new file mode 100644
+index 000000000000..c189cd6329c8
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-orisetech-otm8009a.c
+@@ -0,0 +1,491 @@
++/*
++ * Copyright (C) STMicroelectronics SA 2017
++ *
++ * Authors: Philippe Cornu <philippe.cornu@st.com>
++ *          Yannick Fertre <yannick.fertre@st.com>
++ *
++ * License terms:  GNU General Public License (GPL), version 2
++ */
++#include <drm/drmP.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_panel.h>
++#include <linux/backlight.h>
++#include <linux/gpio/consumer.h>
++#include <video/mipi_display.h>
++
++#define DRV_NAME "orisetech_otm8009a"
++
++#define OTM8009A_BACKLIGHT_DEFAULT	240
++#define OTM8009A_BACKLIGHT_MAX		255
++
++/* Manufacturer Command Set */
++#define MCS_ADRSFT	0x0000	/* Address Shift Function */
++#define MCS_PANSET	0xB3A6	/* Panel Type Setting */
++#define MCS_SD_CTRL	0xC0A2	/* Source Driver Timing Setting */
++#define MCS_P_DRV_M	0xC0B4	/* Panel Driving Mode */
++#define MCS_OSC_ADJ	0xC181	/* Oscillator Adjustment for Idle/Normal mode */
++#define MCS_RGB_VID_SET	0xC1A1	/* RGB Video Mode Setting */
++#define MCS_SD_PCH_CTRL	0xC480	/* Source Driver Precharge Control */
++#define MCS_NO_DOC1	0xC48A	/* Command not documented */
++#define MCS_PWR_CTRL1	0xC580	/* Power Control Setting 1 */
++#define MCS_PWR_CTRL2	0xC590	/* Power Control Setting 2 for Normal Mode */
++#define MCS_PWR_CTRL4	0xC5B0	/* Power Control Setting 4 for DC Voltage */
++#define MCS_PANCTRLSET1	0xCB80	/* Panel Control Setting 1 */
++#define MCS_PANCTRLSET2	0xCB90	/* Panel Control Setting 2 */
++#define MCS_PANCTRLSET3	0xCBA0	/* Panel Control Setting 3 */
++#define MCS_PANCTRLSET4	0xCBB0	/* Panel Control Setting 4 */
++#define MCS_PANCTRLSET5	0xCBC0	/* Panel Control Setting 5 */
++#define MCS_PANCTRLSET6	0xCBD0	/* Panel Control Setting 6 */
++#define MCS_PANCTRLSET7	0xCBE0	/* Panel Control Setting 7 */
++#define MCS_PANCTRLSET8	0xCBF0	/* Panel Control Setting 8 */
++#define MCS_PANU2D1	0xCC80	/* Panel U2D Setting 1 */
++#define MCS_PANU2D2	0xCC90	/* Panel U2D Setting 2 */
++#define MCS_PANU2D3	0xCCA0	/* Panel U2D Setting 3 */
++#define MCS_PAND2U1	0xCCB0	/* Panel D2U Setting 1 */
++#define MCS_PAND2U2	0xCCC0	/* Panel D2U Setting 2 */
++#define MCS_PAND2U3	0xCCD0	/* Panel D2U Setting 3 */
++#define MCS_GOAVST	0xCE80	/* GOA VST Setting */
++#define MCS_GOACLKA1	0xCEA0	/* GOA CLKA1 Setting */
++#define MCS_GOACLKA3	0xCEB0	/* GOA CLKA3 Setting */
++#define MCS_GOAECLK	0xCFC0	/* GOA ECLK Setting */
++#define MCS_NO_DOC2	0xCFD0	/* Command not documented */
++#define MCS_GVDDSET	0xD800	/* GVDD/NGVDD */
++#define MCS_VCOMDC	0xD900	/* VCOM Voltage Setting */
++#define MCS_GMCT2_2P	0xE100	/* Gamma Correction 2.2+ Setting */
++#define MCS_GMCT2_2N	0xE200	/* Gamma Correction 2.2- Setting */
++#define MCS_NO_DOC3	0xF5B6	/* Command not documented */
++#define MCS_CMD2_ENA1	0xFF00	/* Enable Access Command2 "CMD2" */
++#define MCS_CMD2_ENA2	0xFF80	/* Enable Access Orise Command2 */
++
++struct otm8009a {
++	struct device *dev;
++	struct drm_panel panel;
++	struct backlight_device *bl_dev;
++	struct gpio_desc *reset_gpio;
++	bool prepared;
++	bool enabled;
++};
++
++static const struct drm_display_mode default_mode = {
++	.clock = 32729,
++	.hdisplay = 480,
++	.hsync_start = 480 + 120,
++	.hsync_end = 480 + 120 + 63,
++	.htotal = 480 + 120 + 63 + 120,
++	.vdisplay = 800,
++	.vsync_start = 800 + 12,
++	.vsync_end = 800 + 12 + 12,
++	.vtotal = 800 + 12 + 12 + 12,
++	.vrefresh = 50,
++	.flags = 0,
++	.width_mm = 52,
++	.height_mm = 86,
++};
++
++static inline struct otm8009a *panel_to_otm8009a(struct drm_panel *panel)
++{
++	return container_of(panel, struct otm8009a, panel);
++}
++
++static void otm8009a_dcs_write_buf(struct otm8009a *ctx, const void *data,
++				   size_t len)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++
++	if (mipi_dsi_dcs_write_buffer(dsi, data, len) < 0)
++		DRM_WARN("mipi dsi dcs write buffer failed\n");
++}
++
++#define dcs_write_seq(ctx, seq...)			\
++({							\
++	static const u8 d[] = { seq };			\
++	otm8009a_dcs_write_buf(ctx, d, ARRAY_SIZE(d));	\
++})
++
++#define dcs_write_cmd_at(ctx, cmd, seq...)		\
++({							\
++	dcs_write_seq(ctx, MCS_ADRSFT, (cmd) & 0xFF);	\
++	dcs_write_seq(ctx, (cmd) >> 8, seq);		\
++})
++
++static int otm8009a_init_sequence(struct otm8009a *ctx)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	/* Enter CMD2 */
++	dcs_write_cmd_at(ctx, MCS_CMD2_ENA1, 0x80, 0x09, 0x01);
++
++	/* Enter Orise Command2 */
++	dcs_write_cmd_at(ctx, MCS_CMD2_ENA2, 0x80, 0x09);
++
++	dcs_write_cmd_at(ctx, MCS_SD_PCH_CTRL, 0x30);
++	mdelay(10);
++
++	dcs_write_cmd_at(ctx, MCS_NO_DOC1, 0x40);
++	mdelay(10);
++
++	dcs_write_cmd_at(ctx, MCS_PWR_CTRL4 + 1, 0xA9);
++	dcs_write_cmd_at(ctx, MCS_PWR_CTRL2 + 1, 0x34);
++	dcs_write_cmd_at(ctx, MCS_P_DRV_M, 0x50);
++	dcs_write_cmd_at(ctx, MCS_VCOMDC, 0x4E);
++	dcs_write_cmd_at(ctx, MCS_OSC_ADJ, 0x66); /* 65Hz */
++	dcs_write_cmd_at(ctx, MCS_PWR_CTRL2 + 2, 0x01);
++	dcs_write_cmd_at(ctx, MCS_PWR_CTRL2 + 5, 0x34);
++	dcs_write_cmd_at(ctx, MCS_PWR_CTRL2 + 4, 0x33);
++	dcs_write_cmd_at(ctx, MCS_GVDDSET, 0x79, 0x79);
++	dcs_write_cmd_at(ctx, MCS_SD_CTRL + 1, 0x1B);
++	dcs_write_cmd_at(ctx, MCS_PWR_CTRL1 + 2, 0x83);
++	dcs_write_cmd_at(ctx, MCS_SD_PCH_CTRL + 1, 0x83);
++	dcs_write_cmd_at(ctx, MCS_RGB_VID_SET, 0x0E);
++	dcs_write_cmd_at(ctx, MCS_PANSET, 0x00, 0x01);
++
++	dcs_write_cmd_at(ctx, MCS_GOAVST, 0x85, 0x01, 0x00, 0x84, 0x01, 0x00);
++	dcs_write_cmd_at(ctx, MCS_GOACLKA1, 0x18, 0x04, 0x03, 0x39, 0x00, 0x00,
++			 0x00, 0x18, 0x03, 0x03, 0x3A, 0x00, 0x00, 0x00);
++	dcs_write_cmd_at(ctx, MCS_GOACLKA3, 0x18, 0x02, 0x03, 0x3B, 0x00, 0x00,
++			 0x00, 0x18, 0x01, 0x03, 0x3C, 0x00, 0x00, 0x00);
++	dcs_write_cmd_at(ctx, MCS_GOAECLK, 0x01, 0x01, 0x20, 0x20, 0x00, 0x00,
++			 0x01, 0x02, 0x00, 0x00);
++
++	dcs_write_cmd_at(ctx, MCS_NO_DOC2, 0x00);
++
++	dcs_write_cmd_at(ctx, MCS_PANCTRLSET1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
++	dcs_write_cmd_at(ctx, MCS_PANCTRLSET2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++			 0, 0, 0, 0, 0);
++	dcs_write_cmd_at(ctx, MCS_PANCTRLSET3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
++			 0, 0, 0, 0, 0);
++	dcs_write_cmd_at(ctx, MCS_PANCTRLSET4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
++	dcs_write_cmd_at(ctx, MCS_PANCTRLSET5, 0, 4, 4, 4, 4, 4, 0, 0, 0, 0,
++			 0, 0, 0, 0, 0);
++	dcs_write_cmd_at(ctx, MCS_PANCTRLSET6, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4,
++			 4, 0, 0, 0, 0);
++	dcs_write_cmd_at(ctx, MCS_PANCTRLSET7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
++	dcs_write_cmd_at(ctx, MCS_PANCTRLSET8, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
++			 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
++
++	dcs_write_cmd_at(ctx, MCS_PANU2D1, 0x00, 0x26, 0x09, 0x0B, 0x01, 0x25,
++			 0x00, 0x00, 0x00, 0x00);
++	dcs_write_cmd_at(ctx, MCS_PANU2D2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			 0x00, 0x00, 0x00, 0x00, 0x00, 0x26, 0x0A, 0x0C, 0x02);
++	dcs_write_cmd_at(ctx, MCS_PANU2D3, 0x25, 0x00, 0x00, 0x00, 0x00, 0x00,
++			 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
++	dcs_write_cmd_at(ctx, MCS_PAND2U1, 0x00, 0x25, 0x0C, 0x0A, 0x02, 0x26,
++			 0x00, 0x00, 0x00, 0x00);
++	dcs_write_cmd_at(ctx, MCS_PAND2U2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++			 0x00, 0x00, 0x00, 0x00, 0x00, 0x25, 0x0B, 0x09, 0x01);
++	dcs_write_cmd_at(ctx, MCS_PAND2U3, 0x26, 0x00, 0x00, 0x00, 0x00, 0x00,
++			 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
++
++	dcs_write_cmd_at(ctx, MCS_PWR_CTRL1 + 1, 0x66);
++
++	dcs_write_cmd_at(ctx, MCS_NO_DOC3, 0x06);
++
++	dcs_write_cmd_at(ctx, MCS_GMCT2_2P, 0x00, 0x09, 0x0F, 0x0E, 0x07, 0x10,
++			 0x0B, 0x0A, 0x04, 0x07, 0x0B, 0x08, 0x0F, 0x10, 0x0A,
++			 0x01);
++	dcs_write_cmd_at(ctx, MCS_GMCT2_2N, 0x00, 0x09, 0x0F, 0x0E, 0x07, 0x10,
++			 0x0B, 0x0A, 0x04, 0x07, 0x0B, 0x08, 0x0F, 0x10, 0x0A,
++			 0x01);
++
++	/* Exit CMD2 */
++	dcs_write_cmd_at(ctx, MCS_CMD2_ENA1, 0xFF, 0xFF, 0xFF);
++
++	ret = mipi_dsi_dcs_nop(dsi);
++	if (ret)
++		return ret;
++
++	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
++	if (ret)
++		return ret;
++
++	/* Wait for sleep out exit */
++	mdelay(120);
++
++	/* Default portrait 480x800 rgb24 */
++	dcs_write_seq(ctx, MIPI_DCS_SET_ADDRESS_MODE, 0x00);
++
++	ret = mipi_dsi_dcs_set_column_address(dsi, 0,
++					      default_mode.hdisplay - 1);
++	if (ret)
++		return ret;
++
++	ret = mipi_dsi_dcs_set_page_address(dsi, 0, default_mode.vdisplay - 1);
++	if (ret)
++		return ret;
++
++	/* See otm8009a driver documentation for pixel format descriptions */
++	ret = mipi_dsi_dcs_set_pixel_format(dsi, MIPI_DCS_PIXEL_FMT_24BIT |
++					    MIPI_DCS_PIXEL_FMT_24BIT << 4);
++	if (ret)
++		return ret;
++
++	/* Disable CABC feature */
++	dcs_write_seq(ctx, MIPI_DCS_WRITE_POWER_SAVE, 0x00);
++
++	ret = mipi_dsi_dcs_set_display_on(dsi);
++	if (ret)
++		return ret;
++
++	ret = mipi_dsi_dcs_nop(dsi);
++	if (ret)
++		return ret;
++
++	/* Send Command GRAM memory write (no parameters) */
++	dcs_write_seq(ctx, MIPI_DCS_WRITE_MEMORY_START);
++
++	return 0;
++}
++
++static int otm8009a_disable(struct drm_panel *panel)
++{
++	struct otm8009a *ctx = panel_to_otm8009a(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	if (!ctx->enabled)
++		return 0; /* This is not an issue so we return 0 here */
++
++	/* Power off the backlight. Note: end-user still controls brightness */
++	ctx->bl_dev->props.power = FB_BLANK_POWERDOWN;
++	ret = backlight_update_status(ctx->bl_dev);
++	if (ret)
++		return ret;
++
++	ret = mipi_dsi_dcs_set_display_off(dsi);
++	if (ret)
++		return ret;
++
++	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
++	if (ret)
++		return ret;
++
++	msleep(120);
++
++	ctx->enabled = false;
++
++	return 0;
++}
++
++static int otm8009a_unprepare(struct drm_panel *panel)
++{
++	struct otm8009a *ctx = panel_to_otm8009a(panel);
++
++	if (!ctx->prepared)
++		return 0;
++
++	if (ctx->reset_gpio) {
++		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
++		msleep(20);
++	}
++
++	ctx->prepared = false;
++
++	return 0;
++}
++
++static int otm8009a_prepare(struct drm_panel *panel)
++{
++	struct otm8009a *ctx = panel_to_otm8009a(panel);
++	int ret;
++
++	if (ctx->prepared)
++		return 0;
++
++	if (ctx->reset_gpio) {
++		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
++		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
++		msleep(20);
++		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
++		msleep(100);
++	}
++
++	ret = otm8009a_init_sequence(ctx);
++	if (ret)
++		return ret;
++
++	ctx->prepared = true;
++
++	/*
++	 * Power on the backlight. Note: end-user still controls brightness
++	 * Note: ctx->prepared must be true before updating the backlight.
++	 */
++	ctx->bl_dev->props.power = FB_BLANK_UNBLANK;
++	backlight_update_status(ctx->bl_dev);
++
++	return 0;
++}
++
++static int otm8009a_enable(struct drm_panel *panel)
++{
++	struct otm8009a *ctx = panel_to_otm8009a(panel);
++
++	ctx->enabled = true;
++
++	return 0;
++}
++
++static int otm8009a_get_modes(struct drm_panel *panel)
++{
++	struct drm_display_mode *mode;
++
++	mode = drm_mode_duplicate(panel->drm, &default_mode);
++	if (!mode) {
++		DRM_ERROR("failed to add mode %ux%ux@%u\n",
++			  default_mode.hdisplay, default_mode.vdisplay,
++			  default_mode.vrefresh);
++		return -ENOMEM;
++	}
++
++	drm_mode_set_name(mode);
++
++	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
++	drm_mode_probed_add(panel->connector, mode);
++
++	panel->connector->display_info.width_mm = mode->width_mm;
++	panel->connector->display_info.height_mm = mode->height_mm;
++
++	return 1;
++}
++
++static const struct drm_panel_funcs otm8009a_drm_funcs = {
++	.disable   = otm8009a_disable,
++	.unprepare = otm8009a_unprepare,
++	.prepare   = otm8009a_prepare,
++	.enable    = otm8009a_enable,
++	.get_modes = otm8009a_get_modes,
++};
++
++/*
++ * DSI-BASED BACKLIGHT
++ */
++
++static int otm8009a_backlight_update_status(struct backlight_device *bd)
++{
++	struct otm8009a *ctx = bl_get_data(bd);
++	u8 data[2];
++
++	if (!ctx->prepared) {
++		DRM_DEBUG("lcd not ready yet for setting its backlight!\n");
++		return -ENXIO;
++	}
++
++	if (bd->props.power <= FB_BLANK_NORMAL) {
++		/* Power on the backlight with the requested brightness
++		 * Note We can not use mipi_dsi_dcs_set_display_brightness()
++		 * as otm8009a driver support only 8-bit brightness (1 param).
++		 */
++		data[0] = MIPI_DCS_SET_DISPLAY_BRIGHTNESS;
++		data[1] = bd->props.brightness;
++		otm8009a_dcs_write_buf(ctx, data, ARRAY_SIZE(data));
++
++		/* set Brightness Control & Backlight on */
++		data[1] = 0x24;
++
++	} else {
++		/* Power off the backlight: set Brightness Control & Bl off */
++		data[1] = 0;
++	}
++
++	/* Update Brightness Control & Backlight */
++	data[0] = MIPI_DCS_WRITE_CONTROL_DISPLAY;
++	otm8009a_dcs_write_buf(ctx, data, ARRAY_SIZE(data));
++
++	return 0;
++}
++
++static const struct backlight_ops otm8009a_backlight_ops = {
++	.update_status = otm8009a_backlight_update_status,
++};
++
++static int otm8009a_probe(struct mipi_dsi_device *dsi)
++{
++	struct device *dev = &dsi->dev;
++	struct otm8009a *ctx;
++	int ret;
++
++	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
++	if (!ctx)
++		return -ENOMEM;
++
++	ctx->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
++	if (IS_ERR(ctx->reset_gpio)) {
++		dev_err(dev, "cannot get reset-gpio\n");
++		return PTR_ERR(ctx->reset_gpio);
++	}
++
++	mipi_dsi_set_drvdata(dsi, ctx);
++
++	ctx->dev = dev;
++
++	dsi->lanes = 2;
++	dsi->format = MIPI_DSI_FMT_RGB888;
++	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST |
++			  MIPI_DSI_MODE_LPM;
++
++	drm_panel_init(&ctx->panel);
++	ctx->panel.dev = dev;
++	ctx->panel.funcs = &otm8009a_drm_funcs;
++
++	ctx->bl_dev = backlight_device_register(DRV_NAME "_backlight", dev, ctx,
++						&otm8009a_backlight_ops, NULL);
++	if (IS_ERR(ctx->bl_dev)) {
++		dev_err(dev, "failed to register backlight device\n");
++		return PTR_ERR(ctx->bl_dev);
++	}
++
++	ctx->bl_dev->props.max_brightness = OTM8009A_BACKLIGHT_MAX;
++	ctx->bl_dev->props.brightness = OTM8009A_BACKLIGHT_DEFAULT;
++	ctx->bl_dev->props.power = FB_BLANK_POWERDOWN;
++	ctx->bl_dev->props.type = BACKLIGHT_RAW;
++
++	drm_panel_add(&ctx->panel);
++
++	ret = mipi_dsi_attach(dsi);
++	if (ret < 0) {
++		dev_err(dev, "mipi_dsi_attach failed. Is host ready?\n");
++		drm_panel_remove(&ctx->panel);
++		backlight_device_unregister(ctx->bl_dev);
++		return ret;
++	}
++
++	DRM_INFO(DRV_NAME "_panel %ux%u@%u %ubpp dsi %udl - ready\n",
++		 default_mode.hdisplay, default_mode.vdisplay,
++		 default_mode.vrefresh,
++		 mipi_dsi_pixel_format_to_bpp(dsi->format), dsi->lanes);
++
++	return 0;
++}
++
++static int otm8009a_remove(struct mipi_dsi_device *dsi)
++{
++	struct otm8009a *ctx = mipi_dsi_get_drvdata(dsi);
++
++	mipi_dsi_detach(dsi);
++	drm_panel_remove(&ctx->panel);
++
++	backlight_device_unregister(ctx->bl_dev);
++
++	return 0;
++}
++
++static const struct of_device_id orisetech_otm8009a_of_match[] = {
++	{ .compatible = "orisetech,otm8009a" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, orisetech_otm8009a_of_match);
++
++static struct mipi_dsi_driver orisetech_otm8009a_driver = {
++	.probe  = otm8009a_probe,
++	.remove = otm8009a_remove,
++	.driver = {
++		.name = DRV_NAME "_panel",
++		.of_match_table = orisetech_otm8009a_of_match,
++	},
++};
++module_mipi_dsi_driver(orisetech_otm8009a_driver);
++
++MODULE_AUTHOR("Philippe Cornu <philippe.cornu@st.com>");
++MODULE_AUTHOR("Yannick Fertre <yannick.fertre@st.com>");
++MODULE_DESCRIPTION("DRM driver for Orise Tech OTM8009A MIPI DSI panel");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-raspberrypi-touchscreen.c b/drivers/gpu/drm/panel/panel-raspberrypi-touchscreen.c
+new file mode 100644
+index 000000000000..d964d454e4ae
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-raspberrypi-touchscreen.c
+@@ -0,0 +1,514 @@
++/*
++ * Copyright © 2016-2017 Broadcom
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ * Portions of this file (derived from panel-simple.c) are:
++ *
++ * Copyright (C) 2013, NVIDIA Corporation.  All rights reserved.
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sub license,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice (including the
++ * next paragraph) shall be included in all copies or substantial portions
++ * of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL
++ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
++ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
++ * DEALINGS IN THE SOFTWARE.
++ */
++
++/**
++ * Raspberry Pi 7" touchscreen panel driver.
++ *
++ * The 7" touchscreen consists of a DPI LCD panel, a Toshiba
++ * TC358762XBG DSI-DPI bridge, and an I2C-connected Atmel ATTINY88-MUR
++ * controlling power management, the LCD PWM, and initial register
++ * setup of the Tohsiba.
++ *
++ * This driver controls the TC358762 and ATTINY88, presenting a DSI
++ * device with a drm_panel.
++ */
++
++#include <linux/delay.h>
++#include <linux/err.h>
++#include <linux/fb.h>
++#include <linux/gpio.h>
++#include <linux/gpio/consumer.h>
++#include <linux/i2c.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/of_device.h>
++#include <linux/of_graph.h>
++#include <linux/pm.h>
++
++#include <drm/drm_panel.h>
++#include <drm/drmP.h>
++#include <drm/drm_crtc.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_panel.h>
++
++#define RPI_DSI_DRIVER_NAME "rpi-ts-dsi"
++
++/* I2C registers of the Atmel microcontroller. */
++enum REG_ADDR {
++	REG_ID = 0x80,
++	REG_PORTA, /* BIT(2) for horizontal flip, BIT(3) for vertical flip */
++	REG_PORTB,
++	REG_PORTC,
++	REG_PORTD,
++	REG_POWERON,
++	REG_PWM,
++	REG_DDRA,
++	REG_DDRB,
++	REG_DDRC,
++	REG_DDRD,
++	REG_TEST,
++	REG_WR_ADDRL,
++	REG_WR_ADDRH,
++	REG_READH,
++	REG_READL,
++	REG_WRITEH,
++	REG_WRITEL,
++	REG_ID2,
++};
++
++/* DSI D-PHY Layer Registers */
++#define D0W_DPHYCONTTX		0x0004
++#define CLW_DPHYCONTRX		0x0020
++#define D0W_DPHYCONTRX		0x0024
++#define D1W_DPHYCONTRX		0x0028
++#define COM_DPHYCONTRX		0x0038
++#define CLW_CNTRL		0x0040
++#define D0W_CNTRL		0x0044
++#define D1W_CNTRL		0x0048
++#define DFTMODE_CNTRL		0x0054
++
++/* DSI PPI Layer Registers */
++#define PPI_STARTPPI		0x0104
++#define PPI_BUSYPPI		0x0108
++#define PPI_LINEINITCNT		0x0110
++#define PPI_LPTXTIMECNT		0x0114
++#define PPI_CLS_ATMR		0x0140
++#define PPI_D0S_ATMR		0x0144
++#define PPI_D1S_ATMR		0x0148
++#define PPI_D0S_CLRSIPOCOUNT	0x0164
++#define PPI_D1S_CLRSIPOCOUNT	0x0168
++#define CLS_PRE			0x0180
++#define D0S_PRE			0x0184
++#define D1S_PRE			0x0188
++#define CLS_PREP		0x01A0
++#define D0S_PREP		0x01A4
++#define D1S_PREP		0x01A8
++#define CLS_ZERO		0x01C0
++#define D0S_ZERO		0x01C4
++#define D1S_ZERO		0x01C8
++#define PPI_CLRFLG		0x01E0
++#define PPI_CLRSIPO		0x01E4
++#define HSTIMEOUT		0x01F0
++#define HSTIMEOUTENABLE		0x01F4
++
++/* DSI Protocol Layer Registers */
++#define DSI_STARTDSI		0x0204
++#define DSI_BUSYDSI		0x0208
++#define DSI_LANEENABLE		0x0210
++# define DSI_LANEENABLE_CLOCK		BIT(0)
++# define DSI_LANEENABLE_D0		BIT(1)
++# define DSI_LANEENABLE_D1		BIT(2)
++
++#define DSI_LANESTATUS0		0x0214
++#define DSI_LANESTATUS1		0x0218
++#define DSI_INTSTATUS		0x0220
++#define DSI_INTMASK		0x0224
++#define DSI_INTCLR		0x0228
++#define DSI_LPTXTO		0x0230
++#define DSI_MODE		0x0260
++#define DSI_PAYLOAD0		0x0268
++#define DSI_PAYLOAD1		0x026C
++#define DSI_SHORTPKTDAT		0x0270
++#define DSI_SHORTPKTREQ		0x0274
++#define DSI_BTASTA		0x0278
++#define DSI_BTACLR		0x027C
++
++/* DSI General Registers */
++#define DSIERRCNT		0x0300
++#define DSISIGMOD		0x0304
++
++/* DSI Application Layer Registers */
++#define APLCTRL			0x0400
++#define APLSTAT			0x0404
++#define APLERR			0x0408
++#define PWRMOD			0x040C
++#define RDPKTLN			0x0410
++#define PXLFMT			0x0414
++#define MEMWRCMD		0x0418
++
++/* LCDC/DPI Host Registers */
++#define LCDCTRL			0x0420
++#define HSR			0x0424
++#define HDISPR			0x0428
++#define VSR			0x042C
++#define VDISPR			0x0430
++#define VFUEN			0x0434
++
++/* DBI-B Host Registers */
++#define DBIBCTRL		0x0440
++
++/* SPI Master Registers */
++#define SPICMR			0x0450
++#define SPITCR			0x0454
++
++/* System Controller Registers */
++#define SYSSTAT			0x0460
++#define SYSCTRL			0x0464
++#define SYSPLL1			0x0468
++#define SYSPLL2			0x046C
++#define SYSPLL3			0x0470
++#define SYSPMCTRL		0x047C
++
++/* GPIO Registers */
++#define GPIOC			0x0480
++#define GPIOO			0x0484
++#define GPIOI			0x0488
++
++/* I2C Registers */
++#define I2CCLKCTRL		0x0490
++
++/* Chip/Rev Registers */
++#define IDREG			0x04A0
++
++/* Debug Registers */
++#define WCMDQUEUE		0x0500
++#define RCMDQUEUE		0x0504
++
++struct rpi_touchscreen {
++	struct drm_panel base;
++	struct mipi_dsi_device *dsi;
++	struct i2c_client *i2c;
++};
++
++static const struct drm_display_mode rpi_touchscreen_modes[] = {
++	{
++		/* Modeline comes from the Raspberry Pi firmware, with HFP=1
++		 * plugged in and clock re-computed from that.
++		 */
++		.clock = 25979400 / 1000,
++		.hdisplay = 800,
++		.hsync_start = 800 + 1,
++		.hsync_end = 800 + 1 + 2,
++		.htotal = 800 + 1 + 2 + 46,
++		.vdisplay = 480,
++		.vsync_start = 480 + 7,
++		.vsync_end = 480 + 7 + 2,
++		.vtotal = 480 + 7 + 2 + 21,
++		.vrefresh = 60,
++	},
++};
++
++static struct rpi_touchscreen *panel_to_ts(struct drm_panel *panel)
++{
++	return container_of(panel, struct rpi_touchscreen, base);
++}
++
++static int rpi_touchscreen_i2c_read(struct rpi_touchscreen *ts, u8 reg)
++{
++	return i2c_smbus_read_byte_data(ts->i2c, reg);
++}
++
++static void rpi_touchscreen_i2c_write(struct rpi_touchscreen *ts,
++				      u8 reg, u8 val)
++{
++	int ret;
++
++	ret = i2c_smbus_write_byte_data(ts->i2c, reg, val);
++	if (ret)
++		dev_err(&ts->dsi->dev, "I2C write failed: %d\n", ret);
++}
++
++static int rpi_touchscreen_write(struct rpi_touchscreen *ts, u16 reg, u32 val)
++{
++#if 0
++	/* The firmware uses LP DSI transactions like this to bring up
++	 * the hardware, which should be faster than using I2C to then
++	 * pass to the Toshiba.  However, I was unable to get it to
++	 * work.
++	 */
++	u8 msg[] = {
++		reg,
++		reg >> 8,
++		val,
++		val >> 8,
++		val >> 16,
++		val >> 24,
++	};
++
++	mipi_dsi_dcs_write_buffer(ts->dsi, msg, sizeof(msg));
++#else
++	rpi_touchscreen_i2c_write(ts, REG_WR_ADDRH, reg >> 8);
++	rpi_touchscreen_i2c_write(ts, REG_WR_ADDRL, reg);
++	rpi_touchscreen_i2c_write(ts, REG_WRITEH, val >> 8);
++	rpi_touchscreen_i2c_write(ts, REG_WRITEL, val);
++#endif
++
++	return 0;
++}
++
++static int rpi_touchscreen_disable(struct drm_panel *panel)
++{
++	struct rpi_touchscreen *ts = panel_to_ts(panel);
++
++	rpi_touchscreen_i2c_write(ts, REG_PWM, 0);
++
++	rpi_touchscreen_i2c_write(ts, REG_POWERON, 0);
++	udelay(1);
++
++	return 0;
++}
++
++static int rpi_touchscreen_noop(struct drm_panel *panel)
++{
++	return 0;
++}
++
++static int rpi_touchscreen_enable(struct drm_panel *panel)
++{
++	struct rpi_touchscreen *ts = panel_to_ts(panel);
++	int i;
++
++	rpi_touchscreen_i2c_write(ts, REG_POWERON, 1);
++	/* Wait for nPWRDWN to go low to indicate poweron is done. */
++	for (i = 0; i < 100; i++) {
++		if (rpi_touchscreen_i2c_read(ts, REG_PORTB) & 1)
++			break;
++	}
++
++	rpi_touchscreen_write(ts, DSI_LANEENABLE,
++			      DSI_LANEENABLE_CLOCK |
++			      DSI_LANEENABLE_D0);
++	rpi_touchscreen_write(ts, PPI_D0S_CLRSIPOCOUNT, 0x05);
++	rpi_touchscreen_write(ts, PPI_D1S_CLRSIPOCOUNT, 0x05);
++	rpi_touchscreen_write(ts, PPI_D0S_ATMR, 0x00);
++	rpi_touchscreen_write(ts, PPI_D1S_ATMR, 0x00);
++	rpi_touchscreen_write(ts, PPI_LPTXTIMECNT, 0x03);
++
++	rpi_touchscreen_write(ts, SPICMR, 0x00);
++	rpi_touchscreen_write(ts, LCDCTRL, 0x00100150);
++	rpi_touchscreen_write(ts, SYSCTRL, 0x040f);
++	msleep(100);
++
++	rpi_touchscreen_write(ts, PPI_STARTPPI, 0x01);
++	rpi_touchscreen_write(ts, DSI_STARTDSI, 0x01);
++	msleep(100);
++
++	/* Turn on the backlight. */
++	rpi_touchscreen_i2c_write(ts, REG_PWM, 255);
++
++	/* Default to the same orientation as the closed source
++	 * firmware used for the panel.  Runtime rotation
++	 * configuration will be supported using VC4's plane
++	 * orientation bits.
++	 */
++	rpi_touchscreen_i2c_write(ts, REG_PORTA, BIT(2));
++
++	return 0;
++}
++
++static int rpi_touchscreen_get_modes(struct drm_panel *panel)
++{
++	struct drm_connector *connector = panel->connector;
++	struct drm_device *drm = panel->drm;
++	unsigned int i, num = 0;
++	static const u32 bus_format = MEDIA_BUS_FMT_RGB888_1X24;
++
++	for (i = 0; i < ARRAY_SIZE(rpi_touchscreen_modes); i++) {
++		const struct drm_display_mode *m = &rpi_touchscreen_modes[i];
++		struct drm_display_mode *mode;
++
++		mode = drm_mode_duplicate(drm, m);
++		if (!mode) {
++			dev_err(drm->dev, "failed to add mode %ux%u@%u\n",
++				m->hdisplay, m->vdisplay, m->vrefresh);
++			continue;
++		}
++
++		mode->type |= DRM_MODE_TYPE_DRIVER;
++
++		if (i == 0)
++			mode->type |= DRM_MODE_TYPE_PREFERRED;
++
++		drm_mode_set_name(mode);
++
++		drm_mode_probed_add(connector, mode);
++		num++;
++	}
++
++	connector->display_info.bpc = 8;
++	connector->display_info.width_mm = 154;
++	connector->display_info.height_mm = 86;
++	drm_display_info_set_bus_formats(&connector->display_info,
++					 &bus_format, 1);
++
++	return num;
++}
++
++static const struct drm_panel_funcs rpi_touchscreen_funcs = {
++	.disable = rpi_touchscreen_disable,
++	.unprepare = rpi_touchscreen_noop,
++	.prepare = rpi_touchscreen_noop,
++	.enable = rpi_touchscreen_enable,
++	.get_modes = rpi_touchscreen_get_modes,
++};
++
++static int rpi_touchscreen_probe(struct i2c_client *i2c,
++				 const struct i2c_device_id *id)
++{
++	struct device *dev = &i2c->dev;
++	struct rpi_touchscreen *ts;
++	struct device_node *endpoint, *dsi_host_node;
++	struct mipi_dsi_host *host;
++	int ret, ver;
++	struct mipi_dsi_device_info info = {
++		.type = RPI_DSI_DRIVER_NAME,
++		.channel = 0,
++		.node = NULL,
++	};
++
++	ts = devm_kzalloc(dev, sizeof(*ts), GFP_KERNEL);
++	if (!ts)
++		return -ENOMEM;
++
++	i2c_set_clientdata(i2c, ts);
++
++	ts->i2c = i2c;
++
++	ver = rpi_touchscreen_i2c_read(ts, REG_ID);
++	if (ver < 0) {
++		dev_err(dev, "Atmel I2C read failed: %d\n", ver);
++		return -ENODEV;
++	}
++
++	switch (ver) {
++	case 0xde: /* ver 1 */
++	case 0xc3: /* ver 2 */
++		break;
++	default:
++		dev_err(dev, "Unknown Atmel firmware revision: 0x%02x\n", ver);
++		return -ENODEV;
++	}
++
++	/* Turn off at boot, so we can cleanly sequence powering on. */
++	rpi_touchscreen_i2c_write(ts, REG_POWERON, 0);
++
++	/* Look up the DSI host.  It needs to probe before we do. */
++	endpoint = of_graph_get_next_endpoint(dev->of_node, NULL);
++	dsi_host_node = of_graph_get_remote_port_parent(endpoint);
++	host = of_find_mipi_dsi_host_by_node(dsi_host_node);
++	of_node_put(dsi_host_node);
++	if (!host) {
++		of_node_put(endpoint);
++		return -EPROBE_DEFER;
++	}
++
++	info.node = of_graph_get_remote_port(endpoint);
++	of_node_put(endpoint);
++
++	ts->dsi = mipi_dsi_device_register_full(host, &info);
++	if (IS_ERR(ts->dsi)) {
++		dev_err(dev, "DSI device registration failed: %ld\n",
++			PTR_ERR(ts->dsi));
++		return PTR_ERR(ts->dsi);
++	}
++
++	ts->base.dev = dev;
++	ts->base.funcs = &rpi_touchscreen_funcs;
++
++	/* This appears last, as it's what will unblock the DSI host
++	 * driver's component bind function.
++	 */
++	ret = drm_panel_add(&ts->base);
++	if (ret)
++		return ret;
++
++	return 0;
++}
++
++static int rpi_touchscreen_remove(struct i2c_client *i2c)
++{
++	struct rpi_touchscreen *ts = i2c_get_clientdata(i2c);
++
++	mipi_dsi_detach(ts->dsi);
++
++	drm_panel_remove(&ts->base);
++
++	mipi_dsi_device_unregister(ts->dsi);
++	kfree(ts->dsi);
++
++	return 0;
++}
++
++static int rpi_touchscreen_dsi_probe(struct mipi_dsi_device *dsi)
++{
++	int ret;
++
++	dsi->mode_flags = (MIPI_DSI_MODE_VIDEO |
++			   MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
++			   MIPI_DSI_MODE_LPM);
++	dsi->format = MIPI_DSI_FMT_RGB888;
++	dsi->lanes = 1;
++
++	ret = mipi_dsi_attach(dsi);
++
++	if (ret)
++		dev_err(&dsi->dev, "failed to attach dsi to host: %d\n", ret);
++
++	return ret;
++}
++
++static struct mipi_dsi_driver rpi_touchscreen_dsi_driver = {
++	.driver.name = RPI_DSI_DRIVER_NAME,
++	.probe = rpi_touchscreen_dsi_probe,
++};
++
++static const struct of_device_id rpi_touchscreen_of_ids[] = {
++	{ .compatible = "raspberrypi,7inch-touchscreen-panel" },
++	{ } /* sentinel */
++};
++MODULE_DEVICE_TABLE(of, rpi_touchscreen_of_ids);
++
++static struct i2c_driver rpi_touchscreen_driver = {
++	.driver = {
++		.name = "rpi_touchscreen",
++		.of_match_table = rpi_touchscreen_of_ids,
++	},
++	.probe = rpi_touchscreen_probe,
++	.remove = rpi_touchscreen_remove,
++};
++
++static int __init rpi_touchscreen_init(void)
++{
++	mipi_dsi_driver_register(&rpi_touchscreen_dsi_driver);
++	return i2c_add_driver(&rpi_touchscreen_driver);
++}
++module_init(rpi_touchscreen_init);
++
++static void __exit rpi_touchscreen_exit(void)
++{
++	i2c_del_driver(&rpi_touchscreen_driver);
++	mipi_dsi_driver_unregister(&rpi_touchscreen_dsi_driver);
++}
++module_exit(rpi_touchscreen_exit);
++
++MODULE_AUTHOR("Eric Anholt <eric@anholt.net>");
++MODULE_DESCRIPTION("Raspberry Pi 7-inch touchscreen driver");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-samsung-s6e63j0x03.c b/drivers/gpu/drm/panel/panel-samsung-s6e63j0x03.c
+new file mode 100644
+index 000000000000..aeb32aa58899
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-samsung-s6e63j0x03.c
+@@ -0,0 +1,532 @@
++/*
++ * MIPI-DSI based S6E63J0X03 AMOLED lcd 1.63 inch panel driver.
++ *
++ * Copyright (c) 2014-2017 Samsung Electronics Co., Ltd
++ *
++ * Inki Dae <inki.dae@samsung.com>
++ * Hoegeun Kwon <hoegeun.kwon@samsung.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <drm/drmP.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_panel.h>
++#include <linux/backlight.h>
++#include <linux/gpio/consumer.h>
++#include <linux/regulator/consumer.h>
++#include <video/mipi_display.h>
++
++#define MCS_LEVEL2_KEY		0xf0
++#define MCS_MTP_KEY		0xf1
++#define MCS_MTP_SET3		0xd4
++
++#define MAX_BRIGHTNESS		100
++#define DEFAULT_BRIGHTNESS	80
++
++#define NUM_GAMMA_STEPS		9
++#define GAMMA_CMD_CNT		28
++
++#define FIRST_COLUMN 20
++
++struct s6e63j0x03 {
++	struct device *dev;
++	struct drm_panel panel;
++	struct backlight_device *bl_dev;
++
++	struct regulator_bulk_data supplies[2];
++	struct gpio_desc *reset_gpio;
++};
++
++static const struct drm_display_mode default_mode = {
++	.clock = 4649,
++	.hdisplay = 320,
++	.hsync_start = 320 + 1,
++	.hsync_end = 320 + 1 + 1,
++	.htotal = 320 + 1 + 1 + 1,
++	.vdisplay = 320,
++	.vsync_start = 320 + 150,
++	.vsync_end = 320 + 150 + 1,
++	.vtotal = 320 + 150 + 1 + 2,
++	.vrefresh = 30,
++	.flags = 0,
++};
++
++static const unsigned char gamma_tbl[NUM_GAMMA_STEPS][GAMMA_CMD_CNT] = {
++	{	/* Gamma 10 */
++		MCS_MTP_SET3,
++		0x00, 0x00, 0x00, 0x7f, 0x7f, 0x7f, 0x52, 0x6b, 0x6f, 0x26,
++		0x28, 0x2d, 0x28, 0x26, 0x27, 0x33, 0x34, 0x32, 0x36, 0x36,
++		0x35, 0x00, 0xab, 0x00, 0xae, 0x00, 0xbf
++	},
++	{	/* gamma 30 */
++		MCS_MTP_SET3,
++		0x00, 0x00, 0x00, 0x70, 0x7f, 0x7f, 0x4e, 0x64, 0x69, 0x26,
++		0x27, 0x2a, 0x28, 0x29, 0x27, 0x31, 0x32, 0x31, 0x35, 0x34,
++		0x35, 0x00, 0xc4, 0x00, 0xca, 0x00, 0xdc
++	},
++	{	/* gamma 60 */
++		MCS_MTP_SET3,
++		0x00, 0x00, 0x00, 0x65, 0x7b, 0x7d, 0x5f, 0x67, 0x68, 0x2a,
++		0x28, 0x29, 0x28, 0x2a, 0x27, 0x31, 0x2f, 0x30, 0x34, 0x33,
++		0x34, 0x00, 0xd9, 0x00, 0xe4, 0x00, 0xf5
++	},
++	{	/* gamma 90 */
++		MCS_MTP_SET3,
++		0x00, 0x00, 0x00, 0x4d, 0x6f, 0x71, 0x67, 0x6a, 0x6c, 0x29,
++		0x28, 0x28, 0x28, 0x29, 0x27, 0x30, 0x2e, 0x30, 0x32, 0x31,
++		0x31, 0x00, 0xea, 0x00, 0xf6, 0x01, 0x09
++	},
++	{	/* gamma 120 */
++		MCS_MTP_SET3,
++		0x00, 0x00, 0x00, 0x3d, 0x66, 0x68, 0x69, 0x69, 0x69, 0x28,
++		0x28, 0x27, 0x28, 0x28, 0x27, 0x30, 0x2e, 0x2f, 0x31, 0x31,
++		0x30, 0x00, 0xf9, 0x01, 0x05, 0x01, 0x1b
++	},
++	{	/* gamma 150 */
++		MCS_MTP_SET3,
++		0x00, 0x00, 0x00, 0x31, 0x51, 0x53, 0x66, 0x66, 0x67, 0x28,
++		0x29, 0x27, 0x28, 0x27, 0x27, 0x2e, 0x2d, 0x2e, 0x31, 0x31,
++		0x30, 0x01, 0x04, 0x01, 0x11, 0x01, 0x29
++	},
++	{	/* gamma 200 */
++		MCS_MTP_SET3,
++		0x00, 0x00, 0x00, 0x2f, 0x4f, 0x51, 0x67, 0x65, 0x65, 0x29,
++		0x2a, 0x28, 0x27, 0x25, 0x26, 0x2d, 0x2c, 0x2c, 0x30, 0x30,
++		0x30, 0x01, 0x14, 0x01, 0x23, 0x01, 0x3b
++	},
++	{	/* gamma 240 */
++		MCS_MTP_SET3,
++		0x00, 0x00, 0x00, 0x2c, 0x4d, 0x50, 0x65, 0x63, 0x64, 0x2a,
++		0x2c, 0x29, 0x26, 0x24, 0x25, 0x2c, 0x2b, 0x2b, 0x30, 0x30,
++		0x30, 0x01, 0x1e, 0x01, 0x2f, 0x01, 0x47
++	},
++	{	/* gamma 300 */
++		MCS_MTP_SET3,
++		0x00, 0x00, 0x00, 0x38, 0x61, 0x64, 0x65, 0x63, 0x64, 0x28,
++		0x2a, 0x27, 0x26, 0x23, 0x25, 0x2b, 0x2b, 0x2a, 0x30, 0x2f,
++		0x30, 0x01, 0x2d, 0x01, 0x3f, 0x01, 0x57
++	}
++};
++
++static inline struct s6e63j0x03 *panel_to_s6e63j0x03(struct drm_panel *panel)
++{
++	return container_of(panel, struct s6e63j0x03, panel);
++}
++
++static inline ssize_t s6e63j0x03_dcs_write_seq(struct s6e63j0x03 *ctx,
++					const void *seq, size_t len)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++
++	return mipi_dsi_dcs_write_buffer(dsi, seq, len);
++}
++
++#define s6e63j0x03_dcs_write_seq_static(ctx, seq...)			\
++	({								\
++		static const u8 d[] = { seq };				\
++		s6e63j0x03_dcs_write_seq(ctx, d, ARRAY_SIZE(d));	\
++	})
++
++static inline int s6e63j0x03_enable_lv2_command(struct s6e63j0x03 *ctx)
++{
++	return s6e63j0x03_dcs_write_seq_static(ctx, MCS_LEVEL2_KEY, 0x5a, 0x5a);
++}
++
++static inline int s6e63j0x03_apply_mtp_key(struct s6e63j0x03 *ctx, bool on)
++{
++	if (on)
++		return s6e63j0x03_dcs_write_seq_static(ctx,
++				MCS_MTP_KEY, 0x5a, 0x5a);
++
++	return s6e63j0x03_dcs_write_seq_static(ctx, MCS_MTP_KEY, 0xa5, 0xa5);
++}
++
++static int s6e63j0x03_power_on(struct s6e63j0x03 *ctx)
++{
++	int ret;
++
++	ret = regulator_bulk_enable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
++	if (ret < 0)
++		return ret;
++
++	msleep(30);
++
++	gpiod_set_value(ctx->reset_gpio, 1);
++	usleep_range(1000, 2000);
++	gpiod_set_value(ctx->reset_gpio, 0);
++	usleep_range(5000, 6000);
++
++	return 0;
++}
++
++static int s6e63j0x03_power_off(struct s6e63j0x03 *ctx)
++{
++	return regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
++}
++
++static unsigned int s6e63j0x03_get_brightness_index(unsigned int brightness)
++{
++	unsigned int index;
++
++	index = brightness / (MAX_BRIGHTNESS / NUM_GAMMA_STEPS);
++
++	if (index >= NUM_GAMMA_STEPS)
++		index = NUM_GAMMA_STEPS - 1;
++
++	return index;
++}
++
++static int s6e63j0x03_update_gamma(struct s6e63j0x03 *ctx,
++					unsigned int brightness)
++{
++	struct backlight_device *bl_dev = ctx->bl_dev;
++	unsigned int index = s6e63j0x03_get_brightness_index(brightness);
++	int ret;
++
++	ret = s6e63j0x03_apply_mtp_key(ctx, true);
++	if (ret < 0)
++		return ret;
++
++	ret = s6e63j0x03_dcs_write_seq(ctx, gamma_tbl[index], GAMMA_CMD_CNT);
++	if (ret < 0)
++		return ret;
++
++	ret = s6e63j0x03_apply_mtp_key(ctx, false);
++	if (ret < 0)
++		return ret;
++
++	bl_dev->props.brightness = brightness;
++
++	return 0;
++}
++
++static int s6e63j0x03_set_brightness(struct backlight_device *bl_dev)
++{
++	struct s6e63j0x03 *ctx = bl_get_data(bl_dev);
++	unsigned int brightness = bl_dev->props.brightness;
++
++	return s6e63j0x03_update_gamma(ctx, brightness);
++}
++
++static const struct backlight_ops s6e63j0x03_bl_ops = {
++	.update_status = s6e63j0x03_set_brightness,
++};
++
++static int s6e63j0x03_disable(struct drm_panel *panel)
++{
++	struct s6e63j0x03 *ctx = panel_to_s6e63j0x03(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	ret = mipi_dsi_dcs_set_display_off(dsi);
++	if (ret < 0)
++		return ret;
++
++	ctx->bl_dev->props.power = FB_BLANK_NORMAL;
++
++	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
++	if (ret < 0)
++		return ret;
++
++	msleep(120);
++
++	return 0;
++}
++
++static int s6e63j0x03_unprepare(struct drm_panel *panel)
++{
++	struct s6e63j0x03 *ctx = panel_to_s6e63j0x03(panel);
++	int ret;
++
++	ret = s6e63j0x03_power_off(ctx);
++	if (ret < 0)
++		return ret;
++
++	ctx->bl_dev->props.power = FB_BLANK_POWERDOWN;
++
++	return 0;
++}
++
++static int s6e63j0x03_panel_init(struct s6e63j0x03 *ctx)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	ret = s6e63j0x03_enable_lv2_command(ctx);
++	if (ret < 0)
++		return ret;
++
++	ret = s6e63j0x03_apply_mtp_key(ctx, true);
++	if (ret < 0)
++		return ret;
++
++	/* set porch adjustment */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xf2, 0x1c, 0x28);
++	if (ret < 0)
++		return ret;
++
++	/* set frame freq */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xb5, 0x00, 0x02, 0x00);
++	if (ret < 0)
++		return ret;
++
++	/* set caset, paset */
++	ret = mipi_dsi_dcs_set_column_address(dsi, FIRST_COLUMN,
++		default_mode.hdisplay - 1 + FIRST_COLUMN);
++	if (ret < 0)
++		return ret;
++
++	ret = mipi_dsi_dcs_set_page_address(dsi, 0, default_mode.vdisplay - 1);
++	if (ret < 0)
++		return ret;
++
++	/* set ltps timming 0, 1 */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xf8, 0x08, 0x08, 0x08, 0x17,
++		0x00, 0x2a, 0x02, 0x26, 0x00, 0x00, 0x02, 0x00, 0x00);
++	if (ret < 0)
++		return ret;
++
++	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xf7, 0x02);
++	if (ret < 0)
++		return ret;
++
++	/* set param pos te_edge */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xb0, 0x01);
++	if (ret < 0)
++		return ret;
++
++	/* set te rising edge */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xe2, 0x0f);
++	if (ret < 0)
++		return ret;
++
++	/* set param pos default */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xb0, 0x00);
++	if (ret < 0)
++		return ret;
++
++	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
++	if (ret < 0)
++		return ret;
++
++	ret = s6e63j0x03_apply_mtp_key(ctx, false);
++	if (ret < 0)
++		return ret;
++
++	return 0;
++}
++
++static int s6e63j0x03_prepare(struct drm_panel *panel)
++{
++	struct s6e63j0x03 *ctx = panel_to_s6e63j0x03(panel);
++	int ret;
++
++	ret = s6e63j0x03_power_on(ctx);
++	if (ret < 0)
++		return ret;
++
++	ret = s6e63j0x03_panel_init(ctx);
++	if (ret < 0)
++		goto err;
++
++	ctx->bl_dev->props.power = FB_BLANK_NORMAL;
++
++	return 0;
++
++err:
++	s6e63j0x03_power_off(ctx);
++	return ret;
++}
++
++static int s6e63j0x03_enable(struct drm_panel *panel)
++{
++	struct s6e63j0x03 *ctx = panel_to_s6e63j0x03(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	msleep(120);
++
++	ret = s6e63j0x03_apply_mtp_key(ctx, true);
++	if (ret < 0)
++		return ret;
++
++	/* set elvss_cond */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx, 0xb1, 0x00, 0x09);
++	if (ret < 0)
++		return ret;
++
++	/* set pos */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx,
++		MIPI_DCS_SET_ADDRESS_MODE, 0x40);
++	if (ret < 0)
++		return ret;
++
++	/* set default white brightness */
++	ret = mipi_dsi_dcs_set_display_brightness(dsi, 0x00ff);
++	if (ret < 0)
++		return ret;
++
++	/* set white ctrl */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx,
++		MIPI_DCS_WRITE_CONTROL_DISPLAY, 0x20);
++	if (ret < 0)
++		return ret;
++
++	/* set acl off */
++	ret = s6e63j0x03_dcs_write_seq_static(ctx,
++		MIPI_DCS_WRITE_POWER_SAVE, 0x00);
++	if (ret < 0)
++		return ret;
++
++	ret = mipi_dsi_dcs_set_tear_on(dsi, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++	if (ret < 0)
++		return ret;
++
++	ret = s6e63j0x03_apply_mtp_key(ctx, false);
++	if (ret < 0)
++		return ret;
++
++	ret = mipi_dsi_dcs_set_display_on(dsi);
++	if (ret < 0)
++		return ret;
++
++	ctx->bl_dev->props.power = FB_BLANK_UNBLANK;
++
++	return 0;
++}
++
++static int s6e63j0x03_get_modes(struct drm_panel *panel)
++{
++	struct drm_connector *connector = panel->connector;
++	struct drm_display_mode *mode;
++
++	mode = drm_mode_duplicate(panel->drm, &default_mode);
++	if (!mode) {
++		DRM_ERROR("failed to add mode %ux%ux@%u\n",
++			default_mode.hdisplay, default_mode.vdisplay,
++			default_mode.vrefresh);
++		return -ENOMEM;
++	}
++
++	drm_mode_set_name(mode);
++
++	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
++	drm_mode_probed_add(connector, mode);
++
++	connector->display_info.width_mm = 29;
++	connector->display_info.height_mm = 29;
++
++	return 1;
++}
++
++static const struct drm_panel_funcs s6e63j0x03_funcs = {
++	.disable = s6e63j0x03_disable,
++	.unprepare = s6e63j0x03_unprepare,
++	.prepare = s6e63j0x03_prepare,
++	.enable = s6e63j0x03_enable,
++	.get_modes = s6e63j0x03_get_modes,
++};
++
++static int s6e63j0x03_probe(struct mipi_dsi_device *dsi)
++{
++	struct device *dev = &dsi->dev;
++	struct s6e63j0x03 *ctx;
++	int ret;
++
++	ctx = devm_kzalloc(dev, sizeof(struct s6e63j0x03), GFP_KERNEL);
++	if (!ctx)
++		return -ENOMEM;
++
++	mipi_dsi_set_drvdata(dsi, ctx);
++
++	ctx->dev = dev;
++
++	dsi->lanes = 1;
++	dsi->format = MIPI_DSI_FMT_RGB888;
++	dsi->mode_flags = MIPI_DSI_MODE_EOT_PACKET;
++
++	ctx->supplies[0].supply = "vdd3";
++	ctx->supplies[1].supply = "vci";
++	ret = devm_regulator_bulk_get(dev, ARRAY_SIZE(ctx->supplies),
++				      ctx->supplies);
++	if (ret < 0) {
++		dev_err(dev, "failed to get regulators: %d\n", ret);
++		return ret;
++	}
++
++	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
++	if (IS_ERR(ctx->reset_gpio)) {
++		dev_err(dev, "cannot get reset-gpio: %ld\n",
++				PTR_ERR(ctx->reset_gpio));
++		return PTR_ERR(ctx->reset_gpio);
++	}
++
++	drm_panel_init(&ctx->panel);
++	ctx->panel.dev = dev;
++	ctx->panel.funcs = &s6e63j0x03_funcs;
++
++	ctx->bl_dev = backlight_device_register("s6e63j0x03", dev, ctx,
++						&s6e63j0x03_bl_ops, NULL);
++	if (IS_ERR(ctx->bl_dev)) {
++		dev_err(dev, "failed to register backlight device\n");
++		return PTR_ERR(ctx->bl_dev);
++	}
++
++	ctx->bl_dev->props.max_brightness = MAX_BRIGHTNESS;
++	ctx->bl_dev->props.brightness = DEFAULT_BRIGHTNESS;
++	ctx->bl_dev->props.power = FB_BLANK_POWERDOWN;
++
++	ret = drm_panel_add(&ctx->panel);
++	if (ret < 0)
++		goto unregister_backlight;
++
++	ret = mipi_dsi_attach(dsi);
++	if (ret < 0)
++		goto remove_panel;
++
++	return ret;
++
++remove_panel:
++	drm_panel_remove(&ctx->panel);
++
++unregister_backlight:
++	backlight_device_unregister(ctx->bl_dev);
++
++	return ret;
++}
++
++static int s6e63j0x03_remove(struct mipi_dsi_device *dsi)
++{
++	struct s6e63j0x03 *ctx = mipi_dsi_get_drvdata(dsi);
++
++	mipi_dsi_detach(dsi);
++	drm_panel_remove(&ctx->panel);
++
++	backlight_device_unregister(ctx->bl_dev);
++
++	return 0;
++}
++
++static const struct of_device_id s6e63j0x03_of_match[] = {
++	{ .compatible = "samsung,s6e63j0x03" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, s6e63j0x03_of_match);
++
++static struct mipi_dsi_driver s6e63j0x03_driver = {
++	.probe = s6e63j0x03_probe,
++	.remove = s6e63j0x03_remove,
++	.driver = {
++		.name = "panel_samsung_s6e63j0x03",
++		.of_match_table = s6e63j0x03_of_match,
++	},
++};
++module_mipi_dsi_driver(s6e63j0x03_driver);
++
++MODULE_AUTHOR("Inki Dae <inki.dae@samsung.com>");
++MODULE_AUTHOR("Hoegeun Kwon <hoegeun.kwon@samsung.com>");
++MODULE_DESCRIPTION("MIPI-DSI based s6e63j0x03 AMOLED LCD Panel Driver");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-samsung-s6e8aa0.c b/drivers/gpu/drm/panel/panel-samsung-s6e8aa0.c
+index 6ad827b93ae1..a188a3959f1a 100644
+--- a/drivers/gpu/drm/panel/panel-samsung-s6e8aa0.c
++++ b/drivers/gpu/drm/panel/panel-samsung-s6e8aa0.c
+@@ -823,7 +823,7 @@ static void s6e8aa0_read_mtp_id(struct s6e8aa0 *ctx)
+ 	int ret, i;
+ 
+ 	ret = s6e8aa0_dcs_read(ctx, 0xd1, id, ARRAY_SIZE(id));
+-	if (ret < 0 || ret < ARRAY_SIZE(id) || id[0] == 0x00) {
++	if (ret < ARRAY_SIZE(id) || id[0] == 0x00) {
+ 		dev_err(ctx->dev, "read id failed\n");
+ 		ctx->error = -EIO;
+ 		return;
+diff --git a/drivers/gpu/drm/panel/panel-seiko-43wvf1g.c b/drivers/gpu/drm/panel/panel-seiko-43wvf1g.c
+new file mode 100644
+index 000000000000..71c09ed436ae
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-seiko-43wvf1g.c
+@@ -0,0 +1,372 @@
++/*
++ * Copyright (C) 2017 NXP Semiconductors.
++ * Author: Marco Franchi <marco.franchi@nxp.com>
++ *
++ * Based on Panel Simple driver by Thierry Reding <treding@nvidia.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License version
++ * 2 as published by the Free Software Foundation.
++ */
++
++#include <linux/backlight.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/regulator/consumer.h>
++
++#include <drm/drmP.h>
++#include <drm/drm_crtc.h>
++#include <drm/drm_panel.h>
++
++#include <video/display_timing.h>
++#include <video/videomode.h>
++
++struct seiko_panel_desc {
++	const struct drm_display_mode *modes;
++	unsigned int num_modes;
++	const struct display_timing *timings;
++	unsigned int num_timings;
++
++	unsigned int bpc;
++
++	/**
++	 * @width: width (in millimeters) of the panel's active display area
++	 * @height: height (in millimeters) of the panel's active display area
++	 */
++	struct {
++		unsigned int width;
++		unsigned int height;
++	} size;
++
++	u32 bus_format;
++	u32 bus_flags;
++};
++
++struct seiko_panel {
++	struct drm_panel base;
++	bool prepared;
++	bool enabled;
++	const struct seiko_panel_desc *desc;
++	struct backlight_device *backlight;
++	struct regulator *dvdd;
++	struct regulator *avdd;
++};
++
++static inline struct seiko_panel *to_seiko_panel(struct drm_panel *panel)
++{
++	return container_of(panel, struct seiko_panel, base);
++}
++
++static int seiko_panel_get_fixed_modes(struct seiko_panel *panel)
++{
++	struct drm_connector *connector = panel->base.connector;
++	struct drm_device *drm = panel->base.drm;
++	struct drm_display_mode *mode;
++	unsigned int i, num = 0;
++
++	if (!panel->desc)
++		return 0;
++
++	for (i = 0; i < panel->desc->num_timings; i++) {
++		const struct display_timing *dt = &panel->desc->timings[i];
++		struct videomode vm;
++
++		videomode_from_timing(dt, &vm);
++		mode = drm_mode_create(drm);
++		if (!mode) {
++			dev_err(drm->dev, "failed to add mode %ux%u\n",
++				dt->hactive.typ, dt->vactive.typ);
++			continue;
++		}
++
++		drm_display_mode_from_videomode(&vm, mode);
++
++		mode->type |= DRM_MODE_TYPE_DRIVER;
++
++		if (panel->desc->num_timings == 1)
++			mode->type |= DRM_MODE_TYPE_PREFERRED;
++
++		drm_mode_probed_add(connector, mode);
++		num++;
++	}
++
++	for (i = 0; i < panel->desc->num_modes; i++) {
++		const struct drm_display_mode *m = &panel->desc->modes[i];
++
++		mode = drm_mode_duplicate(drm, m);
++		if (!mode) {
++			dev_err(drm->dev, "failed to add mode %ux%u@%u\n",
++				m->hdisplay, m->vdisplay, m->vrefresh);
++			continue;
++		}
++
++		mode->type |= DRM_MODE_TYPE_DRIVER;
++
++		if (panel->desc->num_modes == 1)
++			mode->type |= DRM_MODE_TYPE_PREFERRED;
++
++		drm_mode_set_name(mode);
++
++		drm_mode_probed_add(connector, mode);
++		num++;
++	}
++
++	connector->display_info.bpc = panel->desc->bpc;
++	connector->display_info.width_mm = panel->desc->size.width;
++	connector->display_info.height_mm = panel->desc->size.height;
++	if (panel->desc->bus_format)
++		drm_display_info_set_bus_formats(&connector->display_info,
++						 &panel->desc->bus_format, 1);
++	connector->display_info.bus_flags = panel->desc->bus_flags;
++
++	return num;
++}
++
++static int seiko_panel_disable(struct drm_panel *panel)
++{
++	struct seiko_panel *p = to_seiko_panel(panel);
++
++	if (!p->enabled)
++		return 0;
++
++	if (p->backlight) {
++		p->backlight->props.power = FB_BLANK_POWERDOWN;
++		p->backlight->props.state |= BL_CORE_FBBLANK;
++		backlight_update_status(p->backlight);
++	}
++
++	p->enabled = false;
++
++	return 0;
++}
++
++static int seiko_panel_unprepare(struct drm_panel *panel)
++{
++	struct seiko_panel *p = to_seiko_panel(panel);
++
++	if (!p->prepared)
++		return 0;
++
++	regulator_disable(p->avdd);
++
++	/* Add a 100ms delay as per the panel datasheet */
++	msleep(100);
++
++	regulator_disable(p->dvdd);
++
++	p->prepared = false;
++
++	return 0;
++}
++
++static int seiko_panel_prepare(struct drm_panel *panel)
++{
++	struct seiko_panel *p = to_seiko_panel(panel);
++	int err;
++
++	if (p->prepared)
++		return 0;
++
++	err = regulator_enable(p->dvdd);
++	if (err < 0) {
++		dev_err(panel->dev, "failed to enable dvdd: %d\n", err);
++		return err;
++	}
++
++	/* Add a 100ms delay as per the panel datasheet */
++	msleep(100);
++
++	err = regulator_enable(p->avdd);
++	if (err < 0) {
++		dev_err(panel->dev, "failed to enable avdd: %d\n", err);
++		goto disable_dvdd;
++	}
++
++	p->prepared = true;
++
++	return 0;
++
++disable_dvdd:
++	regulator_disable(p->dvdd);
++	return err;
++}
++
++static int seiko_panel_enable(struct drm_panel *panel)
++{
++	struct seiko_panel *p = to_seiko_panel(panel);
++
++	if (p->enabled)
++		return 0;
++
++	if (p->backlight) {
++		p->backlight->props.state &= ~BL_CORE_FBBLANK;
++		p->backlight->props.power = FB_BLANK_UNBLANK;
++		backlight_update_status(p->backlight);
++	}
++
++	p->enabled = true;
++
++	return 0;
++}
++
++static int seiko_panel_get_modes(struct drm_panel *panel)
++{
++	struct seiko_panel *p = to_seiko_panel(panel);
++
++	/* add hard-coded panel modes */
++	return seiko_panel_get_fixed_modes(p);
++}
++
++static int seiko_panel_get_timings(struct drm_panel *panel,
++				    unsigned int num_timings,
++				    struct display_timing *timings)
++{
++	struct seiko_panel *p = to_seiko_panel(panel);
++	unsigned int i;
++
++	if (p->desc->num_timings < num_timings)
++		num_timings = p->desc->num_timings;
++
++	if (timings)
++		for (i = 0; i < num_timings; i++)
++			timings[i] = p->desc->timings[i];
++
++	return p->desc->num_timings;
++}
++
++static const struct drm_panel_funcs seiko_panel_funcs = {
++	.disable = seiko_panel_disable,
++	.unprepare = seiko_panel_unprepare,
++	.prepare = seiko_panel_prepare,
++	.enable = seiko_panel_enable,
++	.get_modes = seiko_panel_get_modes,
++	.get_timings = seiko_panel_get_timings,
++};
++
++static int seiko_panel_probe(struct device *dev,
++					const struct seiko_panel_desc *desc)
++{
++	struct device_node *backlight;
++	struct seiko_panel *panel;
++	int err;
++
++	panel = devm_kzalloc(dev, sizeof(*panel), GFP_KERNEL);
++	if (!panel)
++		return -ENOMEM;
++
++	panel->enabled = false;
++	panel->prepared = false;
++	panel->desc = desc;
++
++	panel->dvdd = devm_regulator_get(dev, "dvdd");
++	if (IS_ERR(panel->dvdd))
++		return PTR_ERR(panel->dvdd);
++
++	panel->avdd = devm_regulator_get(dev, "avdd");
++	if (IS_ERR(panel->avdd))
++		return PTR_ERR(panel->avdd);
++
++	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
++	if (backlight) {
++		panel->backlight = of_find_backlight_by_node(backlight);
++		of_node_put(backlight);
++
++		if (!panel->backlight)
++			return -EPROBE_DEFER;
++	}
++
++	drm_panel_init(&panel->base);
++	panel->base.dev = dev;
++	panel->base.funcs = &seiko_panel_funcs;
++
++	err = drm_panel_add(&panel->base);
++	if (err < 0)
++		return err;
++
++	dev_set_drvdata(dev, panel);
++
++	return 0;
++}
++
++static int seiko_panel_remove(struct platform_device *pdev)
++{
++	struct seiko_panel *panel = dev_get_drvdata(&pdev->dev);
++
++	drm_panel_detach(&panel->base);
++	drm_panel_remove(&panel->base);
++
++	seiko_panel_disable(&panel->base);
++
++	if (panel->backlight)
++		put_device(&panel->backlight->dev);
++
++	return 0;
++}
++
++static void seiko_panel_shutdown(struct platform_device *pdev)
++{
++	struct seiko_panel *panel = dev_get_drvdata(&pdev->dev);
++
++	seiko_panel_disable(&panel->base);
++}
++
++static const struct display_timing seiko_43wvf1g_timing = {
++	.pixelclock = { 33500000, 33500000, 33500000 },
++	.hactive = { 800, 800, 800 },
++	.hfront_porch = {  164, 164, 164 },
++	.hback_porch = { 89, 89, 89 },
++	.hsync_len = { 10, 10, 10 },
++	.vactive = { 480, 480, 480 },
++	.vfront_porch = { 10, 10, 10 },
++	.vback_porch = { 23, 23, 23 },
++	.vsync_len = { 10, 10, 10 },
++	.flags = DISPLAY_FLAGS_DE_LOW,
++};
++
++static const struct seiko_panel_desc seiko_43wvf1g = {
++	.timings = &seiko_43wvf1g_timing,
++	.num_timings = 1,
++	.bpc = 8,
++	.size = {
++		.width = 93,
++		.height = 57,
++	},
++	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
++	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_NEGEDGE,
++};
++
++static const struct of_device_id platform_of_match[] = {
++	{
++		.compatible = "sii,43wvf1g",
++		.data = &seiko_43wvf1g,
++	}, {
++		/* sentinel */
++	}
++};
++MODULE_DEVICE_TABLE(of, platform_of_match);
++
++static int seiko_panel_platform_probe(struct platform_device *pdev)
++{
++	const struct of_device_id *id;
++
++	id = of_match_node(platform_of_match, pdev->dev.of_node);
++	if (!id)
++		return -ENODEV;
++
++	return seiko_panel_probe(&pdev->dev, id->data);
++}
++
++static struct platform_driver seiko_panel_platform_driver = {
++	.driver = {
++		.name = "seiko_panel",
++		.of_match_table = platform_of_match,
++	},
++	.probe = seiko_panel_platform_probe,
++	.remove = seiko_panel_remove,
++	.shutdown = seiko_panel_shutdown,
++};
++module_platform_driver(seiko_panel_platform_driver);
++
++MODULE_AUTHOR("Marco Franchi <marco.franchi@nxp.com");
++MODULE_DESCRIPTION("Seiko 43WVF1G panel driver");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-simple.c b/drivers/gpu/drm/panel/panel-simple.c
+index 07438148b27b..b7c4709f7b34 100644
+--- a/drivers/gpu/drm/panel/panel-simple.c
++++ b/drivers/gpu/drm/panel/panel-simple.c
+@@ -187,8 +187,7 @@ static int panel_simple_unprepare(struct drm_panel *panel)
+ 	if (!p->prepared)
+ 		return 0;
+ 
+-	if (p->enable_gpio)
+-		gpiod_set_value_cansleep(p->enable_gpio, 0);
++	gpiod_set_value_cansleep(p->enable_gpio, 0);
+ 
+ 	regulator_disable(p->supply);
+ 
+@@ -214,8 +213,7 @@ static int panel_simple_prepare(struct drm_panel *panel)
+ 		return err;
+ 	}
+ 
+-	if (p->enable_gpio)
+-		gpiod_set_value_cansleep(p->enable_gpio, 1);
++	gpiod_set_value_cansleep(p->enable_gpio, 1);
+ 
+ 	if (p->desc->delay.prepare)
+ 		msleep(p->desc->delay.prepare);
+@@ -315,7 +313,8 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
+ 						     GPIOD_OUT_LOW);
+ 	if (IS_ERR(panel->enable_gpio)) {
+ 		err = PTR_ERR(panel->enable_gpio);
+-		dev_err(dev, "failed to request GPIO: %d\n", err);
++		if (err != -EPROBE_DEFER)
++			dev_err(dev, "failed to request GPIO: %d\n", err);
+ 		return err;
+ 	}
+ 
+@@ -1009,6 +1008,10 @@ static const struct panel_desc hitachi_tx23d38vm0caa = {
+ 		.width = 195,
+ 		.height = 117,
+ 	},
++	.delay = {
++		.enable = 160,
++		.disable = 160,
++	},
+ };
+ 
+ static const struct drm_display_mode innolux_at043tn24_mode = {
+@@ -1019,8 +1022,8 @@ static const struct drm_display_mode innolux_at043tn24_mode = {
+ 	.htotal = 480 + 2 + 41 + 2,
+ 	.vdisplay = 272,
+ 	.vsync_start = 272 + 2,
+-	.vsync_end = 272 + 2 + 11,
+-	.vtotal = 272 + 2 + 11 + 2,
++	.vsync_end = 272 + 2 + 10,
++	.vtotal = 272 + 2 + 10 + 2,
+ 	.vrefresh = 60,
+ 	.flags = DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_NVSYNC,
+ };
+@@ -1034,6 +1037,7 @@ static const struct panel_desc innolux_at043tn24 = {
+ 		.height = 54,
+ 	},
+ 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
++	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_POSEDGE,
+ };
+ 
+ static const struct drm_display_mode innolux_at070tn92_mode = {
+@@ -1524,8 +1528,8 @@ static const struct panel_desc olimex_lcd_olinuxino_43ts = {
+ 	.modes = &olimex_lcd_olinuxino_43ts_mode,
+ 	.num_modes = 1,
+ 	.size = {
+-		.width = 105,
+-		.height = 67,
++		.width = 95,
++		.height = 54,
+ 	},
+ 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+ };
+@@ -1561,7 +1565,7 @@ static const struct panel_desc ontat_yx700wv03 = {
+ 		.width = 154,
+ 		.height = 83,
+ 	},
+-	.bus_format = MEDIA_BUS_FMT_RGB666_1X18,
++	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+ };
+ 
+ static const struct drm_display_mode ortustech_com43h4m85ulc_mode  = {
+@@ -1613,35 +1617,6 @@ static const struct panel_desc qd43003c0_40 = {
+ 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
+ };
+ 
+-
+-static const struct drm_display_mode rocktech_rk101ii01d_ct_mode = {
+-	.clock = 71100,
+-	.hdisplay = 1280,
+-	.hsync_start = 1280 + 48,
+-	.hsync_end = 1280 + 48 + 32,
+-	.htotal = 1280 + 48 + 32 + 80,
+-	.vdisplay = 800,
+-	.vsync_start = 800 + 2,
+-	.vsync_end = 800 + 2 + 5,
+-	.vtotal = 800 + 2 + 5 + 16,
+-	.vrefresh = 60,
+-};
+-
+-static const struct panel_desc rocktech_rk101ii01d_ct = {
+-	.modes = &rocktech_rk101ii01d_ct_mode,
+-	.num_modes = 1,
+-	.size = {
+-		.width = 217,
+-		.height = 136,
+-	},
+-	.delay = {
+-		.prepare = 50,
+-		.disable = 50,
+-	},
+-	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
+-	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
+-};
+-
+ static const struct drm_display_mode samsung_lsn122dl01_c01_mode = {
+ 	.clock = 271560,
+ 	.hdisplay = 2560,
+@@ -1862,6 +1837,30 @@ static const struct panel_desc tianma_tm070jdhg30 = {
+ 	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
+ };
+ 
++static const struct drm_display_mode toshiba_lt089ac29000_mode = {
++	.clock = 79500,
++	.hdisplay = 1280,
++	.hsync_start = 1280 + 192,
++	.hsync_end = 1280 + 192 + 128,
++	.htotal = 1280 + 192 + 128 + 64,
++	.vdisplay = 768,
++	.vsync_start = 768 + 20,
++	.vsync_end = 768 + 20 + 7,
++	.vtotal = 768 + 20 + 7 + 3,
++	.vrefresh = 60,
++};
++
++static const struct panel_desc toshiba_lt089ac29000 = {
++	.modes = &toshiba_lt089ac29000_mode,
++	.num_modes = 1,
++	.size = {
++		.width = 194,
++		.height = 116,
++	},
++	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
++	.bus_flags = DRM_BUS_FLAG_DE_HIGH | DRM_BUS_FLAG_PIXDATA_POSEDGE,
++};
++
+ static const struct drm_display_mode tpk_f07a_0102_mode = {
+ 	.clock = 33260,
+ 	.hdisplay = 800,
+@@ -2116,9 +2115,6 @@ static const struct of_device_id platform_of_match[] = {
+ 	}, {
+ 		.compatible = "qiaodian,qd43003c0-40",
+ 		.data = &qd43003c0_40,
+-	}, {
+-		.compatible = "rockteck,rk101ii01d-ct",
+-		.data = &rocktech_rk101ii01d_ct,
+ 	}, {
+ 		.compatible = "samsung,lsn122dl01-c01",
+ 		.data = &samsung_lsn122dl01_c01,
+@@ -2146,6 +2142,9 @@ static const struct of_device_id platform_of_match[] = {
+ 	}, {
+ 		.compatible = "tianma,tm070jdhg30",
+ 		.data = &tianma_tm070jdhg30,
++	}, {
++		.compatible = "toshiba,lt089ac29000",
++		.data = &toshiba_lt089ac29000,
+ 	}, {
+ 		.compatible = "tpk,f07a-0102",
+ 		.data = &tpk_f07a_0102,
+-- 
+2.23.0
+

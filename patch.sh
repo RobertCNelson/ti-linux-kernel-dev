@@ -625,6 +625,21 @@ backports () {
 		patch_backports
 		${git} "${DIR}/patches/backports/greybus/0002-greybus-drivers-staging-greybus-module.c-no-struct_s.patch"
 	fi
+
+	backport_tag="v4.15.18"
+
+	subsystem="gpu_drm_panel"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/gpu/drm/panel/* ./drivers/gpu/drm/panel/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 }
 
 reverts () {
