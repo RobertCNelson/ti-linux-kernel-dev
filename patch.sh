@@ -626,7 +626,7 @@ backports () {
 		${git} "${DIR}/patches/backports/greybus/0002-greybus-drivers-staging-greybus-module.c-no-struct_s.patch"
 	fi
 
-	backport_tag="v4.15.18"
+	backport_tag="v4.16.18"
 
 	subsystem="gpu_drm_panel"
 	#regenerate="enable"
