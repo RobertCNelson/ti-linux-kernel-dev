@@ -1,33 +1,59 @@
-From ab5977d34e68b48c489c76f36aed848c7ae97d56 Mon Sep 17 00:00:00 2001
+From ebc5f046c61e3dfb95f7edd2b69f44bdd6147db9 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 17 Oct 2019 15:28:38 -0500
+Date: Thu, 17 Oct 2019 15:43:45 -0500
 Subject: [PATCH] backports: gpu_drm_panel: from: linux.git
 
-Reference: v4.16.18
+Reference: v4.17.19
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/gpu/drm/panel/Kconfig                 |  41 +
- drivers/gpu/drm/panel/Makefile                |   5 +
+ drivers/gpu/drm/panel/Kconfig                 |  60 ++
+ drivers/gpu/drm/panel/Makefile                |   7 +
+ drivers/gpu/drm/panel/panel-arm-versatile.c   | 377 +++++++
  drivers/gpu/drm/panel/panel-ilitek-ili9322.c  | 962 ++++++++++++++++++
- drivers/gpu/drm/panel/panel-lvds.c            |  30 +
- .../gpu/drm/panel/panel-orisetech-otm8009a.c  | 491 +++++++++
+ drivers/gpu/drm/panel/panel-innolux-p079zca.c |  30 +-
+ .../gpu/drm/panel/panel-jdi-lt070me05000.c    |   6 +-
+ drivers/gpu/drm/panel/panel-lvds.c            |  32 +-
+ .../gpu/drm/panel/panel-orisetech-otm8009a.c  | 508 +++++++++
+ .../drm/panel/panel-panasonic-vvx10f034n00.c  |  16 +-
  .../drm/panel/panel-raspberrypi-touchscreen.c | 514 ++++++++++
+ drivers/gpu/drm/panel/panel-raydium-rm68200.c | 448 ++++++++
  .../gpu/drm/panel/panel-samsung-s6e63j0x03.c  | 532 ++++++++++
  drivers/gpu/drm/panel/panel-samsung-s6e8aa0.c |   2 +-
  drivers/gpu/drm/panel/panel-seiko-43wvf1g.c   | 372 +++++++
- drivers/gpu/drm/panel/panel-simple.c          | 143 ++-
- 10 files changed, 3050 insertions(+), 42 deletions(-)
+ .../gpu/drm/panel/panel-sharp-lq101r1sx01.c   |  38 +-
+ .../gpu/drm/panel/panel-sharp-ls043t1le01.c   |  37 +-
+ drivers/gpu/drm/panel/panel-simple.c          | 223 +++-
+ 17 files changed, 4006 insertions(+), 158 deletions(-)
+ create mode 100644 drivers/gpu/drm/panel/panel-arm-versatile.c
  create mode 100644 drivers/gpu/drm/panel/panel-ilitek-ili9322.c
  create mode 100644 drivers/gpu/drm/panel/panel-orisetech-otm8009a.c
  create mode 100644 drivers/gpu/drm/panel/panel-raspberrypi-touchscreen.c
+ create mode 100644 drivers/gpu/drm/panel/panel-raydium-rm68200.c
  create mode 100644 drivers/gpu/drm/panel/panel-samsung-s6e63j0x03.c
  create mode 100644 drivers/gpu/drm/panel/panel-seiko-43wvf1g.c
 
 diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index d84a031fae24..6ba4031f3919 100644
+index d84a031fae24..25682ff3449a 100644
 --- a/drivers/gpu/drm/panel/Kconfig
 +++ b/drivers/gpu/drm/panel/Kconfig
-@@ -28,6 +28,14 @@ config DRM_PANEL_SIMPLE
+@@ -7,6 +7,16 @@ config DRM_PANEL
+ menu "Display Panels"
+ 	depends on DRM && DRM_PANEL
+ 
++config DRM_PANEL_ARM_VERSATILE
++	tristate "ARM Versatile panel driver"
++	depends on OF
++	depends on MFD_SYSCON
++	select VIDEOMODE_HELPERS
++	help
++	  This driver supports the ARM Versatile panels connected to ARM
++	  reference designs. The panel is detected using special registers
++	  in the Versatile family syscon registers.
++
+ config DRM_PANEL_LVDS
+ 	tristate "Generic LVDS panel driver"
+ 	depends on OF
+@@ -28,6 +38,14 @@ config DRM_PANEL_SIMPLE
  	  that it can be automatically turned off when the panel goes into a
  	  low power state.
  
@@ -42,7 +68,7 @@ index d84a031fae24..6ba4031f3919 100644
  config DRM_PANEL_INNOLUX_P079ZCA
  	tristate "Innolux P079ZCA panel"
  	depends on OF
-@@ -63,6 +71,15 @@ config DRM_PANEL_LG_LG4573
+@@ -63,6 +81,15 @@ config DRM_PANEL_LG_LG4573
  	  Say Y here if you want to enable support for LG4573 RGB panel.
  	  To compile this driver as a module, choose M here.
  
@@ -58,7 +84,7 @@ index d84a031fae24..6ba4031f3919 100644
  config DRM_PANEL_PANASONIC_VVX10F034N00
  	tristate "Panasonic VVX10F034N00 1920x1200 video mode panel"
  	depends on OF
-@@ -73,6 +90,14 @@ config DRM_PANEL_PANASONIC_VVX10F034N00
+@@ -73,6 +100,23 @@ config DRM_PANEL_PANASONIC_VVX10F034N00
  	  WUXGA (1920x1200) Novatek NT1397-based DSI panel as found in some
  	  Xperia Z2 tablets
  
@@ -70,10 +96,19 @@ index d84a031fae24..6ba4031f3919 100644
 +	  Pi 7" Touchscreen.  To compile this driver as a module,
 +	  choose M here.
 +
++config DRM_PANEL_RAYDIUM_RM68200
++	tristate "Raydium RM68200 720x1280 DSI video mode panel"
++	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for Raydium RM68200
++	  720x1280 DSI video mode panel.
++
  config DRM_PANEL_SAMSUNG_S6E3HA2
  	tristate "Samsung S6E3HA2 DSI video mode panel"
  	depends on OF
-@@ -80,12 +105,28 @@ config DRM_PANEL_SAMSUNG_S6E3HA2
+@@ -80,12 +124,28 @@ config DRM_PANEL_SAMSUNG_S6E3HA2
  	depends on BACKLIGHT_CLASS_DEVICE
  	select VIDEOMODE_HELPERS
  
@@ -103,11 +138,12 @@ index d84a031fae24..6ba4031f3919 100644
  	tristate "Sharp LQ101R1SX01 panel"
  	depends on OF
 diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
-index d73d3e661cec..6d251ebc568c 100644
+index d73d3e661cec..f26efc11d746 100644
 --- a/drivers/gpu/drm/panel/Makefile
 +++ b/drivers/gpu/drm/panel/Makefile
-@@ -1,13 +1,18 @@
+@@ -1,13 +1,20 @@
  # SPDX-License-Identifier: GPL-2.0
++obj-$(CONFIG_DRM_PANEL_ARM_VERSATILE) += panel-arm-versatile.o
  obj-$(CONFIG_DRM_PANEL_LVDS) += panel-lvds.o
  obj-$(CONFIG_DRM_PANEL_SIMPLE) += panel-simple.o
 +obj-$(CONFIG_DRM_PANEL_ILITEK_IL9322) += panel-ilitek-ili9322.o
@@ -117,6 +153,7 @@ index d73d3e661cec..6d251ebc568c 100644
 +obj-$(CONFIG_DRM_PANEL_ORISETECH_OTM8009A) += panel-orisetech-otm8009a.o
  obj-$(CONFIG_DRM_PANEL_PANASONIC_VVX10F034N00) += panel-panasonic-vvx10f034n00.o
 +obj-$(CONFIG_DRM_PANEL_RASPBERRYPI_TOUCHSCREEN) += panel-raspberrypi-touchscreen.o
++obj-$(CONFIG_DRM_PANEL_RAYDIUM_RM68200) += panel-raydium-rm68200.o
  obj-$(CONFIG_DRM_PANEL_SAMSUNG_LD9040) += panel-samsung-ld9040.o
  obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E3HA2) += panel-samsung-s6e3ha2.o
 +obj-$(CONFIG_DRM_PANEL_SAMSUNG_S6E63J0X03) += panel-samsung-s6e63j0x03.o
@@ -125,9 +162,392 @@ index d73d3e661cec..6d251ebc568c 100644
  obj-$(CONFIG_DRM_PANEL_SHARP_LQ101R1SX01) += panel-sharp-lq101r1sx01.o
  obj-$(CONFIG_DRM_PANEL_SHARP_LS043T1LE01) += panel-sharp-ls043t1le01.o
  obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7789V) += panel-sitronix-st7789v.o
+diff --git a/drivers/gpu/drm/panel/panel-arm-versatile.c b/drivers/gpu/drm/panel/panel-arm-versatile.c
+new file mode 100644
+index 000000000000..b428c4678106
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-arm-versatile.c
+@@ -0,0 +1,377 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Panel driver for the ARM Versatile family reference designs from
++ * ARM Limited.
++ *
++ * Author:
++ * Linus Walleij <linus.wallei@linaro.org>
++ *
++ * On the Versatile AB, these panels come mounted on daughterboards
++ * named "IB1" or "IB2" (Interface Board 1 & 2 respectively.) They
++ * are documented in ARM DUI 0225D Appendix C and D. These daughter
++ * boards support TFT display panels.
++ *
++ * - The IB1 is a passive board where the display connector defines a
++ *   few wires for encoding the display type for autodetection,
++ *   suitable display settings can then be looked up from this setting.
++ *   The magic bits can be read out from the system controller.
++ *
++ * - The IB2 is a more complex board intended for GSM phone development
++ *   with some logic and a control register, which needs to be accessed
++ *   and the board display needs to be turned on explicitly.
++ *
++ * On the Versatile PB, a special CLCD adaptor board is available
++ * supporting the same displays as the Versatile AB, plus one more
++ * Epson QCIF display.
++ *
++ */
++#include <drm/drmP.h>
++#include <drm/drm_panel.h>
++
++#include <linux/bitops.h>
++#include <linux/init.h>
++#include <linux/kernel.h>
++#include <linux/mfd/syscon.h>
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/regmap.h>
++
++#include <video/of_videomode.h>
++#include <video/videomode.h>
++
++/*
++ * This configuration register in the Versatile and RealView
++ * family is uniformly present but appears more and more
++ * unutilized starting with the RealView series.
++ */
++#define SYS_CLCD			0x50
++
++/* The Versatile can detect the connected panel type */
++#define SYS_CLCD_CLCDID_MASK		(BIT(8)|BIT(9)|BIT(10)|BIT(11)|BIT(12))
++#define SYS_CLCD_ID_SANYO_3_8		(0x00 << 8)
++#define SYS_CLCD_ID_SHARP_8_4		(0x01 << 8)
++#define SYS_CLCD_ID_EPSON_2_2		(0x02 << 8)
++#define SYS_CLCD_ID_SANYO_2_5		(0x07 << 8)
++#define SYS_CLCD_ID_VGA			(0x1f << 8)
++
++/* IB2 control register for the Versatile daughterboard */
++#define IB2_CTRL			0x00
++#define IB2_CTRL_LCD_SD			BIT(1) /* 1 = shut down LCD */
++#define IB2_CTRL_LCD_BL_ON		BIT(0)
++#define IB2_CTRL_LCD_MASK		(BIT(0)|BIT(1))
++
++/**
++ * struct versatile_panel_type - lookup struct for the supported panels
++ */
++struct versatile_panel_type {
++	/**
++	 * @name: the name of this panel
++	 */
++	const char *name;
++	/**
++	 * @magic: the magic value from the detection register
++	 */
++	u32 magic;
++	/**
++	 * @mode: the DRM display mode for this panel
++	 */
++	struct drm_display_mode mode;
++	/**
++	 * @bus_flags: the DRM bus flags for this panel e.g. inverted clock
++	 */
++	u32 bus_flags;
++	/**
++	 * @width_mm: the panel width in mm
++	 */
++	u32 width_mm;
++	/**
++	 * @height_mm: the panel height in mm
++	 */
++	u32 height_mm;
++	/**
++	 * @ib2: the panel may be connected on an IB2 daughterboard
++	 */
++	bool ib2;
++};
++
++/**
++ * struct versatile_panel - state container for the Versatile panels
++ */
++struct versatile_panel {
++	/**
++	 * @dev: the container device
++	 */
++	struct device *dev;
++	/**
++	 * @panel: the DRM panel instance for this device
++	 */
++	struct drm_panel panel;
++	/**
++	 * @panel_type: the Versatile panel type as detected
++	 */
++	const struct versatile_panel_type *panel_type;
++	/**
++	 * @map: map to the parent syscon where the main register reside
++	 */
++	struct regmap *map;
++	/**
++	 * @ib2_map: map to the IB2 syscon, if applicable
++	 */
++	struct regmap *ib2_map;
++};
++
++static const struct versatile_panel_type versatile_panels[] = {
++	/*
++	 * Sanyo TM38QV67A02A - 3.8 inch QVGA (320x240) Color TFT
++	 * found on the Versatile AB IB1 connector or the Versatile
++	 * PB adaptor board connector.
++	 */
++	{
++		.name = "Sanyo TM38QV67A02A",
++		.magic = SYS_CLCD_ID_SANYO_3_8,
++		.width_mm = 79,
++		.height_mm = 54,
++		.mode = {
++			.clock = 10000,
++			.hdisplay = 320,
++			.hsync_start = 320 + 6,
++			.hsync_end = 320 + 6 + 6,
++			.htotal = 320 + 6 + 6 + 6,
++			.vdisplay = 240,
++			.vsync_start = 240 + 5,
++			.vsync_end = 240 + 5 + 6,
++			.vtotal = 240 + 5 + 6 + 5,
++			.vrefresh = 116,
++			.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC,
++		},
++	},
++	/*
++	 * Sharp LQ084V1DG21 640x480 VGA Color TFT module
++	 * found on the Versatile AB IB1 connector or the Versatile
++	 * PB adaptor board connector.
++	 */
++	{
++		.name = "Sharp LQ084V1DG21",
++		.magic = SYS_CLCD_ID_SHARP_8_4,
++		.width_mm = 171,
++		.height_mm = 130,
++		.mode = {
++			.clock = 25000,
++			.hdisplay = 640,
++			.hsync_start = 640 + 24,
++			.hsync_end = 640 + 24 + 96,
++			.htotal = 640 + 24 + 96 + 24,
++			.vdisplay = 480,
++			.vsync_start = 480 + 11,
++			.vsync_end = 480 + 11 + 2,
++			.vtotal = 480 + 11 + 2 + 32,
++			.vrefresh = 60,
++			.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC,
++		},
++	},
++	/*
++	 * Epson L2F50113T00 - 2.2 inch QCIF 176x220 Color TFT
++	 * found on the Versatile PB adaptor board connector.
++	 */
++	{
++		.name = "Epson L2F50113T00",
++		.magic = SYS_CLCD_ID_EPSON_2_2,
++		.width_mm = 34,
++		.height_mm = 45,
++		.mode = {
++			.clock = 62500,
++			.hdisplay = 176,
++			.hsync_start = 176 + 2,
++			.hsync_end = 176 + 2 + 3,
++			.htotal = 176 + 2 + 3 + 3,
++			.vdisplay = 220,
++			.vsync_start = 220 + 0,
++			.vsync_end = 220 + 0 + 2,
++			.vtotal = 220 + 0 + 2 + 1,
++			.vrefresh = 390,
++			.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC,
++		},
++		.bus_flags = DRM_BUS_FLAG_PIXDATA_NEGEDGE,
++	},
++	/*
++	 * Sanyo ALR252RGT 240x320 portrait display found on the
++	 * Versatile AB IB2 daughterboard for GSM prototyping.
++	 */
++	{
++		.name = "Sanyo ALR252RGT",
++		.magic = SYS_CLCD_ID_SANYO_2_5,
++		.width_mm = 37,
++		.height_mm = 50,
++		.mode = {
++			.clock = 5400,
++			.hdisplay = 240,
++			.hsync_start = 240 + 10,
++			.hsync_end = 240 + 10 + 10,
++			.htotal = 240 + 10 + 10 + 20,
++			.vdisplay = 320,
++			.vsync_start = 320 + 2,
++			.vsync_end = 320 + 2 + 2,
++			.vtotal = 320 + 2 + 2 + 2,
++			.vrefresh = 116,
++			.flags = DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_NVSYNC,
++		},
++		.bus_flags = DRM_BUS_FLAG_PIXDATA_NEGEDGE,
++		.ib2 = true,
++	},
++};
++
++static inline struct versatile_panel *
++to_versatile_panel(struct drm_panel *panel)
++{
++	return container_of(panel, struct versatile_panel, panel);
++}
++
++static int versatile_panel_disable(struct drm_panel *panel)
++{
++	struct versatile_panel *vpanel = to_versatile_panel(panel);
++
++	/* If we're on an IB2 daughterboard, turn off display */
++	if (vpanel->ib2_map) {
++		dev_dbg(vpanel->dev, "disable IB2 display\n");
++		regmap_update_bits(vpanel->ib2_map,
++				   IB2_CTRL,
++				   IB2_CTRL_LCD_MASK,
++				   IB2_CTRL_LCD_SD);
++	}
++
++	return 0;
++}
++
++static int versatile_panel_enable(struct drm_panel *panel)
++{
++	struct versatile_panel *vpanel = to_versatile_panel(panel);
++
++	/* If we're on an IB2 daughterboard, turn on display */
++	if (vpanel->ib2_map) {
++		dev_dbg(vpanel->dev, "enable IB2 display\n");
++		regmap_update_bits(vpanel->ib2_map,
++				   IB2_CTRL,
++				   IB2_CTRL_LCD_MASK,
++				   IB2_CTRL_LCD_BL_ON);
++	}
++
++	return 0;
++}
++
++static int versatile_panel_get_modes(struct drm_panel *panel)
++{
++	struct drm_connector *connector = panel->connector;
++	struct versatile_panel *vpanel = to_versatile_panel(panel);
++	struct drm_display_mode *mode;
++
++	strncpy(connector->display_info.name, vpanel->panel_type->name,
++		DRM_DISPLAY_INFO_LEN);
++	connector->display_info.width_mm = vpanel->panel_type->width_mm;
++	connector->display_info.height_mm = vpanel->panel_type->height_mm;
++	connector->display_info.bus_flags = vpanel->panel_type->bus_flags;
++
++	mode = drm_mode_duplicate(panel->drm, &vpanel->panel_type->mode);
++	drm_mode_set_name(mode);
++	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
++
++	mode->width_mm = vpanel->panel_type->width_mm;
++	mode->height_mm = vpanel->panel_type->height_mm;
++	drm_mode_probed_add(connector, mode);
++
++	return 1;
++}
++
++static const struct drm_panel_funcs versatile_panel_drm_funcs = {
++	.disable = versatile_panel_disable,
++	.enable = versatile_panel_enable,
++	.get_modes = versatile_panel_get_modes,
++};
++
++static int versatile_panel_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct versatile_panel *vpanel;
++	struct device *parent;
++	struct regmap *map;
++	int ret;
++	u32 val;
++	int i;
++
++	parent = dev->parent;
++	if (!parent) {
++		dev_err(dev, "no parent for versatile panel\n");
++		return -ENODEV;
++	}
++	map = syscon_node_to_regmap(parent->of_node);
++	if (IS_ERR(map)) {
++		dev_err(dev, "no regmap for versatile panel parent\n");
++		return PTR_ERR(map);
++	}
++
++	vpanel = devm_kzalloc(dev, sizeof(*vpanel), GFP_KERNEL);
++	if (!vpanel)
++		return -ENOMEM;
++
++	ret = regmap_read(map, SYS_CLCD, &val);
++	if (ret) {
++		dev_err(dev, "cannot access syscon regs\n");
++		return ret;
++	}
++
++	val &= SYS_CLCD_CLCDID_MASK;
++
++	for (i = 0; i < ARRAY_SIZE(versatile_panels); i++) {
++		const struct versatile_panel_type *pt;
++
++		pt = &versatile_panels[i];
++		if (pt->magic == val) {
++			vpanel->panel_type = pt;
++			break;
++		}
++	}
++
++	/* No panel detected or VGA, let's leave this show */
++	if (i == ARRAY_SIZE(versatile_panels)) {
++		dev_info(dev, "no panel detected\n");
++		return -ENODEV;
++	}
++
++	dev_info(dev, "detected: %s\n", vpanel->panel_type->name);
++	vpanel->dev = dev;
++	vpanel->map = map;
++
++	/* Check if the panel is mounted on an IB2 daughterboard */
++	if (vpanel->panel_type->ib2) {
++		vpanel->ib2_map = syscon_regmap_lookup_by_compatible(
++			"arm,versatile-ib2-syscon");
++		if (IS_ERR(vpanel->ib2_map))
++			vpanel->ib2_map = NULL;
++		else
++			dev_info(dev, "panel mounted on IB2 daughterboard\n");
++	}
++
++	drm_panel_init(&vpanel->panel);
++	vpanel->panel.dev = dev;
++	vpanel->panel.funcs = &versatile_panel_drm_funcs;
++
++	return drm_panel_add(&vpanel->panel);
++}
++
++static const struct of_device_id versatile_panel_match[] = {
++	{ .compatible = "arm,versatile-tft-panel", },
++	{},
++};
++MODULE_DEVICE_TABLE(of, versatile_panel_match);
++
++static struct platform_driver versatile_panel_driver = {
++	.probe		= versatile_panel_probe,
++	.driver		= {
++		.name	= "versatile-tft-panel",
++		.of_match_table = versatile_panel_match,
++	},
++};
++module_platform_driver(versatile_panel_driver);
++
++MODULE_AUTHOR("Linus Walleij <linus.walleij@linaro.org>");
++MODULE_DESCRIPTION("ARM Versatile panel driver");
++MODULE_LICENSE("GPL v2");
 diff --git a/drivers/gpu/drm/panel/panel-ilitek-ili9322.c b/drivers/gpu/drm/panel/panel-ilitek-ili9322.c
 new file mode 100644
-index 000000000000..b4ec0ecff807
+index 000000000000..bd38bf4f1ba6
 --- /dev/null
 +++ b/drivers/gpu/drm/panel/panel-ilitek-ili9322.c
 @@ -0,0 +1,962 @@
@@ -312,7 +732,7 @@ index 000000000000..b4ec0ecff807
 +	ILI9322_INPUT_UNKNOWN = 0xc,
 +};
 +
-+const char *ili9322_inputs[] = {
++static const char * const ili9322_inputs[] = {
 +	"8 bit serial RGB through",
 +	"8 bit serial RGB aligned",
 +	"8 bit serial RGB dummy 320x240",
@@ -473,7 +893,7 @@ index 000000000000..b4ec0ecff807
 +	return true;
 +}
 +
-+const struct regmap_config ili9322_regmap_config = {
++static const struct regmap_config ili9322_regmap_config = {
 +	.reg_bits = 8,
 +	.val_bits = 8,
 +	.max_register = 0x44,
@@ -1093,10 +1513,115 @@ index 000000000000..b4ec0ecff807
 +MODULE_AUTHOR("Linus Walleij <linus.walleij@linaro.org>");
 +MODULE_DESCRIPTION("ILI9322 LCD panel driver");
 +MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-innolux-p079zca.c b/drivers/gpu/drm/panel/panel-innolux-p079zca.c
+index 6ba93449fcfb..57df39b5c589 100644
+--- a/drivers/gpu/drm/panel/panel-innolux-p079zca.c
++++ b/drivers/gpu/drm/panel/panel-innolux-p079zca.c
+@@ -45,8 +45,7 @@ static int innolux_panel_disable(struct drm_panel *panel)
+ 	if (!innolux->enabled)
+ 		return 0;
+ 
+-	innolux->backlight->props.power = FB_BLANK_POWERDOWN;
+-	backlight_update_status(innolux->backlight);
++	backlight_disable(innolux->backlight);
+ 
+ 	err = mipi_dsi_dcs_set_display_off(innolux->link);
+ 	if (err < 0)
+@@ -151,8 +150,7 @@ static int innolux_panel_enable(struct drm_panel *panel)
+ 	if (innolux->enabled)
+ 		return 0;
+ 
+-	innolux->backlight->props.power = FB_BLANK_UNBLANK;
+-	ret = backlight_update_status(innolux->backlight);
++	ret = backlight_enable(innolux->backlight);
+ 	if (ret) {
+ 		DRM_DEV_ERROR(panel->drm->dev,
+ 			      "Failed to enable backlight %d\n", ret);
+@@ -217,7 +215,6 @@ MODULE_DEVICE_TABLE(of, innolux_of_match);
+ static int innolux_panel_add(struct innolux_panel *innolux)
+ {
+ 	struct device *dev = &innolux->link->dev;
+-	struct device_node *np;
+ 	int err;
+ 
+ 	innolux->supply = devm_regulator_get(dev, "power");
+@@ -232,37 +229,22 @@ static int innolux_panel_add(struct innolux_panel *innolux)
+ 		innolux->enable_gpio = NULL;
+ 	}
+ 
+-	np = of_parse_phandle(dev->of_node, "backlight", 0);
+-	if (np) {
+-		innolux->backlight = of_find_backlight_by_node(np);
+-		of_node_put(np);
++	innolux->backlight = devm_of_find_backlight(dev);
+ 
+-		if (!innolux->backlight)
+-			return -EPROBE_DEFER;
+-	}
++	if (IS_ERR(innolux->backlight))
++		return PTR_ERR(innolux->backlight);
+ 
+ 	drm_panel_init(&innolux->base);
+ 	innolux->base.funcs = &innolux_panel_funcs;
+ 	innolux->base.dev = &innolux->link->dev;
+ 
+-	err = drm_panel_add(&innolux->base);
+-	if (err < 0)
+-		goto put_backlight;
+-
+-	return 0;
+-
+-put_backlight:
+-	put_device(&innolux->backlight->dev);
+-
+-	return err;
++	return drm_panel_add(&innolux->base);
+ }
+ 
+ static void innolux_panel_del(struct innolux_panel *innolux)
+ {
+ 	if (innolux->base.dev)
+ 		drm_panel_remove(&innolux->base);
+-
+-	put_device(&innolux->backlight->dev);
+ }
+ 
+ static int innolux_panel_probe(struct mipi_dsi_device *dsi)
+diff --git a/drivers/gpu/drm/panel/panel-jdi-lt070me05000.c b/drivers/gpu/drm/panel/panel-jdi-lt070me05000.c
+index 5b2340ef74ed..0a94ab79a6c0 100644
+--- a/drivers/gpu/drm/panel/panel-jdi-lt070me05000.c
++++ b/drivers/gpu/drm/panel/panel-jdi-lt070me05000.c
+@@ -192,8 +192,7 @@ static int jdi_panel_disable(struct drm_panel *panel)
+ 	if (!jdi->enabled)
+ 		return 0;
+ 
+-	jdi->backlight->props.power = FB_BLANK_POWERDOWN;
+-	backlight_update_status(jdi->backlight);
++	backlight_disable(jdi->backlight);
+ 
+ 	jdi->enabled = false;
+ 
+@@ -289,8 +288,7 @@ static int jdi_panel_enable(struct drm_panel *panel)
+ 	if (jdi->enabled)
+ 		return 0;
+ 
+-	jdi->backlight->props.power = FB_BLANK_UNBLANK;
+-	backlight_update_status(jdi->backlight);
++	backlight_enable(jdi->backlight);
+ 
+ 	jdi->enabled = true;
+ 
 diff --git a/drivers/gpu/drm/panel/panel-lvds.c b/drivers/gpu/drm/panel/panel-lvds.c
-index e2d57c01200b..b5e3994f0aa8 100644
+index e2d57c01200b..5185819c5b79 100644
 --- a/drivers/gpu/drm/panel/panel-lvds.c
 +++ b/drivers/gpu/drm/panel/panel-lvds.c
+@@ -1,5 +1,5 @@
+ /*
+- * rcar_du_crtc.c  --  R-Car Display Unit CRTCs
++ * Generic LVDS panel driver
+  *
+  * Copyright (C) 2016 Laurent Pinchart
+  * Copyright (C) 2016 Renesas Electronics Corporation
 @@ -17,6 +17,7 @@
  #include <linux/module.h>
  #include <linux/of_platform.h>
@@ -1164,23 +1689,24 @@ index e2d57c01200b..b5e3994f0aa8 100644
  						     GPIOD_OUT_LOW);
 diff --git a/drivers/gpu/drm/panel/panel-orisetech-otm8009a.c b/drivers/gpu/drm/panel/panel-orisetech-otm8009a.c
 new file mode 100644
-index 000000000000..c189cd6329c8
+index 000000000000..90f1ae4af93c
 --- /dev/null
 +++ b/drivers/gpu/drm/panel/panel-orisetech-otm8009a.c
-@@ -0,0 +1,491 @@
+@@ -0,0 +1,508 @@
++// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (C) STMicroelectronics SA 2017
 + *
 + * Authors: Philippe Cornu <philippe.cornu@st.com>
 + *          Yannick Fertre <yannick.fertre@st.com>
-+ *
-+ * License terms:  GNU General Public License (GPL), version 2
 + */
++
 +#include <drm/drmP.h>
 +#include <drm/drm_mipi_dsi.h>
 +#include <drm/drm_panel.h>
 +#include <linux/backlight.h>
 +#include <linux/gpio/consumer.h>
++#include <linux/regulator/consumer.h>
 +#include <video/mipi_display.h>
 +
 +#define DRV_NAME "orisetech_otm8009a"
@@ -1232,6 +1758,7 @@ index 000000000000..c189cd6329c8
 +	struct drm_panel panel;
 +	struct backlight_device *bl_dev;
 +	struct gpio_desc *reset_gpio;
++	struct regulator *supply;
 +	bool prepared;
 +	bool enabled;
 +};
@@ -1449,6 +1976,8 @@ index 000000000000..c189cd6329c8
 +		msleep(20);
 +	}
 +
++	regulator_disable(ctx->supply);
++
 +	ctx->prepared = false;
 +
 +	return 0;
@@ -1461,6 +1990,12 @@ index 000000000000..c189cd6329c8
 +
 +	if (ctx->prepared)
 +		return 0;
++
++	ret = regulator_enable(ctx->supply);
++	if (ret < 0) {
++		DRM_ERROR("failed to enable supply: %d\n", ret);
++		return ret;
++	}
 +
 +	if (ctx->reset_gpio) {
 +		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
@@ -1584,6 +2119,13 @@ index 000000000000..c189cd6329c8
 +		return PTR_ERR(ctx->reset_gpio);
 +	}
 +
++	ctx->supply = devm_regulator_get(dev, "power");
++	if (IS_ERR(ctx->supply)) {
++		ret = PTR_ERR(ctx->supply);
++		dev_err(dev, "failed to request regulator: %d\n", ret);
++		return ret;
++	}
++
 +	mipi_dsi_set_drvdata(dsi, ctx);
 +
 +	ctx->dev = dev;
@@ -1659,6 +2201,50 @@ index 000000000000..c189cd6329c8
 +MODULE_AUTHOR("Yannick Fertre <yannick.fertre@st.com>");
 +MODULE_DESCRIPTION("DRM driver for Orise Tech OTM8009A MIPI DSI panel");
 +MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-panasonic-vvx10f034n00.c b/drivers/gpu/drm/panel/panel-panasonic-vvx10f034n00.c
+index 7f915f706fa6..74a806121f80 100644
+--- a/drivers/gpu/drm/panel/panel-panasonic-vvx10f034n00.c
++++ b/drivers/gpu/drm/panel/panel-panasonic-vvx10f034n00.c
+@@ -59,34 +59,28 @@ static inline struct wuxga_nt_panel *to_wuxga_nt_panel(struct drm_panel *panel)
+ 
+ static int wuxga_nt_panel_on(struct wuxga_nt_panel *wuxga_nt)
+ {
+-	struct mipi_dsi_device *dsi = wuxga_nt->dsi;
+-	int ret;
+-
+-	ret = mipi_dsi_turn_on_peripheral(dsi);
+-	if (ret < 0)
+-		return ret;
+-
+-	return 0;
++	return mipi_dsi_turn_on_peripheral(wuxga_nt->dsi);
+ }
+ 
+ static int wuxga_nt_panel_disable(struct drm_panel *panel)
+ {
+ 	struct wuxga_nt_panel *wuxga_nt = to_wuxga_nt_panel(panel);
++	int mipi_ret, bl_ret = 0;
+ 
+ 	if (!wuxga_nt->enabled)
+ 		return 0;
+ 
+-	mipi_dsi_shutdown_peripheral(wuxga_nt->dsi);
++	mipi_ret = mipi_dsi_shutdown_peripheral(wuxga_nt->dsi);
+ 
+ 	if (wuxga_nt->backlight) {
+ 		wuxga_nt->backlight->props.power = FB_BLANK_POWERDOWN;
+ 		wuxga_nt->backlight->props.state |= BL_CORE_FBBLANK;
+-		backlight_update_status(wuxga_nt->backlight);
++		bl_ret = backlight_update_status(wuxga_nt->backlight);
+ 	}
+ 
+ 	wuxga_nt->enabled = false;
+ 
+-	return 0;
++	return mipi_ret ? mipi_ret : bl_ret;
+ }
+ 
+ static int wuxga_nt_panel_unprepare(struct drm_panel *panel)
 diff --git a/drivers/gpu/drm/panel/panel-raspberrypi-touchscreen.c b/drivers/gpu/drm/panel/panel-raspberrypi-touchscreen.c
 new file mode 100644
 index 000000000000..d964d454e4ae
@@ -2178,6 +2764,460 @@ index 000000000000..d964d454e4ae
 +
 +MODULE_AUTHOR("Eric Anholt <eric@anholt.net>");
 +MODULE_DESCRIPTION("Raspberry Pi 7-inch touchscreen driver");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-raydium-rm68200.c b/drivers/gpu/drm/panel/panel-raydium-rm68200.c
+new file mode 100644
+index 000000000000..77593533abcd
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-raydium-rm68200.c
+@@ -0,0 +1,448 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (C) STMicroelectronics SA 2017
++ *
++ * Authors: Philippe Cornu <philippe.cornu@st.com>
++ *          Yannick Fertre <yannick.fertre@st.com>
++ */
++
++#include <linux/backlight.h>
++#include <linux/gpio/consumer.h>
++#include <linux/regulator/consumer.h>
++
++#include <video/mipi_display.h>
++
++#include <drm/drmP.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_panel.h>
++
++/*** Manufacturer Command Set ***/
++#define MCS_CMD_MODE_SW		0xFE /* CMD Mode Switch */
++#define MCS_CMD1_UCS		0x00 /* User Command Set (UCS = CMD1) */
++#define MCS_CMD2_P0		0x01 /* Manufacture Command Set Page0 (CMD2 P0) */
++#define MCS_CMD2_P1		0x02 /* Manufacture Command Set Page1 (CMD2 P1) */
++#define MCS_CMD2_P2		0x03 /* Manufacture Command Set Page2 (CMD2 P2) */
++#define MCS_CMD2_P3		0x04 /* Manufacture Command Set Page3 (CMD2 P3) */
++
++/* CMD2 P0 commands (Display Options and Power) */
++#define MCS_STBCTR		0x12 /* TE1 Output Setting Zig-Zag Connection */
++#define MCS_SGOPCTR		0x16 /* Source Bias Current */
++#define MCS_SDCTR		0x1A /* Source Output Delay Time */
++#define MCS_INVCTR		0x1B /* Inversion Type */
++#define MCS_EXT_PWR_IC		0x24 /* External PWR IC Control */
++#define MCS_SETAVDD		0x27 /* PFM Control for AVDD Output */
++#define MCS_SETAVEE		0x29 /* PFM Control for AVEE Output */
++#define MCS_BT2CTR		0x2B /* DDVDL Charge Pump Control */
++#define MCS_BT3CTR		0x2F /* VGH Charge Pump Control */
++#define MCS_BT4CTR		0x34 /* VGL Charge Pump Control */
++#define MCS_VCMCTR		0x46 /* VCOM Output Level Control */
++#define MCS_SETVGN		0x52 /* VG M/S N Control */
++#define MCS_SETVGP		0x54 /* VG M/S P Control */
++#define MCS_SW_CTRL		0x5F /* Interface Control for PFM and MIPI */
++
++/* CMD2 P2 commands (GOA Timing Control) - no description in datasheet */
++#define GOA_VSTV1		0x00
++#define GOA_VSTV2		0x07
++#define GOA_VCLK1		0x0E
++#define GOA_VCLK2		0x17
++#define GOA_VCLK_OPT1		0x20
++#define GOA_BICLK1		0x2A
++#define GOA_BICLK2		0x37
++#define GOA_BICLK3		0x44
++#define GOA_BICLK4		0x4F
++#define GOA_BICLK_OPT1		0x5B
++#define GOA_BICLK_OPT2		0x60
++#define MCS_GOA_GPO1		0x6D
++#define MCS_GOA_GPO2		0x71
++#define MCS_GOA_EQ		0x74
++#define MCS_GOA_CLK_GALLON	0x7C
++#define MCS_GOA_FS_SEL0		0x7E
++#define MCS_GOA_FS_SEL1		0x87
++#define MCS_GOA_FS_SEL2		0x91
++#define MCS_GOA_FS_SEL3		0x9B
++#define MCS_GOA_BS_SEL0		0xAC
++#define MCS_GOA_BS_SEL1		0xB5
++#define MCS_GOA_BS_SEL2		0xBF
++#define MCS_GOA_BS_SEL3		0xC9
++#define MCS_GOA_BS_SEL4		0xD3
++
++/* CMD2 P3 commands (Gamma) */
++#define MCS_GAMMA_VP		0x60 /* Gamma VP1~VP16 */
++#define MCS_GAMMA_VN		0x70 /* Gamma VN1~VN16 */
++
++struct rm68200 {
++	struct device *dev;
++	struct drm_panel panel;
++	struct gpio_desc *reset_gpio;
++	struct regulator *supply;
++	struct backlight_device *backlight;
++	bool prepared;
++	bool enabled;
++};
++
++static const struct drm_display_mode default_mode = {
++	.clock = 52582,
++	.hdisplay = 720,
++	.hsync_start = 720 + 38,
++	.hsync_end = 720 + 38 + 8,
++	.htotal = 720 + 38 + 8 + 38,
++	.vdisplay = 1280,
++	.vsync_start = 1280 + 12,
++	.vsync_end = 1280 + 12 + 4,
++	.vtotal = 1280 + 12 + 4 + 12,
++	.vrefresh = 50,
++	.flags = 0,
++	.width_mm = 68,
++	.height_mm = 122,
++};
++
++static inline struct rm68200 *panel_to_rm68200(struct drm_panel *panel)
++{
++	return container_of(panel, struct rm68200, panel);
++}
++
++static void rm68200_dcs_write_buf(struct rm68200 *ctx, const void *data,
++				  size_t len)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int err;
++
++	err = mipi_dsi_dcs_write_buffer(dsi, data, len);
++	if (err < 0)
++		DRM_ERROR_RATELIMITED("MIPI DSI DCS write buffer failed: %d\n",
++				      err);
++}
++
++static void rm68200_dcs_write_cmd(struct rm68200 *ctx, u8 cmd, u8 value)
++{
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int err;
++
++	err = mipi_dsi_dcs_write(dsi, cmd, &value, 1);
++	if (err < 0)
++		DRM_ERROR_RATELIMITED("MIPI DSI DCS write failed: %d\n", err);
++}
++
++#define dcs_write_seq(ctx, seq...)				\
++({								\
++	static const u8 d[] = { seq };				\
++								\
++	rm68200_dcs_write_buf(ctx, d, ARRAY_SIZE(d));		\
++})
++
++/*
++ * This panel is not able to auto-increment all cmd addresses so for some of
++ * them, we need to send them one by one...
++ */
++#define dcs_write_cmd_seq(ctx, cmd, seq...)			\
++({								\
++	static const u8 d[] = { seq };				\
++	unsigned int i;						\
++								\
++	for (i = 0; i < ARRAY_SIZE(d) ; i++)			\
++		rm68200_dcs_write_cmd(ctx, cmd + i, d[i]);	\
++})
++
++static void rm68200_init_sequence(struct rm68200 *ctx)
++{
++	/* Enter CMD2 with page 0 */
++	dcs_write_seq(ctx, MCS_CMD_MODE_SW, MCS_CMD2_P0);
++	dcs_write_cmd_seq(ctx, MCS_EXT_PWR_IC, 0xC0, 0x53, 0x00);
++	dcs_write_seq(ctx, MCS_BT2CTR, 0xE5);
++	dcs_write_seq(ctx, MCS_SETAVDD, 0x0A);
++	dcs_write_seq(ctx, MCS_SETAVEE, 0x0A);
++	dcs_write_seq(ctx, MCS_SGOPCTR, 0x52);
++	dcs_write_seq(ctx, MCS_BT3CTR, 0x53);
++	dcs_write_seq(ctx, MCS_BT4CTR, 0x5A);
++	dcs_write_seq(ctx, MCS_INVCTR, 0x00);
++	dcs_write_seq(ctx, MCS_STBCTR, 0x0A);
++	dcs_write_seq(ctx, MCS_SDCTR, 0x06);
++	dcs_write_seq(ctx, MCS_VCMCTR, 0x56);
++	dcs_write_seq(ctx, MCS_SETVGN, 0xA0, 0x00);
++	dcs_write_seq(ctx, MCS_SETVGP, 0xA0, 0x00);
++	dcs_write_seq(ctx, MCS_SW_CTRL, 0x11); /* 2 data lanes, see doc */
++
++	dcs_write_seq(ctx, MCS_CMD_MODE_SW, MCS_CMD2_P2);
++	dcs_write_seq(ctx, GOA_VSTV1, 0x05);
++	dcs_write_seq(ctx, 0x02, 0x0B);
++	dcs_write_seq(ctx, 0x03, 0x0F);
++	dcs_write_seq(ctx, 0x04, 0x7D, 0x00, 0x50);
++	dcs_write_cmd_seq(ctx, GOA_VSTV2, 0x05, 0x16, 0x0D, 0x11, 0x7D, 0x00,
++			  0x50);
++	dcs_write_cmd_seq(ctx, GOA_VCLK1, 0x07, 0x08, 0x01, 0x02, 0x00, 0x7D,
++			  0x00, 0x85, 0x08);
++	dcs_write_cmd_seq(ctx, GOA_VCLK2, 0x03, 0x04, 0x05, 0x06, 0x00, 0x7D,
++			  0x00, 0x85, 0x08);
++	dcs_write_seq(ctx, GOA_VCLK_OPT1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++		      0x00, 0x00, 0x00, 0x00);
++	dcs_write_cmd_seq(ctx, GOA_BICLK1, 0x07, 0x08);
++	dcs_write_seq(ctx, 0x2D, 0x01);
++	dcs_write_seq(ctx, 0x2F, 0x02, 0x00, 0x40, 0x05, 0x08, 0x54, 0x7D,
++		      0x00);
++	dcs_write_cmd_seq(ctx, GOA_BICLK2, 0x03, 0x04, 0x05, 0x06, 0x00);
++	dcs_write_seq(ctx, 0x3D, 0x40);
++	dcs_write_seq(ctx, 0x3F, 0x05, 0x08, 0x54, 0x7D, 0x00);
++	dcs_write_seq(ctx, GOA_BICLK3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++		      0x00, 0x00, 0x00, 0x00, 0x00);
++	dcs_write_seq(ctx, GOA_BICLK4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++		      0x00, 0x00);
++	dcs_write_seq(ctx, 0x58, 0x00, 0x00, 0x00);
++	dcs_write_seq(ctx, GOA_BICLK_OPT1, 0x00, 0x00, 0x00, 0x00, 0x00);
++	dcs_write_seq(ctx, GOA_BICLK_OPT2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
++		      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
++	dcs_write_seq(ctx, MCS_GOA_GPO1, 0x00, 0x00, 0x00, 0x00);
++	dcs_write_seq(ctx, MCS_GOA_GPO2, 0x00, 0x20, 0x00);
++	dcs_write_seq(ctx, MCS_GOA_EQ, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
++		      0x00, 0x00);
++	dcs_write_seq(ctx, MCS_GOA_CLK_GALLON, 0x00, 0x00);
++	dcs_write_cmd_seq(ctx, MCS_GOA_FS_SEL0, 0xBF, 0x02, 0x06, 0x14, 0x10,
++			  0x16, 0x12, 0x08, 0x3F);
++	dcs_write_cmd_seq(ctx, MCS_GOA_FS_SEL1, 0x3F, 0x3F, 0x3F, 0x3F, 0x0C,
++			  0x0A, 0x0E, 0x3F, 0x3F, 0x00);
++	dcs_write_cmd_seq(ctx, MCS_GOA_FS_SEL2, 0x04, 0x3F, 0x3F, 0x3F, 0x3F,
++			  0x05, 0x01, 0x3F, 0x3F, 0x0F);
++	dcs_write_cmd_seq(ctx, MCS_GOA_FS_SEL3, 0x0B, 0x0D, 0x3F, 0x3F, 0x3F,
++			  0x3F);
++	dcs_write_cmd_seq(ctx, 0xA2, 0x3F, 0x09, 0x13, 0x17, 0x11, 0x15);
++	dcs_write_cmd_seq(ctx, 0xA9, 0x07, 0x03, 0x3F);
++	dcs_write_cmd_seq(ctx, MCS_GOA_BS_SEL0, 0x3F, 0x05, 0x01, 0x17, 0x13,
++			  0x15, 0x11, 0x0F, 0x3F);
++	dcs_write_cmd_seq(ctx, MCS_GOA_BS_SEL1, 0x3F, 0x3F, 0x3F, 0x3F, 0x0B,
++			  0x0D, 0x09, 0x3F, 0x3F, 0x07);
++	dcs_write_cmd_seq(ctx, MCS_GOA_BS_SEL2, 0x03, 0x3F, 0x3F, 0x3F, 0x3F,
++			  0x02, 0x06, 0x3F, 0x3F, 0x08);
++	dcs_write_cmd_seq(ctx, MCS_GOA_BS_SEL3, 0x0C, 0x0A, 0x3F, 0x3F, 0x3F,
++			  0x3F, 0x3F, 0x0E, 0x10, 0x14);
++	dcs_write_cmd_seq(ctx, MCS_GOA_BS_SEL4, 0x12, 0x16, 0x00, 0x04, 0x3F);
++	dcs_write_seq(ctx, 0xDC, 0x02);
++	dcs_write_seq(ctx, 0xDE, 0x12);
++
++	dcs_write_seq(ctx, MCS_CMD_MODE_SW, 0x0E); /* No documentation */
++	dcs_write_seq(ctx, 0x01, 0x75);
++
++	dcs_write_seq(ctx, MCS_CMD_MODE_SW, MCS_CMD2_P3);
++	dcs_write_cmd_seq(ctx, MCS_GAMMA_VP, 0x00, 0x0C, 0x12, 0x0E, 0x06,
++			  0x12, 0x0E, 0x0B, 0x15, 0x0B, 0x10, 0x07, 0x0F,
++			  0x12, 0x0C, 0x00);
++	dcs_write_cmd_seq(ctx, MCS_GAMMA_VN, 0x00, 0x0C, 0x12, 0x0E, 0x06,
++			  0x12, 0x0E, 0x0B, 0x15, 0x0B, 0x10, 0x07, 0x0F,
++			  0x12, 0x0C, 0x00);
++
++	/* Exit CMD2 */
++	dcs_write_seq(ctx, MCS_CMD_MODE_SW, MCS_CMD1_UCS);
++}
++
++static int rm68200_disable(struct drm_panel *panel)
++{
++	struct rm68200 *ctx = panel_to_rm68200(panel);
++
++	if (!ctx->enabled)
++		return 0;
++
++	backlight_disable(ctx->backlight);
++
++	ctx->enabled = false;
++
++	return 0;
++}
++
++static int rm68200_unprepare(struct drm_panel *panel)
++{
++	struct rm68200 *ctx = panel_to_rm68200(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	if (!ctx->prepared)
++		return 0;
++
++	ret = mipi_dsi_dcs_set_display_off(dsi);
++	if (ret)
++		DRM_WARN("failed to set display off: %d\n", ret);
++
++	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
++	if (ret)
++		DRM_WARN("failed to enter sleep mode: %d\n", ret);
++
++	msleep(120);
++
++	if (ctx->reset_gpio) {
++		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
++		msleep(20);
++	}
++
++	regulator_disable(ctx->supply);
++
++	ctx->prepared = false;
++
++	return 0;
++}
++
++static int rm68200_prepare(struct drm_panel *panel)
++{
++	struct rm68200 *ctx = panel_to_rm68200(panel);
++	struct mipi_dsi_device *dsi = to_mipi_dsi_device(ctx->dev);
++	int ret;
++
++	if (ctx->prepared)
++		return 0;
++
++	ret = regulator_enable(ctx->supply);
++	if (ret < 0) {
++		DRM_ERROR("failed to enable supply: %d\n", ret);
++		return ret;
++	}
++
++	if (ctx->reset_gpio) {
++		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
++		msleep(20);
++		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
++		msleep(100);
++	}
++
++	rm68200_init_sequence(ctx);
++
++	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
++	if (ret)
++		return ret;
++
++	msleep(125);
++
++	ret = mipi_dsi_dcs_set_display_on(dsi);
++	if (ret)
++		return ret;
++
++	msleep(20);
++
++	ctx->prepared = true;
++
++	return 0;
++}
++
++static int rm68200_enable(struct drm_panel *panel)
++{
++	struct rm68200 *ctx = panel_to_rm68200(panel);
++
++	if (ctx->enabled)
++		return 0;
++
++	backlight_enable(ctx->backlight);
++
++	ctx->enabled = true;
++
++	return 0;
++}
++
++static int rm68200_get_modes(struct drm_panel *panel)
++{
++	struct drm_display_mode *mode;
++
++	mode = drm_mode_duplicate(panel->drm, &default_mode);
++	if (!mode) {
++		DRM_ERROR("failed to add mode %ux%ux@%u\n",
++			  default_mode.hdisplay, default_mode.vdisplay,
++			  default_mode.vrefresh);
++		return -ENOMEM;
++	}
++
++	drm_mode_set_name(mode);
++
++	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
++	drm_mode_probed_add(panel->connector, mode);
++
++	panel->connector->display_info.width_mm = mode->width_mm;
++	panel->connector->display_info.height_mm = mode->height_mm;
++
++	return 1;
++}
++
++static const struct drm_panel_funcs rm68200_drm_funcs = {
++	.disable = rm68200_disable,
++	.unprepare = rm68200_unprepare,
++	.prepare = rm68200_prepare,
++	.enable = rm68200_enable,
++	.get_modes = rm68200_get_modes,
++};
++
++static int rm68200_probe(struct mipi_dsi_device *dsi)
++{
++	struct device *dev = &dsi->dev;
++	struct rm68200 *ctx;
++	int ret;
++
++	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
++	if (!ctx)
++		return -ENOMEM;
++
++	ctx->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
++	if (IS_ERR(ctx->reset_gpio)) {
++		ret = PTR_ERR(ctx->reset_gpio);
++		dev_err(dev, "cannot get reset GPIO: %d\n", ret);
++		return ret;
++	}
++
++	ctx->supply = devm_regulator_get(dev, "power");
++	if (IS_ERR(ctx->supply)) {
++		ret = PTR_ERR(ctx->supply);
++		dev_err(dev, "cannot get regulator: %d\n", ret);
++		return ret;
++	}
++
++	ctx->backlight = devm_of_find_backlight(dev);
++	if (IS_ERR(ctx->backlight))
++		return PTR_ERR(ctx->backlight);
++
++	mipi_dsi_set_drvdata(dsi, ctx);
++
++	ctx->dev = dev;
++
++	dsi->lanes = 2;
++	dsi->format = MIPI_DSI_FMT_RGB888;
++	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST |
++			  MIPI_DSI_MODE_LPM;
++
++	drm_panel_init(&ctx->panel);
++	ctx->panel.dev = dev;
++	ctx->panel.funcs = &rm68200_drm_funcs;
++
++	drm_panel_add(&ctx->panel);
++
++	ret = mipi_dsi_attach(dsi);
++	if (ret < 0) {
++		dev_err(dev, "mipi_dsi_attach() failed: %d\n", ret);
++		drm_panel_remove(&ctx->panel);
++		return ret;
++	}
++
++	return 0;
++}
++
++static int rm68200_remove(struct mipi_dsi_device *dsi)
++{
++	struct rm68200 *ctx = mipi_dsi_get_drvdata(dsi);
++
++	mipi_dsi_detach(dsi);
++	drm_panel_remove(&ctx->panel);
++
++	return 0;
++}
++
++static const struct of_device_id raydium_rm68200_of_match[] = {
++	{ .compatible = "raydium,rm68200" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, raydium_rm68200_of_match);
++
++static struct mipi_dsi_driver raydium_rm68200_driver = {
++	.probe = rm68200_probe,
++	.remove = rm68200_remove,
++	.driver = {
++		.name = "panel-raydium-rm68200",
++		.of_match_table = raydium_rm68200_of_match,
++	},
++};
++module_mipi_dsi_driver(raydium_rm68200_driver);
++
++MODULE_AUTHOR("Philippe Cornu <philippe.cornu@st.com>");
++MODULE_AUTHOR("Yannick Fertre <yannick.fertre@st.com>");
++MODULE_DESCRIPTION("DRM Driver for Raydium RM68200 MIPI DSI panel");
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/gpu/drm/panel/panel-samsung-s6e63j0x03.c b/drivers/gpu/drm/panel/panel-samsung-s6e63j0x03.c
 new file mode 100644
@@ -3108,8 +4148,172 @@ index 000000000000..71c09ed436ae
 +MODULE_AUTHOR("Marco Franchi <marco.franchi@nxp.com");
 +MODULE_DESCRIPTION("Seiko 43WVF1G panel driver");
 +MODULE_LICENSE("GPL v2");
+diff --git a/drivers/gpu/drm/panel/panel-sharp-lq101r1sx01.c b/drivers/gpu/drm/panel/panel-sharp-lq101r1sx01.c
+index 3cce3ca19601..6bf8730f1a21 100644
+--- a/drivers/gpu/drm/panel/panel-sharp-lq101r1sx01.c
++++ b/drivers/gpu/drm/panel/panel-sharp-lq101r1sx01.c
+@@ -96,10 +96,7 @@ static int sharp_panel_disable(struct drm_panel *panel)
+ 	if (!sharp->enabled)
+ 		return 0;
+ 
+-	if (sharp->backlight) {
+-		sharp->backlight->props.power = FB_BLANK_POWERDOWN;
+-		backlight_update_status(sharp->backlight);
+-	}
++	backlight_disable(sharp->backlight);
+ 
+ 	sharp->enabled = false;
+ 
+@@ -263,10 +260,7 @@ static int sharp_panel_enable(struct drm_panel *panel)
+ 	if (sharp->enabled)
+ 		return 0;
+ 
+-	if (sharp->backlight) {
+-		sharp->backlight->props.power = FB_BLANK_UNBLANK;
+-		backlight_update_status(sharp->backlight);
+-	}
++	backlight_enable(sharp->backlight);
+ 
+ 	sharp->enabled = true;
+ 
+@@ -324,8 +318,7 @@ MODULE_DEVICE_TABLE(of, sharp_of_match);
+ 
+ static int sharp_panel_add(struct sharp_panel *sharp)
+ {
+-	struct device_node *np;
+-	int err;
++	struct device *dev = &sharp->link1->dev;
+ 
+ 	sharp->mode = &default_mode;
+ 
+@@ -333,30 +326,16 @@ static int sharp_panel_add(struct sharp_panel *sharp)
+ 	if (IS_ERR(sharp->supply))
+ 		return PTR_ERR(sharp->supply);
+ 
+-	np = of_parse_phandle(sharp->link1->dev.of_node, "backlight", 0);
+-	if (np) {
+-		sharp->backlight = of_find_backlight_by_node(np);
+-		of_node_put(np);
++	sharp->backlight = devm_of_find_backlight(dev);
+ 
+-		if (!sharp->backlight)
+-			return -EPROBE_DEFER;
+-	}
++	if (IS_ERR(sharp->backlight))
++		return PTR_ERR(sharp->backlight);
+ 
+ 	drm_panel_init(&sharp->base);
+ 	sharp->base.funcs = &sharp_panel_funcs;
+ 	sharp->base.dev = &sharp->link1->dev;
+ 
+-	err = drm_panel_add(&sharp->base);
+-	if (err < 0)
+-		goto put_backlight;
+-
+-	return 0;
+-
+-put_backlight:
+-	if (sharp->backlight)
+-		put_device(&sharp->backlight->dev);
+-
+-	return err;
++	return drm_panel_add(&sharp->base);
+ }
+ 
+ static void sharp_panel_del(struct sharp_panel *sharp)
+@@ -364,9 +343,6 @@ static void sharp_panel_del(struct sharp_panel *sharp)
+ 	if (sharp->base.dev)
+ 		drm_panel_remove(&sharp->base);
+ 
+-	if (sharp->backlight)
+-		put_device(&sharp->backlight->dev);
+-
+ 	if (sharp->link2)
+ 		put_device(&sharp->link2->dev);
+ }
+diff --git a/drivers/gpu/drm/panel/panel-sharp-ls043t1le01.c b/drivers/gpu/drm/panel/panel-sharp-ls043t1le01.c
+index 3aeb0bda4947..494aa9b1628a 100644
+--- a/drivers/gpu/drm/panel/panel-sharp-ls043t1le01.c
++++ b/drivers/gpu/drm/panel/panel-sharp-ls043t1le01.c
+@@ -117,10 +117,7 @@ static int sharp_nt_panel_disable(struct drm_panel *panel)
+ 	if (!sharp_nt->enabled)
+ 		return 0;
+ 
+-	if (sharp_nt->backlight) {
+-		sharp_nt->backlight->props.power = FB_BLANK_POWERDOWN;
+-		backlight_update_status(sharp_nt->backlight);
+-	}
++	backlight_disable(sharp_nt->backlight);
+ 
+ 	sharp_nt->enabled = false;
+ 
+@@ -203,10 +200,7 @@ static int sharp_nt_panel_enable(struct drm_panel *panel)
+ 	if (sharp_nt->enabled)
+ 		return 0;
+ 
+-	if (sharp_nt->backlight) {
+-		sharp_nt->backlight->props.power = FB_BLANK_UNBLANK;
+-		backlight_update_status(sharp_nt->backlight);
+-	}
++	backlight_enable(sharp_nt->backlight);
+ 
+ 	sharp_nt->enabled = true;
+ 
+@@ -259,8 +253,6 @@ static const struct drm_panel_funcs sharp_nt_panel_funcs = {
+ static int sharp_nt_panel_add(struct sharp_nt_panel *sharp_nt)
+ {
+ 	struct device *dev = &sharp_nt->dsi->dev;
+-	struct device_node *np;
+-	int ret;
+ 
+ 	sharp_nt->mode = &default_mode;
+ 
+@@ -277,39 +269,22 @@ static int sharp_nt_panel_add(struct sharp_nt_panel *sharp_nt)
+ 		gpiod_set_value(sharp_nt->reset_gpio, 0);
+ 	}
+ 
+-	np = of_parse_phandle(dev->of_node, "backlight", 0);
+-	if (np) {
+-		sharp_nt->backlight = of_find_backlight_by_node(np);
+-		of_node_put(np);
++	sharp_nt->backlight = devm_of_find_backlight(dev);
+ 
+-		if (!sharp_nt->backlight)
+-			return -EPROBE_DEFER;
+-	}
++	if (IS_ERR(sharp_nt->backlight))
++		return PTR_ERR(sharp_nt->backlight);
+ 
+ 	drm_panel_init(&sharp_nt->base);
+ 	sharp_nt->base.funcs = &sharp_nt_panel_funcs;
+ 	sharp_nt->base.dev = &sharp_nt->dsi->dev;
+ 
+-	ret = drm_panel_add(&sharp_nt->base);
+-	if (ret < 0)
+-		goto put_backlight;
+-
+-	return 0;
+-
+-put_backlight:
+-	if (sharp_nt->backlight)
+-		put_device(&sharp_nt->backlight->dev);
+-
+-	return ret;
++	return drm_panel_add(&sharp_nt->base);
+ }
+ 
+ static void sharp_nt_panel_del(struct sharp_nt_panel *sharp_nt)
+ {
+ 	if (sharp_nt->base.dev)
+ 		drm_panel_remove(&sharp_nt->base);
+-
+-	if (sharp_nt->backlight)
+-		put_device(&sharp_nt->backlight->dev);
+ }
+ 
+ static int sharp_nt_panel_probe(struct mipi_dsi_device *dsi)
 diff --git a/drivers/gpu/drm/panel/panel-simple.c b/drivers/gpu/drm/panel/panel-simple.c
-index 07438148b27b..f9649bded63f 100644
+index 07438148b27b..cbf1ab404ee7 100644
 --- a/drivers/gpu/drm/panel/panel-simple.c
 +++ b/drivers/gpu/drm/panel/panel-simple.c
 @@ -187,8 +187,7 @@ static int panel_simple_unprepare(struct drm_panel *panel)
@@ -3142,7 +4346,37 @@ index 07438148b27b..f9649bded63f 100644
  		return err;
  	}
  
-@@ -1009,6 +1008,10 @@ static const struct panel_desc hitachi_tx23d38vm0caa = {
+@@ -582,6 +581,29 @@ static const struct panel_desc auo_b133htn01 = {
+ 	},
+ };
+ 
++static const struct drm_display_mode auo_g104sn02_mode = {
++	.clock = 40000,
++	.hdisplay = 800,
++	.hsync_start = 800 + 40,
++	.hsync_end = 800 + 40 + 216,
++	.htotal = 800 + 40 + 216 + 128,
++	.vdisplay = 600,
++	.vsync_start = 600 + 10,
++	.vsync_end = 600 + 10 + 35,
++	.vtotal = 600 + 10 + 35 + 2,
++	.vrefresh = 60,
++};
++
++static const struct panel_desc auo_g104sn02 = {
++	.modes = &auo_g104sn02_mode,
++	.num_modes = 1,
++	.bpc = 8,
++	.size = {
++		.width = 211,
++		.height = 158,
++	},
++};
++
+ static const struct display_timing auo_g133han01_timings = {
+ 	.pixelclock = { 134000000, 141200000, 149000000 },
+ 	.hactive = { 1920, 1920, 1920 },
+@@ -1009,6 +1031,10 @@ static const struct panel_desc hitachi_tx23d38vm0caa = {
  		.width = 195,
  		.height = 117,
  	},
@@ -3153,7 +4387,7 @@ index 07438148b27b..f9649bded63f 100644
  };
  
  static const struct drm_display_mode innolux_at043tn24_mode = {
-@@ -1019,8 +1022,8 @@ static const struct drm_display_mode innolux_at043tn24_mode = {
+@@ -1019,8 +1045,8 @@ static const struct drm_display_mode innolux_at043tn24_mode = {
  	.htotal = 480 + 2 + 41 + 2,
  	.vdisplay = 272,
  	.vsync_start = 272 + 2,
@@ -3164,7 +4398,7 @@ index 07438148b27b..f9649bded63f 100644
  	.vrefresh = 60,
  	.flags = DRM_MODE_FLAG_NHSYNC | DRM_MODE_FLAG_NVSYNC,
  };
-@@ -1034,6 +1037,7 @@ static const struct panel_desc innolux_at043tn24 = {
+@@ -1034,6 +1060,7 @@ static const struct panel_desc innolux_at043tn24 = {
  		.height = 54,
  	},
  	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
@@ -3172,7 +4406,38 @@ index 07438148b27b..f9649bded63f 100644
  };
  
  static const struct drm_display_mode innolux_at070tn92_mode = {
-@@ -1352,6 +1356,38 @@ static const struct panel_desc lg_lp129qe = {
+@@ -1213,6 +1240,30 @@ static const struct panel_desc innolux_zj070na_01p = {
+ 	},
+ };
+ 
++static const struct display_timing koe_tx31d200vm0baa_timing = {
++	.pixelclock = { 39600000, 43200000, 48000000 },
++	.hactive = { 1280, 1280, 1280 },
++	.hfront_porch = { 16, 36, 56 },
++	.hback_porch = { 16, 36, 56 },
++	.hsync_len = { 8, 8, 8 },
++	.vactive = { 480, 480, 480 },
++	.vfront_porch = { 6, 21, 33.5 },
++	.vback_porch = { 6, 21, 33.5 },
++	.vsync_len = { 8, 8, 8 },
++	.flags = DISPLAY_FLAGS_DE_HIGH,
++};
++
++static const struct panel_desc koe_tx31d200vm0baa = {
++	.timings = &koe_tx31d200vm0baa_timing,
++	.num_timings = 1,
++	.bpc = 6,
++	.size = {
++		.width = 292,
++		.height = 109,
++	},
++	.bus_format = MEDIA_BUS_FMT_RGB666_1X7X3_SPWG,
++};
++
+ static const struct display_timing kyo_tcg121xglp_timing = {
+ 	.pixelclock = { 52000000, 65000000, 71000000 },
+ 	.hactive = { 1024, 1024, 1024 },
+@@ -1352,6 +1403,38 @@ static const struct panel_desc lg_lp129qe = {
  	},
  };
  
@@ -3211,7 +4476,7 @@ index 07438148b27b..f9649bded63f 100644
  static const struct display_timing nec_nl12880bc20_05_timing = {
  	.pixelclock = { 67000000, 71000000, 75000000 },
  	.hactive = { 1280, 1280, 1280 },
-@@ -1524,8 +1560,8 @@ static const struct panel_desc olimex_lcd_olinuxino_43ts = {
+@@ -1524,8 +1607,8 @@ static const struct panel_desc olimex_lcd_olinuxino_43ts = {
  	.modes = &olimex_lcd_olinuxino_43ts_mode,
  	.num_modes = 1,
  	.size = {
@@ -3222,7 +4487,7 @@ index 07438148b27b..f9649bded63f 100644
  	},
  	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
  };
-@@ -1613,35 +1649,6 @@ static const struct panel_desc qd43003c0_40 = {
+@@ -1613,35 +1696,6 @@ static const struct panel_desc qd43003c0_40 = {
  	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
  };
  
@@ -3258,7 +4523,44 @@ index 07438148b27b..f9649bded63f 100644
  static const struct drm_display_mode samsung_lsn122dl01_c01_mode = {
  	.clock = 271560,
  	.hdisplay = 2560,
-@@ -1862,6 +1869,54 @@ static const struct panel_desc tianma_tm070jdhg30 = {
+@@ -1734,23 +1788,22 @@ static const struct panel_desc sharp_lq101k1ly04 = {
+ 	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_JEIDA,
+ };
+ 
+-static const struct drm_display_mode sharp_lq123p1jx31_mode = {
+-	.clock = 252750,
+-	.hdisplay = 2400,
+-	.hsync_start = 2400 + 48,
+-	.hsync_end = 2400 + 48 + 32,
+-	.htotal = 2400 + 48 + 32 + 80,
+-	.vdisplay = 1600,
+-	.vsync_start = 1600 + 3,
+-	.vsync_end = 1600 + 3 + 10,
+-	.vtotal = 1600 + 3 + 10 + 33,
+-	.vrefresh = 60,
+-	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
++static const struct display_timing sharp_lq123p1jx31_timing = {
++	.pixelclock = { 252750000, 252750000, 266604720 },
++	.hactive = { 2400, 2400, 2400 },
++	.hfront_porch = { 48, 48, 48 },
++	.hback_porch = { 80, 80, 84 },
++	.hsync_len = { 32, 32, 32 },
++	.vactive = { 1600, 1600, 1600 },
++	.vfront_porch = { 3, 3, 3 },
++	.vback_porch = { 33, 33, 120 },
++	.vsync_len = { 10, 10, 10 },
++	.flags = DISPLAY_FLAGS_VSYNC_LOW | DISPLAY_FLAGS_HSYNC_LOW,
+ };
+ 
+ static const struct panel_desc sharp_lq123p1jx31 = {
+-	.modes = &sharp_lq123p1jx31_mode,
+-	.num_modes = 1,
++	.timings = &sharp_lq123p1jx31_timing,
++	.num_timings = 1,
+ 	.bpc = 8,
+ 	.size = {
+ 		.width = 259,
+@@ -1862,6 +1915,54 @@ static const struct panel_desc tianma_tm070jdhg30 = {
  	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
  };
  
@@ -3313,7 +4615,27 @@ index 07438148b27b..f9649bded63f 100644
  static const struct drm_display_mode tpk_f07a_0102_mode = {
  	.clock = 33260,
  	.hdisplay = 800,
-@@ -2086,6 +2141,9 @@ static const struct of_device_id platform_of_match[] = {
+@@ -1993,6 +2094,9 @@ static const struct of_device_id platform_of_match[] = {
+ 	}, {
+ 		.compatible = "auo,b133xtn01",
+ 		.data = &auo_b133xtn01,
++	}, {
++		.compatible = "auo,g104sn02",
++		.data = &auo_g104sn02,
+ 	}, {
+ 		.compatible = "auo,g133han01",
+ 		.data = &auo_g133han01,
+@@ -2068,6 +2172,9 @@ static const struct of_device_id platform_of_match[] = {
+ 	}, {
+ 		.compatible = "innolux,zj070na-01p",
+ 		.data = &innolux_zj070na_01p,
++	}, {
++		.compatible = "koe,tx31d200vm0baa",
++		.data = &koe_tx31d200vm0baa,
+ 	}, {
+ 		.compatible = "kyo,tcg121xglp",
+ 		.data = &kyo_tcg121xglp,
+@@ -2086,6 +2193,9 @@ static const struct of_device_id platform_of_match[] = {
  	}, {
  		.compatible = "lg,lp129qe",
  		.data = &lg_lp129qe,
@@ -3323,7 +4645,7 @@ index 07438148b27b..f9649bded63f 100644
  	}, {
  		.compatible = "nec,nl12880bc20-05",
  		.data = &nec_nl12880bc20_05,
-@@ -2116,9 +2174,6 @@ static const struct of_device_id platform_of_match[] = {
+@@ -2116,9 +2226,6 @@ static const struct of_device_id platform_of_match[] = {
  	}, {
  		.compatible = "qiaodian,qd43003c0-40",
  		.data = &qd43003c0_40,
@@ -3333,7 +4655,7 @@ index 07438148b27b..f9649bded63f 100644
  	}, {
  		.compatible = "samsung,lsn122dl01-c01",
  		.data = &samsung_lsn122dl01_c01,
-@@ -2146,6 +2201,12 @@ static const struct of_device_id platform_of_match[] = {
+@@ -2146,6 +2253,12 @@ static const struct of_device_id platform_of_match[] = {
  	}, {
  		.compatible = "tianma,tm070jdhg30",
  		.data = &tianma_tm070jdhg30,
