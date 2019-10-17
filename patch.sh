@@ -640,6 +640,7 @@ backports () {
 	else
 		patch_backports
 	fi
+	${git} "${DIR}/patches/backports/gpu_drm_panel/0002-gpu_drm_panel-add-tfc-s9700rtwv43tr-01b.patch"
 }
 
 reverts () {
