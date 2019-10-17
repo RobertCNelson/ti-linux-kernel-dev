@@ -629,7 +629,7 @@ backports () {
 	backport_tag="v4.19.79"
 
 	subsystem="gpu_drm_panel"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
