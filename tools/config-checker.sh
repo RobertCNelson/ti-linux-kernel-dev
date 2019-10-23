@@ -35,6 +35,8 @@ config_module_special () {
 	if [ "x${test_module}" = "x# ${config} is not set" ] ; then
 		echo "Setting: ${config}=m"
 		sed -i -e 's:# '$config' is not set:'$config'=m:g' .config
+	else
+		echo "$config=m" >> .config
 	fi
 }
 

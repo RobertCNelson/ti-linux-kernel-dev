@@ -540,7 +540,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
-	backport_tag="v5.3.5"
+	backport_tag="v5.3.7"
 
 	subsystem="stmpe"
 	#regenerate="enable"
@@ -610,7 +610,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.79"
+	backport_tag="v4.19.80"
 
 	subsystem="greybus"
 	#regenerate="enable"
