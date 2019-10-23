@@ -540,7 +540,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
-	backport_tag="v5.3.5"
+	backport_tag="v5.3.7"
 
 	subsystem="stmpe"
 	#regenerate="enable"
@@ -610,7 +610,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.79"
+	backport_tag="v4.19.80"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -625,22 +625,6 @@ backports () {
 		patch_backports
 		${git} "${DIR}/patches/backports/greybus/0002-greybus-drivers-staging-greybus-module.c-no-struct_s.patch"
 	fi
-
-	backport_tag="v4.18.20"
-
-	subsystem="gpu_drm_panel"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/gpu/drm/panel/* ./drivers/gpu/drm/panel/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-	${git} "${DIR}/patches/backports/gpu_drm_panel/0002-gpu_drm_panel-add-tfc-s9700rtwv43tr-01b.patch"
 }
 
 reverts () {
