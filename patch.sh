@@ -504,6 +504,10 @@ ipipe () {
 
 		echo "${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}"
 		${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}
+
+		#0001-gpio-omap-ipipe-enable-interrupt-pipelining.patch
+		${git_bin} revert --no-edit 952b7cf69c4ca921d37a5b32e8ab5d9256aa88cc -s
+
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/ipipe/ipipe.diff
 
 		sed -i -s 's:arch/arm/plat-omap/include/plat/dmtimer.h:include/clocksource/timer-ti-dm.h:g' ../patches/ipipe/ipipe.diff
