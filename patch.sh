@@ -435,6 +435,7 @@ beagleboard_dtbs () {
 		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
 
@@ -540,7 +541,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
-	backport_tag="v5.3.7"
+	backport_tag="v5.3.8"
 
 	subsystem="stmpe"
 	#regenerate="enable"
@@ -610,7 +611,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.80"
+	backport_tag="v4.19.81"
 
 	subsystem="greybus"
 	#regenerate="enable"
