@@ -409,10 +409,11 @@ beagleboard_dtbs () {
 		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
 
-		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
 
 		device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am5
 		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am5
@@ -492,8 +493,43 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.14.77"
+	backport_tag="v5.3.8"
 
+	subsystem="stmpe"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/iio/adc/stmpe-adc.c ./drivers/iio/adc/
+		cp -v ~/linux-src/drivers/mfd/stmpe.c ./drivers/mfd/
+		cp -v ~/linux-src/include/linux/mfd/stmpe.h ./include/linux/mfd/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	${git} "${DIR}/patches/backports/stmpe/0002-stmpe-wire-up-adc-Kconfig-Makefile.patch"
+
+	backport_tag="v5.0.21"
+
+	subsystem="vl53l0x"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/iio/proximity/vl53l0x-i2c.c ./drivers/iio/proximity/vl53l0x-i2c.c
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
+
+	backport_tag="v4.14.77"
 	subsystem="brcm80211"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -513,6 +549,21 @@ backports () {
 
 	#regenerate="enable"
 	dir 'cypress/brcmfmac'
+
+	backport_tag="v5.0.21"
+
+	subsystem="greybus"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/staging/greybus/* ./drivers/staging/greybus/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 }
 
 reverts () {
@@ -555,7 +606,7 @@ drivers () {
 	dir 'drivers/ti/gpio'
 
 	#[PATCH v3 1/4] mfd: stmpe: Move ADC related defines to header of mfd
-	dir 'drivers/iio/stmpe'
+#	dir 'drivers/iio/stmpe'
 
 	dir 'drivers/uio_pruss_shmem'
 	dir 'drivers/greybus'
@@ -583,9 +634,7 @@ packaging () {
 	echo "dir: packaging"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		cp -v "${DIR}/3rdparty/packaging/Makefile" "${DIR}/KERNEL/scripts/package"
 		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
-		cp -v "${DIR}/3rdparty/packaging/mkdebian" "${DIR}/KERNEL/scripts/package"
 		${git_bin} commit -a -m 'packaging: sync builddeb changes' -s
 		${git_bin} format-patch -1 -o "${DIR}/patches/packaging"
 		exit 2
