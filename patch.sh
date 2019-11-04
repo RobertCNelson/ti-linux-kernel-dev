@@ -549,21 +549,6 @@ backports () {
 
 	#regenerate="enable"
 	dir 'cypress/brcmfmac'
-
-	backport_tag="v5.0.21"
-
-	subsystem="greybus"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/staging/greybus/* ./drivers/staging/greybus/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
 }
 
 reverts () {
