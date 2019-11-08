@@ -541,13 +541,14 @@ backports () {
 
 	${git} "${DIR}/patches/backports/typec/0002-unstage-typec.patch"
 
-	backport_tag="v5.3.8"
+	backport_tag="v5.3.9"
 
 	subsystem="stmpe"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
+		cp -v ~/linux-src/drivers/input/touchscreen/stmpe-ts.c ./drivers/input/touchscreen/
 		cp -v ~/linux-src/drivers/iio/adc/stmpe-adc.c ./drivers/iio/adc/
 		cp -v ~/linux-src/drivers/mfd/stmpe.c ./drivers/mfd/
 		cp -v ~/linux-src/include/linux/mfd/stmpe.h ./include/linux/mfd/
@@ -559,6 +560,7 @@ backports () {
 	fi
 
 	${git} "${DIR}/patches/backports/stmpe/0002-stmpe-wire-up-adc-Kconfig-Makefile.patch"
+	${git} "${DIR}/patches/backports/stmpe/0003-stmpe-ts-add-invert-swap-options-untested.patch"
 
 	backport_tag="v5.0.21"
 
