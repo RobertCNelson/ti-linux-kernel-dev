@@ -561,6 +561,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/stmpe/0002-stmpe-wire-up-adc-Kconfig-Makefile.patch"
 	${git} "${DIR}/patches/backports/stmpe/0003-stmpe-ts-add-invert-swap-options.patch"
+	${git} "${DIR}/patches/backports/stmpe/0004-stmpe-ts.c-add-offsets.patch"
 
 	backport_tag="v5.0.21"
 
