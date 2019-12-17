@@ -1,9 +1,9 @@
-From 37d9a9308ea5065ad6f07621b6f366f4f11f5f88 Mon Sep 17 00:00:00 2001
+From e6a1289c0122f2350a21027885feaa1c9818ccfa Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 4 Nov 2019 11:35:26 -0600
+Date: Tue, 17 Dec 2019 11:24:46 -0600
 Subject: [PATCH] merge: CONFIG_PREEMPT_RT Patch Set
 
-patch-4.19.72-rt26.patch.xz
+patch-4.19.82-rt30.patch.xz
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
@@ -164,7 +164,6 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/fscache/main.c                             |   1 +
  fs/fuse/dir.c                                 |   2 +-
  fs/inode.c                                    |   2 +-
- fs/libfs.c                                    |   6 +-
  fs/locks.c                                    |  32 +-
  fs/namei.c                                    |   4 +-
  fs/namespace.c                                |   8 +-
@@ -394,7 +393,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  security/apparmor/include/path.h              |  19 +-
  security/apparmor/lsm.c                       |   2 +-
  virt/kvm/arm/arm.c                            |   6 +-
- 387 files changed, 9441 insertions(+), 2164 deletions(-)
+ 386 files changed, 9437 insertions(+), 2162 deletions(-)
  create mode 100644 drivers/clocksource/timer-atmel-tcb.c
  create mode 100644 include/linux/locallock.h
  create mode 100644 include/linux/mutex_rt.h
@@ -3920,7 +3919,7 @@ index 41c1002a7d7d..d424eafcbf8e 100644
  
  /* dynamic per-device compression frontend */
 diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
-index 70cbd0ee1b07..ffa3e9d67571 100644
+index 76abe40bfa83..71520199226a 100644
 --- a/drivers/block/zram/zram_drv.c
 +++ b/drivers/block/zram/zram_drv.c
 @@ -53,6 +53,40 @@ static size_t huge_class_size;
@@ -3972,7 +3971,7 @@ index 70cbd0ee1b07..ffa3e9d67571 100644
  
  static inline bool init_done(struct zram *zram)
  {
-@@ -901,6 +936,8 @@ static DEVICE_ATTR_RO(io_stat);
+@@ -902,6 +937,8 @@ static DEVICE_ATTR_RO(io_stat);
  static DEVICE_ATTR_RO(mm_stat);
  static DEVICE_ATTR_RO(debug_stat);
  
@@ -3981,7 +3980,7 @@ index 70cbd0ee1b07..ffa3e9d67571 100644
  static void zram_meta_free(struct zram *zram, u64 disksize)
  {
  	size_t num_pages = disksize >> PAGE_SHIFT;
-@@ -931,6 +968,7 @@ static bool zram_meta_alloc(struct zram *zram, u64 disksize)
+@@ -932,6 +969,7 @@ static bool zram_meta_alloc(struct zram *zram, u64 disksize)
  
  	if (!huge_class_size)
  		huge_class_size = zs_huge_class_size(zram->mem_pool);
@@ -3989,7 +3988,7 @@ index 70cbd0ee1b07..ffa3e9d67571 100644
  	return true;
  }
  
-@@ -989,6 +1027,7 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
+@@ -990,6 +1028,7 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
  	unsigned long handle;
  	unsigned int size;
  	void *src, *dst;
@@ -3997,7 +3996,7 @@ index 70cbd0ee1b07..ffa3e9d67571 100644
  
  	if (zram_wb_enabled(zram)) {
  		zram_slot_lock(zram, index);
-@@ -1023,6 +1062,7 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
+@@ -1024,6 +1063,7 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
  
  	size = zram_get_obj_size(zram, index);
  
@@ -4005,7 +4004,7 @@ index 70cbd0ee1b07..ffa3e9d67571 100644
  	src = zs_map_object(zram->mem_pool, handle, ZS_MM_RO);
  	if (size == PAGE_SIZE) {
  		dst = kmap_atomic(page);
-@@ -1030,14 +1070,13 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
+@@ -1031,14 +1071,13 @@ static int __zram_bvec_read(struct zram *zram, struct page *page, u32 index,
  		kunmap_atomic(dst);
  		ret = 0;
  	} else {
@@ -5112,7 +5111,7 @@ index 357b69f57072..b6c8acc30853 100644
  /**
   * qi_cache_alloc - Allocate buffers from CAAM-QI cache
 diff --git a/drivers/firmware/efi/efi.c b/drivers/firmware/efi/efi.c
-index 2a29dd9c986d..f58ab9ed4ade 100644
+index d54fca902e64..1708505fdf5d 100644
 --- a/drivers/firmware/efi/efi.c
 +++ b/drivers/firmware/efi/efi.c
 @@ -87,7 +87,7 @@ struct mm_struct efi_mm = {
@@ -5370,7 +5369,7 @@ index bedd5fba33b0..3f4259f11a35 100644
  			  current->pid, current->comm,
  			  cpumask_pr_args(proc_mask));
 diff --git a/drivers/infiniband/hw/hfi1/sdma.c b/drivers/infiniband/hw/hfi1/sdma.c
-index d648a4167832..aae49e79965c 100644
+index 64ab92f8a4a2..57ec8bb829f2 100644
 --- a/drivers/infiniband/hw/hfi1/sdma.c
 +++ b/drivers/infiniband/hw/hfi1/sdma.c
 @@ -852,14 +852,13 @@ struct sdma_engine *sdma_select_user_engine(struct hfi1_devdata *dd,
@@ -6584,7 +6583,7 @@ index 30ad89db1efc..1d5f1d679ffa 100644
  	fscache_root = kobject_create_and_add("fscache", kernel_kobj);
  	if (!fscache_root)
 diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
-index 82a13221775e..58324a93e3c0 100644
+index e7a2a988533d..4691605ea4aa 100644
 --- a/fs/fuse/dir.c
 +++ b/fs/fuse/dir.c
 @@ -1203,7 +1203,7 @@ static int fuse_direntplus_link(struct file *file,
@@ -6608,38 +6607,6 @@ index 36146c757aa2..536551a93e7a 100644
 +	inode->__i_dir_seq = 0;
  	inode->i_rdev = 0;
  	inode->dirtied_when = 0;
- 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 0fb590d79f30..cd95874a1952 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -90,7 +90,7 @@ static struct dentry *next_positive(struct dentry *parent,
- 				    struct list_head *from,
- 				    int count)
- {
--	unsigned *seq = &parent->d_inode->i_dir_seq, n;
-+	unsigned *seq = &parent->d_inode->__i_dir_seq, n;
- 	struct dentry *res;
- 	struct list_head *p;
- 	bool skipped;
-@@ -123,8 +123,9 @@ static struct dentry *next_positive(struct dentry *parent,
- static void move_cursor(struct dentry *cursor, struct list_head *after)
- {
- 	struct dentry *parent = cursor->d_parent;
--	unsigned n, *seq = &parent->d_inode->i_dir_seq;
-+	unsigned n, *seq = &parent->d_inode->__i_dir_seq;
- 	spin_lock(&parent->d_lock);
-+	preempt_disable_rt();
- 	for (;;) {
- 		n = *seq;
- 		if (!(n & 1) && cmpxchg(seq, n, n + 1) == n)
-@@ -137,6 +138,7 @@ static void move_cursor(struct dentry *cursor, struct list_head *after)
- 	else
- 		list_add_tail(&cursor->d_child, &parent->d_subdirs);
- 	smp_store_release(seq, n + 2);
-+	preempt_enable_rt();
- 	spin_unlock(&parent->d_lock);
- }
  
 diff --git a/fs/locks.c b/fs/locks.c
 index 2ecb4db8c840..8259b7c7b5d2 100644
@@ -6834,7 +6801,7 @@ index d6eca814d9fc..dfc5caf1a49f 100644
  	 * After the slowpath clears MNT_WRITE_HOLD, mnt_is_readonly will
  	 * be set to match its requirements. So we must not load that until
 diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 75fe92eaa681..e8d05393443f 100644
+index 825a8c52165a..c14f02b41f0d 100644
 --- a/fs/nfs/delegation.c
 +++ b/fs/nfs/delegation.c
 @@ -152,11 +152,11 @@ static int nfs_delegation_claim_opens(struct inode *inode,
@@ -6843,7 +6810,7 @@ index 75fe92eaa681..e8d05393443f 100644
  		mutex_lock(&sp->so_delegreturn_mutex);
 -		seq = raw_seqcount_begin(&sp->so_reclaim_seqcount);
 +		seq = read_seqbegin(&sp->so_reclaim_seqlock);
- 		err = nfs4_open_delegation_recall(ctx, state, stateid, type);
+ 		err = nfs4_open_delegation_recall(ctx, state, stateid);
  		if (!err)
  			err = nfs_delegation_claim_locks(ctx, state, stateid);
 -		if (!err && read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
@@ -6927,10 +6894,10 @@ index 5b61520dce88..2771aafaca19 100644
  };
  
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 31ae3bd5d9d2..a5f63bf5bf7a 100644
+index 75faef7af22d..72abcccb8177 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2874,7 +2874,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+@@ -2873,7 +2873,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
  	unsigned int seq;
  	int ret;
  
@@ -6939,7 +6906,7 @@ index 31ae3bd5d9d2..a5f63bf5bf7a 100644
  
  	ret = _nfs4_proc_open(opendata, ctx);
  	if (ret != 0)
-@@ -2915,7 +2915,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+@@ -2914,7 +2914,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
  
  	if (d_inode(dentry) == state->inode) {
  		nfs_inode_attach_open_context(ctx);
@@ -6949,7 +6916,7 @@ index 31ae3bd5d9d2..a5f63bf5bf7a 100644
  	}
  
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index c36ef75f2054..e86450c8d205 100644
+index b3086e99420c..c9bf1eb7e1b2 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
 @@ -515,7 +515,7 @@ nfs4_alloc_state_owner(struct nfs_server *server,
@@ -11302,7 +11269,7 @@ index 000000000000..a7034298a82a
 +
 +#endif
 diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
-index c44da48de7df..c85ac38f7fa9 100644
+index c9cd5086bd54..b6328680dc71 100644
 --- a/include/net/sch_generic.h
 +++ b/include/net/sch_generic.h
 @@ -10,6 +10,7 @@
@@ -11362,7 +11329,7 @@ index c44da48de7df..c85ac38f7fa9 100644
  	if (qdisc->flags & TCQ_F_NOLOCK)
  		spin_unlock(&qdisc->seqlock);
  }
-@@ -453,7 +468,7 @@ static inline spinlock_t *qdisc_root_sleeping_lock(const struct Qdisc *qdisc)
+@@ -458,7 +473,7 @@ static inline spinlock_t *qdisc_root_sleeping_lock(const struct Qdisc *qdisc)
  	return qdisc_lock(root);
  }
  
@@ -12167,7 +12134,7 @@ index 6a4b41484afe..197cb422f6e1 100644
  	return r;
  }
 diff --git a/kernel/events/core.c b/kernel/events/core.c
-index 7ca44b8523c8..d67e0d90b04e 100644
+index 625ba462e5bb..9e17b38fdb98 100644
 --- a/kernel/events/core.c
 +++ b/kernel/events/core.c
 @@ -1102,7 +1102,7 @@ static void __perf_mux_hrtimer_init(struct perf_cpu_context *cpuctx, int cpu)
@@ -12202,7 +12169,7 @@ index e10de9836dd7..ac4ca468db84 100644
  	spin_unlock(&sighand->siglock);
  
 diff --git a/kernel/fork.c b/kernel/fork.c
-index 09eeb31e00fe..bccfbec30337 100644
+index 94cec1ed197d..c02913cbbf72 100644
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
 @@ -40,6 +40,7 @@
@@ -15674,10 +15641,10 @@ index 9aa0fccd5d43..76d0b40d9193 100644
 +
 +#endif
 diff --git a/kernel/panic.c b/kernel/panic.c
-index 6a6df23acd1a..8f0a896e8428 100644
+index 72e001e3753e..98748902cc41 100644
 --- a/kernel/panic.c
 +++ b/kernel/panic.c
-@@ -479,9 +479,11 @@ static u64 oops_id;
+@@ -480,9 +480,11 @@ static u64 oops_id;
  
  static int init_oops_id(void)
  {
@@ -20822,7 +20789,7 @@ index ae64cb819a9a..1c67aab34ff5 100644
  }
  
 diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
-index 3b0de19b9ed7..f82da65109eb 100644
+index bdd7f3d78724..bdcc8eda152c 100644
 --- a/kernel/trace/trace.c
 +++ b/kernel/trace/trace.c
 @@ -2137,6 +2137,7 @@ tracing_generic_entry_update(struct trace_entry *entry, unsigned long flags,
@@ -20929,10 +20896,10 @@ index 7345f5f8f3fe..6455e2ca7987 100644
  	return ret;
  }
 diff --git a/kernel/trace/trace_hwlat.c b/kernel/trace/trace_hwlat.c
-index 1e6db9cbe4dc..fa95139445b2 100644
+index 8030e24dbf14..862f4b0139fc 100644
 --- a/kernel/trace/trace_hwlat.c
 +++ b/kernel/trace/trace_hwlat.c
-@@ -277,7 +277,7 @@ static void move_to_next_cpu(void)
+@@ -279,7 +279,7 @@ static void move_to_next_cpu(void)
  	 * of this thread, than stop migrating for the duration
  	 * of the current test.
  	 */
@@ -23732,7 +23699,7 @@ index 9632772e14be..d6b01d61f768 100644
  #ifdef CONFIG_SLAB
  	struct list_head slabs_partial;	/* partial list first, better asm code */
 diff --git a/mm/slub.c b/mm/slub.c
-index 09c0e24a06d8..2240b51a0549 100644
+index 9c3937c5ce38..81c32ceab228 100644
 --- a/mm/slub.c
 +++ b/mm/slub.c
 @@ -1167,7 +1167,7 @@ static noinline int free_debug_processing(
@@ -25803,5 +25770,5 @@ index d982650deb33..efe2d6c0201c 100644
  		ret = handle_exit(vcpu, run, ret);
  	}
 -- 
-2.23.0
+2.24.0
 
