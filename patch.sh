@@ -256,8 +256,8 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v4.19.73
-	${git_bin} revert --no-edit 652993a5aae5ffa1d59188058c07e8f0e5d2461f
+	#v4.19.xx
+	#${git_bin} revert --no-edit xyz
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -415,7 +415,7 @@ beagleboard_dtbs () {
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
 
-		device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am5
+		#device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am5
 		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am5
 
 		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
@@ -493,7 +493,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.3.8"
+	backport_tag="v5.3.16"
 
 	subsystem="stmpe"
 	#regenerate="enable"
