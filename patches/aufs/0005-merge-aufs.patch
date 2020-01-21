@@ -1,14 +1,14 @@
-From 3499a1897bf5deb407eab88c3f93554cb9873c8a Mon Sep 17 00:00:00 2001
+From b4e126cb9782b8a3ab59c72b5b3d29eafa87394d Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 17 Dec 2019 11:23:25 -0600
+Date: Tue, 21 Jan 2020 12:24:46 -0600
 Subject: [PATCH 5/5] merge: aufs
 
-https://github.com/sfjro/aufs4-standalone/commit/ddc58f8381625e2c7df8c0360e2b5fc2d2c9627b
+https://github.com/sfjro/aufs4-standalone/commit/353b59a17aaa138202609557acc67c3b400957c5
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  Documentation/ABI/testing/debugfs-aufs        |   55 +
  Documentation/ABI/testing/sysfs-aufs          |   31 +
- Documentation/filesystems/aufs/README         |  402 ++++
+ Documentation/filesystems/aufs/README         |  404 ++++
  .../filesystems/aufs/design/01intro.txt       |  171 ++
  .../filesystems/aufs/design/02struct.txt      |  258 +++
  .../filesystems/aufs/design/03atomic_open.txt |   85 +
@@ -56,8 +56,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/aufs/hbl.h                                 |   65 +
  fs/aufs/hfsnotify.c                           |  289 +++
  fs/aufs/hfsplus.c                             |   60 +
- fs/aufs/hnotify.c                             |  721 ++++++
- fs/aufs/i_op.c                                | 1507 +++++++++++++
+ fs/aufs/hnotify.c                             |  715 ++++++
+ fs/aufs/i_op.c                                | 1501 +++++++++++++
  fs/aufs/i_op_add.c                            |  936 ++++++++
  fs/aufs/i_op_del.c                            |  513 +++++
  fs/aufs/i_op_ren.c                            | 1250 +++++++++++
@@ -86,19 +86,19 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/aufs/sysaufs.c                             |   93 +
  fs/aufs/sysaufs.h                             |  102 +
  fs/aufs/sysfs.c                               |  373 ++++
- fs/aufs/sysrq.c                               |  160 ++
+ fs/aufs/sysrq.c                               |  149 ++
  fs/aufs/vdir.c                                |  896 ++++++++
  fs/aufs/vfsub.c                               |  902 ++++++++
  fs/aufs/vfsub.h                               |  354 +++
  fs/aufs/wbr_policy.c                          |  830 +++++++
  fs/aufs/whout.c                               | 1062 +++++++++
  fs/aufs/whout.h                               |   86 +
- fs/aufs/wkq.c                                 |  392 ++++
+ fs/aufs/wkq.c                                 |  372 ++++
  fs/aufs/wkq.h                                 |   89 +
  fs/aufs/xattr.c                               |  356 +++
  fs/aufs/xino.c                                | 1965 +++++++++++++++++
  include/uapi/linux/aufs_type.h                |  452 ++++
- 92 files changed, 37840 insertions(+)
+ 92 files changed, 37799 insertions(+)
  create mode 100644 Documentation/ABI/testing/debugfs-aufs
  create mode 100644 Documentation/ABI/testing/sysfs-aufs
  create mode 100644 Documentation/filesystems/aufs/README
@@ -292,10 +292,10 @@ index 000000000000..82f9518495ea
 +		will be empty. About XINO files, see the aufs manual.
 diff --git a/Documentation/filesystems/aufs/README b/Documentation/filesystems/aufs/README
 new file mode 100644
-index 000000000000..029c3e5df231
+index 000000000000..e7291a3c66a6
 --- /dev/null
 +++ b/Documentation/filesystems/aufs/README
-@@ -0,0 +1,402 @@
+@@ -0,0 +1,404 @@
 +
 +Aufs4 -- advanced multi layered unification filesystem version 4.x
 +http://aufs.sf.net
@@ -573,7 +573,8 @@ index 000000000000..029c3e5df231
 +  the internal locks for LOCKDEP is necessary. LOCKDEP is a debugging
 +  feature of linux kernel. If you enable CONFIG_LOCKDEP, then you will
 +  need to apply this debug patch to expand several constant values.
-+  If don't know what LOCKDEP, then you don't have apply this patch.
++  If you don't know what LOCKDEP is, then you don't have apply this
++  patch.
 +
 +
 +4. Usage
@@ -623,6 +624,7 @@ index 000000000000..029c3e5df231
 +  system, instead of the date you downloaded.
 +- configuration (define/undefine CONFIG_AUFS_xxx)
 +- kernel configuration or /proc/config.gz (if you have it)
++- LSM (linux security module, if you are using)
 +- behaviour which you think to be incorrect
 +- actual operation, reproducible one is better
 +- mailto: aufs-users at lists.sourceforge.net
@@ -10405,7 +10407,7 @@ index 000000000000..5c8065d258bf
 +#endif /* __AUFS_DIR_H__ */
 diff --git a/fs/aufs/dirren.c b/fs/aufs/dirren.c
 new file mode 100644
-index 000000000000..0bd412ab68c9
+index 000000000000..2cccba009774
 --- /dev/null
 +++ b/fs/aufs/dirren.c
 @@ -0,0 +1,1316 @@
@@ -10492,7 +10494,7 @@ index 000000000000..0bd412ab68c9
 +	found = 0;
 +	idx = au_dr_ihash(ino);
 +	hbl = dr->dr_h_ino + idx;
-+#if 0
++#if 0 /* debug print */
 +	{
 +		struct hlist_bl_node *tmp;
 +
@@ -11626,8 +11628,8 @@ index 000000000000..0bd412ab68c9
 +	err = 0;
 +	if (!lkup->dirren.drinfo)
 +		goto out;
-+	AuDebugOn(lkup->dirren.ninfo < btgt + 1);
-+	drinfo = lkup->dirren.drinfo[btgt + 1];
++	AuDebugOn(lkup->dirren.ninfo <= btgt);
++	drinfo = lkup->dirren.drinfo[btgt];
 +	if (!drinfo)
 +		goto out;
 +
@@ -11656,8 +11658,8 @@ index 000000000000..0bd412ab68c9
 +	match = 1;
 +	if (!lkup->dirren.drinfo)
 +		goto out;
-+	AuDebugOn(lkup->dirren.ninfo < bindex + 1);
-+	drinfo = lkup->dirren.drinfo[bindex + 1];
++	AuDebugOn(lkup->dirren.ninfo <= bindex);
++	drinfo = lkup->dirren.drinfo[bindex];
 +	if (!drinfo)
 +		goto out;
 +
@@ -13174,7 +13176,7 @@ index 000000000000..1da2ca0a969b
 +}
 diff --git a/fs/aufs/f_op.c b/fs/aufs/f_op.c
 new file mode 100644
-index 000000000000..5254b5cd3942
+index 000000000000..571356719ca2
 --- /dev/null
 +++ b/fs/aufs/f_op.c
 @@ -0,0 +1,819 @@
@@ -13510,7 +13512,7 @@ index 000000000000..5254b5cd3942
 +	if (unlikely(err))
 +		goto out;
 +
-+	err = -ENOSYS;
++	err = -ENOSYS;	/* the branch doesn't have its ->(read|write)_iter() */
 +	iter = NULL;
 +	if (rw == MAY_READ)
 +		iter = h_file->f_op->read_iter;
@@ -13954,7 +13956,7 @@ index 000000000000..5254b5cd3942
 +/* ---------------------------------------------------------------------- */
 +
 +/* no one supports this operation, currently */
-+#if 0
++#if 0 /* reserved for future use */
 +static ssize_t aufs_sendpage(struct file *file, struct page *page, int offset,
 +			     size_t len, loff_t *pos, int more)
 +{
@@ -13990,7 +13992,7 @@ index 000000000000..5254b5cd3942
 +	.setfl		= aufs_setfl,
 +	.splice_write	= aufs_splice_write,
 +	.splice_read	= aufs_splice_read,
-+#if 0
++#if 0 /* reserved for future use */
 +	.aio_splice_write = aufs_aio_splice_write,
 +	.aio_splice_read  = aufs_aio_splice_read,
 +#endif
@@ -16643,10 +16645,10 @@ index 000000000000..3bd869a69c8f
 +}
 diff --git a/fs/aufs/hnotify.c b/fs/aufs/hnotify.c
 new file mode 100644
-index 000000000000..95bced39c290
+index 000000000000..e3220023d6dd
 --- /dev/null
 +++ b/fs/aufs/hnotify.c
-@@ -0,0 +1,721 @@
+@@ -0,0 +1,715 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (C) 2005-2019 Junjiro R. Okajima
@@ -16831,12 +16833,6 @@ index 000000000000..95bced39c290
 +
 +out_dpages:
 +	au_dpages_free(&dpages);
-+
-+#if 0
-+	/* discard children */
-+	dentry_unhash(dentry);
-+	dput(dentry);
-+#endif
 +out:
 +	return err;
 +}
@@ -17370,10 +17366,10 @@ index 000000000000..95bced39c290
 +}
 diff --git a/fs/aufs/i_op.c b/fs/aufs/i_op.c
 new file mode 100644
-index 000000000000..4f5001ebd0f4
+index 000000000000..c9d56c66fd20
 --- /dev/null
 +++ b/fs/aufs/i_op.c
-@@ -0,0 +1,1507 @@
+@@ -0,0 +1,1501 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (C) 2005-2019 Junjiro R. Okajima
@@ -17448,19 +17444,6 @@ index 000000000000..4f5001ebd0f4
 +	if (!err)
 +		err = security_inode_permission(h_inode, mask);
 +
-+#if 0
-+	if (!err) {
-+		/* todo: do we need to call ima_path_check()? */
-+		struct path h_path = {
-+			.dentry	=
-+			.mnt	= h_mnt
-+		};
-+		err = ima_path_check(&h_path,
-+				     mask & (MAY_READ | MAY_WRITE | MAY_EXEC),
-+				     IMA_COUNT_LEAVE);
-+	}
-+#endif
-+
 +out:
 +	return err;
 +}
@@ -17482,7 +17465,13 @@ index 000000000000..4f5001ebd0f4
 +	sb = inode->i_sb;
 +	si_read_lock(sb, AuLock_FLUSH);
 +	ii_read_lock_child(inode);
-+#if 0
++#if 0 /* reserved for future use */
++	/*
++	 * This test may be rather 'too much' since the test is essentially done
++	 * in the aufs_lookup().  Theoretically it is possible that the inode
++	 * generation doesn't match to the superblock's here.  But it isn't a
++	 * big deal I suppose.
++	 */
 +	err = au_iigen_test(inode, au_sigen(sb));
 +	if (unlikely(err))
 +		goto out;
@@ -17600,7 +17589,7 @@ index 000000000000..4f5001ebd0f4
 +	if (inode)
 +		atomic_inc(&inode->i_count);
 +	ret = d_splice_alias(inode, dentry);
-+#if 0
++#if 0 /* reserved for future use */
 +	if (unlikely(d_need_lookup(dentry))) {
 +		spin_lock(&dentry->d_lock);
 +		dentry->d_flags &= ~DCACHE_NEED_LOOKUP;
@@ -18016,7 +18005,8 @@ index 000000000000..4f5001ebd0f4
 +
 +static void au_pin_hdir_set_owner(struct au_pin *p, struct task_struct *task)
 +{
-+#if !defined(CONFIG_RWSEM_GENERIC_SPINLOCK) && defined(CONFIG_RWSEM_SPIN_ON_OWNER)
++#if !defined(CONFIG_RWSEM_GENERIC_SPINLOCK) \
++	&& defined(CONFIG_RWSEM_SPIN_ON_OWNER)
 +	p->hdir->hi_inode->i_rwsem.owner = task;
 +#endif
 +}
@@ -20344,7 +20334,7 @@ index 000000000000..1c459dbea5db
 +}
 diff --git a/fs/aufs/i_op_ren.c b/fs/aufs/i_op_ren.c
 new file mode 100644
-index 000000000000..91aa66594a42
+index 000000000000..d0fa03976273
 --- /dev/null
 +++ b/fs/aufs/i_op_ren.c
 @@ -0,0 +1,1250 @@
@@ -20765,7 +20755,7 @@ index 000000000000..91aa66594a42
 +	}
 +
 +	BUG_ON(d_is_positive(a->dst_h_dentry) && a->src_btop != a->btgt);
-+#if 0
++#if 0 /* debugging */
 +	BUG_ON(!au_ftest_ren(a->auren_flags, DIRREN)
 +	       && d_is_positive(a->dst_h_dentry)
 +	       && a->src_btop != a->btgt);
@@ -21892,7 +21882,7 @@ index 000000000000..098fd115052a
 +}
 diff --git a/fs/aufs/inode.c b/fs/aufs/inode.c
 new file mode 100644
-index 000000000000..985377d9bf66
+index 000000000000..8d53cd08b8fb
 --- /dev/null
 +++ b/fs/aufs/inode.c
 @@ -0,0 +1,529 @@
@@ -22110,7 +22100,7 @@ index 000000000000..985377d9bf66
 +	struct dentry *h_dentry;
 +	struct inode *h_inode;
 +	struct au_iinfo *iinfo;
-+	struct inode_operations *iop;
++	const struct inode_operations *iop;
 +
 +	IiMustWriteLock(inode);
 +
@@ -22427,7 +22417,7 @@ index 000000000000..985377d9bf66
 +}
 diff --git a/fs/aufs/inode.h b/fs/aufs/inode.h
 new file mode 100644
-index 000000000000..a6bc2768d3e7
+index 000000000000..f82bfbcac915
 --- /dev/null
 +++ b/fs/aufs/inode.h
 @@ -0,0 +1,698 @@
@@ -22590,7 +22580,7 @@ index 000000000000..a6bc2768d3e7
 +	AuIop_OTHER,
 +	AuIop_Last
 +};
-+extern struct inode_operations aufs_iop[AuIop_Last],
++extern struct inode_operations aufs_iop[AuIop_Last], /* not const */
 +	aufs_iop_nogetattr[AuIop_Last];
 +
 +/* au_wr_dir flags */
@@ -24963,7 +24953,7 @@ index 000000000000..59ce2d700ec9
 +}
 diff --git a/fs/aufs/opts.c b/fs/aufs/opts.c
 new file mode 100644
-index 000000000000..77e17d7b3bdf
+index 000000000000..6a2d0900c3ac
 --- /dev/null
 +++ b/fs/aufs/opts.c
 @@ -0,0 +1,1880 @@
@@ -26596,7 +26586,7 @@ index 000000000000..77e17d7b3bdf
 +		if ((br->br_perm & AuBrAttr_ICEX)
 +		    && !h_dir->i_op->listxattr)
 +			br->br_perm &= ~AuBrAttr_ICEX;
-+#if 0
++#if 0 /* untested */
 +		if ((br->br_perm & AuBrAttr_ICEX_SEC)
 +		    && (au_br_sb(br)->s_flags & SB_NOSEC))
 +			br->br_perm &= ~AuBrAttr_ICEX_SEC;
@@ -28734,7 +28724,7 @@ index 000000000000..500a920b4ea1
 +}
 diff --git a/fs/aufs/super.c b/fs/aufs/super.c
 new file mode 100644
-index 000000000000..bcb0b26fdfbe
+index 000000000000..6087ef7d42cc
 --- /dev/null
 +++ b/fs/aufs/super.c
 @@ -0,0 +1,1049 @@
@@ -28989,7 +28979,7 @@ index 000000000000..bcb0b26fdfbe
 +	sb = dentry->d_sb;
 +	if (sb->s_flags & SB_POSIXACL)
 +		seq_puts(m, ",acl");
-+#if 0
++#if 0 /* reserved for future use */
 +	if (sb->s_flags & SB_I_VERSION)
 +		seq_puts(m, ",i_version");
 +#endif
@@ -29789,7 +29779,7 @@ index 000000000000..bcb0b26fdfbe
 +};
 diff --git a/fs/aufs/super.h b/fs/aufs/super.h
 new file mode 100644
-index 000000000000..74571acf3eb9
+index 000000000000..ee40c8b884f1
 --- /dev/null
 +++ b/fs/aufs/super.h
 @@ -0,0 +1,589 @@
@@ -29974,7 +29964,7 @@ index 000000000000..74571acf3eb9
 +	struct hlist_bl_head	si_files;
 +
 +	/* with/without getattr, brother of sb->s_d_op */
-+	struct inode_operations *si_iop_array;
++	const struct inode_operations *si_iop_array;
 +
 +	/*
 +	 * sysfs and lifetime management.
@@ -30970,10 +30960,10 @@ index 000000000000..927f6b252c75
 +}
 diff --git a/fs/aufs/sysrq.c b/fs/aufs/sysrq.c
 new file mode 100644
-index 000000000000..db10ec528f5d
+index 000000000000..0a4d7f41bf1b
 --- /dev/null
 +++ b/fs/aufs/sysrq.c
-@@ -0,0 +1,160 @@
+@@ -0,0 +1,149 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (C) 2005-2019 Junjiro R. Okajima
@@ -31010,6 +31000,7 @@ index 000000000000..db10ec528f5d
 +	struct hlist_bl_head *files;
 +	struct hlist_bl_node *pos;
 +	struct au_finfo *finfo;
++	struct inode *i;
 +
 +	plevel = au_plevel;
 +	au_plevel = KERN_WARNING;
@@ -31022,14 +31013,7 @@ index 000000000000..db10ec528f5d
 +	pr("superblock\n");
 +	au_dpri_sb(sb);
 +
-+#if 0
-+	pr("root dentry\n");
-+	au_dpri_dentry(sb->s_root);
-+	pr("root inode\n");
-+	au_dpri_inode(d_inode(sb->s_root));
-+#endif
-+
-+#if 0
++#if 0 /* reserved */
 +	do {
 +		int err, i, j, ndentry;
 +		struct au_dcsub_pages dpages;
@@ -31050,21 +31034,16 @@ index 000000000000..db10ec528f5d
 +	} while (0);
 +#endif
 +
-+#if 1
-+	{
-+		struct inode *i;
-+
-+		pr("isolated inode\n");
-+		spin_lock(&sb->s_inode_list_lock);
-+		list_for_each_entry(i, &sb->s_inodes, i_sb_list) {
-+			spin_lock(&i->i_lock);
-+			if (1 || hlist_empty(&i->i_dentry))
-+				au_dpri_inode(i);
-+			spin_unlock(&i->i_lock);
-+		}
-+		spin_unlock(&sb->s_inode_list_lock);
++	pr("isolated inode\n");
++	spin_lock(&sb->s_inode_list_lock);
++	list_for_each_entry(i, &sb->s_inodes, i_sb_list) {
++		spin_lock(&i->i_lock);
++		if (hlist_empty(&i->i_dentry))
++			au_dpri_inode(i);
++		spin_unlock(&i->i_lock);
 +	}
-+#endif
++	spin_unlock(&sb->s_inode_list_lock);
++
 +	pr("files\n");
 +	files = &au_sbi(sb)->si_files;
 +	hlist_bl_lock(files);
@@ -31136,7 +31115,7 @@ index 000000000000..db10ec528f5d
 +}
 diff --git a/fs/aufs/vdir.c b/fs/aufs/vdir.c
 new file mode 100644
-index 000000000000..dc768f5d90c6
+index 000000000000..9ba22894165d
 --- /dev/null
 +++ b/fs/aufs/vdir.c
 @@ -0,0 +1,896 @@
@@ -31237,7 +31216,7 @@ index 000000000000..dc768f5d90c6
 +
 +static void nhash_count(struct hlist_head *head)
 +{
-+#if 0
++#if 0 /* debugging */
 +	unsigned long n;
 +	struct hlist_node *pos;
 +
@@ -34142,7 +34121,7 @@ index 000000000000..64954145c0ec
 +};
 diff --git a/fs/aufs/whout.c b/fs/aufs/whout.c
 new file mode 100644
-index 000000000000..6c9c8501562a
+index 000000000000..5afb430b0b08
 --- /dev/null
 +++ b/fs/aufs/whout.c
 @@ -0,0 +1,1062 @@
@@ -34453,7 +34432,7 @@ index 000000000000..6c9c8501562a
 +
 +	pr_err("%pd (%s) doesn't support link(2), use noplink and rw+nolwh\n",
 +	       h_root, au_sbtype(h_root->d_sb));
-+	return -ENOSYS;
++	return -ENOSYS;	/* the branch doesn't have its ->link() */
 +}
 +
 +/* todo: should this mkdir be done in /sbin/mount.aufs helper? */
@@ -35302,10 +35281,10 @@ index 000000000000..06f69b24e5c1
 +#endif /* __AUFS_WHOUT_H__ */
 diff --git a/fs/aufs/wkq.c b/fs/aufs/wkq.c
 new file mode 100644
-index 000000000000..b0dd8df4e414
+index 000000000000..1ce0e7b8061d
 --- /dev/null
 +++ b/fs/aufs/wkq.c
-@@ -0,0 +1,392 @@
+@@ -0,0 +1,372 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (C) 2005-2019 Junjiro R. Okajima
@@ -35461,8 +35440,8 @@ index 000000000000..b0dd8df4e414
 +		goto out;
 +
 +	err = 0;
-+#if 0
-+	if (0 && au_debug_test()) /* left for debugging */
++#if 0 /* left for debugging */
++	if (0 && au_debug_test())
 +		lockdep_print_held_locks(curr);
 +#endif
 +	held_locks = curr->held_locks;
@@ -35539,7 +35518,6 @@ index 000000000000..b0dd8df4e414
 +/*
 + * Since struct completion is large, try allocating it dynamically.
 + */
-+#if 1 /* defined(CONFIG_4KSTACKS) || defined(AuTest4KSTACKS) */
 +#define AuWkqCompDeclare(name)	struct completion *comp = NULL
 +
 +static int au_wkq_comp_alloc(struct au_wkinfo *wkinfo, struct completion **comp)
@@ -35557,25 +35535,6 @@ index 000000000000..b0dd8df4e414
 +{
 +	au_kfree_rcu(comp);
 +}
-+
-+#else
-+
-+/* no braces */
-+#define AuWkqCompDeclare(name) \
-+	DECLARE_COMPLETION_ONSTACK(_ ## name); \
-+	struct completion *comp = &_ ## name
-+
-+static int au_wkq_comp_alloc(struct au_wkinfo *wkinfo, struct completion **comp)
-+{
-+	wkinfo->comp = *comp;
-+	return 0;
-+}
-+
-+static void au_wkq_comp_free(struct completion *comp __maybe_unused)
-+{
-+	/* empty */
-+}
-+#endif /* 4KSTACKS */
 +
 +static void au_wkq_run(struct au_wkinfo *wkinfo)
 +{
@@ -36157,7 +36116,7 @@ index 000000000000..8e56b15c53b5
 +}
 diff --git a/fs/aufs/xino.c b/fs/aufs/xino.c
 new file mode 100644
-index 000000000000..35ea33469d36
+index 000000000000..0cbf35ca2ef2
 --- /dev/null
 +++ b/fs/aufs/xino.c
 @@ -0,0 +1,1965 @@
@@ -37518,7 +37477,7 @@ index 000000000000..35ea33469d36
 +	if (unlikely(ul)) {
 +		pr_warn("xi_writing %lu\n", ul);
 +		hlist_bl_lock(hbl);
-+		hlist_bl_for_each_entry_safe (p, pos, n, hbl, node) {
++		hlist_bl_for_each_entry_safe(p, pos, n, hbl, node) {
 +			hlist_bl_del(&p->node);
 +			au_kfree_rcu(p);
 +		}
@@ -38128,7 +38087,7 @@ index 000000000000..35ea33469d36
 +}
 diff --git a/include/uapi/linux/aufs_type.h b/include/uapi/linux/aufs_type.h
 new file mode 100644
-index 000000000000..2a919c37c46d
+index 000000000000..fbcc708d63d8
 --- /dev/null
 +++ b/include/uapi/linux/aufs_type.h
 @@ -0,0 +1,452 @@
@@ -38167,20 +38126,21 @@ index 000000000000..2a919c37c46d
 +#define pr_fmt(fmt) \
 +		AUFS_NAME " %s:%d:%.*s[%d]: " fmt, __func__, __LINE__, \
 +		(int)sizeof(current->comm), current->comm, current->pid
++#include <linux/limits.h>
 +#else
 +#include <stdint.h>
 +#include <sys/types.h>
++#include <limits.h>
 +#endif /* __KERNEL__ */
 +
-+#include <linux/limits.h>
-+
-+#define AUFS_VERSION	"4.19.63+-20191021"
++#define AUFS_VERSION	"4.19.63+-20200120"
 +
 +/* todo? move this to linux-2.6.19/include/magic.h */
 +#define AUFS_SUPER_MAGIC	('a' << 24 | 'u' << 16 | 'f' << 8 | 's')
 +
 +/* ---------------------------------------------------------------------- */
 +
++#ifdef __KERNEL__
 +#ifdef CONFIG_AUFS_BRANCH_MAX_127
 +typedef int8_t aufs_bindex_t;
 +#define AUFS_BRANCH_MAX 127
@@ -38195,7 +38155,6 @@ index 000000000000..2a919c37c46d
 +#endif
 +#endif
 +
-+#ifdef __KERNEL__
 +#ifndef AUFS_BRANCH_MAX
 +#error unknown CONFIG_AUFS_BRANCH_MAX value
 +#endif
@@ -38585,5 +38544,5 @@ index 000000000000..2a919c37c46d
 +
 +#endif /* __AUFS_TYPE_H__ */
 -- 
-2.24.0
+2.24.1
 
