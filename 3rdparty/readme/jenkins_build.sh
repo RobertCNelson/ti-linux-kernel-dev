@@ -19,7 +19,7 @@ datestamp="2019.12-gcc-arm-linux-gnueabihf"
 
 #
 
-if [ ! -d ${directory}/ ] ; then
+if [ ! -d ${gcc_filename_prefix}/ ] ; then
 	rm -rf ./gcc-* || true
 	#wget -c ${site}/${version}/${filename}
 	wget -c http://gfnd.rcn-ee.org/farm/jenkins-dl/${gcc_filename_prefix}.tar.xz
