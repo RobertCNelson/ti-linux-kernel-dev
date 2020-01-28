@@ -388,21 +388,54 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.x-y"
+	backport_tag="v5.5"
 
-	subsystem="xyz"
+	subsystem="exfat"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		mkdir -p ./x/
-		cp -v ~/linux-src/x/* ./x/
+		cp -v ~/linux-src/drivers/staging/exfat/* ./drivers/staging/exfat/
 
 		post_backports
 		exit 2
 	else
 		patch_backports
 	fi
+
+	subsystem="greybus"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/greybus/* ./drivers/greybus/
+		cp -rv ~/linux-src/drivers/staging/greybus/* ./drivers/staging/greybus/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	subsystem="counter"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/bus/* ./drivers/bus/
+		cp -rv ~/linux-src/drivers/counter/* ./drivers/counter/
+		cp -rv ~/linux-src/drivers/pwm/* ./drivers/pwm/
+		cp -v ~/linux-src/include/linux/counter.h ./include/linux/counter.h
+		cp -v ~/linux-src/include/linux/platform_data/ti-sysc.h ./include/linux/platform_data/ti-sysc.h
+		cp -v ~/linux-src/include/linux/mfd/stm32-timers.h ./include/linux/mfd/stm32-timers.h
+		rm -rf ./drivers/pwm/pwm-tipwmss.c || true
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
 }
 
 reverts () {
@@ -433,7 +466,7 @@ soc () {
 }
 
 ###
-#backports
+backports
 #reverts
 #drivers
 #soc
