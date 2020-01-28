@@ -1,0 +1,261 @@
+From 9156c38b2438b1c10b1180f05b80f07c0ab386b8 Mon Sep 17 00:00:00 2001
+From: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+Date: Fri, 1 Nov 2019 02:11:26 -0500
+Subject: [PATCH 129/154] Revert "brcmfmac: add support for SAE authentication
+ offload"
+
+This reverts commit 364b349e598dbf3c7fcc23edb2d65ae0a238b0c9.
+
+Signed-off-by: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+Signed-off-by: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+
+Conflicts:
+	drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+---
+ .../broadcom/brcm80211/brcmfmac/cfg80211.c         | 67 ++--------------------
+ .../broadcom/brcm80211/brcmfmac/cfg80211.h         |  3 +-
+ .../wireless/broadcom/brcm80211/brcmfmac/feature.c |  1 -
+ .../wireless/broadcom/brcm80211/brcmfmac/feature.h |  4 +-
+ .../broadcom/brcm80211/brcmfmac/fwil_types.h       | 13 -----
+ .../broadcom/brcm80211/include/brcmu_wifi.h        |  2 -
+ 6 files changed, 8 insertions(+), 82 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+index c85a395..f5dfb6e2 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -1368,30 +1368,6 @@ static int brcmf_set_pmk(struct brcmf_if *ifp, const u8 *pmk_data, u16 pmk_len)
+ 	return err;
+ }
+ 
+-static int brcmf_set_sae_password(struct brcmf_if *ifp, const u8 *pwd_data,
+-				  u16 pwd_len)
+-{
+-	struct brcmf_wsec_sae_pwd_le sae_pwd;
+-	int err;
+-
+-	if (pwd_len > BRCMF_WSEC_MAX_SAE_PASSWORD_LEN) {
+-		brcmf_err("sae_password must be less than %d\n",
+-			  BRCMF_WSEC_MAX_SAE_PASSWORD_LEN);
+-		return -EINVAL;
+-	}
+-
+-	sae_pwd.key_len = cpu_to_le16(pwd_len);
+-	memcpy(sae_pwd.key, pwd_data, pwd_len);
+-
+-	err = brcmf_fil_iovar_data_set(ifp, "sae_password", &sae_pwd,
+-				       sizeof(sae_pwd));
+-	if (err < 0)
+-		brcmf_err("failed to set SAE password in firmware (len=%u)\n",
+-			  pwd_len);
+-
+-	return err;
+-}
+-
+ static void brcmf_link_down(struct brcmf_cfg80211_vif *vif, u16 reason,
+ 			    bool locally_generated)
+ {
+@@ -1607,8 +1583,6 @@ static s32 brcmf_set_wpa_version(struct net_device *ndev,
+ 		val = WPA_AUTH_PSK | WPA_AUTH_UNSPECIFIED;
+ 	else if (sme->crypto.wpa_versions & NL80211_WPA_VERSION_2)
+ 		val = WPA2_AUTH_PSK | WPA2_AUTH_UNSPECIFIED;
+-	else if (sme->crypto.wpa_versions & NL80211_WPA_VERSION_3)
+-		val = WPA3_AUTH_SAE_PSK;
+ 	else
+ 		val = WPA_AUTH_DISABLED;
+ 	brcmf_dbg(CONN, "setting wpa_auth to 0x%0x\n", val);
+@@ -1639,10 +1613,6 @@ static s32 brcmf_set_auth_type(struct net_device *ndev,
+ 		val = 1;
+ 		brcmf_dbg(CONN, "shared key\n");
+ 		break;
+-	case NL80211_AUTHTYPE_SAE:
+-		val = 3;
+-		brcmf_dbg(CONN, "SAE authentication\n");
+-		break;
+ 	default:
+ 		val = 2;
+ 		brcmf_dbg(CONN, "automatic, auth type (%d)\n", sme->auth_type);
+@@ -1810,17 +1780,6 @@ static s32 brcmf_set_auth_type(struct net_device *ndev,
+ 				  sme->crypto.cipher_group);
+ 			return -EINVAL;
+ 		}
+-	} else if (val & WPA3_AUTH_SAE_PSK) {
+-		switch (sme->crypto.akm_suites[0]) {
+-		case WLAN_AKM_SUITE_SAE:
+-			val = WPA3_AUTH_SAE_PSK;
+-			profile->use_fwsup = BRCMF_PROFILE_FWSUP_SAE;
+-			break;
+-		default:
+-			brcmf_err("invalid cipher group (%d)\n",
+-				  sme->crypto.cipher_group);
+-			return -EINVAL;
+-		}
+ 	}
+ 
+ 	if (profile->use_fwsup == BRCMF_PROFILE_FWSUP_1X) {
+@@ -1833,8 +1792,6 @@ static s32 brcmf_set_auth_type(struct net_device *ndev,
+ 			brcmf_dbg(INFO, "get okc_enable (%d)\n", okc_enable);
+ 			profile->is_okc = okc_enable;
+ 		}
+-	} else if (profile->use_fwsup == BRCMF_PROFILE_FWSUP_SAE) {
+-		brcmf_dbg(INFO, "using SAE offload\n");
+ 	}
+ 
+ 	if (!brcmf_feat_is_enabled(ifp, BRCMF_FEAT_MFP))
+@@ -1901,8 +1858,7 @@ static s32 brcmf_set_auth_type(struct net_device *ndev,
+ 	brcmf_dbg(CONN, "wpa_versions 0x%x cipher_pairwise 0x%x\n",
+ 		  sec->wpa_versions, sec->cipher_pairwise);
+ 
+-	if (sec->wpa_versions & (NL80211_WPA_VERSION_1 | NL80211_WPA_VERSION_2 |
+-				 NL80211_WPA_VERSION_3))
++	if (sec->wpa_versions & (NL80211_WPA_VERSION_1 | NL80211_WPA_VERSION_2))
+ 		return 0;
+ 
+ 	if (!(sec->cipher_pairwise &
+@@ -2107,8 +2063,7 @@ static void brcmf_set_join_pref(struct brcmf_if *ifp,
+ 		goto done;
+ 	}
+ 
+-	if (sme->crypto.psk &&
+-	    profile->use_fwsup != BRCMF_PROFILE_FWSUP_SAE) {
++	if (sme->crypto.psk) {
+ 		if (WARN_ON(profile->use_fwsup != BRCMF_PROFILE_FWSUP_NONE)) {
+ 			err = -EINVAL;
+ 			goto done;
+@@ -2126,18 +2081,12 @@ static void brcmf_set_join_pref(struct brcmf_if *ifp,
+ 		}
+ 	}
+ 
+-	if (profile->use_fwsup == BRCMF_PROFILE_FWSUP_PSK)
++	if (profile->use_fwsup == BRCMF_PROFILE_FWSUP_PSK) {
+ 		err = brcmf_set_pmk(ifp, sme->crypto.psk,
+ 				    BRCMF_WSEC_MAX_PSK_LEN);
+-	else if (profile->use_fwsup == BRCMF_PROFILE_FWSUP_SAE) {
+-		err = brcmf_set_sae_password(ifp, sme->crypto.sae_pwd,
+-					     sme->crypto.sae_pwd_len);
+-		if (!err && sme->crypto.psk)
+-			err = brcmf_set_pmk(ifp, sme->crypto.psk,
+-					    BRCMF_WSEC_MAX_PSK_LEN);
++		if (err)
++			goto done;
+ 	}
+-	if (err)
+-		goto done;
+ 
+ 	/* Join with specific BSSID and cached SSID
+ 	 * If SSID is zero join based on BSSID only
+@@ -5531,8 +5480,7 @@ static bool brcmf_is_linkup(struct brcmf_cfg80211_vif *vif,
+ 	if (event == BRCMF_E_SET_SSID && status == BRCMF_E_STATUS_SUCCESS) {
+ 		brcmf_dbg(CONN, "Processing set ssid\n");
+ 		memcpy(vif->profile.bssid, e->addr, ETH_ALEN);
+-		if (vif->profile.use_fwsup != BRCMF_PROFILE_FWSUP_PSK &&
+-		    vif->profile.use_fwsup != BRCMF_PROFILE_FWSUP_SAE)
++		if (vif->profile.use_fwsup != BRCMF_PROFILE_FWSUP_PSK)
+ 			return true;
+ 
+ 		set_bit(BRCMF_VIF_STATUS_ASSOC_SUCCESS, &vif->sme_state);
+@@ -7089,9 +7037,6 @@ static int brcmf_setup_wiphy(struct wiphy *wiphy, struct brcmf_if *ifp)
+ 				      NL80211_EXT_FEATURE_4WAY_HANDSHAKE_STA_PSK);
+ 		wiphy_ext_feature_set(wiphy,
+ 				      NL80211_EXT_FEATURE_4WAY_HANDSHAKE_STA_1X);
+-		if (brcmf_feat_is_enabled(ifp, BRCMF_FEAT_SAE))
+-			wiphy_ext_feature_set(wiphy,
+-					      NL80211_EXT_FEATURE_SAE_OFFLOAD);
+ 	}
+ 	wiphy->mgmt_stypes = brcmf_txrx_stypes;
+ 	wiphy->max_remain_on_channel_duration = 5000;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
+index 53b3247..3b6d011 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
+@@ -144,8 +144,7 @@ struct brcmf_cfg80211_security {
+ enum brcmf_profile_fwsup {
+ 	BRCMF_PROFILE_FWSUP_NONE,
+ 	BRCMF_PROFILE_FWSUP_PSK,
+-	BRCMF_PROFILE_FWSUP_1X,
+-	BRCMF_PROFILE_FWSUP_SAE
++	BRCMF_PROFILE_FWSUP_1X
+ };
+ 
+ /**
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
+index 3069c6e..c7c3563 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
+@@ -48,7 +48,6 @@ struct brcmf_feat_fwcap {
+ 	{ BRCMF_FEAT_MBSS, "mbss" },
+ 	{ BRCMF_FEAT_MCHAN, "mchan" },
+ 	{ BRCMF_FEAT_P2P, "p2p" },
+-	{ BRCMF_FEAT_SAE, "sae" },
+ };
+ 
+ #ifdef DEBUG
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h
+index 48e679d..1ab4f161 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h
+@@ -33,7 +33,6 @@
+  * MFP: 802.11w Management Frame Protection.
+  * GSCAN: enhanced scan offload feature.
+  * FWSUP: Firmware supplicant.
+- * SAE: simultaneous authentication of equals
+  */
+ #define BRCMF_FEAT_LIST \
+ 	BRCMF_FEAT_DEF(MBSS) \
+@@ -49,8 +48,7 @@
+ 	BRCMF_FEAT_DEF(WOWL_ARP_ND) \
+ 	BRCMF_FEAT_DEF(MFP) \
+ 	BRCMF_FEAT_DEF(GSCAN) \
+-	BRCMF_FEAT_DEF(FWSUP) \
+-	BRCMF_FEAT_DEF(SAE)
++	BRCMF_FEAT_DEF(FWSUP)
+ 
+ /*
+  * Quirks:
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
+index 73b1124..2ab973a 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
+@@ -53,8 +53,6 @@
+ #define BRCMF_WSEC_MAX_PSK_LEN		32
+ #define	BRCMF_WSEC_PASSPHRASE		BIT(0)
+ 
+-#define BRCMF_WSEC_MAX_SAE_PASSWORD_LEN 128
+-
+ /* primary (ie tx) key */
+ #define BRCMF_PRIMARY_KEY		(1 << 1)
+ #define DOT11_BSSTYPE_ANY		2
+@@ -521,17 +519,6 @@ struct brcmf_wsec_pmk_le {
+ 	u8 key[2 * BRCMF_WSEC_MAX_PSK_LEN + 1];
+ };
+ 
+-/**
+- * struct brcmf_wsec_sae_pwd_le - firmware SAE password material.
+- *
+- * @key_len: number of octets in key materials.
+- * @key: SAE password material.
+- */
+-struct brcmf_wsec_sae_pwd_le {
+-	__le16 key_len;
+-	u8 key[BRCMF_WSEC_MAX_SAE_PASSWORD_LEN];
+-};
+-
+ /* Used to get specific STA parameters */
+ struct brcmf_scb_val_le {
+ 	__le32 val;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h b/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
+index cfe592f..91fca79 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
++++ b/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
+@@ -240,8 +240,6 @@ static inline bool ac_bitmap_tst(u8 bitmap, int prec)
+ #define WPA2_AUTH_FT		0x4000	/* Fast BSS Transition */
+ #define WPA2_AUTH_PSK_SHA256	0x8000	/* PSK with SHA256 key derivation */
+ 
+-#define WPA3_AUTH_SAE_PSK	0x40000	/* SAE with 4-way handshake */
+-
+ #define DOT11_DEFAULT_RTS_LEN		2347
+ #define DOT11_DEFAULT_FRAG_LEN		2346
+ 
+-- 
+1.9.1
+
