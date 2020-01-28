@@ -1,7 +1,7 @@
-From 9fa3a7823fc0a5f2752f525e26fcfd834330ae75 Mon Sep 17 00:00:00 2001
+From 364b349e598dbf3c7fcc23edb2d65ae0a238b0c9 Mon Sep 17 00:00:00 2001
 From: Chung-Hsien Hsu <stanley.hsu@cypress.com>
 Date: Wed, 29 Aug 2018 15:01:51 +0800
-Subject: [PATCH 064/111] brcmfmac: add support for SAE authentication offload
+Subject: [PATCH 064/154] brcmfmac: add support for SAE authentication offload
 
 The firmware may have SAE authentication code built-in. This is
 detected by the driver and indicated in the wiphy features flags.
@@ -10,17 +10,18 @@ the password material for SAE authentication in the nl80211 CONNECT
 command.
 
 Signed-off-by: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+
 ---
- .../broadcom/brcm80211/brcmfmac/cfg80211.c    | 67 +++++++++++++++++--
- .../broadcom/brcm80211/brcmfmac/cfg80211.h    |  3 +-
- .../broadcom/brcm80211/brcmfmac/feature.c     |  1 +
- .../broadcom/brcm80211/brcmfmac/feature.h     |  4 +-
- .../broadcom/brcm80211/brcmfmac/fwil_types.h  | 13 ++++
- .../broadcom/brcm80211/include/brcmu_wifi.h   |  2 +
+ .../broadcom/brcm80211/brcmfmac/cfg80211.c         | 67 ++++++++++++++++++++--
+ .../broadcom/brcm80211/brcmfmac/cfg80211.h         |  3 +-
+ .../wireless/broadcom/brcm80211/brcmfmac/feature.c |  1 +
+ .../wireless/broadcom/brcm80211/brcmfmac/feature.h |  4 +-
+ .../broadcom/brcm80211/brcmfmac/fwil_types.h       | 13 +++++
+ .../broadcom/brcm80211/include/brcmu_wifi.h        |  2 +
  6 files changed, 82 insertions(+), 8 deletions(-)
 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
-index 2f30d6777316..344668e5dfe5 100644
+index 2f30d67..344668e 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
 @@ -1423,6 +1423,30 @@ static int brcmf_set_pmk(struct brcmf_if *ifp, const u8 *pmk_data, u16 pmk_len)
@@ -74,7 +75,7 @@ index 2f30d6777316..344668e5dfe5 100644
  	default:
  		val = 2;
  		brcmf_dbg(CONN, "automatic, auth type (%d)\n", sme->auth_type);
-@@ -1832,10 +1862,23 @@ brcmf_set_key_mgmt(struct net_device *ndev, struct cfg80211_connect_params *sme)
+@@ -1832,10 +1862,23 @@ static s32 brcmf_set_auth_type(struct net_device *ndev,
  				  sme->crypto.cipher_group);
  			return -EINVAL;
  		}
@@ -98,7 +99,7 @@ index 2f30d6777316..344668e5dfe5 100644
  
  	if (!brcmf_feat_is_enabled(ifp, BRCMF_FEAT_MFP))
  		goto skip_mfp_config;
-@@ -1901,7 +1944,8 @@ brcmf_set_sharedkey(struct net_device *ndev,
+@@ -1901,7 +1944,8 @@ static s32 brcmf_set_auth_type(struct net_device *ndev,
  	brcmf_dbg(CONN, "wpa_versions 0x%x cipher_pairwise 0x%x\n",
  		  sec->wpa_versions, sec->cipher_pairwise);
  
@@ -108,7 +109,7 @@ index 2f30d6777316..344668e5dfe5 100644
  		return 0;
  
  	if (!(sec->cipher_pairwise &
-@@ -2106,7 +2150,8 @@ brcmf_cfg80211_connect(struct wiphy *wiphy, struct net_device *ndev,
+@@ -2106,7 +2150,8 @@ static void brcmf_set_join_pref(struct brcmf_if *ifp,
  		goto done;
  	}
  
@@ -118,7 +119,7 @@ index 2f30d6777316..344668e5dfe5 100644
  		if (WARN_ON(profile->use_fwsup != BRCMF_PROFILE_FWSUP_NONE)) {
  			err = -EINVAL;
  			goto done;
-@@ -2124,12 +2169,18 @@ brcmf_cfg80211_connect(struct wiphy *wiphy, struct net_device *ndev,
+@@ -2124,12 +2169,18 @@ static void brcmf_set_join_pref(struct brcmf_if *ifp,
  		}
  	}
  
@@ -161,7 +162,7 @@ index 2f30d6777316..344668e5dfe5 100644
  	wiphy->mgmt_stypes = brcmf_txrx_stypes;
  	wiphy->max_remain_on_channel_duration = 5000;
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
-index 8d514a851ded..db80f61dfab7 100644
+index 8d514a8..db80f61 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.h
 @@ -142,7 +142,8 @@ struct brcmf_cfg80211_security {
@@ -175,10 +176,10 @@ index 8d514a851ded..db80f61dfab7 100644
  
  /**
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
-index c7c3563f9a53..3069c6efba15 100644
+index c7c3563..3069c6e 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
-@@ -48,6 +48,7 @@ static const struct brcmf_feat_fwcap brcmf_fwcap_map[] = {
+@@ -48,6 +48,7 @@ struct brcmf_feat_fwcap {
  	{ BRCMF_FEAT_MBSS, "mbss" },
  	{ BRCMF_FEAT_MCHAN, "mchan" },
  	{ BRCMF_FEAT_P2P, "p2p" },
@@ -187,7 +188,7 @@ index c7c3563f9a53..3069c6efba15 100644
  
  #ifdef DEBUG
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h
-index 1ab4f1617112..48e679d4018a 100644
+index 1ab4f161..48e679d 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.h
 @@ -33,6 +33,7 @@
@@ -209,7 +210,7 @@ index 1ab4f1617112..48e679d4018a 100644
  /*
   * Quirks:
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
-index 9616c94afb76..53b3b483a411 100644
+index 9616c94..53b3b48 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwil_types.h
 @@ -53,6 +53,8 @@
@@ -240,7 +241,7 @@ index 9616c94afb76..53b3b483a411 100644
  struct brcmf_scb_val_le {
  	__le32 val;
 diff --git a/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h b/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
-index 91fca79e6158..cfe592fc4b04 100644
+index 91fca79..cfe592f 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/include/brcmu_wifi.h
 @@ -240,6 +240,8 @@ static inline bool ac_bitmap_tst(u8 bitmap, int prec)
@@ -253,5 +254,5 @@ index 91fca79e6158..cfe592fc4b04 100644
  #define DOT11_DEFAULT_FRAG_LEN		2346
  
 -- 
-2.20.1
+1.9.1
 
