@@ -1,0 +1,112 @@
+From 4e76046ee8dabfbb26093100dfb448833194875e Mon Sep 17 00:00:00 2001
+From: Wright Feng <wright.feng@cypress.com>
+Date: Sun, 25 Mar 2018 21:53:42 -0500
+Subject: [PATCH 025/118] brcmfmac: make setting SDIO workqueue WQ_HIGHPRI a
+ module parameter
+
+With setting sdio_wq_highpri=1 in module parameters, tasks submitted to
+SDIO workqueue will put at the head of the queue and run immediately.
+This parameter is for getting higher TX/RX throughput with SDIO bus.
+
+Signed-off-by: Wright Feng <wright.feng@cypress.com>
+---
+ .../wireless/broadcom/brcm80211/brcmfmac/common.c  |  5 +++++
+ .../wireless/broadcom/brcm80211/brcmfmac/common.h  |  2 ++
+ .../wireless/broadcom/brcm80211/brcmfmac/sdio.c    | 23 ++++++++++++++--------
+ 3 files changed, 22 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index f973bb3..5eac848 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -81,6 +81,10 @@
+ module_param_named(eap_restrict, brcmf_eap_restrict, int, 0400);
+ MODULE_PARM_DESC(eap_restrict, "Block non-802.1X frames until auth finished");
+ 
++static int brcmf_sdio_wq_highpri;
++module_param_named(sdio_wq_highpri, brcmf_sdio_wq_highpri, int, 0);
++MODULE_PARM_DESC(sdio_wq_highpri, "SDIO workqueue is set to high priority");
++
+ #ifdef DEBUG
+ /* always succeed brcmf_bus_started() */
+ static int brcmf_ignore_probe_fail;
+@@ -465,6 +469,7 @@ struct brcmf_mp_device *brcmf_get_module_param(struct device *dev,
+ 	settings->fcmode = brcmf_fcmode;
+ 	settings->roamoff = !!brcmf_roamoff;
+ 	settings->eap_restrict = !!brcmf_eap_restrict;
++	settings->sdio_wq_highpri = !!brcmf_sdio_wq_highpri;
+ #ifdef DEBUG
+ 	settings->ignore_probe_fail = !!brcmf_ignore_probe_fail;
+ #endif
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
+index b1b738c..89267da 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
+@@ -50,6 +50,7 @@ struct brcmf_mp_global_t {
+  * @fcmode: FWS flow control.
+  * @roamoff: Firmware roaming off?
+  * @eap_restrict: Not allow data tx/rx until 802.1X auth succeeds
++ * @sdio_wq_highpri: Tasks submitted to SDIO workqueue will run immediately.
+  * @ignore_probe_fail: Ignore probe failure.
+  * @country_codes: If available, pointer to struct for translating country codes
+  * @bus: Bus specific platform data. Only SDIO at the mmoment.
+@@ -61,6 +62,7 @@ struct brcmf_mp_device {
+ 	bool		roamoff;
+ 	bool		eap_restrict;
+ 	int		sdio_dpc_prio;
++	bool		sdio_wq_highpri;
+ 	bool		ignore_probe_fail;
+ 	struct brcmfmac_pd_cc *country_codes;
+ 	union {
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index baaacab..fe6d0c8 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -4351,6 +4351,7 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+ 	int ret;
+ 	struct brcmf_sdio *bus;
+ 	struct workqueue_struct *wq;
++	unsigned int wq_flags;
+ 
+ 	brcmf_dbg(TRACE, "Enter\n");
+ 
+@@ -4367,9 +4368,21 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+ 	bus->txminmax = BRCMF_TXMINMAX;
+ 	bus->tx_seq = SDPCM_SEQ_WRAP - 1;
+ 
++	/* attempt to attach to the dongle */
++	if (!(brcmf_sdio_probe_attach(bus))) {
++		brcmf_err("brcmf_sdio_probe_attach failed\n");
++		goto fail;
++	}
++
+ 	/* single-threaded workqueue */
+-	wq = alloc_ordered_workqueue("brcmf_wq/%s", WQ_MEM_RECLAIM,
+-				     dev_name(&sdiodev->func[1]->dev));
++	if (sdiodev->settings->sdio_wq_highpri) {
++		wq = alloc_workqueue("brcmf_wq/%s",
++				     WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_UNBOUND,
++				     1, dev_name(&sdiodev->func[1]->dev));
++	} else {
++		wq = alloc_ordered_workqueue("brcmf_wq/%s", WQ_MEM_RECLAIM,
++					     dev_name(&sdiodev->func[1]->dev));
++	}
+ 	if (!wq) {
+ 		brcmf_err("insufficient memory to create txworkqueue\n");
+ 		goto fail;
+@@ -4378,12 +4391,6 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+ 	INIT_WORK(&bus->datawork, brcmf_sdio_dataworker);
+ 	bus->brcmf_wq = wq;
+ 
+-	/* attempt to attach to the dongle */
+-	if (!(brcmf_sdio_probe_attach(bus))) {
+-		brcmf_err("brcmf_sdio_probe_attach failed\n");
+-		goto fail;
+-	}
+-
+ 	spin_lock_init(&bus->rxctl_lock);
+ 	spin_lock_init(&bus->txq_lock);
+ 	init_waitqueue_head(&bus->ctrl_wait);
+-- 
+1.9.1
+

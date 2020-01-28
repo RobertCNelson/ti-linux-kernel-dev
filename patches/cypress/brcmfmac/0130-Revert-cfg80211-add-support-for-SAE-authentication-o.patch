@@ -1,0 +1,151 @@
+From ed6d6d339c34353ea27db5221ebdcd6ee3d15f65 Mon Sep 17 00:00:00 2001
+From: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+Date: Fri, 1 Nov 2019 02:14:26 -0500
+Subject: [PATCH 130/154] Revert "cfg80211: add support for SAE authentication
+ offload"
+
+This reverts commit 4d115f96cdc68ea7a44807c44a6e8180f629e411.
+
+Signed-off-by: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+Signed-off-by: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+---
+ include/linux/ieee80211.h    |  1 -
+ include/net/cfg80211.h       |  5 -----
+ include/uapi/linux/nl80211.h | 18 ------------------
+ net/wireless/nl80211.c       | 14 --------------
+ 4 files changed, 38 deletions(-)
+
+diff --git a/include/linux/ieee80211.h b/include/linux/ieee80211.h
+index 83b3446..55a604a 100644
+--- a/include/linux/ieee80211.h
++++ b/include/linux/ieee80211.h
+@@ -2112,7 +2112,6 @@ enum ieee80211_key_len {
+ #define FILS_ERP_MAX_RRK_LEN		64
+ 
+ #define PMK_MAX_LEN			48
+-#define SAE_PASSWORD_MAX_LEN		128
+ 
+ /* Public action codes (IEEE Std 802.11-2016, 9.6.8.1, Table 9-307) */
+ enum ieee80211_pub_actioncode {
+diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
+index 90d2fb2..8ccf870 100644
+--- a/include/net/cfg80211.h
++++ b/include/net/cfg80211.h
+@@ -650,9 +650,6 @@ struct survey_info {
+  *	CFG80211_MAX_WEP_KEYS WEP keys
+  * @wep_tx_key: key index (0..3) of the default TX static WEP key
+  * @psk: PSK (for devices supporting 4-way-handshake offload)
+- * @sae_pwd: password for SAE authentication (for devices supporting SAE
+- *	offload)
+- * @sae_pwd_len: length of SAE password (for devices supporting SAE offload)
+  */
+ struct cfg80211_crypto_settings {
+ 	u32 wpa_versions;
+@@ -667,8 +664,6 @@ struct cfg80211_crypto_settings {
+ 	struct key_params *wep_keys;
+ 	int wep_tx_key;
+ 	const u8 *psk;
+-	const u8 *sae_pwd;
+-	u16 sae_pwd_len;
+ };
+ 
+ /**
+diff --git a/include/uapi/linux/nl80211.h b/include/uapi/linux/nl80211.h
+index 864aa9a..8e91cce 100644
+--- a/include/uapi/linux/nl80211.h
++++ b/include/uapi/linux/nl80211.h
+@@ -232,15 +232,6 @@
+  */
+ 
+ /**
+- * DOC: SAE authentication offload
+- *
+- * By setting @NL80211_EXT_FEATURE_SAE_OFFLOAD flag drivers can indicate they
+- * support offloading SAE authentication for WPA3-Personal networks. In
+- * %NL80211_CMD_CONNECT the password for SAE should be specified using
+- * %NL80211_ATTR_SAE_PASSWORD.
+- */
+-
+-/**
+  * enum nl80211_commands - supported nl80211 commands
+  *
+  * @NL80211_CMD_UNSPEC: unspecified command to catch errors
+@@ -2183,10 +2174,6 @@ enum nl80211_commands {
+  *	association request when used with NL80211_CMD_NEW_STATION). Can be set
+  *	only if %NL80211_STA_FLAG_WME is set.
+  *
+- * @NL80211_ATTR_SAE_PASSWORD: attribute for passing SAE password material. It
+- *	is used with %NL80211_CMD_CONNECT to provide password for offloading
+- *	SAE authentication for WPA3-Personal networks.
+- *
+  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
+  * @NL80211_ATTR_MAX: highest attribute number currently defined
+  * @__NL80211_ATTR_AFTER_LAST: internal use
+@@ -2628,8 +2615,6 @@ enum nl80211_attrs {
+ 
+ 	NL80211_ATTR_HE_CAPABILITY,
+ 
+-	NL80211_ATTR_SAE_PASSWORD,
+-
+ 	/* add attributes here, update the policy in nl80211.c */
+ 
+ 	__NL80211_ATTR_AFTER_LAST,
+@@ -5014,8 +4999,6 @@ enum nl80211_feature_flags {
+  * @NL80211_EXT_FEATURE_SCAN_MIN_PREQ_CONTENT: Driver/device can omit all data
+  *	except for supported rates from the probe request content if requested
+  *	by the %NL80211_SCAN_FLAG_MIN_PREQ_CONTENT flag.
+- * @NL80211_EXT_FEATURE_SAE_OFFLOAD: Device wants to do SAE authentication in
+- *	station mode (SAE password is passed as part of the connect command).
+  *
+  * @NUM_NL80211_EXT_FEATURES: number of extended features.
+  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
+@@ -5052,7 +5035,6 @@ enum nl80211_ext_feature_index {
+ 	NL80211_EXT_FEATURE_TXQS,
+ 	NL80211_EXT_FEATURE_SCAN_RANDOM_SN,
+ 	NL80211_EXT_FEATURE_SCAN_MIN_PREQ_CONTENT,
+-	NL80211_EXT_FEATURE_SAE_OFFLOAD,
+ 
+ 	/* add new features before the definition below */
+ 	NUM_NL80211_EXT_FEATURES,
+diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
+index 83fccb5..aa1362c 100644
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -421,8 +421,6 @@ enum nl80211_multicast_groups {
+ 	[NL80211_ATTR_FILS_CACHE_ID] = { .len = 2 },
+ 	[NL80211_ATTR_PMK] = { .type = NLA_BINARY, .len = PMK_MAX_LEN },
+ 	[NL80211_ATTR_SCHED_SCAN_MULTI] = { .type = NLA_FLAG },
+-	[NL80211_ATTR_SAE_PASSWORD] = { .type = NLA_BINARY,
+-					.len = SAE_PASSWORD_MAX_LEN },
+ };
+ 
+ /* policy for the key attributes */
+@@ -3866,8 +3864,6 @@ static bool nl80211_valid_auth_type(struct cfg80211_registered_device *rdev,
+ 		return true;
+ 	case NL80211_CMD_CONNECT:
+ 		if (!(rdev->wiphy.features & NL80211_FEATURE_SAE) &&
+-		    !wiphy_ext_feature_isset(&rdev->wiphy,
+-					     NL80211_EXT_FEATURE_SAE_OFFLOAD) &&
+ 		    auth_type == NL80211_AUTHTYPE_SAE)
+ 			return false;
+ 
+@@ -8186,16 +8182,6 @@ static int nl80211_crypto_settings(struct cfg80211_registered_device *rdev,
+ 		settings->psk = nla_data(info->attrs[NL80211_ATTR_PMK]);
+ 	}
+ 
+-	if (info->attrs[NL80211_ATTR_SAE_PASSWORD]) {
+-		if (!wiphy_ext_feature_isset(&rdev->wiphy,
+-					     NL80211_EXT_FEATURE_SAE_OFFLOAD))
+-			return -EINVAL;
+-		settings->sae_pwd =
+-			nla_data(info->attrs[NL80211_ATTR_SAE_PASSWORD]);
+-		settings->sae_pwd_len =
+-			nla_len(info->attrs[NL80211_ATTR_SAE_PASSWORD]);
+-	}
+-
+ 	return 0;
+ }
+ 
+-- 
+1.9.1
+

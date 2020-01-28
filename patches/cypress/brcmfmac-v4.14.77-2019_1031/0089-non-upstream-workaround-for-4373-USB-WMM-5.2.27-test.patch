@@ -1,0 +1,128 @@
+From c7a96624325c3772bb6eeb263ddcc57d4ebe42c6 Mon Sep 17 00:00:00 2001
+From: Madhan Mohan R <madhanmohan.r@cypress.com>
+Date: Fri, 4 Jan 2019 14:42:04 +0530
+Subject: [PATCH 089/118] non-upstream: workaround for 4373 USB WMM 5.2.27 test
+ failure
+
+With the addition of skb_orphan in the datapath, though the throughput
+increases in TX path, it introduces an issue by removing the flowcontrol
+from upper layer and allowing more data to flow for different access
+category.
+
+This workaround is to disable using skb_orphan when running multi-stream
+data. This change will not be required in linux 4.15 and later versions.
+
+
+Signed-off-by: Raveendran Somu <raveendran.somu@cypress.com>
+---
+ .../net/wireless/broadcom/brcm80211/brcmfmac/bus.h |  1 +
+ .../broadcom/brcm80211/brcmfmac/fwsignal.c         | 37 ++++++++++++++++++++++
+ .../net/wireless/broadcom/brcm80211/brcmfmac/usb.c |  4 ++-
+ 3 files changed, 41 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+index 527753d..fc1b1e2 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+@@ -160,6 +160,7 @@ struct brcmf_bus {
+ 
+ 	const struct brcmf_bus_ops *ops;
+ 	struct brcmf_bus_msgbuf *msgbuf;
++	bool allow_skborphan;
+ };
+ 
+ /*
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c
+index 0a47746..cfa2e1b 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c
+@@ -523,6 +523,7 @@ struct brcmf_fws_info {
+ 	bool creditmap_received;
+ 	u8 mode;
+ 	bool avoid_queueing;
++	int fifo_init_credit[BRCMF_FWS_FIFO_COUNT];
+ };
+ 
+ /*
+@@ -1645,6 +1646,7 @@ static int brcmf_fws_notify_credit_map(struct brcmf_if *ifp,
+ 		if (fws->fifo_credit[i] < 0)
+ 			brcmf_err("fifo_credit[%d] value is negative(%d)\n",
+ 				  i, fws->fifo_credit[i]);
++		fws->fifo_init_credit[i] = fws->fifo_credit[i];
+ 	}
+ 	brcmf_fws_schedule_deq(fws);
+ 	brcmf_fws_unlock(fws);
+@@ -2219,6 +2221,36 @@ void brcmf_fws_del_interface(struct brcmf_if *ifp)
+ 	brcmf_fws_unlock(fws);
+ }
+ 
++static bool brcmf_fws_ismultistream(struct brcmf_fws_info *fws)
++{
++	bool ret = false;
++	u8 credit_usage = 0;
++
++	/* Check only for BE, VI and VO traffic */
++	u32 delay_map = fws->fifo_delay_map &
++		((1 << BRCMF_FWS_FIFO_AC_BE) |
++		 (1 << BRCMF_FWS_FIFO_AC_VI) |
++		 (1 << BRCMF_FWS_FIFO_AC_VO));
++
++	if (hweight_long(delay_map) > 1) {
++		ret = true;
++	} else {
++		if (fws->fifo_credit[BRCMF_FWS_FIFO_AC_BE] <
++			fws->fifo_init_credit[BRCMF_FWS_FIFO_AC_BE])
++			credit_usage++;
++		if (fws->fifo_credit[BRCMF_FWS_FIFO_AC_VI] <
++			fws->fifo_init_credit[BRCMF_FWS_FIFO_AC_VI])
++			credit_usage++;
++		if (fws->fifo_credit[BRCMF_FWS_FIFO_AC_VO] <
++			fws->fifo_init_credit[BRCMF_FWS_FIFO_AC_VO])
++			credit_usage++;
++
++		if (credit_usage > 1)
++			ret = true;
++	}
++	return ret;
++}
++
+ static void brcmf_fws_dequeue_worker(struct work_struct *worker)
+ {
+ 	struct brcmf_fws_info *fws;
+@@ -2232,6 +2264,11 @@ static void brcmf_fws_dequeue_worker(struct work_struct *worker)
+ 	fws = container_of(worker, struct brcmf_fws_info, fws_dequeue_work);
+ 	drvr = fws->drvr;
+ 
++	if (brcmf_fws_ismultistream(fws))
++		drvr->bus_if->allow_skborphan = false;
++	else
++		drvr->bus_if->allow_skborphan = true;
++
+ 	brcmf_fws_lock(fws);
+ 	for (fifo = BRCMF_FWS_FIFO_BCMC; fifo >= 0 && !fws->bus_flow_blocked;
+ 	     fifo--) {
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c
+index 9f0e4ab..63d4235 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/usb.c
+@@ -658,7 +658,8 @@ static int brcmf_usb_tx(struct device *dev, struct sk_buff *skb)
+ 		goto fail;
+ 	}
+ 
+-	skb_orphan(skb);
++	if (devinfo->bus_pub.bus->allow_skborphan)
++		skb_orphan(skb);
+ 	req->skb = skb;
+ 	req->devinfo = devinfo;
+ 	usb_fill_bulk_urb(req->urb, devinfo->usbdev, devinfo->tx_pipe,
+@@ -1289,6 +1290,7 @@ static int brcmf_usb_probe_cb(struct brcmf_usbdev_info *devinfo)
+ 	bus->ops = &brcmf_usb_bus_ops;
+ 	bus->proto_type = BRCMF_PROTO_BCDC;
+ 	bus->always_use_fws_queue = true;
++	bus->allow_skborphan = true;
+ #ifdef CONFIG_PM
+ 	bus->wowl_supported = true;
+ #endif
+-- 
+1.9.1
+

@@ -1,0 +1,342 @@
+From 4f25f45a370475f74b71c8d7c963512584ee1566 Mon Sep 17 00:00:00 2001
+From: Naveen <nagu@cypress.com>
+Date: Tue, 9 Jan 2018 11:33:10 +0530
+Subject: [PATCH 013/118] brcmfmac: DS1 Exit should re download the firmware.
+
+In Deep Sleep mode ARM is off and once Exit trigger comes than
+Mail Box Interrupt comes to Host and whole Re Initiation should be done
+in the ARM to start TX/RX.
+
+
+Signed-off-by: Naveen Gupta <nagu@cypress.com>
+---
+ .../wireless/broadcom/brcm80211/brcmfmac/sdio.c    | 175 ++++++++++++++++++++-
+ .../wireless/broadcom/brcm80211/brcmfmac/sdio.h    |  60 +++++++
+ .../broadcom/brcm80211/include/chipcommon.h        |   4 +-
+ 3 files changed, 234 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index 508b248..b32912c 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -45,9 +45,11 @@
+ #include "core.h"
+ #include "common.h"
+ #include "bcdc.h"
++#include "fwil.h"
+ 
+ #define DCMD_RESP_TIMEOUT	msecs_to_jiffies(2500)
+ #define CTL_DONE_TIMEOUT	msecs_to_jiffies(2500)
++#define ULP_HUDI_PROC_DONE_TIME	msecs_to_jiffies(2500)
+ 
+ #define DEFAULT_F2_WATERMARK    0x8
+ #define CY_4373_F2_WATERMARK    0x40
+@@ -322,6 +324,10 @@ struct rte_console {
+ #define MAX_KSO_ATTEMPTS (PMU_MAX_TRANSITION_DLY/KSO_WAIT_US)
+ #define BRCMF_SDIO_MAX_ACCESS_ERRORS	5
+ 
++static void brcmf_sdio_firmware_callback(struct device *dev, int err,
++					 const struct firmware *code,
++					 void *nvram, u32 nvram_len);
++
+ /*
+  * Conversion of 802.1D priority to precedence level
+  */
+@@ -2550,6 +2556,154 @@ static int brcmf_sdio_intr_rstatus(struct brcmf_sdio *bus)
+ 	return ret;
+ }
+ 
++/* This Function is used to retrieve important
++ * details from dongle related to ULP mode Mostly
++ * values/SHM details that will be vary depending
++ * on the firmware branches
++ */
++static void
++brcmf_sdio_ulp_preinit(struct device *dev)
++{
++	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
++	struct brcmf_sdio_dev *sdiodev = bus_if->bus_priv.sdio;
++	struct brcmf_if *ifp = bus_if->drvr->iflist[0];
++	int err = 0;
++	char iovbuf[BRCMF_DCMD_SMLEN];
++
++	brcmf_dbg(TRACE, "Enter\n");
++	memset(iovbuf, 0, sizeof(iovbuf));
++
++	/* Query ulp_sdioctrl iovar to get the ULP related SHM offsets */
++	err = brcmf_fil_iovar_data_get(ifp, "ulp_sdioctrl", iovbuf,
++				       sizeof(iovbuf));
++	if (err)
++		brcmf_err("fail to get ulp_sdioctrl err:%d\n", err);
++
++	sdiodev->ulp = false;
++
++	/* Copy the data shared by dongle to FMAC structure */
++	memcpy(&sdiodev->shm_ulp, iovbuf, sizeof(struct ulp_shm_info));
++
++	brcmf_dbg(TRACE, "m_ulp_ctrl_sdio[%x] m_ulp_wakeevt_ind [%x]\n",
++		  M_DS1_CTRL_SDIO(sdiodev->shm_ulp),
++		  M_WAKEEVENT_IND(sdiodev->shm_ulp));
++	brcmf_dbg(TRACE, "m_ulp_wakeind [%x]\n",
++		  M_ULP_WAKE_IND(sdiodev->shm_ulp));
++}
++
++/* Reinitialize ARM because In DS1 mode ARM got off */
++static int
++brcmf_sdio_ulp_reinit_fw(struct brcmf_sdio *bus)
++{
++	struct brcmf_sdio_dev *sdiodev = bus->sdiodev;
++	int err = 0;
++
++	/* After firmware redownload tx/rx seq are reset accordingly
++	 * these values are reset on FMAC side tx_max is initially set to 4,
++	 * which later is updated by FW.
++	 */
++	bus->tx_seq = 0;
++	bus->rx_seq = 0;
++	bus->tx_max = 4;
++
++	err = brcmf_fw_get_firmwares(sdiodev->dev, BRCMF_FW_REQUEST_NVRAM,
++				     sdiodev->fw_name, sdiodev->nvram_name,
++				     brcmf_sdio_firmware_callback);
++	if (err != 0)
++		brcmf_err("async firmware request failed: %d\n", err);
++	return err;
++}
++
++/* Check if device is in DS1 mode and handshake with ULP UCODE */
++static bool
++brcmf_sdio_ulp_pre_redownload_check(struct brcmf_sdio *bus)
++{
++	int err = 0;
++	u32 value = 0;
++	u32 val32, ulp_wake_ind, wowl_wake_ind;
++	int reg_addr;
++	unsigned long timeout;
++
++	value = brcmf_sdiod_regrb(bus->sdiodev, SDIO_CCCR_IOEx, &err);
++
++	if (value == SDIO_FUNC_ENABLE_1) {
++		brcmf_dbg(SDIO, "GOT THE INTERRUPT FROM UCODE\n");
++		bus->sdiodev->ulp = true;
++		ulp_wake_ind = D11SHM_RD(bus->sdiodev, M_ULP_WAKE_IND(
++				  bus->sdiodev->shm_ulp), &err) >> 16;
++		wowl_wake_ind = D11SHM_RD(bus->sdiodev, M_WAKEEVENT_IND(
++				  bus->sdiodev->shm_ulp), &err) >> 16;
++
++		brcmf_dbg(SDIO, "wowl_wake_ind: 0x%08x, ulp_wake_ind: 0x%08x\n",
++			  wowl_wake_ind, ulp_wake_ind);
++
++		if (wowl_wake_ind || ulp_wake_ind) {
++			/* TX wake Don't do anything.
++			 * Just bail out and re-download firmware.
++			 */
++		} else {
++			/* RX wake negotiate with MAC */
++			brcmf_dbg(SDIO, "M_DS1_CTRL_SDIO: 0x%08x\n",
++				  (u32)D11SHM_RD(bus->sdiodev,
++				  M_DS1_CTRL_SDIO(bus->sdiodev->shm_ulp),
++				  &err));
++			D11SHM_WR(bus->sdiodev, M_DS1_CTRL_SDIO(
++				  bus->sdiodev->shm_ulp),
++				  C_DS1_CTRL_SDIO_DS1_EXIT |
++				  C_DS1_CTRL_REQ_VALID,
++				  &err);
++			val32 = D11REG_RD(bus->sdiodev,
++					  D11_MACCONTROL_REG, &err);
++			val32 = val32 | D11_MACCONTROL_REG_WAKE;
++			D11REG_WR(bus->sdiodev,
++				  D11_MACCONTROL_REG, val32, &err);
++
++			/* Poll for PROC_DONE to be set by ucode */
++			value = D11SHM_RD(bus->sdiodev,
++					  M_DS1_CTRL_SDIO(
++					  bus->sdiodev->shm_ulp), &err);
++			/* Wait here (polling) for C_DS1_CTRL_PROC_DONE */
++			timeout = jiffies + ULP_HUDI_PROC_DONE_TIME;
++			while (!(value & C_DS1_CTRL_PROC_DONE)) {
++				value = D11SHM_RD(bus->sdiodev,
++						  M_DS1_CTRL_SDIO(
++						  bus->sdiodev->shm_ulp), &err);
++				if (time_after(jiffies, timeout))
++					break;
++				usleep_range(1000, 2000);
++			}
++			brcmf_dbg(SDIO, "M_DS1_CTRL_SDIO: 0x%08x\n",
++				  (u32)D11SHM_RD(bus->sdiodev,
++				  M_DS1_CTRL_SDIO(
++				  bus->sdiodev->shm_ulp), &err));
++			value = D11SHM_RD(bus->sdiodev,
++					  M_DS1_CTRL_SDIO(
++					  bus->sdiodev->shm_ulp), &err);
++			if (!(value & C_DS1_CTRL_PROC_DONE)) {
++				brcmf_err("%s: timeout Failed to enter DS1 Exit state!\n",
++					  __func__);
++				return false;
++			}
++		}
++		ulp_wake_ind = D11SHM_RD(bus->sdiodev, M_ULP_WAKE_IND(
++				  bus->sdiodev->shm_ulp), &err) >> 16;
++		wowl_wake_ind = D11SHM_RD(bus->sdiodev, M_WAKEEVENT_IND(
++				  bus->sdiodev->shm_ulp), &err) >> 16;
++		brcmf_dbg(SDIO, "wowl_wake_ind: 0x%08x, ulp_wake_ind: 0x%08x\n",
++			  wowl_wake_ind, ulp_wake_ind);
++		reg_addr = CORE_CC_REG(
++			  brcmf_chip_get_pmu(bus->ci)->base, min_res_mask);
++		brcmf_sdiod_regwl(bus->sdiodev, reg_addr,
++				  DEFAULT_43012_MIN_RES_MASK, &err);
++		if (err)
++			brcmf_err("min_res_mask failed\n");
++
++		return true;
++	}
++
++	return false;
++}
++
+ static void brcmf_sdio_dpc(struct brcmf_sdio *bus)
+ {
+ 	u32 newstatus = 0;
+@@ -2622,6 +2776,8 @@ static void brcmf_sdio_dpc(struct brcmf_sdio *bus)
+ 	if (intstatus & I_HMB_HOST_INT) {
+ 		intstatus &= ~I_HMB_HOST_INT;
+ 		intstatus |= brcmf_sdio_hostmail(bus);
++		if (brcmf_sdio_ulp_pre_redownload_check(bus))
++			brcmf_sdio_ulp_reinit_fw(bus);
+ 	}
+ 
+ 	sdio_release_host(bus->sdiodev->func[1]);
+@@ -3477,6 +3633,10 @@ static int brcmf_sdio_bus_preinit(struct device *dev)
+ 	if (err < 0)
+ 		goto done;
+ 
++	/* initialize SHM address from firmware for DS1 */
++	if (!bus->sdiodev->ulp)
++		brcmf_sdio_ulp_preinit(dev);
++
+ 	bus->tx_hdrlen = SDPCM_HWHDR_LEN + SDPCM_SWHDR_LEN;
+ 	if (sdiodev->sg_support) {
+ 		bus->txglom = false;
+@@ -4172,11 +4332,18 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+ 
+ 	sdio_release_host(sdiodev->func[1]);
+ 
+-	err = brcmf_bus_started(dev);
+-	if (err != 0) {
+-		brcmf_err("dongle is not responding\n");
+-		goto fail;
++	/* Waking up from deep sleep don't requirerd to reint the sdio bus
++	 * as all sdiod core registers will get restored by Firmware using
++	 * FCBS engine.
++	 */
++	if (!bus->sdiodev->ulp) {
++		err = brcmf_bus_started(dev);
++		if (err != 0) {
++			brcmf_err("dongle is not responding\n");
++			goto fail;
++		}
+ 	}
++
+ 	return;
+ 
+ release:
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h
+index f3da32f..36c662b 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h
+@@ -177,6 +177,17 @@ struct brcmf_sdreg {
+ struct brcmf_sdio;
+ struct brcmf_sdiod_freezer;
+ 
++/* ULP SHM Offsets info */
++struct ulp_shm_info {
++	u32 m_ulp_ctrl_sdio;
++	u32 m_ulp_wakeevt_ind;
++	u32 m_ulp_wakeind;
++};
++
++struct fmac_ulp {
++	struct ulp_shm_info ulp_shm_offset;
++};
++
+ struct brcmf_sdio_dev {
+ 	struct sdio_func *func[SDIO_MAX_FUNCS];
+ 	u8 num_funcs;			/* Supported funcs on client */
+@@ -201,6 +212,8 @@ struct brcmf_sdio_dev {
+ 	bool wowl_enabled;
+ 	enum brcmf_sdiod_state state;
+ 	struct brcmf_sdiod_freezer *freezer;
++	struct fmac_ulp shm_ulp;
++	bool ulp;
+ };
+ 
+ /* sdio core registers */
+@@ -376,4 +389,51 @@ static inline void brcmf_sdiod_freezer_uncount(struct brcmf_sdio_dev *sdiodev)
+ int brcmf_sdio_sleep(struct brcmf_sdio *bus, bool sleep);
+ void brcmf_sdio_trigger_dpc(struct brcmf_sdio *bus);
+ 
++/* SHM offsets */
++#define M_DS1_CTRL_SDIO(ptr)	((ptr).ulp_shm_offset.m_ulp_ctrl_sdio)
++#define M_WAKEEVENT_IND(ptr)	((ptr).ulp_shm_offset.m_ulp_wakeevt_ind)
++#define M_ULP_WAKE_IND(ptr)		((ptr).ulp_shm_offset.m_ulp_wakeind)
++
++#define D11_BASE_ADDR			0x18001000
++#define D11_AXI_BASE_ADDR		0xE8000000
++#define D11_SHM_BASE_ADDR		(D11_AXI_BASE_ADDR + 0x4000)
++
++#define D11REG_ADDR(offset)	(D11_BASE_ADDR + (offset))
++#define D11IHR_ADDR(offset)	(D11_AXI_BASE_ADDR + 0x400 + (2 * (offset)))
++#define D11SHM_ADDR(offset)	(D11_SHM_BASE_ADDR + (offset))
++
++/* MacControl register */
++#define D11_MACCONTROL_REG			D11REG_ADDR(0x120)
++#define D11_MACCONTROL_REG_WAKE		0x4000000
++
++/* Following are the offsets in M_DRVR_UCODE_IF_PTR block. Start address of
++ * M_DRVR_UCODE_IF_PTR block is present in M_DRVR_UCODE_IF_PTR.
++ */
++
++/* M_ULP_WAKE_IND bits */
++#define ULP_WAKE_IND_WATCHDOG_EXP		0x1
++#define ULP_WAKE_IND_FCBS_ERROR			0x2
++#define ULP_WAKE_IND_RE_TRANSMIT_ERR	0x4
++#define ULP_WAKE_IND_HOST_WKUP			0x8
++#define ULP_WAKE_IND_INVALID_FCBS_BLK	0x10
++
++#define	C_DS1_CTRL_SDIO_DS1_SLEEP		0x1
++#define	C_DS1_CTRL_SDIO_MAC_ON			0x2
++#define	C_DS1_CTRL_SDIO_RADIO_PHY_ON	0x4
++#define	C_DS1_CTRL_SDIO_DS1_EXIT		0x8
++#define	C_DS1_CTRL_PROC_DONE			0x100
++#define	C_DS1_CTRL_REQ_VALID			0x200
++
++#define D11SHM_WR(sdh, offset, val, ret) \
++	brcmf_sdiod_regwl(sdh, D11SHM_ADDR(offset), val, ret)
++
++#define D11SHM_RD(sdh, offset, ret) \
++	brcmf_sdiod_regrl(sdh, D11SHM_ADDR(offset), ret)
++
++#define D11REG_WR(sdh, addr, val, ret) \
++	brcmf_sdiod_regwl(sdh, addr, val, ret)
++
++#define D11REG_RD(sdh, addr, ret) \
++	brcmf_sdiod_regrl(sdh, addr, ret)
++
+ #endif /* BRCMFMAC_SDIO_H */
+diff --git a/drivers/net/wireless/broadcom/brcm80211/include/chipcommon.h b/drivers/net/wireless/broadcom/brcm80211/include/chipcommon.h
+index e1fd499..1f23092 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/include/chipcommon.h
++++ b/drivers/net/wireless/broadcom/brcm80211/include/chipcommon.h
+@@ -298,6 +298,8 @@ struct chipcregs {
+ * Maximum delay for the PMU state transition in us.
+ * This is an upper bound intended for spinwaits etc.
+ */
+-#define PMU_MAX_TRANSITION_DLY	15000
++#define PMU_MAX_TRANSITION_DLY 15000
++
++#define DEFAULT_43012_MIN_RES_MASK 0x0f8bfe77
+ 
+ #endif				/* _SBCHIPC_H */
+-- 
+1.9.1
+

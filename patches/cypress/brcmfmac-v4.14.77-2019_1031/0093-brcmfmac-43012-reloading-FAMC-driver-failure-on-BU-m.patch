@@ -1,0 +1,68 @@
+From c2c692cf4f322d6947e60b2b33a538b09a319585 Mon Sep 17 00:00:00 2001
+From: David Weng <david.weng@cypress.com>
+Date: Mon, 28 Jan 2019 01:05:36 -0600
+Subject: [PATCH 093/118] brcmfmac: 43012 reloading FAMC driver failure on BU
+ machine after it exiting DS1.
+
+Device is left in non-responding state when unloading FMAC driver in
+non-DS1 state if it ever enters DS1 at least once. It leaves that state
+only after a hard reset or power cycle 43012.
+
+SWWLAN-137253
+
+Signed-off-by: David Weng <david.weng@cypress.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c | 12 +++++++-----
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c |  2 --
+ 2 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
+index fe1ca87..f35ae77 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
+@@ -1491,11 +1491,6 @@ void brcmf_chip_reset_pmu_regs(struct brcmf_chip *pub)
+ 		addr = CORE_CC_REG(base, pmucontrol_ext);
+ 		chip->ops->write32(chip->ctx, addr,
+ 			CY_43012_PMU_CONTROL_EXT_MASK);
+-
+-		/* PMU watchdog */
+-		addr = CORE_CC_REG(base, pmuwatchdog);
+-		chip->ops->write32(chip->ctx, addr,
+-			CY_43012_PMU_WATCHDOG_TICK_VAL);
+ 		break;
+ 
+ 	default:
+@@ -1588,10 +1583,17 @@ void brcmf_chip_reset_watchdog(struct brcmf_chip *pub)
+ 
+ 	switch (pub->chip) {
+ 	case CY_CC_43012_CHIP_ID:
++		addr = CORE_CC_REG(base, min_res_mask);
++		chip->ops->write32(chip->ctx, addr,
++			CY_43012_PMU_MIN_RES_MASK);
+ 		/* Watchdog res mask */
+ 		addr = CORE_CC_REG(base, watchdog_res_mask);
+ 		chip->ops->write32(chip->ctx, addr,
+ 			CY_43012_PMU_MIN_RES_MASK);
++		/* PMU watchdog */
++		addr = CORE_CC_REG(base, pmuwatchdog);
++		chip->ops->write32(chip->ctx, addr,
++			CY_43012_PMU_WATCHDOG_TICK_VAL);
+ 		break;
+ 	case CY_CC_4373_CHIP_ID:
+ 		addr = CORE_CC_REG(base, min_res_mask);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index 73438da..688d898 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -4602,8 +4602,6 @@ void brcmf_sdio_remove(struct brcmf_sdio *bus)
+ 					FMAC_ULP_ENTRY_RECV) {
+ 					brcmf_chip_ulp_reset_lhl_regs(bus->ci);
+ 					brcmf_chip_reset_pmu_regs(bus->ci);
+-					brcmf_chip_set_default_min_res_mask(
+-						bus->ci);
+ 				} else {
+ 					brcmf_chip_set_passive(bus->ci);
+ 				}
+-- 
+1.9.1
+

@@ -1,0 +1,62 @@
+From f7c40e0a19a52228e67572ed2857e271817fa248 Mon Sep 17 00:00:00 2001
+From: Wright Feng <wright.feng@cypress.com>
+Date: Wed, 22 Nov 2017 20:27:47 -0600
+Subject: [PATCH 009/118] brcmfmac: fix CLM load error for legacy chips when
+ user helper is enabled
+
+For legacy chips w/o CLM blob files, kernel with user helper function
+enabled returns -EAGAIN when we request_firmware() for blob file:
+"request_firmware() -> _request_firmware() -> fw_load_from_user_helper()
+-> _request_firmware_load() -> retval=-EAGAIN"
+We should do retries and also continue brcmf_c_process_clm_blob if
+getting -EAGAIN from request_firmware function.
+
+Signed-off-by: Wright Feng <wright.feng@cypress.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index 6a59d06..56e2654 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -45,6 +45,8 @@
+ 
+ #define BRCMF_DEFAULT_TXGLOM_SIZE	32  /* max tx frames in glom chain */
+ 
++#define CLM_LOAD_RETRIES 1 /* # of retries to load clm_blob file */
++
+ static int brcmf_sdiod_txglomsz = BRCMF_DEFAULT_TXGLOM_SIZE;
+ module_param_named(txglomsz, brcmf_sdiod_txglomsz, int, 0);
+ MODULE_PARM_DESC(txglomsz, "Maximum tx packet chain size [SDIO]");
+@@ -170,6 +172,7 @@ static int brcmf_c_process_clm_blob(struct brcmf_if *ifp)
+ 	u16 dl_flag = DL_BEGIN;
+ 	u32 status;
+ 	s32 err;
++	uint retries = 0;
+ 
+ 	brcmf_dbg(TRACE, "Enter\n");
+ 
+@@ -180,11 +183,18 @@ static int brcmf_c_process_clm_blob(struct brcmf_if *ifp)
+ 		return err;
+ 	}
+ 
+-	err = request_firmware(&clm, clm_name, dev);
++	do {
++		err = request_firmware(&clm, clm_name, dev);
++	} while (err == -EAGAIN && retries++ < CLM_LOAD_RETRIES);
+ 	if (err) {
+ 		if (err == -ENOENT) {
+ 			brcmf_dbg(INFO, "continue with CLM data currently present in firmware\n");
+ 			return 0;
++		} else if (err == -EAGAIN) {
++			brcmf_dbg(INFO, "reached maximum retries(%d)\n",
++				  CLM_LOAD_RETRIES);
++			brcmf_dbg(INFO, "continue with CLM data in firmware\n");
++			return 0;
+ 		}
+ 		brcmf_err("request CLM blob file failed (%d)\n", err);
+ 		return err;
+-- 
+1.9.1
+

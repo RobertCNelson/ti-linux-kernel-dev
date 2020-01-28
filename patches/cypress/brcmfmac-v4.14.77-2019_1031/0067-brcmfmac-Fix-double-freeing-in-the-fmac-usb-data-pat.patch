@@ -1,0 +1,36 @@
+From e2ad062f68afe14ed6023d62d60022028d1468b3 Mon Sep 17 00:00:00 2001
+From: Raveendran Somu <raveendran.somu@cypress.com>
+Date: Fri, 7 Sep 2018 13:49:55 -0500
+Subject: [PATCH 067/118] brcmfmac: Fix double freeing in the fmac usb data
+ path
+
+When the brcmf_fws_process_skb() fails to get hanger slot for
+queuing the skb, it tries to free the skb.
+But the caller brcmf_netdev_start_xmit() of that funciton frees
+the packet on error return value.
+This causes the double freeing and which caused the kernel crash.
+
+
+
+Signed-off-by: Raveendran Somu <raveendran.somu@cypress.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c
+index 9abdbe6..2f6f327 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/fwsignal.c
+@@ -2155,8 +2155,7 @@ int brcmf_fws_process_skb(struct brcmf_if *ifp, struct sk_buff *skb)
+ 		brcmf_fws_enq(fws, BRCMF_FWS_SKBSTATE_DELAYED, fifo, skb);
+ 		brcmf_fws_schedule_deq(fws);
+ 	} else {
+-		brcmf_err("drop skb: no hanger slot\n");
+-		brcmf_txfinalize(ifp, skb, false);
++		brcmf_err("no hanger slot available\n");
+ 		rc = -ENOMEM;
+ 	}
+ 	brcmf_fws_unlock(fws);
+-- 
+1.9.1
+

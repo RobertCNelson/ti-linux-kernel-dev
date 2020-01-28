@@ -1,0 +1,131 @@
+From c5ee8da56bcaa8c26b049ba3d11708ce756e2db1 Mon Sep 17 00:00:00 2001
+From: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+Date: Mon, 4 Nov 2019 02:03:38 -0600
+Subject: [PATCH 149/154] brcmfmac: reset SDIO bus on a firmware crash
+
+commit 4684997d9eea ("brcmfmac: reset PCIe bus on a firmware crash")
+adds a reset function to recover firmware trap for PCIe bus. This commit
+adds an implementation for SDIO bus.
+
+Upon SDIO firmware trap, do below:
+ - Remove the device
+ - Reset hardware
+ - Probe the device again
+
+Signed-off-by: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+---
+ .../wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c  |  4 +--
+ .../broadcom/brcm80211/brcmfmac/firmware.c         |  2 ++
+ .../wireless/broadcom/brcm80211/brcmfmac/sdio.c    | 32 ++++++++++++++++++++++
+ .../wireless/broadcom/brcm80211/brcmfmac/sdio.h    |  3 ++
+ 4 files changed, 39 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+index de92306..41ff7c8 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+@@ -1004,7 +1004,7 @@ static void brcmf_sdiod_freezer_detach(struct brcmf_sdio_dev *sdiodev)
+ }
+ #endif /* CONFIG_PM_SLEEP */
+ 
+-static int brcmf_sdiod_remove(struct brcmf_sdio_dev *sdiodev)
++int brcmf_sdiod_remove(struct brcmf_sdio_dev *sdiodev)
+ {
+ 	sdiodev->state = BRCMF_SDIOD_DOWN;
+ 	if (sdiodev->bus) {
+@@ -1039,7 +1039,7 @@ static void brcmf_sdiod_host_fixup(struct mmc_host *host)
+ 	host->caps |= MMC_CAP_NONREMOVABLE;
+ }
+ 
+-static int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
++int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
+ {
+ 	int ret = 0;
+ 	unsigned int f2_blksz = SDIO_FUNC2_BLOCKSIZE;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
+index e5ffb55..e5947be 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/firmware.c
+@@ -582,6 +582,8 @@ int brcmf_fw_map_chip_to_name(u32 chip, u32 chiprev,
+ 	}
+ 
+ 	fw_name[0] = '\0';
++	if (nvram_name)
++		nvram_name[0] = '\0';
+ 	/* check if firmware path is provided by module parameter */
+ 	if (brcmf_mp_global.firmware_path[0] != '\0') {
+ 		strlcpy(fw_name, brcmf_mp_global.firmware_path,
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index ecbe527..3f2cf3d 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -27,6 +27,7 @@
+ #include <linux/mmc/sdio_ids.h>
+ #include <linux/mmc/sdio_func.h>
+ #include <linux/mmc/card.h>
++#include <linux/mmc/core.h>
+ #include <linux/semaphore.h>
+ #include <linux/firmware.h>
+ #include <linux/module.h>
+@@ -4273,6 +4274,36 @@ static int brcmf_sdio_get_fwname(struct device *dev, u32 chip, u32 chiprev,
+ 	return ret;
+ }
+ 
++static int brcmf_sdio_bus_reset(struct device *dev)
++{
++	int ret = 0;
++	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
++	struct brcmf_sdio_dev *sdiodev = bus_if->bus_priv.sdio;
++
++	brcmf_dbg(SDIO, "Enter\n");
++
++	/* start by unregistering irqs */
++	brcmf_sdiod_intr_unregister(sdiodev);
++
++	brcmf_sdiod_remove(sdiodev);
++
++	/* reset the adapter */
++	sdio_claim_host(sdiodev->func[1]);
++	mmc_hw_reset(sdiodev->func[1]->card->host);
++	sdio_release_host(sdiodev->func[1]);
++
++	brcmf_bus_change_state(sdiodev->bus_if, BRCMF_BUS_DOWN);
++
++	ret = brcmf_sdiod_probe(sdiodev);
++	if (ret) {
++		brcmf_err("Failed to probe after sdio device reset: ret %d\n",
++			  ret);
++		brcmf_sdiod_remove(sdiodev);
++	}
++
++	return ret;
++}
++
+ static const struct brcmf_bus_ops brcmf_sdio_bus_ops = {
+ 	.stop = brcmf_sdio_bus_stop,
+ 	.preinit = brcmf_sdio_bus_preinit,
+@@ -4284,6 +4315,7 @@ static int brcmf_sdio_get_fwname(struct device *dev, u32 chip, u32 chiprev,
+ 	.get_ramsize = brcmf_sdio_bus_get_ramsize,
+ 	.get_memdump = brcmf_sdio_bus_get_memdump,
+ 	.get_fwname = brcmf_sdio_get_fwname,
++	.reset = brcmf_sdio_bus_reset,
+ };
+ 
+ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h
+index e5f4b28..f73a005 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.h
+@@ -401,6 +401,9 @@ static inline void brcmf_sdiod_freezer_uncount(struct brcmf_sdio_dev *sdiodev)
+ }
+ #endif /* CONFIG_PM_SLEEP */
+ 
++int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev);
++int brcmf_sdiod_remove(struct brcmf_sdio_dev *sdiodev);
++
+ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev);
+ void brcmf_sdio_remove(struct brcmf_sdio *bus);
+ void brcmf_sdio_isr(struct brcmf_sdio *bus);
+-- 
+1.9.1
+

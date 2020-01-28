@@ -1,0 +1,162 @@
+From c95fe7949d718cf3b94d6f1b7127055d1e803dcc Mon Sep 17 00:00:00 2001
+From: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+Date: Tue, 20 Jun 2017 02:20:23 -0500
+Subject: [PATCH 005/118] brcmfmac: Add support for CYW43012 SDIO chipset
+
+CYW43012 is a 1x1 802.11a/b/g/n Dual-Band HT20, 256-QAM/Turbo QAM. It
+is an Ultra Low Power WLAN+BT combo chip.
+
+Signed-off-by: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+---
+ .../wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c  |  1 +
+ .../wireless/broadcom/brcm80211/brcmfmac/chip.c    |  9 ++++-
+ .../wireless/broadcom/brcm80211/brcmfmac/sdio.c    | 40 ++++++++++++++++++----
+ .../broadcom/brcm80211/include/brcm_hw_ids.h       |  1 +
+ include/linux/mmc/sdio_ids.h                       |  1 +
+ 5 files changed, 45 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+index f4fa525..88b7410 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+@@ -1116,6 +1116,7 @@ static int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_4354),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_4356),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_CYPRESS_4373),
++	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_CYPRESS_43012),
+ 	{ /* end: all zeroes */ }
+ };
+ MODULE_DEVICE_TABLE(sdio, brcmf_sdmmc_ids);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
+index c5d1a1c..4b1c8ba 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
+@@ -165,6 +165,7 @@ struct sbconfig {
+ #define SRCI_LSS_MASK		0x00f00000
+ #define SRCI_LSS_SHIFT		20
+ #define	SRCI_SRNB_MASK		0xf0
++#define	SRCI_SRNB_MASK_EXT	0x100
+ #define	SRCI_SRNB_SHIFT		4
+ #define	SRCI_SRBSZ_MASK		0xf
+ #define	SRCI_SRBSZ_SHIFT	0
+@@ -592,7 +593,13 @@ static void brcmf_chip_socram_ramsize(struct brcmf_core_priv *sr, u32 *ramsize,
+ 		if (lss != 0)
+ 			*ramsize += (1 << ((lss - 1) + SR_BSZ_BASE));
+ 	} else {
+-		nb = (coreinfo & SRCI_SRNB_MASK) >> SRCI_SRNB_SHIFT;
++		/* length of SRAM Banks increased for corerev greater than 23 */
++		if (sr->pub.rev >= 23) {
++			nb = (coreinfo & (SRCI_SRNB_MASK | SRCI_SRNB_MASK_EXT))
++				>> SRCI_SRNB_SHIFT;
++		} else {
++			nb = (coreinfo & SRCI_SRNB_MASK) >> SRCI_SRNB_SHIFT;
++		}
+ 		for (i = 0; i < nb; i++) {
+ 			retent = brcmf_chip_socram_banksize(sr, i, &banksize);
+ 			*ramsize += banksize;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index 5807dba..6e6d587 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -624,6 +624,7 @@ struct sdiod_drive_str {
+ BRCMF_FW_NVRAM_DEF(4354, "brcmfmac4354-sdio.bin", "brcmfmac4354-sdio.txt");
+ BRCMF_FW_NVRAM_DEF(4356, "brcmfmac4356-sdio.bin", "brcmfmac4356-sdio.txt");
+ BRCMF_FW_NVRAM_DEF(4373, "brcmfmac4373-sdio.bin", "brcmfmac4373-sdio.txt");
++BRCMF_FW_NVRAM_DEF(43012, "brcmfmac43012-sdio.bin", "brcmfmac43012-sdio.txt");
+ 
+ static struct brcmf_firmware_mapping brcmf_sdio_fwnames[] = {
+ 	BRCMF_FW_NVRAM_ENTRY(BRCM_CC_43143_CHIP_ID, 0xFFFFFFFF, 43143),
+@@ -643,7 +644,8 @@ struct sdiod_drive_str {
+ 	BRCMF_FW_NVRAM_ENTRY(BRCM_CC_4345_CHIP_ID, 0xFFFFFFC0, 43455),
+ 	BRCMF_FW_NVRAM_ENTRY(BRCM_CC_4354_CHIP_ID, 0xFFFFFFFF, 4354),
+ 	BRCMF_FW_NVRAM_ENTRY(BRCM_CC_4356_CHIP_ID, 0xFFFFFFFF, 4356),
+-	BRCMF_FW_NVRAM_ENTRY(CY_CC_4373_CHIP_ID, 0xFFFFFFFF, 4373)
++	BRCMF_FW_NVRAM_ENTRY(CY_CC_4373_CHIP_ID, 0xFFFFFFFF, 4373),
++	BRCMF_FW_NVRAM_ENTRY(CY_CC_43012_CHIP_ID, 0xFFFFFFFF, 43012)
+ };
+ 
+ static void pkt_align(struct sk_buff *p, int len, int align)
+@@ -704,6 +706,15 @@ static int w_sdreg32(struct brcmf_sdio *bus, u32 regval, u32 reg_offset)
+ 	brcmf_sdiod_regwb(bus->sdiodev, SBSDIO_FUNC1_SLEEPCSR,
+ 			  wr_val, &err);
+ 
++	/* In case of 43012 chip, the chip could go down immediately after
++	 * KSO bit is cleared. So the further reads of KSO register could
++	 * fail. Thereby just bailing out immediately after clearing KSO
++	 * bit, to avoid polling of KSO bit.
++	 */
++	if (!on && (bus->ci->chip == CY_CC_43012_CHIP_ID)) {
++		return err;
++	}
++
+ 	if (on) {
+ 		/* device WAKEUP through KSO:
+ 		 * write bit 0 & read back until
+@@ -2447,9 +2458,20 @@ static void brcmf_sdio_bus_stop(struct device *dev)
+ 		/* Force backplane clocks to assure F2 interrupt propagates */
+ 		saveclk = brcmf_sdiod_regrb(sdiodev, SBSDIO_FUNC1_CHIPCLKCSR,
+ 					    &err);
+-		if (!err)
+-			brcmf_sdiod_regwb(sdiodev, SBSDIO_FUNC1_CHIPCLKCSR,
+-					  (saveclk | SBSDIO_FORCE_HT), &err);
++		if (!err) {
++			if (bus->ci->chip == CY_CC_43012_CHIP_ID) {
++				brcmf_sdiod_regwb(sdiodev,
++						  SBSDIO_FUNC1_CHIPCLKCSR,
++						  (saveclk |
++						   SBSDIO_HT_AVAIL_REQ),
++						  &err);
++			} else {
++				brcmf_sdiod_regwb(sdiodev,
++						  SBSDIO_FUNC1_CHIPCLKCSR,
++						  (saveclk | SBSDIO_FORCE_HT),
++						  &err);
++			}
++		}
+ 		if (err)
+ 			brcmf_err("Failed to force clock for F2: err %d\n",
+ 				  err);
+@@ -4057,8 +4079,14 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+ 	/* Force clocks on backplane to be sure F2 interrupt propagates */
+ 	saveclk = brcmf_sdiod_regrb(sdiodev, SBSDIO_FUNC1_CHIPCLKCSR, &err);
+ 	if (!err) {
+-		brcmf_sdiod_regwb(sdiodev, SBSDIO_FUNC1_CHIPCLKCSR,
+-				  (saveclk | SBSDIO_FORCE_HT), &err);
++		if (bus->ci->chip == CY_CC_43012_CHIP_ID) {
++			brcmf_sdiod_regwb(sdiodev, SBSDIO_FUNC1_CHIPCLKCSR,
++					  (saveclk | SBSDIO_HT_AVAIL_REQ),
++					  &err);
++		} else {
++			brcmf_sdiod_regwb(sdiodev, SBSDIO_FUNC1_CHIPCLKCSR,
++					  (saveclk | SBSDIO_FORCE_HT), &err);
++		}
+ 	}
+ 	if (err) {
+ 		brcmf_err("Failed to force clock for F2: err %d\n", err);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h b/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h
+index 57544a3..37b0acd 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h
++++ b/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h
+@@ -59,6 +59,7 @@
+ #define BRCM_CC_4366_CHIP_ID		0x4366
+ #define BRCM_CC_4371_CHIP_ID		0x4371
+ #define CY_CC_4373_CHIP_ID		0x4373
++#define CY_CC_43012_CHIP_ID		43012
+ 
+ /* USB Device IDs */
+ #define BRCM_USB_43143_DEVICE_ID	0xbd1e
+diff --git a/include/linux/mmc/sdio_ids.h b/include/linux/mmc/sdio_ids.h
+index 0a7abe8..9e4f680 100644
+--- a/include/linux/mmc/sdio_ids.h
++++ b/include/linux/mmc/sdio_ids.h
+@@ -42,6 +42,7 @@
+ #define SDIO_DEVICE_ID_BROADCOM_4354		0x4354
+ #define SDIO_DEVICE_ID_BROADCOM_4356		0x4356
+ #define SDIO_DEVICE_ID_CYPRESS_4373		0x4373
++#define SDIO_DEVICE_ID_CYPRESS_43012		43012
+ 
+ #define SDIO_VENDOR_ID_INTEL			0x0089
+ #define SDIO_DEVICE_ID_INTEL_IWMC3200WIMAX	0x1402
+-- 
+1.9.1
+

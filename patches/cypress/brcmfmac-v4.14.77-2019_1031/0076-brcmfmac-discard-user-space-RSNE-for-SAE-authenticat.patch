@@ -1,0 +1,35 @@
+From dd3b67f0f077403908c5d08e3de28faca63cc189 Mon Sep 17 00:00:00 2001
+From: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+Date: Thu, 20 Sep 2018 16:41:35 +0800
+Subject: [PATCH 076/118] brcmfmac: discard user-space RSNE for SAE
+ authentication offload
+
+When offloading SAE authentication to firmware, user space doesn't have
+PMK/PMKID of the current connection but firmware has them. Since PMKID
+is expected for some re-association cases, a firmware-generated RSNE
+should be used rather than the user-space one.
+
+Signed-off-by: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+index cb92ead..8254146 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -2173,6 +2173,11 @@ static void brcmf_set_join_pref(struct brcmf_if *ifp,
+ 		err = brcmf_set_pmk(ifp, sme->crypto.psk,
+ 				    BRCMF_WSEC_MAX_PSK_LEN);
+ 	else if (profile->use_fwsup == BRCMF_PROFILE_FWSUP_SAE) {
++		/* clean up user-space RSNE */
++		if (brcmf_fil_iovar_data_set(ifp, "wpaie", NULL, 0)) {
++			brcmf_err("failed to clean up user-space RSNE\n");
++			goto done;
++		}
+ 		err = brcmf_set_sae_password(ifp, sme->crypto.sae_pwd,
+ 					     sme->crypto.sae_pwd_len);
+ 		if (!err && sme->crypto.psk)
+-- 
+1.9.1
+

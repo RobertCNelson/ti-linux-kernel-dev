@@ -1,0 +1,60 @@
+From a82f5bb86d525f206a22e3dca38399fbd61ef092 Mon Sep 17 00:00:00 2001
+From: Arend Van Spriel <arend.vanspriel@broadcom.com>
+Date: Wed, 16 May 2018 14:11:59 +0200
+Subject: [PATCH 143/154] brcmfmac: add support for sysfs initiated coredump
+
+commit 8e072168f75ebce85b96cbcefea2b10ddbd5913f upstream.
+
+The driver already supports device coredump initiated by firmware
+event. Since commit 3c47d19ff4dc ("drivers: base: add coredump driver
+ops") it is also possible to initiate it from user-space through
+sysfs. This patch adds support for SDIO and PCIe devices.
+
+Reviewed-by: Hante Meuleman <hante.meuleman@broadcom.com>
+Reviewed-by: Pieter-Paul Giesberts <pieter-paul.giesberts@broadcom.com>
+Reviewed-by: Franky Lin <franky.lin@broadcom.com>
+Signed-off-by: Arend van Spriel <arend.vanspriel@broadcom.com>
+Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
+
+[chi-hsien.lin@cypress.com: removed .coredump in bcmsdh.c and pcie.c]
+Signed-off-by: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h  | 2 ++
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c | 8 ++++++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+index fc1b1e2..b6c996c 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+@@ -250,6 +250,8 @@ int brcmf_bus_get_fwname(struct brcmf_bus *bus, uint chip, uint chiprev,
+ void brcmf_detach(struct device *dev);
+ /* Indication from bus module that dongle should be reset */
+ void brcmf_dev_reset(struct device *dev);
++/* Request from bus module to initiate a coredump */
++void brcmf_dev_coredump(struct device *dev);
+ 
+ /* Configure the "global" bus state used by upper layers */
+ void brcmf_bus_change_state(struct brcmf_bus *bus, enum brcmf_bus_state state);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+index 4a4904b..f610b4c 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -1084,6 +1084,14 @@ void brcmf_dev_reset(struct device *dev)
+ 		brcmf_fil_cmd_int_set(drvr->iflist[0], BRCMF_C_TERMINATED, 1);
+ }
+ 
++void brcmf_dev_coredump(struct device *dev)
++{
++	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
++
++	if (brcmf_debug_create_memdump(bus_if, NULL, 0) < 0)
++		brcmf_dbg(TRACE, "failed to create coredump\n");
++}
++
+ void brcmf_detach(struct device *dev)
+ {
+ 	s32 i;
+-- 
+1.9.1
+

@@ -1,0 +1,180 @@
+From 8d23665a159de2af1f64e43a32da10686abebbf1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Rafa=C5=82=20Mi=C5=82ecki?= <rafal@milecki.pl>
+Date: Tue, 26 Feb 2019 14:11:19 +0100
+Subject: [PATCH 146/154] brcmfmac: reset PCIe bus on a firmware crash
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+commit 4684997d9eea29380000e062755aa6d368d789a3 upstream.
+
+This includes bus reset & reloading a firmware. It should be sufficient
+for a user space to (setup and) use a wireless device again.
+
+Support for reset on USB & SDIO can be added later.
+
+Signed-off-by: Rafał Miłecki <rafal@milecki.pl>
+Reviewed-by: Arend van Spriel <arend.vanspriel@broadcom.com>
+Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
+
+[chi-hsien.lin@cypress.com: merge to 4.14 based CY branch]
+[chi-hsien.lin@cypress.com: remove brcmf_fw_request usage for 4.14]
+Signed-off-by: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+---
+ .../net/wireless/broadcom/brcm80211/brcmfmac/bus.h | 10 +++++
+ .../wireless/broadcom/brcm80211/brcmfmac/core.c    | 12 ++++++
+ .../wireless/broadcom/brcm80211/brcmfmac/core.h    |  2 +
+ .../wireless/broadcom/brcm80211/brcmfmac/pcie.c    | 45 ++++++++++++++++++++++
+ 4 files changed, 69 insertions(+)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+index 98e79b7..95efdb6 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+@@ -90,6 +90,7 @@ struct brcmf_bus_ops {
+ 	int (*get_memdump)(struct device *dev, void *data, size_t len);
+ 	int (*get_fwname)(struct device *dev, uint chip, uint chiprev,
+ 			  unsigned char *fw_name);
++	int (*reset)(struct device *dev);
+ };
+ 
+ 
+@@ -235,6 +236,15 @@ int brcmf_bus_get_fwname(struct brcmf_bus *bus, uint chip, uint chiprev,
+ 	return bus->ops->get_fwname(bus->dev, chip, chiprev, fw_name);
+ }
+ 
++static inline
++int brcmf_bus_reset(struct brcmf_bus *bus)
++{
++	if (!bus->ops->reset)
++		return -EOPNOTSUPP;
++
++	return bus->ops->reset(bus->dev);
++}
++
+ /*
+  * interface functions from common layer
+  */
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+index eb4635a..5fa852d 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -967,6 +967,14 @@ static int brcmf_revinfo_read(struct seq_file *s, void *data)
+ 	return 0;
+ }
+ 
++static void brcmf_core_bus_reset(struct work_struct *work)
++{
++	struct brcmf_pub *drvr = container_of(work, struct brcmf_pub,
++					      bus_reset);
++
++	brcmf_bus_reset(drvr->bus_if);
++}
++
+ int brcmf_bus_started(struct device *dev)
+ {
+ 	int ret = -1;
+@@ -1043,6 +1051,8 @@ int brcmf_bus_started(struct device *dev)
+ #endif
+ #endif /* CONFIG_INET */
+ 
++	INIT_WORK(&drvr->bus_reset, brcmf_core_bus_reset);
++
+ 	return 0;
+ 
+ fail:
+@@ -1100,6 +1110,8 @@ void brcmf_fw_crashed(struct device *dev)
+ 	brcmf_err("Firmware has halted or crashed\n");
+ 
+ 	brcmf_dev_coredump(dev);
++
++	schedule_work(&drvr->bus_reset);
+ }
+ 
+ void brcmf_detach(struct device *dev)
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
+index e38f78e..9418d71 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
+@@ -143,6 +143,8 @@ struct brcmf_pub {
+ 	struct notifier_block inet6addr_notifier;
+ 	struct brcmf_mp_device *settings;
+ 
++	struct work_struct bus_reset;
++
+ 	u8 clmver[BRCMF_DCMD_SMLEN];
+ 	struct brcmf_pkt_filter_enable_le pkt_filter[MAX_PKT_FILTER_COUNT];
+ 
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+index fb93341..d6c8274 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+@@ -340,6 +340,10 @@ struct brcmf_pcie_dhi_ringinfo {
+ 	BRCMF_D2H_MSGRING_RX_COMPLETE_ITEMSIZE
+ };
+ 
++static void brcmf_pcie_setup(struct device *dev, int ret,
++			     const struct firmware *fw,
++			     void *nvram, u32 nvram_len);
++
+ #ifdef CONFIG_BRCMFMAC_PCIE_BARWIN_SZ
+ DEFINE_RAW_SPINLOCK(pcie_lock);
+ #endif /* CONFIG_BRCMFMAC_PCIE_BARWIN_SZ */
+@@ -1618,6 +1622,46 @@ static int brcmf_pcie_get_fwname(struct device *dev, u32 chip, u32 chiprev,
+ 	return ret;
+ }
+ 
++static int brcmf_pcie_reset(struct device *dev)
++{
++	struct brcmf_bus *bus;
++	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
++	struct brcmf_pciedev *buspub = bus_if->bus_priv.pcie;
++	struct brcmf_pciedev_info *devinfo = buspub->devinfo;
++	int err;
++	u16 domain_nr;
++	u16 bus_nr;
++
++	domain_nr = pci_domain_nr(devinfo->pdev->bus) + 1;
++	bus_nr = devinfo->pdev->bus->number;
++	brcmf_dbg(PCIE, "Enter %x:%x (%d/%d)\n", devinfo->pdev->vendor,
++		  devinfo->pdev->device, domain_nr, bus_nr);
++	bus = dev_get_drvdata(dev);
++
++	brcmf_detach(dev);
++
++	brcmf_pcie_release_irq(devinfo);
++	brcmf_pcie_release_scratchbuffers(devinfo);
++	brcmf_pcie_release_ringbuffers(devinfo);
++	brcmf_pcie_reset_device(devinfo);
++
++	err = brcmf_fw_map_chip_to_name(devinfo->ci->chip,
++					devinfo->ci->chiprev,
++					brcmf_pcie_fwnames,
++					ARRAY_SIZE(brcmf_pcie_fwnames),
++					devinfo->fw_name, devinfo->nvram_name);
++	if (err)
++		return err;
++
++	err = brcmf_fw_get_firmwares_pcie(bus->dev, BRCMF_FW_REQUEST_NVRAM |
++						    BRCMF_FW_REQ_NV_OPTIONAL,
++					  devinfo->fw_name, devinfo->nvram_name,
++					  brcmf_pcie_setup, domain_nr, bus_nr);
++	if (err == 0)
++		return 0;
++	return err;
++}
++
+ static const struct brcmf_bus_ops brcmf_pcie_bus_ops = {
+ 	.txdata = brcmf_pcie_tx,
+ 	.stop = brcmf_pcie_down,
+@@ -1627,6 +1671,7 @@ static int brcmf_pcie_get_fwname(struct device *dev, u32 chip, u32 chiprev,
+ 	.get_ramsize = brcmf_pcie_get_ramsize,
+ 	.get_memdump = brcmf_pcie_get_memdump,
+ 	.get_fwname = brcmf_pcie_get_fwname,
++	.reset = brcmf_pcie_reset,
+ };
+ 
+ 
+-- 
+1.9.1
+
