@@ -1,0 +1,92 @@
+From bb844161d7cd26733109c4129f0440ba567f2a26 Mon Sep 17 00:00:00 2001
+From: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+Date: Thu, 14 Feb 2019 16:33:53 +0800
+Subject: [PATCH 098/118] nl80211: add authorized flag back to ROAM event
+
+Commit 503c1fb98ba3 ("cfg80211/nl80211: add a port authorized event")
+added the NL80211_CMD_PORT_AUTHORIZED event to indicate that a
+connection is authorized. It replaced the PORT_AUTHORIZED attribute and
+the authorized flag added in commit f45cbe6e691f
+("nl80211: add authorized flag to ROAM event").
+
+However, for offload FT, using PORT_AUTHORIZED event mechanism induces
+wpa_supplicant to start a full EAP exchange after a successful roaming.
+This patch adds the flag mechanism back to the ROAM event for drivers
+to fix the offload FT roaming issue.
+
+Signed-off-by: Chung-Hsien Hsu <stanley.hsu@cypress.com>
+---
+ include/net/cfg80211.h       | 4 ++++
+ include/uapi/linux/nl80211.h | 5 ++++-
+ net/wireless/nl80211.c       | 4 +++-
+ net/wireless/sme.c           | 1 +
+ 4 files changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
+index 519914f..5a13a92 100644
+--- a/include/net/cfg80211.h
++++ b/include/net/cfg80211.h
+@@ -5448,6 +5448,9 @@ void cfg80211_connect_done(struct net_device *dev,
+  * @req_ie_len: association request IEs length
+  * @resp_ie: association response IEs (may be %NULL)
+  * @resp_ie_len: assoc response IEs length
++ * @authorized: true if the 802.1X authentication was done by the driver or is
++ *	not needed (e.g., when Fast Transition protocol was used), false
++ *	otherwise. Ignored for networks that don't use 802.1X authentication.
+  */
+ struct cfg80211_roam_info {
+ 	struct ieee80211_channel *channel;
+@@ -5457,6 +5460,7 @@ struct cfg80211_roam_info {
+ 	size_t req_ie_len;
+ 	const u8 *resp_ie;
+ 	size_t resp_ie_len;
++	bool authorized;
+ };
+ 
+ /**
+diff --git a/include/uapi/linux/nl80211.h b/include/uapi/linux/nl80211.h
+index c7d29d1..864aa9a 100644
+--- a/include/uapi/linux/nl80211.h
++++ b/include/uapi/linux/nl80211.h
+@@ -2152,7 +2152,10 @@ enum nl80211_commands {
+  *	in %NL80211_CMD_CONNECT to indicate that for 802.1X authentication it
+  *	wants to use the supported offload of the 4-way handshake.
+  * @NL80211_ATTR_PMKR0_NAME: PMK-R0 Name for offloaded FT.
+- * @NL80211_ATTR_PORT_AUTHORIZED: (reserved)
++ * @NL80211_ATTR_PORT_AUTHORIZED: flag attribute used in %NL80211_CMD_ROAMED
++ *	notification indicating that that 802.1X authentication was done by
++ *	the driver or is not needed (because roaming used the Fast Transition
++ *	protocol).
+  *
+  * @NL80211_ATTR_EXTERNAL_AUTH_ACTION: Identify the requested external
+  *	authentication operation (u32 attribute with an
+diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
+index 6561d8e..b6694e7 100644
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -13827,7 +13827,9 @@ void nl80211_send_roamed(struct cfg80211_registered_device *rdev,
+ 		     info->req_ie)) ||
+ 	    (info->resp_ie &&
+ 	     nla_put(msg, NL80211_ATTR_RESP_IE, info->resp_ie_len,
+-		     info->resp_ie)))
++		     info->resp_ie)) ||
++	    (info->authorized &&
++	     nla_put_flag(msg, NL80211_ATTR_PORT_AUTHORIZED)))
+ 		goto nla_put_failure;
+ 
+ 	genlmsg_end(msg, hdr);
+diff --git a/net/wireless/sme.c b/net/wireless/sme.c
+index 701cfd7..16872c7 100644
+--- a/net/wireless/sme.c
++++ b/net/wireless/sme.c
+@@ -956,6 +956,7 @@ void cfg80211_roamed(struct net_device *dev, struct cfg80211_roam_info *info,
+ 	ev->rm.resp_ie_len = info->resp_ie_len;
+ 	memcpy((void *)ev->rm.resp_ie, info->resp_ie, info->resp_ie_len);
+ 	ev->rm.bss = info->bss;
++	ev->rm.authorized = info->authorized;
+ 
+ 	spin_lock_irqsave(&wdev->event_lock, flags);
+ 	list_add_tail(&ev->list, &wdev->event_list);
+-- 
+1.9.1
+

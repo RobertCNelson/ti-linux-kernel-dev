@@ -1,0 +1,71 @@
+From ead6b3147341368dc191811ca10e8d6b6ca79262 Mon Sep 17 00:00:00 2001
+From: Wright Feng <wright.feng@cypress.com>
+Date: Thu, 26 Apr 2018 01:35:53 -0500
+Subject: [PATCH 024/118] revert: brcmfmac: add a module parameter to set
+ scheduling priority of sdio_dpc
+
+will use WQ_HIGHPRI instead.
+
+Signed-off-by: Wright Feng <wright.feng@cypress.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c |  5 -----
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c   | 10 ----------
+ 2 files changed, 15 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index 8038a66..f973bb3 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -81,10 +81,6 @@
+ module_param_named(eap_restrict, brcmf_eap_restrict, int, 0400);
+ MODULE_PARM_DESC(eap_restrict, "Block non-802.1X frames until auth finished");
+ 
+-static int brcmf_sdio_dpc_prio;
+-module_param_named(sdio_dpc_prio, brcmf_sdio_dpc_prio, int, S_IRUSR);
+-MODULE_PARM_DESC(sdio_dpc_prio, "The scheduling priority of sdio_dpc thread");
+-
+ #ifdef DEBUG
+ /* always succeed brcmf_bus_started() */
+ static int brcmf_ignore_probe_fail;
+@@ -469,7 +465,6 @@ struct brcmf_mp_device *brcmf_get_module_param(struct device *dev,
+ 	settings->fcmode = brcmf_fcmode;
+ 	settings->roamoff = !!brcmf_roamoff;
+ 	settings->eap_restrict = !!brcmf_eap_restrict;
+-	settings->sdio_dpc_prio = brcmf_sdio_dpc_prio;
+ #ifdef DEBUG
+ 	settings->ignore_probe_fail = !!brcmf_ignore_probe_fail;
+ #endif
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index 48cfeb2..baaacab 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -33,7 +33,6 @@
+ #include <linux/bcma/bcma.h>
+ #include <linux/debugfs.h>
+ #include <linux/vmalloc.h>
+-#include <uapi/linux/sched/types.h>
+ #include <asm/unaligned.h>
+ #include <defs.h>
+ #include <brcmu_wifi.h>
+@@ -2704,18 +2703,9 @@ static void brcmf_sdio_dpc(struct brcmf_sdio *bus)
+ 	uint txlimit = bus->txbound;	/* Tx frames to send before resched */
+ 	uint framecnt;			/* Temporary counter of tx/rx frames */
+ 	int err = 0;
+-	struct sched_param param;
+-	struct brcmf_pub *drvr = bus->sdiodev->bus_if->drvr;
+-	int sdio_dpc_prio = drvr->settings->sdio_dpc_prio;
+ 
+ 	brcmf_dbg(TRACE, "Enter\n");
+ 
+-	if (sdio_dpc_prio > 0) {
+-		param.sched_priority = (sdio_dpc_prio < MAX_RT_PRIO) ?
+-				  sdio_dpc_prio : (MAX_RT_PRIO - 1);
+-		sched_setscheduler(current, SCHED_FIFO, &param);
+-	}
+-
+ 	sdio_claim_host(bus->sdiodev->func[1]);
+ 
+ 	/* If waiting for HTAVAIL, check status */
+-- 
+1.9.1
+

@@ -1,0 +1,45 @@
+From 1445e4dc4aac6e60d8dd3a9ed5f75c18945b8d94 Mon Sep 17 00:00:00 2001
+From: Wright Feng <wright.feng@cypress.com>
+Date: Mon, 21 Aug 2017 22:36:04 -0500
+Subject: [PATCH 004/118] brcmfmac: return -EPERM when getting error in vendor
+ command handler
+
+Firmware returns proprietary error code when getting error in
+fil_cmd_data_set or fil_cmd_data_get. Sometimes the vendor tool or
+utilities which uses libnl may stuck in some commands when wl is down.
+For example, issue "scan" command after issuing "down" command, the
+"scan" command will be the blocking call and stuck as no response from
+firmware. It is caused by that firmware returns BCME_NOTUP(-4) when wl
+is down, but in Linux the -4 is -EINTR, so libnl catches the error and
+not pass to upper layer.
+Because of that, the driver should return Linux error code instead of the
+proprietary error code, and the tools or utilities need to get the real
+firmware error code by another command "bcmerrorstr" after receiving
+the error.
+
+Signed-off-by: Wright Feng <wright.feng@cypress.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/vendor.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/vendor.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/vendor.c
+index 8eff275..2b88ba1 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/vendor.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/vendor.c
+@@ -80,8 +80,12 @@ static int brcmf_cfg80211_vndr_cmds_dcmd_handler(struct wiphy *wiphy,
+ 	else
+ 		ret = brcmf_fil_cmd_data_get(ifp, cmdhdr->cmd, dcmd_buf,
+ 					     ret_len);
+-	if (ret != 0)
++
++	if (ret != 0) {
++		brcmf_dbg(INFO, "error(%d), return -EPERM\n", ret);
++		ret = -EPERM;
+ 		goto exit;
++	}
+ 
+ 	wr_pointer = dcmd_buf;
+ 	while (ret_len > 0) {
+-- 
+1.9.1
+

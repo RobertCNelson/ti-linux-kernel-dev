@@ -1,0 +1,80 @@
+From be52f8fafbbd693f804b134561d270221a906737 Mon Sep 17 00:00:00 2001
+From: Soontak Lee <soontak.lee@cypress.com>
+Date: Wed, 6 Nov 2019 18:57:12 -0600
+Subject: [PATCH 127/154] brcmfmac: Fix for wrong disconnection event source
+ information.
+
+Add event source argument on link down handler.
+
+Signed-off-by: Soontak Lee <soontak.lee@cypress.com>
+Signed-off-by: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+---
+ .../net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+index 9e9fb54..d225b20 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -1392,7 +1392,8 @@ static int brcmf_set_sae_password(struct brcmf_if *ifp, const u8 *pwd_data,
+ 	return err;
+ }
+ 
+-static void brcmf_link_down(struct brcmf_cfg80211_vif *vif, u16 reason)
++static void brcmf_link_down(struct brcmf_cfg80211_vif *vif, u16 reason,
++			    bool locally_generated)
+ {
+ 	struct brcmf_cfg80211_info *cfg = wiphy_to_cfg(vif->wdev.wiphy);
+ 	s32 err = 0;
+@@ -1409,7 +1410,7 @@ static void brcmf_link_down(struct brcmf_cfg80211_vif *vif, u16 reason)
+ 		if ((vif->wdev.iftype == NL80211_IFTYPE_STATION) ||
+ 		    (vif->wdev.iftype == NL80211_IFTYPE_P2P_CLIENT))
+ 			cfg80211_disconnected(vif->wdev.netdev, reason, NULL, 0,
+-					      true, GFP_KERNEL);
++					      locally_generated, GFP_KERNEL);
+ 	}
+ 	clear_bit(BRCMF_VIF_STATUS_CONNECTING, &vif->sme_state);
+ 	clear_bit(BRCMF_SCAN_STATUS_SUPPRESS, &cfg->scan_status);
+@@ -1586,7 +1587,7 @@ static void brcmf_link_down(struct brcmf_cfg80211_vif *vif, u16 reason)
+ 		return 0;
+ 	}
+ 
+-	brcmf_link_down(ifp->vif, WLAN_REASON_DEAUTH_LEAVING);
++	brcmf_link_down(ifp->vif, WLAN_REASON_DEAUTH_LEAVING, true);
+ 	brcmf_net_setcarrier(ifp, false);
+ 
+ 	brcmf_dbg(TRACE, "Exit\n");
+@@ -3911,7 +3912,7 @@ static s32 brcmf_cfg80211_suspend(struct wiphy *wiphy,
+ 			 * disassociate from AP to save power while system is
+ 			 * in suspended state
+ 			 */
+-			brcmf_link_down(vif, WLAN_REASON_UNSPECIFIED);
++			brcmf_link_down(vif, WLAN_REASON_UNSPECIFIED, true);
+ 			/* Make sure WPA_Supplicant receives all the event
+ 			 * generated due to DISASSOC call to the fw to keep
+ 			 * the state fw and WPA_Supplicant state consistent
+@@ -6053,7 +6054,11 @@ static s32 brcmf_get_assoc_ies(struct brcmf_cfg80211_info *cfg,
+ 		if (!brcmf_is_ibssmode(ifp->vif)) {
+ 			brcmf_bss_connect_done(cfg, ndev, e, false);
+ 			brcmf_link_down(ifp->vif,
+-					brcmf_map_fw_linkdown_reason(e));
++					brcmf_map_fw_linkdown_reason(e),
++					e->event_code &
++					(BRCMF_E_DEAUTH_IND |
++					BRCMF_E_DISASSOC_IND)
++					? false : true);
+ 			brcmf_init_prof(ndev_to_prof(ndev));
+ 			if (ndev != cfg_to_ndev(cfg))
+ 				complete(&cfg->vif_disabled);
+@@ -7234,7 +7239,7 @@ static s32 __brcmf_cfg80211_down(struct brcmf_if *ifp)
+ 	 * from AP to save power
+ 	 */
+ 	if (check_vif_up(ifp->vif)) {
+-		brcmf_link_down(ifp->vif, WLAN_REASON_UNSPECIFIED);
++		brcmf_link_down(ifp->vif, WLAN_REASON_UNSPECIFIED, true);
+ 
+ 		/* Make sure WPA_Supplicant receives all the event
+ 		   generated due to DISASSOC call to the fw to keep
+-- 
+1.9.1
+

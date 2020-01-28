@@ -1,0 +1,97 @@
+From 69bb6306355c56b6dc2de2e245ad6c137d083aa0 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Rafa=C5=82=20Mi=C5=82ecki?= <rafal@milecki.pl>
+Date: Tue, 26 Feb 2019 14:11:18 +0100
+Subject: [PATCH 145/154] brcmfmac: add a function designated for handling
+ firmware fails
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+commit a2ec87ddbf1637f854ffcfff9d12d392fa30758b upstream.
+
+This improves handling PCIe firmware halts by printing a clear error
+message and replaces a similar code in the SDIO bus support.
+
+It will also allow further improvements like trying to recover from a
+firmware crash.
+
+Signed-off-by: Rafał Miłecki <rafal@milecki.pl>
+Reviewed-by: Arend van Spriel <arend.vanspriel@broadcom.com>
+Signed-off-by: Kalle Valo <kvalo@codeaurora.org>
+
+[chi-hsien.lin@cypress.com: replace bphy_err() with brcmf_err()]
+Signed-off-by: Chi-Hsien Lin <chi-hsien.lin@cypress.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h  |  2 ++
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c | 10 ++++++++++
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c |  2 +-
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c |  6 ++++--
+ 4 files changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+index b6c996c..98e79b7 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
+@@ -252,6 +252,8 @@ int brcmf_bus_get_fwname(struct brcmf_bus *bus, uint chip, uint chiprev,
+ void brcmf_dev_reset(struct device *dev);
+ /* Request from bus module to initiate a coredump */
+ void brcmf_dev_coredump(struct device *dev);
++/* Indication that firmware has halted or crashed */
++void brcmf_fw_crashed(struct device *dev);
+ 
+ /* Configure the "global" bus state used by upper layers */
+ void brcmf_bus_change_state(struct brcmf_bus *bus, enum brcmf_bus_state state);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+index f610b4c..eb4635a 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -1092,6 +1092,16 @@ void brcmf_dev_coredump(struct device *dev)
+ 		brcmf_dbg(TRACE, "failed to create coredump\n");
+ }
+ 
++void brcmf_fw_crashed(struct device *dev)
++{
++	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
++	struct brcmf_pub *drvr = bus_if->drvr;
++
++	brcmf_err("Firmware has halted or crashed\n");
++
++	brcmf_dev_coredump(dev);
++}
++
+ void brcmf_detach(struct device *dev)
+ {
+ 	s32 i;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+index cca5bd1..fb93341 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+@@ -935,7 +935,7 @@ static void brcmf_pcie_handle_mb_data(struct brcmf_pciedev_info *devinfo)
+ 	}
+ 	if (dtoh_mb_data & BRCMF_D2H_DEV_FWHALT) {
+ 		brcmf_dbg(PCIE, "D2H_MB_DATA: FW HALT\n");
+-		brcmf_dev_coredump(&devinfo->pdev->dev);
++		brcmf_fw_crashed(&devinfo->pdev->dev);
+ 	}
+ }
+ 
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index 4759944..ecbe527 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -1141,8 +1141,10 @@ static u32 brcmf_sdio_hostmail(struct brcmf_sdio *bus, u32 *hmbd)
+ 	bus->sdcnt.f1regdata += 2;
+ 
+ 	/* dongle indicates the firmware has halted/crashed */
+-	if (hmb_data & HMB_DATA_FWHALT)
+-		brcmf_err("mailbox indicates firmware halted\n");
++	if (hmb_data & HMB_DATA_FWHALT) {
++		brcmf_dbg(SDIO, "mailbox indicates firmware halted\n");
++		brcmf_fw_crashed(bus->sdiodev->dev);
++	}
+ 
+ 	/* Dongle recomposed rx frames, accept them again */
+ 	if (hmb_data & HMB_DATA_NAKHANDLED) {
+-- 
+1.9.1
+
