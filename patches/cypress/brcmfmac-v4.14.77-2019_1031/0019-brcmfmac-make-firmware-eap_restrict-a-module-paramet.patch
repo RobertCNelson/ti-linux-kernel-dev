@@ -1,0 +1,93 @@
+From b8c3d63a699bdd5ae3040703d58f3f0c96df91f3 Mon Sep 17 00:00:00 2001
+From: Wright Feng <wright.feng@cypress.com>
+Date: Fri, 2 Mar 2018 00:45:32 -0600
+Subject: [PATCH 019/118] brcmfmac: make firmware eap_restrict a module
+ parameter
+
+When eap_restrict is enabled, firmware will toss non-802.1x frames from
+tx/rx data path if station not yet authorized.
+Internal firmware eap_restrict is disabled by default. This patch makes
+it possible to enable firmware eap_restrict by specifying
+eap_restrict=1 as module parameter.
+
+Signed-off-by: Wright Feng <wright.feng@cypress.com>
+
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c | 9 +++++++++
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c   | 5 +++++
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h   | 2 ++
+ 3 files changed, 16 insertions(+)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+index 3a2ce9a..466d3a7 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -6724,6 +6724,7 @@ static s32 brcmf_config_dongle(struct brcmf_cfg80211_info *cfg)
+ 	struct wireless_dev *wdev;
+ 	struct brcmf_if *ifp;
+ 	s32 power_mode;
++	s32 eap_restrict;
+ 	s32 err = 0;
+ 
+ 	if (cfg->dongle_up)
+@@ -6748,6 +6749,14 @@ static s32 brcmf_config_dongle(struct brcmf_cfg80211_info *cfg)
+ 	err = brcmf_dongle_roam(ifp);
+ 	if (err)
+ 		goto default_conf_out;
++
++	eap_restrict = ifp->drvr->settings->eap_restrict;
++	if (eap_restrict) {
++		err = brcmf_fil_iovar_int_set(ifp, "eap_restrict",
++					      eap_restrict);
++		if (err)
++			brcmf_info("eap_restrict error (%d)\n", err);
++	}
+ 	err = brcmf_cfg80211_change_iface(wdev->wiphy, ndev, wdev->iftype,
+ 					  NULL);
+ 	if (err)
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index c73a67a..7328e44 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -77,6 +77,10 @@
+ module_param_named(roamoff, brcmf_roamoff, int, S_IRUSR);
+ MODULE_PARM_DESC(roamoff, "Do not use internal roaming engine");
+ 
++static int brcmf_eap_restrict;
++module_param_named(eap_restrict, brcmf_eap_restrict, int, 0400);
++MODULE_PARM_DESC(eap_restrict, "Block non-802.1X frames until auth finished");
++
+ static int brcmf_sdio_dpc_prio;
+ module_param_named(sdio_dpc_prio, brcmf_sdio_dpc_prio, int, S_IRUSR);
+ MODULE_PARM_DESC(sdio_dpc_prio, "The scheduling priority of sdio_dpc thread");
+@@ -458,6 +462,7 @@ struct brcmf_mp_device *brcmf_get_module_param(struct device *dev,
+ 	settings->feature_disable = brcmf_feature_disable;
+ 	settings->fcmode = brcmf_fcmode;
+ 	settings->roamoff = !!brcmf_roamoff;
++	settings->eap_restrict = !!brcmf_eap_restrict;
+ 	settings->sdio_dpc_prio = brcmf_sdio_dpc_prio;
+ #ifdef DEBUG
+ 	settings->ignore_probe_fail = !!brcmf_ignore_probe_fail;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
+index 4b4dc16..b1b738c 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
+@@ -49,6 +49,7 @@ struct brcmf_mp_global_t {
+  * @feature_disable: Feature_disable bitmask.
+  * @fcmode: FWS flow control.
+  * @roamoff: Firmware roaming off?
++ * @eap_restrict: Not allow data tx/rx until 802.1X auth succeeds
+  * @ignore_probe_fail: Ignore probe failure.
+  * @country_codes: If available, pointer to struct for translating country codes
+  * @bus: Bus specific platform data. Only SDIO at the mmoment.
+@@ -58,6 +59,7 @@ struct brcmf_mp_device {
+ 	unsigned int	feature_disable;
+ 	int		fcmode;
+ 	bool		roamoff;
++	bool		eap_restrict;
+ 	int		sdio_dpc_prio;
+ 	bool		ignore_probe_fail;
+ 	struct brcmfmac_pd_cc *country_codes;
+-- 
+1.9.1
+

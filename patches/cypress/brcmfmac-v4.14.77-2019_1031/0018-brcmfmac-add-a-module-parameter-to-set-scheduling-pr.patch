@@ -1,0 +1,87 @@
+From 39b98a345769a554100c1966e03d1daf8ef301d0 Mon Sep 17 00:00:00 2001
+From: Wright Feng <wright.feng@cypress.com>
+Date: Thu, 1 Mar 2018 20:41:21 -0600
+Subject: [PATCH 018/118] brcmfmac: add a module parameter to set scheduling
+ priority of sdio_dpc
+
+To enhance RX throughput, we add a module parameter "sdio_dpc_prio" to let
+user can set scheduling  priority for sdio_dpc. It can improve RX
+throughput by reducing the receiving time in sdio_dpc.
+
+Signed-off-by: Wright Feng <wright.feng@cypress.com>
+
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c |  5 +++++
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h |  1 +
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c   | 10 ++++++++++
+ 3 files changed, 16 insertions(+)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index 56e2654..c73a67a 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -77,6 +77,10 @@
+ module_param_named(roamoff, brcmf_roamoff, int, S_IRUSR);
+ MODULE_PARM_DESC(roamoff, "Do not use internal roaming engine");
+ 
++static int brcmf_sdio_dpc_prio;
++module_param_named(sdio_dpc_prio, brcmf_sdio_dpc_prio, int, S_IRUSR);
++MODULE_PARM_DESC(sdio_dpc_prio, "The scheduling priority of sdio_dpc thread");
++
+ #ifdef DEBUG
+ /* always succeed brcmf_bus_started() */
+ static int brcmf_ignore_probe_fail;
+@@ -454,6 +458,7 @@ struct brcmf_mp_device *brcmf_get_module_param(struct device *dev,
+ 	settings->feature_disable = brcmf_feature_disable;
+ 	settings->fcmode = brcmf_fcmode;
+ 	settings->roamoff = !!brcmf_roamoff;
++	settings->sdio_dpc_prio = brcmf_sdio_dpc_prio;
+ #ifdef DEBUG
+ 	settings->ignore_probe_fail = !!brcmf_ignore_probe_fail;
+ #endif
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
+index a62f8e7..4b4dc16 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.h
+@@ -58,6 +58,7 @@ struct brcmf_mp_device {
+ 	unsigned int	feature_disable;
+ 	int		fcmode;
+ 	bool		roamoff;
++	int		sdio_dpc_prio;
+ 	bool		ignore_probe_fail;
+ 	struct brcmfmac_pd_cc *country_codes;
+ 	union {
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index baaacab..48cfeb2 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -33,6 +33,7 @@
+ #include <linux/bcma/bcma.h>
+ #include <linux/debugfs.h>
+ #include <linux/vmalloc.h>
++#include <uapi/linux/sched/types.h>
+ #include <asm/unaligned.h>
+ #include <defs.h>
+ #include <brcmu_wifi.h>
+@@ -2703,9 +2704,18 @@ static void brcmf_sdio_dpc(struct brcmf_sdio *bus)
+ 	uint txlimit = bus->txbound;	/* Tx frames to send before resched */
+ 	uint framecnt;			/* Temporary counter of tx/rx frames */
+ 	int err = 0;
++	struct sched_param param;
++	struct brcmf_pub *drvr = bus->sdiodev->bus_if->drvr;
++	int sdio_dpc_prio = drvr->settings->sdio_dpc_prio;
+ 
+ 	brcmf_dbg(TRACE, "Enter\n");
+ 
++	if (sdio_dpc_prio > 0) {
++		param.sched_priority = (sdio_dpc_prio < MAX_RT_PRIO) ?
++				  sdio_dpc_prio : (MAX_RT_PRIO - 1);
++		sched_setscheduler(current, SCHED_FIFO, &param);
++	}
++
+ 	sdio_claim_host(bus->sdiodev->func[1]);
+ 
+ 	/* If waiting for HTAVAIL, check status */
+-- 
+1.9.1
+

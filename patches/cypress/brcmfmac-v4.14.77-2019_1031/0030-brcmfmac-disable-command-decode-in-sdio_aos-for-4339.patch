@@ -1,0 +1,49 @@
+From fc5a828af9814c22ca631264176c4ff04677d319 Mon Sep 17 00:00:00 2001
+From: Wright Feng <wright.feng@cypress.com>
+Date: Wed, 30 May 2018 21:11:20 -0500
+Subject: [PATCH 030/118] brcmfmac: disable command decode in sdio_aos for
+ 4339/4345
+
+Transaction between AOS and SDIOD is not protected, and if cmd 52
+received in AOS and in the middle of response state changed from AOS to
+SDIOD, response is corrupted and it causes to SDIO Host controller to
+hang.
+
+Signed-off-by: Wright Feng <wright.feng@cypress.com>
+
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index 47ad5a9..b091c5d 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -3523,15 +3523,21 @@ static void brcmf_sdio_sr_init(struct brcmf_sdio *bus)
+ 
+ 	if (bus->ci->chip == CY_CC_43012_CHIP_ID) {
+ 		wakeupctrl = SBSDIO_FUNC1_WCTRL_ALPWAIT_SHIFT;
+-		cardcap = SDIO_CCCR_BRCM_CARDCAP_CMD_NODEC;
+ 		chipclkcsr = SBSDIO_HT_AVAIL_REQ;
+ 	} else {
+ 		wakeupctrl = SBSDIO_FUNC1_WCTRL_HTWAIT_SHIFT;
+-		cardcap = (SDIO_CCCR_BRCM_CARDCAP_CMD14_SUPPORT |
+-				   SDIO_CCCR_BRCM_CARDCAP_CMD14_EXT);
+ 		chipclkcsr = SBSDIO_FORCE_HT;
+ 	}
+ 
++	if (bus->ci->chip == CY_CC_43012_CHIP_ID ||
++	    bus->ci->chip == BRCM_CC_4339_CHIP_ID ||
++	    bus->ci->chip == BRCM_CC_4345_CHIP_ID) {
++		cardcap = SDIO_CCCR_BRCM_CARDCAP_CMD_NODEC;
++	} else {
++		cardcap = (SDIO_CCCR_BRCM_CARDCAP_CMD14_SUPPORT |
++			   SDIO_CCCR_BRCM_CARDCAP_CMD14_EXT);
++	}
++
+ 	val = brcmf_sdiod_regrb(bus->sdiodev, SBSDIO_FUNC1_WAKEUPCTRL, &err);
+ 	if (err) {
+ 		brcmf_err("error reading SBSDIO_FUNC1_WAKEUPCTRL\n");
+-- 
+1.9.1
+

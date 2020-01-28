@@ -1,0 +1,61 @@
+From c86175c6d00295b1332d029891dddf41ec19c681 Mon Sep 17 00:00:00 2001
+From: Naveen <nagu@cypress.com>
+Date: Thu, 4 Jan 2018 11:34:15 +0530
+Subject: [PATCH 012/118] brcmfmac: 43012 Update F2 Watermark to 0x60 to fix
+ DMA Error during UDP RX Traffic.
+
+The number of words that the read FIFO has to contain except
+the end of frame before sends data back to the host.
+Max watermark = (512B - 2* (BurstLength))/4 =
+(512 - 128)/4 = 384/4 = 0x60
+so if burst length (i.e. BurstLength = 64) is increased,
+watermark has to be reduced. This is the optimal setting for this chip.
+
+
+Signed-off-by: Naveen Gupta <nagu@cypress.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index 3ed0dd0..508b248 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -51,6 +51,7 @@
+ 
+ #define DEFAULT_F2_WATERMARK    0x8
+ #define CY_4373_F2_WATERMARK    0x40
++#define CY_43012_F2_WATERMARK    0x60
+ 
+ #ifdef DEBUG
+ 
+@@ -4119,7 +4120,6 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+ 			  offsetof(struct sdpcmd_regs, hostintmask));
+ 		switch (sdiodev->func[0]->device) {
+ 		case SDIO_DEVICE_ID_CYPRESS_4373:
+-		case SDIO_DEVICE_ID_CYPRESS_43012:
+ 			brcmf_dbg(INFO, "set F2 watermark to 0x%x*4 bytes\n",
+ 				  CY_4373_F2_WATERMARK);
+ 			brcmf_sdiod_regwb(sdiodev, SBSDIO_WATERMARK, CY_4373_F2_WATERMARK, &err);
+@@ -4127,6 +4127,18 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+ 			devctl |= SBSDIO_DEVCTL_F2WM_ENAB;
+ 			brcmf_sdiod_regwb(sdiodev, SBSDIO_DEVICE_CTL, devctl, &err);
+ 			break;
++		case SDIO_DEVICE_ID_CYPRESS_43012:
++			brcmf_dbg(INFO, "set F2 watermark to 0x%x*4 bytes for 43012\n",
++				  CY_43012_F2_WATERMARK);
++			brcmf_sdiod_regwb(sdiodev,
++					  SBSDIO_WATERMARK,
++					  CY_43012_F2_WATERMARK, &err);
++			devctl = brcmf_sdiod_regrb(sdiodev,
++						   SBSDIO_DEVICE_CTL, &err);
++			devctl |= SBSDIO_DEVCTL_F2WM_ENAB;
++			brcmf_sdiod_regwb(sdiodev,
++					  SBSDIO_DEVICE_CTL, devctl, &err);
++			break;
+ 		default:
+ 			brcmf_sdiod_regwb(sdiodev, SBSDIO_WATERMARK, DEFAULT_F2_WATERMARK, &err);
+ 			break;
+-- 
+1.9.1
+
