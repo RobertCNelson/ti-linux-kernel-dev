@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2009-2019 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2020 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -51,12 +51,6 @@ patch_kernel () {
 	fi
 
 	cd "${DIR}/" || exit
-}
-
-flash_kernel_db () {
-	cat ./KERNEL/arch/${KERNEL_ARCH}/boot/dts/*.dts | grep 'model =' | grep -v ',model' | grep -v 'audio' | grep -v 'sgtl5000' | grep -v 'n-board' | awk -F'"' '{print $2}' | sort -u > /tmp/pre.db
-	sed -i -e 's/^/Machine: /' /tmp/pre.db
-	awk '{print $0 "\nMethod: generic\n"}' /tmp/pre.db > patches/all.db
 }
 
 copy_defconfig () {
@@ -251,7 +245,6 @@ if [ "${FULL_REBUILD}" ] ; then
 	fi
 
 	patch_kernel
-	flash_kernel_db
 	copy_defconfig
 fi
 if [ ! "${AUTO_BUILD}" ] ; then
@@ -261,8 +254,10 @@ if [  -f "${DIR}/.yakbuild" ] ; then
 	BUILD=$(echo ${kernel_tag} | sed 's/[^-]*//'|| true)
 fi
 make_kernel
-make_modules_pkg
-make_dtbs_pkg
+if [ ! "${AUTO_BUILD_DONT_PKG}" ] ; then
+	make_modules_pkg
+	make_dtbs_pkg
+fi
 echo "-----------------------------"
 echo "Script Complete"
 echo "${KERNEL_UTS}" > kernel_version
