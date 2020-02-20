@@ -390,7 +390,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.5"
+	backport_tag="v5.6-rc2"
 
 	subsystem="exfat"
 	#regenerate="enable"
@@ -404,6 +404,8 @@ backports () {
 	else
 		patch_backports
 	fi
+
+	backport_tag="v5.5.4"
 
 	subsystem="greybus"
 	#regenerate="enable"
