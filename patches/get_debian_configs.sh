@@ -1,7 +1,7 @@
 #!/bin/bash
 
-abi="4.19.0-4"
-kernel="4.19.28-2"
+abi="5.4.0-4"
+kernel="5.4.19-1"
 
 debian_site="http://ftp.de.debian.org/debian/pool/main/l/linux"
 incoming_site="http://incoming.debian.org/debian-buildd/pool/main/l/linux"
