@@ -172,8 +172,8 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v5.4.xx
-	#${git_bin} revert --no-edit xyz
+	#v5.4.20
+	${git_bin} revert --no-edit c4faf627c76e7c8cc7eef5f33b0aed212d314041
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -350,7 +350,7 @@ local_patch () {
 
 external_git
 can_isotp
-#rt
+rt
 wireguard
 ti_pm_firmware
 beagleboard_dtbs

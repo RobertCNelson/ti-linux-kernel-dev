@@ -4,8 +4,8 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="-ti-r"
-branch_prefix="ti-linux-"
+build_prefix="-ti-rt-r"
+branch_prefix="ti-linux-rt-"
 branch_postfix=".y"
 bborg_branch="5.4"
 
@@ -39,7 +39,7 @@ KERNEL_REL=5.4
 KERNEL_TAG=${KERNEL_REL}.20
 kernel_rt=".19-rt11"
 #Kernel Build
-BUILD=${build_prefix}4
+BUILD=${build_prefix}4.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
