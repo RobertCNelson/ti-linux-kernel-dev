@@ -51,7 +51,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 DEBARCH=armhf
 
-ti_git_old_release="61654409ad4fc4482dbdaf33bcd8eaa6e33d909e"
-        ti_git_pre="61654409ad4fc4482dbdaf33bcd8eaa6e33d909e"
-       ti_git_post="d274af0de6bd121e593e265553636e5bc319b5d0"
+ti_git_old_release="d274af0de6bd121e593e265553636e5bc319b5d0"
+        ti_git_pre="d274af0de6bd121e593e265553636e5bc319b5d0"
+       ti_git_post="68481af664eb1fcfb9a08b4a017f162dc97ed5de"
 #

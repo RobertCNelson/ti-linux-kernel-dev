@@ -390,7 +390,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.6-rc2"
+	backport_tag="v5.6-rc3"
 
 	subsystem="exfat"
 	#regenerate="enable"
@@ -405,7 +405,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.5.4"
+	backport_tag="v5.5.6"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -420,26 +420,6 @@ backports () {
 	else
 		patch_backports
 	fi
-
-	subsystem="counter"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/bus/* ./drivers/bus/
-		cp -rv ~/linux-src/drivers/counter/* ./drivers/counter/
-		cp -rv ~/linux-src/drivers/pwm/* ./drivers/pwm/
-		cp -v ~/linux-src/include/linux/counter.h ./include/linux/counter.h
-		cp -v ~/linux-src/include/linux/platform_data/ti-sysc.h ./include/linux/platform_data/ti-sysc.h
-		cp -v ~/linux-src/include/linux/mfd/stm32-timers.h ./include/linux/mfd/stm32-timers.h
-		rm -rf ./drivers/pwm/pwm-tipwmss.c || true
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
 }
 
 reverts () {
