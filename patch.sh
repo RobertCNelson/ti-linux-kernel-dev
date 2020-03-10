@@ -173,11 +173,14 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
 	#v5.4.20
+	#powerpc/pseries: Allow not having ibm, hypertas-functions::hcall-mult…
 	${git_bin} revert --no-edit c4faf627c76e7c8cc7eef5f33b0aed212d314041
+	#kbuild: remove header compile test
+	${git_bin} revert --no-edit 28751094cc777ba6806707c42fce31cd2f1e9e5e
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/patch-${rt_patch}.patch.xz
+		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 		rm -f patch-${rt_patch}.patch.xz
 		rm -f localversion-rt
@@ -390,7 +393,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.6-rc3"
+	backport_tag="v5.6-rc5"
 
 	subsystem="exfat"
 	#regenerate="enable"
@@ -405,7 +408,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.5.6"
+	backport_tag="v5.5.8"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -456,16 +459,26 @@ backports
 #soc
 
 packaging () {
-	echo "dir: packaging"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		cp -v "${DIR}/3rdparty/packaging/builddeb" "${DIR}/KERNEL/scripts/package"
-		${git_bin} commit -a -m 'packaging: sync builddeb changes' -s
-		${git_bin} format-patch -1 -o "${DIR}/patches/packaging"
-		exit 2
-	else
-		${git} "${DIR}/patches/packaging/0001-packaging-sync-builddeb-changes.patch"
+	#do_backport="enable"
+	if [ "x${do_backport}" = "xenable" ] ; then
+		backport_tag="v5.6-rc4"
+
+		subsystem="bindeb-pkg"
+		#regenerate="enable"
+		if [ "x${regenerate}" = "xenable" ] ; then
+			pre_backports
+
+			cp -v ~/linux-src/scripts/package/builddeb ./scripts/package/builddeb
+			cp -v ~/linux-src/scripts/package/mkdebian ./scripts/package/mkdebian
+
+			post_backports
+			exit 2
+		else
+			patch_backports
+		fi
 	fi
+
+	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
 }
 
 readme () {
