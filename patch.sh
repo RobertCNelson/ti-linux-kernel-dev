@@ -445,7 +445,7 @@ reverts () {
 }
 
 drivers () {
-	echo "blank"
+	dir 'drivers/ti/overlays'
 }
 
 soc () {
@@ -455,7 +455,7 @@ soc () {
 ###
 backports
 #reverts
-#drivers
+drivers
 #soc
 
 packaging () {
