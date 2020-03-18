@@ -844,6 +844,7 @@ soc () {
 
 	dir 'soc/gssi'
 	dir 'soc/ti/beagleboneai'
+	dir 'bootup_hacks'
 }
 
 ###
