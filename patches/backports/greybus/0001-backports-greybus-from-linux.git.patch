@@ -1,9 +1,9 @@
-From b2f329d14cef3ad87bb4c5b03968e3dab7159c84 Mon Sep 17 00:00:00 2001
+From 3430b49725edd50bc223a0713f98bc2846a6de44 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 21 Jan 2020 14:52:27 -0600
+Date: Tue, 21 Apr 2020 15:22:12 -0500
 Subject: [PATCH] backports: greybus: from: linux.git
 
-Reference: v4.19.97
+Reference: v4.19.117
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  .../Documentation/firmware/authenticate.c     |   1 +
@@ -18,7 +18,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/greybus/audio_codec.c         |  26 +-
  drivers/staging/greybus/audio_codec.h         |  20 +-
  drivers/staging/greybus/audio_gb.c            |   3 +-
- drivers/staging/greybus/audio_manager.c       |   3 +-
+ drivers/staging/greybus/audio_manager.c       |   5 +-
  drivers/staging/greybus/audio_manager.h       |   3 +-
  .../staging/greybus/audio_manager_module.c    |   3 +-
  .../staging/greybus/audio_manager_private.h   |   3 +-
@@ -57,7 +57,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/greybus/i2c.c                 |   3 +-
  drivers/staging/greybus/interface.c           |   3 +-
  drivers/staging/greybus/interface.h           |   3 +-
- drivers/staging/greybus/light.c               |   9 +-
+ drivers/staging/greybus/light.c               |  21 +-
  drivers/staging/greybus/log.c                 |   3 +-
  drivers/staging/greybus/loopback.c            | 238 ++++--------------
  drivers/staging/greybus/manifest.c            |   3 +-
@@ -77,11 +77,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/greybus/svc.h                 |   3 +-
  drivers/staging/greybus/svc_watchdog.c        |   3 +-
  drivers/staging/greybus/tools/lbtest          |   1 +
- drivers/staging/greybus/tools/loopback_test.c |   5 +-
+ drivers/staging/greybus/tools/loopback_test.c |  20 +-
  drivers/staging/greybus/uart.c                |   3 +-
  drivers/staging/greybus/usb.c                 |   4 +-
  drivers/staging/greybus/vibrator.c            |   3 +-
- 75 files changed, 223 insertions(+), 411 deletions(-)
+ 75 files changed, 238 insertions(+), 425 deletions(-)
  create mode 100644 drivers/staging/greybus/TODO
 
 diff --git a/drivers/staging/greybus/Documentation/firmware/authenticate.c b/drivers/staging/greybus/Documentation/firmware/authenticate.c
@@ -632,7 +632,7 @@ index 7884d8482dc0..8894f1c87d48 100644
  
  #include "greybus.h"
 diff --git a/drivers/staging/greybus/audio_manager.c b/drivers/staging/greybus/audio_manager.c
-index 045696ce85c7..d44b070d8862 100644
+index 045696ce85c7..0f5c68edf2c1 100644
 --- a/drivers/staging/greybus/audio_manager.c
 +++ b/drivers/staging/greybus/audio_manager.c
 @@ -1,9 +1,8 @@
@@ -646,6 +646,16 @@ index 045696ce85c7..d44b070d8862 100644
   */
  
  #include <linux/string.h>
+@@ -90,8 +89,8 @@ void gb_audio_manager_remove_all(void)
+ 
+ 	list_for_each_entry_safe(module, next, &modules_list, list) {
+ 		list_del(&module->list);
+-		kobject_put(&module->kobj);
+ 		ida_simple_remove(&module_id, module->id);
++		kobject_put(&module->kobj);
+ 	}
+ 
+ 	is_empty = list_empty(&modules_list);
 diff --git a/drivers/staging/greybus/audio_manager.h b/drivers/staging/greybus/audio_manager.h
 index 5ab8f5e0ed3f..dcb1a20f5ff1 100644
 --- a/drivers/staging/greybus/audio_manager.h
@@ -1365,7 +1375,7 @@ index bd31b8c18d5b..1c00c5bb3ec9 100644
  
  #ifndef __INTERFACE_H
 diff --git a/drivers/staging/greybus/light.c b/drivers/staging/greybus/light.c
-index 0f538b8c3a07..010ae1e9c7fb 100644
+index 0f538b8c3a07..40680eaf3974 100644
 --- a/drivers/staging/greybus/light.c
 +++ b/drivers/staging/greybus/light.c
 @@ -1,10 +1,9 @@
@@ -1393,6 +1403,34 @@ index 0f538b8c3a07..010ae1e9c7fb 100644
  }
  
  static int gb_lights_light_config(struct gb_lights *glights, u8 id)
+@@ -1103,21 +1098,21 @@ static void gb_lights_channel_release(struct gb_channel *channel)
+ static void gb_lights_light_release(struct gb_light *light)
+ {
+ 	int i;
+-	int count;
+ 
+ 	light->ready = false;
+ 
+-	count = light->channels_count;
+-
+ 	if (light->has_flash)
+ 		gb_lights_light_v4l2_unregister(light);
++	light->has_flash = false;
+ 
+-	for (i = 0; i < count; i++) {
++	for (i = 0; i < light->channels_count; i++)
+ 		gb_lights_channel_release(&light->channels[i]);
+-		light->channels_count--;
+-	}
++	light->channels_count = 0;
++
+ 	kfree(light->channels);
++	light->channels = NULL;
+ 	kfree(light->name);
++	light->name = NULL;
+ }
+ 
+ static void gb_lights_release(struct gb_lights *glights)
 diff --git a/drivers/staging/greybus/log.c b/drivers/staging/greybus/log.c
 index 5c5bedaf69a6..15a88574dbb0 100644
 --- a/drivers/staging/greybus/log.c
@@ -2174,7 +2212,7 @@ index d7353f1a2a6f..47c481239e98 100755
  # Copyright (c) 2015 Google, Inc.
  # Copyright (c) 2015 Linaro, Ltd.
 diff --git a/drivers/staging/greybus/tools/loopback_test.c b/drivers/staging/greybus/tools/loopback_test.c
-index fbe589fca840..b82e2befe935 100644
+index fbe589fca840..1452df84e2b7 100644
 --- a/drivers/staging/greybus/tools/loopback_test.c
 +++ b/drivers/staging/greybus/tools/loopback_test.c
 @@ -1,3 +1,4 @@
@@ -2182,24 +2220,78 @@ index fbe589fca840..b82e2befe935 100644
  /*
   * Loopback test application
   *
-@@ -662,7 +663,7 @@ static int open_poll_files(struct loopback_test *t)
+@@ -20,6 +21,7 @@
+ #include <signal.h>
+ 
+ #define MAX_NUM_DEVICES 10
++#define MAX_SYSFS_PREFIX 0x80
+ #define MAX_SYSFS_PATH	0x200
+ #define CSV_MAX_LINE	0x1000
+ #define SYSFS_MAX_INT	0x20
+@@ -68,7 +70,7 @@ struct loopback_results {
+ };
+ 
+ struct loopback_device {
+-	char name[MAX_SYSFS_PATH];
++	char name[MAX_STR_LEN];
+ 	char sysfs_entry[MAX_SYSFS_PATH];
+ 	char debugfs_entry[MAX_SYSFS_PATH];
+ 	struct loopback_results results;
+@@ -94,8 +96,8 @@ struct loopback_test {
+ 	int stop_all;
+ 	int poll_count;
+ 	char test_name[MAX_STR_LEN];
+-	char sysfs_prefix[MAX_SYSFS_PATH];
+-	char debugfs_prefix[MAX_SYSFS_PATH];
++	char sysfs_prefix[MAX_SYSFS_PREFIX];
++	char debugfs_prefix[MAX_SYSFS_PREFIX];
+ 	struct timespec poll_timeout;
+ 	struct loopback_device devices[MAX_NUM_DEVICES];
+ 	struct loopback_results aggregate_results;
+@@ -644,7 +646,7 @@ int find_loopback_devices(struct loopback_test *t)
+ static int open_poll_files(struct loopback_test *t)
+ {
+ 	struct loopback_device *dev;
+-	char buf[MAX_STR_LEN];
++	char buf[MAX_SYSFS_PATH + MAX_STR_LEN];
+ 	char dummy;
+ 	int fds_idx = 0;
+ 	int i;
+@@ -662,7 +664,7 @@ static int open_poll_files(struct loopback_test *t)
  			goto err;
  		}
  		read(t->fds[fds_idx].fd, &dummy, 1);
 -		t->fds[fds_idx].events = POLLERR|POLLPRI;
-+		t->fds[fds_idx].events = EPOLLERR|EPOLLPRI;
++		t->fds[fds_idx].events = POLLERR | POLLPRI;
  		t->fds[fds_idx].revents = 0;
  		fds_idx++;
  	}
-@@ -755,7 +756,7 @@ static int wait_for_complete(struct loopback_test *t)
- 		}
+@@ -914,10 +916,10 @@ int main(int argc, char *argv[])
+ 			t.iteration_max = atoi(optarg);
+ 			break;
+ 		case 'S':
+-			snprintf(t.sysfs_prefix, MAX_SYSFS_PATH, "%s", optarg);
++			snprintf(t.sysfs_prefix, MAX_SYSFS_PREFIX, "%s", optarg);
+ 			break;
+ 		case 'D':
+-			snprintf(t.debugfs_prefix, MAX_SYSFS_PATH, "%s", optarg);
++			snprintf(t.debugfs_prefix, MAX_SYSFS_PREFIX, "%s", optarg);
+ 			break;
+ 		case 'm':
+ 			t.mask = atol(optarg);
+@@ -968,10 +970,10 @@ int main(int argc, char *argv[])
+ 	}
  
- 		for (i = 0; i < t->poll_count; i++) {
--			if (t->fds[i].revents & POLLPRI) {
-+			if (t->fds[i].revents & EPOLLPRI) {
- 				/* Dummy read to clear the event */
- 				read(t->fds[i].fd, &dummy, 1);
- 				number_of_events++;
+ 	if (!strcmp(t.sysfs_prefix, ""))
+-		snprintf(t.sysfs_prefix, MAX_SYSFS_PATH, "%s", sysfs_prefix);
++		snprintf(t.sysfs_prefix, MAX_SYSFS_PREFIX, "%s", sysfs_prefix);
+ 
+ 	if (!strcmp(t.debugfs_prefix, ""))
+-		snprintf(t.debugfs_prefix, MAX_SYSFS_PATH, "%s", debugfs_prefix);
++		snprintf(t.debugfs_prefix, MAX_SYSFS_PREFIX, "%s", debugfs_prefix);
+ 
+ 	ret = find_loopback_devices(&t);
+ 	if (ret)
 diff --git a/drivers/staging/greybus/uart.c b/drivers/staging/greybus/uart.c
 index c6d01b800d3c..8a006323c3c1 100644
 --- a/drivers/staging/greybus/uart.c
@@ -2251,5 +2343,5 @@ index 5cd8a50d41ad..3e5dedeacd5c 100644
  
  #include <linux/kernel.h>
 -- 
-2.24.1
+2.26.1
 
