@@ -417,7 +417,6 @@ beagleboard_dtbs () {
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
 
-		#device="am5729-beagleboneai.dtb" ; dtb_makefile_append_am5
 		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am5
 
 		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
@@ -591,9 +590,6 @@ drivers () {
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/gpio'
-
-	#[PATCH v3 1/4] mfd: stmpe: Move ADC related defines to header of mfd
-#	dir 'drivers/iio/stmpe'
 
 	dir 'drivers/uio_pruss_shmem'
 	dir 'drivers/greybus'
