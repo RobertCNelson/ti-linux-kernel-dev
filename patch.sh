@@ -172,11 +172,7 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v5.4.20
-	#powerpc/pseries: Allow not having ibm, hypertas-functions::hcall-mult…
-	${git_bin} revert --no-edit c4faf627c76e7c8cc7eef5f33b0aed212d314041
-	#kbuild: remove header compile test
-	${git_bin} revert --no-edit 28751094cc777ba6806707c42fce31cd2f1e9e5e
+	#${git_bin} revert --no-edit xyz
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -393,7 +389,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.6-rc5"
+	backport_tag="v5.6.6"
 
 	subsystem="exfat"
 	#regenerate="enable"
@@ -408,7 +404,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.5.8"
+	backport_tag="v5.5.19"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -423,6 +419,26 @@ backports () {
 	else
 		patch_backports
 	fi
+
+	backport_tag="v5.4.18"
+
+	subsystem="brcm80211"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
+		#cp -v ~/linux-src/include/linux/mmc/sdio_ids.h ./include/linux/mmc/sdio_ids.h
+		#cp -v ~/linux-src/include/linux/firmware.h ./include/linux/firmware.h
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	#regenerate="enable"
+	dir 'cypress/brcmfmac'
 }
 
 reverts () {
@@ -468,8 +484,7 @@ packaging () {
 		if [ "x${regenerate}" = "xenable" ] ; then
 			pre_backports
 
-			cp -v ~/linux-src/scripts/package/builddeb ./scripts/package/builddeb
-			cp -v ~/linux-src/scripts/package/mkdebian ./scripts/package/mkdebian
+			cp -v ~/linux-src/scripts/package/* ./scripts/package/
 
 			post_backports
 			exit 2
