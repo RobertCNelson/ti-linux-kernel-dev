@@ -467,9 +467,10 @@ drivers () {
 	dir 'drivers/sound'
 	dir 'drivers/spi'
 	dir 'drivers/tps65217'
-	#exit 2
 
 	dir 'drivers/ti/overlays'
+	dir 'drivers/ti/cpsw'
+	#exit 2
 }
 
 soc () {
