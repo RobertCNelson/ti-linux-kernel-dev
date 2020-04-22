@@ -470,6 +470,9 @@ drivers () {
 
 	dir 'drivers/ti/overlays'
 	dir 'drivers/ti/cpsw'
+	dir 'drivers/ti/serial'
+	dir 'drivers/ti/tsc'
+	dir 'drivers/ti/gpio'
 	#exit 2
 }
 
