@@ -464,6 +464,7 @@ reverts () {
 drivers () {
 	dir 'drivers/ar1021_i2c'
 	dir 'drivers/pwm'
+	dir 'drivers/rproc'
 	dir 'drivers/sound'
 	dir 'drivers/spi'
 	dir 'drivers/tps65217'
@@ -473,18 +474,17 @@ drivers () {
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/gpio'
-	#exit 2
 }
 
 soc () {
-	echo "blank"
+	dir 'bootup_hacks'
 }
 
 ###
 backports
 #reverts
 drivers
-#soc
+soc
 
 packaging () {
 	#do_backport="enable"
