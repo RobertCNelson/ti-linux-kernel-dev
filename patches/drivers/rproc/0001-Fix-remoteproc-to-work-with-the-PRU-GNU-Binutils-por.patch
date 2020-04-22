@@ -1,0 +1,36 @@
+From c865af509dc3c582d95b7b69845e115c4b535501 Mon Sep 17 00:00:00 2001
+From: Dimitar Dimitrov <dinuxbg@gmail.com>
+Date: Wed, 31 Aug 2016 10:39:07 -0600
+Subject: [PATCH] Fix remoteproc to work with the PRU GNU Binutils port
+
+PRU IRAM addresses need to be masked before being handled to
+remoteproc. This is due to PRU Binutils' lack of separate address
+spaces for IRAM and DRAM.
+
+Signed-off-by: Dimitar Dimitrov <dinuxbg@gmail.com>
+---
+ drivers/remoteproc/pru_rproc.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/remoteproc/pru_rproc.c b/drivers/remoteproc/pru_rproc.c
+index f8f31fb89cf7..47871b3482f1 100644
+--- a/drivers/remoteproc/pru_rproc.c
++++ b/drivers/remoteproc/pru_rproc.c
+@@ -957,6 +957,14 @@ static void *pru_i_da_to_va(struct pru_rproc *pru, u32 da, int len)
+ 	u32 offset;
+ 	void *va = NULL;
+ 
++	/* GNU binutils do not support multiple address spaces. The
++	 * default linker script from the official GNU pru-ld places
++	 * IRAM at an arbitrary high offset, in order to differentiate it
++	 * from DRAM. Hence we need to strip the artificial offset
++	 * from the IRAM address.
++	 */
++	da &= ~0xf0000000u;
++
+ 	if (len <= 0)
+ 		return NULL;
+ 
+-- 
+2.26.1
+
