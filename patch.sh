@@ -172,6 +172,7 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
+	#v5.4.x
 	#${git_bin} revert --no-edit xyz
 
 	#regenerate="enable"
@@ -461,6 +462,9 @@ reverts () {
 }
 
 drivers () {
+	dir 'drivers/ar1021_i2c'
+	dir 'drivers/pwm'
+	#exit 2
 	dir 'drivers/ti/overlays'
 }
 
