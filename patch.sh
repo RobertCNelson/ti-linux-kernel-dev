@@ -591,7 +591,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.117"
+	backport_tag="v4.19.119"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -605,6 +605,21 @@ backports () {
 	else
 		patch_backports
 		${git} "${DIR}/patches/backports/greybus/0002-greybus-drivers-staging-greybus-module.c-no-struct_s.patch"
+	fi
+
+	backport_tag="v5.4.36"
+
+	subsystem="wiznet"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/ethernet/wiznet/* ./drivers/net/ethernet/wiznet/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
 	fi
 }
 
@@ -644,7 +659,6 @@ drivers () {
 	dir 'drivers/ssd1306'
 	dir 'drivers/tps65217'
 	dir 'drivers/opp'
-	dir 'drivers/wiznet'
 
 	#https://github.com/pantoniou/linux-beagle-track-mainline/tree/bbb-overlays
 	echo "dir: drivers/ti/bbb_overlays"
