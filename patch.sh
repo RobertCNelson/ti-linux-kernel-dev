@@ -173,7 +173,7 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
 	#v5.4.x
-	#${git_bin} revert --no-edit xyz
+	${git_bin} revert --no-edit 4a5c9ae67b12f628fdc8f9ffac7e5677d510dd5e
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -223,6 +223,11 @@ wireguard () {
 		../WireGuard/contrib/kernel-tree/create-patch.sh | patch -p1 || wireguard_fail
 
 		${git_bin} add .
+
+		#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=v5.4.34&id=f8c60f7a00516820589c4c9da5614e4b7f4d0b2f
+		sed -i -e 's:skb_reset_tc:skb_reset_redirect:g' ./net/wireguard/queueing.h
+		sed -i -e 's:skb_reset_tc:skb_reset_redirect:g' ./net/wireguard/compat/compat.h
+
 		${git_bin} commit -a -m 'merge: WireGuard' -m "https://git.zx2c4.com/WireGuard/commit/${wireguard_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/WireGuard/
 		echo "WIREGUARD: https://git.zx2c4.com/WireGuard/commit/${wireguard_hash}" > ../patches/git/WIREGUARD
@@ -319,6 +324,12 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
+		device="am335x-abbbi.dtb" ; dtb_makefile_append
+
+		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
@@ -390,7 +401,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.6.6"
+	backport_tag="v5.6.11"
 
 	subsystem="exfat"
 	#regenerate="enable"
@@ -489,7 +500,7 @@ soc
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.6-rc4"
+		backport_tag="v5.6"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
