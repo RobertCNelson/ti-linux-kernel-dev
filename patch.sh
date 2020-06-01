@@ -173,7 +173,7 @@ rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
 	#v5.4.x
-	${git_bin} revert --no-edit 4a5c9ae67b12f628fdc8f9ffac7e5677d510dd5e
+	#${git_bin} revert --no-edit 4a5c9ae67b12f628fdc8f9ffac7e5677d510dd5e
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -401,7 +401,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.6.11"
+	backport_tag="v5.6.15"
 
 	subsystem="exfat"
 	#regenerate="enable"
@@ -474,7 +474,6 @@ reverts () {
 
 drivers () {
 	dir 'drivers/ar1021_i2c'
-	dir 'drivers/pwm'
 	dir 'drivers/rproc'
 	dir 'drivers/sound'
 	dir 'drivers/spi'
