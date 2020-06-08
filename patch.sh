@@ -78,6 +78,7 @@ dir () {
 
 		number=
 		for p in "${DIR}/patches/$wdir/"*.patch; do
+			#echo "$p"
 			${git} "$p"
 			number=$(( $number + 1 ))
 		done
@@ -685,7 +686,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.119"
+	backport_tag="v4.19.127"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -701,7 +702,7 @@ backports () {
 		${git} "${DIR}/patches/backports/greybus/0002-greybus-drivers-staging-greybus-module.c-no-struct_s.patch"
 	fi
 
-	backport_tag="v5.4.36"
+	backport_tag="v5.4.45"
 
 	subsystem="wiznet"
 	#regenerate="enable"
