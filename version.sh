@@ -36,10 +36,10 @@ toolchain="gcc_arm_gnueabihf_8"
 
 #Kernel
 KERNEL_REL=5.4
-KERNEL_TAG=${KERNEL_REL}.40
-kernel_rt=".40-rt24"
+KERNEL_TAG=${KERNEL_REL}.45
+kernel_rt=".44-rt27"
 #Kernel Build
-BUILD=${build_prefix}10
+BUILD=${build_prefix}10.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -51,7 +51,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 DEBARCH=armhf
 
-ti_git_old_release="af0afbe9697537ca7948707333401f9f6bd00a68"
-        ti_git_pre="af0afbe9697537ca7948707333401f9f6bd00a68"
-       ti_git_post="66cf445b7697a4963cfc796e06918fe5b147fe7d"
+ti_git_old_release="66cf445b7697a4963cfc796e06918fe5b147fe7d"
+        ti_git_pre="66cf445b7697a4963cfc796e06918fe5b147fe7d"
+       ti_git_post="134a1b1f8814115e2dd115b67082321bf9e63cc1"
 #
