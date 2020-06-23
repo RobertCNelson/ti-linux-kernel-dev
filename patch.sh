@@ -401,7 +401,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.6.18"
+	backport_tag="v5.6.19"
 
 	subsystem="exfat"
 	#regenerate="enable"
