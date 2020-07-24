@@ -467,7 +467,7 @@ reverts () {
 	## notes
 	##git revert --no-edit xyz -s
 
-	#${git} "${DIR}/patches/reverts/0001-Revert-xyz.patch"
+	${git} "${DIR}/patches/reverts/0001-Revert-scripts-headers_install-Exit-with-error-on-co.patch"
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
@@ -497,7 +497,7 @@ soc () {
 
 ###
 backports
-#reverts
+reverts
 drivers
 soc
 
