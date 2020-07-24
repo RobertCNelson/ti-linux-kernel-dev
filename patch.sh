@@ -301,7 +301,7 @@ dtb_makefile_append () {
 }
 
 beagleboard_dtbs () {
-	branch="v5.4.x-ti"
+	branch="v5.4.x-ti-overlays"
 	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
@@ -321,7 +321,11 @@ beagleboard_dtbs () {
 		fi
 		cd ./KERNEL/
 
+		mkdir -p arch/arm/boot/dts/overlays/
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
+		if [ -f ./arch/arm/boot/dts/overlays/README.MD ] ; then
+			rm -rf ./arch/arm/boot/dts/overlays/README.MD
+		fi
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
@@ -484,6 +488,7 @@ drivers () {
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/gpio'
+	dir 'RPi'
 }
 
 soc () {
