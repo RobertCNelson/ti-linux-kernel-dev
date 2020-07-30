@@ -436,6 +436,22 @@ backports () {
 		patch_backports
 	fi
 
+	backport_tag="v5.5.19"
+
+	subsystem="typec"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/usb/typec/* ./drivers/usb/typec/
+		cp -v ~/linux-src/include/linux/usb/typec.h ./include/linux/usb/typec.h
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
 	backport_tag="v5.4.18"
 
 	subsystem="brcm80211"
