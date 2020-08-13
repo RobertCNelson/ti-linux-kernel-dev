@@ -498,6 +498,21 @@ patch_backports (){
 }
 
 backports () {
+	backport_tag="v5.4.58"
+
+	subsystem="typec"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/usb/typec/ ./drivers/usb/typec/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
 	backport_tag="v5.3.18"
 
 	subsystem="stmpe"
@@ -516,22 +531,6 @@ backports () {
 	fi
 
 	${git} "${DIR}/patches/backports/stmpe/0002-stmpe-wire-up-adc-Kconfig-Makefile.patch"
-
-	backport_tag="v5.3.18"
-
-	subsystem="typec"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/usb/typec/ ./drivers/usb/typec/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
 
 	backport_tag="v5.0.21"
 

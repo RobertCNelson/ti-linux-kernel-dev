@@ -1,45 +1,45 @@
-From 4653cd27441ade6bffb14cf77682e8eed5190e9b Mon Sep 17 00:00:00 2001
+From c7e2c67454a595a80203393b9126fdbf53a11e65 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 13 Aug 2020 16:14:53 -0500
+Date: Thu, 13 Aug 2020 16:23:46 -0500
 Subject: [PATCH] backports: typec: from: linux.git
 
-Reference: v5.3.18
+Reference: v5.4.58
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/usb/typec/typec/Kconfig               |   67 +
+ drivers/usb/typec/typec/Kconfig               |   68 +
  drivers/usb/typec/typec/Makefile              |    8 +
  drivers/usb/typec/typec/altmodes/Kconfig      |   25 +
  drivers/usb/typec/typec/altmodes/Makefile     |    6 +
  .../usb/typec/typec/altmodes/displayport.c    |  578 ++
  .../usb/typec/typec/altmodes/displayport.h    |    8 +
  drivers/usb/typec/typec/altmodes/nvidia.c     |   44 +
- drivers/usb/typec/typec/bus.c                 |  403 ++
+ drivers/usb/typec/typec/bus.c                 |  406 ++
  drivers/usb/typec/typec/bus.h                 |   53 +
- drivers/usb/typec/typec/class.c               | 1684 ++++++
+ drivers/usb/typec/typec/class.c               | 1672 ++++++
  drivers/usb/typec/typec/mux.c                 |  370 ++
  drivers/usb/typec/typec/mux/Kconfig           |   12 +
  drivers/usb/typec/typec/mux/Makefile          |    3 +
  drivers/usb/typec/typec/mux/pi3usb30532.c     |  190 +
- drivers/usb/typec/typec/tcpm/Kconfig          |   54 +
+ drivers/usb/typec/typec/tcpm/Kconfig          |   55 +
  drivers/usb/typec/typec/tcpm/Makefile         |    7 +
- drivers/usb/typec/typec/tcpm/fusb302.c        | 1870 +++++++
+ drivers/usb/typec/typec/tcpm/fusb302.c        | 1855 +++++++
  drivers/usb/typec/typec/tcpm/fusb302_reg.h    |  177 +
- drivers/usb/typec/typec/tcpm/tcpci.c          |  616 +++
+ drivers/usb/typec/typec/tcpm/tcpci.c          |  632 +++
  drivers/usb/typec/typec/tcpm/tcpci.h          |  139 +
- drivers/usb/typec/typec/tcpm/tcpci_rt1711h.c  |  312 ++
- drivers/usb/typec/typec/tcpm/tcpm.c           | 4864 +++++++++++++++++
- drivers/usb/typec/typec/tcpm/wcove.c          |  705 +++
+ drivers/usb/typec/typec/tcpm/tcpci_rt1711h.c  |  301 +
+ drivers/usb/typec/typec/tcpm/tcpm.c           | 4881 +++++++++++++++++
+ drivers/usb/typec/typec/tcpm/wcove.c          |  703 +++
  drivers/usb/typec/typec/tps6598x.c            |  581 ++
  drivers/usb/typec/typec/ucsi/Kconfig          |   50 +
  drivers/usb/typec/typec/ucsi/Makefile         |   15 +
- drivers/usb/typec/typec/ucsi/displayport.c    |  317 ++
+ drivers/usb/typec/typec/ucsi/displayport.c    |  327 ++
  drivers/usb/typec/typec/ucsi/trace.c          |   74 +
  drivers/usb/typec/typec/ucsi/trace.h          |  173 +
  drivers/usb/typec/typec/ucsi/ucsi.c           | 1044 ++++
  drivers/usb/typec/typec/ucsi/ucsi.h           |  456 ++
  drivers/usb/typec/typec/ucsi/ucsi_acpi.c      |  160 +
- drivers/usb/typec/typec/ucsi/ucsi_ccg.c       | 1249 +++++
- 33 files changed, 16314 insertions(+)
+ drivers/usb/typec/typec/ucsi/ucsi_ccg.c       | 1242 +++++
+ 33 files changed, 16315 insertions(+)
  create mode 100644 drivers/usb/typec/typec/Kconfig
  create mode 100644 drivers/usb/typec/typec/Makefile
  create mode 100644 drivers/usb/typec/typec/altmodes/Kconfig
@@ -76,10 +76,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 
 diff --git a/drivers/usb/typec/typec/Kconfig b/drivers/usb/typec/typec/Kconfig
 new file mode 100644
-index 000000000000..89d9193bd1cf
+index 000000000000..895e2418de53
 --- /dev/null
 +++ b/drivers/usb/typec/typec/Kconfig
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,68 @@
 +# SPDX-License-Identifier: GPL-2.0
 +
 +menuconfig TYPEC
@@ -135,6 +135,7 @@ index 000000000000..89d9193bd1cf
 +config TYPEC_TPS6598X
 +	tristate "TI TPS6598x USB Power Delivery controller driver"
 +	depends on I2C
++	select REGMAP_I2C
 +	help
 +	  Say Y or M here if your system has TI TPS65982 or TPS65983 USB Power
 +	  Delivery controller.
@@ -854,10 +855,10 @@ index 000000000000..c36769736405
 +MODULE_DESCRIPTION("NVIDIA USB Type-C Alt Mode Driver");
 diff --git a/drivers/usb/typec/typec/bus.c b/drivers/usb/typec/typec/bus.c
 new file mode 100644
-index 000000000000..74cb3c2ecb34
+index 000000000000..c950171556d8
 --- /dev/null
 +++ b/drivers/usb/typec/typec/bus.c
-@@ -0,0 +1,403 @@
+@@ -0,0 +1,406 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/**
 + * Bus for USB Type-C Alternate Modes
@@ -1052,7 +1053,10 @@ index 000000000000..74cb3c2ecb34
 +const struct typec_altmode *
 +typec_altmode_get_partner(struct typec_altmode *adev)
 +{
-+	return adev ? &to_altmode(adev)->partner->adev : NULL;
++	if (!adev || !to_altmode(adev)->partner)
++		return NULL;
++
++	return &to_altmode(adev)->partner->adev;
 +}
 +EXPORT_SYMBOL_GPL(typec_altmode_get_partner);
 +
@@ -1322,10 +1326,10 @@ index 000000000000..0c9661c96473
 +#endif /* __USB_TYPEC_ALTMODE_H__ */
 diff --git a/drivers/usb/typec/typec/class.c b/drivers/usb/typec/typec/class.c
 new file mode 100644
-index 000000000000..78fc5fa963c3
+index 000000000000..a400b65cf17b
 --- /dev/null
 +++ b/drivers/usb/typec/typec/class.c
-@@ -0,0 +1,1684 @@
+@@ -0,0 +1,1672 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * USB Type-C Connector Class
@@ -1533,16 +1537,6 @@ index 000000000000..78fc5fa963c3
 +	put_device(&adev->dev);
 +}
 +
-+static int typec_port_fwnode_match(struct device *dev, const void *fwnode)
-+{
-+	return dev_fwnode(dev) == fwnode;
-+}
-+
-+static int typec_port_name_match(struct device *dev, const void *name)
-+{
-+	return !strcmp((const char *)name, dev_name(dev));
-+}
-+
 +static void *typec_port_match(struct device_connection *con, int ep, void *data)
 +{
 +	struct device *dev;
@@ -1552,11 +1546,9 @@ index 000000000000..78fc5fa963c3
 +	 * we need to return ERR_PTR(-PROBE_DEFER) when there is no device.
 +	 */
 +	if (con->fwnode)
-+		return class_find_device(typec_class, NULL, con->fwnode,
-+					 typec_port_fwnode_match);
++		return class_find_device_by_fwnode(typec_class, con->fwnode);
 +
-+	dev = class_find_device(typec_class, NULL, con->endpoint[ep],
-+				typec_port_name_match);
++	dev = class_find_device_by_name(typec_class, con->endpoint[ep]);
 +
 +	return dev ? dev : ERR_PTR(-EPROBE_DEFER);
 +}
@@ -3012,7 +3004,7 @@ index 000000000000..78fc5fa963c3
 +MODULE_DESCRIPTION("USB Type-C Connector Class");
 diff --git a/drivers/usb/typec/typec/mux.c b/drivers/usb/typec/typec/mux.c
 new file mode 100644
-index 000000000000..61b7bc58dd81
+index 000000000000..57907f26f681
 --- /dev/null
 +++ b/drivers/usb/typec/typec/mux.c
 @@ -0,0 +1,370 @@
@@ -3233,7 +3225,7 @@ index 000000000000..61b7bc58dd81
 +	}
 +
 +	/* Alternate Mode muxes */
-+	nval = fwnode_property_read_u16_array(con->fwnode, "svid", NULL, 0);
++	nval = fwnode_property_count_u16(con->fwnode, "svid");
 +	if (nval <= 0)
 +		return NULL;
 +
@@ -3611,10 +3603,10 @@ index 000000000000..5585b109095b
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/usb/typec/typec/tcpm/Kconfig b/drivers/usb/typec/typec/tcpm/Kconfig
 new file mode 100644
-index 000000000000..72481bbb2af3
+index 000000000000..5b986d6c801d
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/Kconfig
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,55 @@
 +# SPDX-License-Identifier: GPL-2.0
 +
 +config TYPEC_TCPM
@@ -3649,6 +3641,7 @@ index 000000000000..72481bbb2af3
 +config TYPEC_FUSB302
 +	tristate "Fairchild FUSB302 Type-C chip driver"
 +	depends on I2C
++	depends on EXTCON || !EXTCON
 +	help
 +	  The Fairchild FUSB302 Type-C chip driver that works with
 +	  Type-C Port Controller Manager to provide USB PD and USB
@@ -3684,10 +3677,10 @@ index 000000000000..a5ff6c8eb892
 +obj-$(CONFIG_TYPEC_RT1711H)	+= tcpci_rt1711h.o
 diff --git a/drivers/usb/typec/typec/tcpm/fusb302.c b/drivers/usb/typec/typec/tcpm/fusb302.c
 new file mode 100644
-index 000000000000..c524088246ee
+index 000000000000..b498960ff72b
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/fusb302.c
-@@ -0,0 +1,1870 @@
+@@ -0,0 +1,1855 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2016-2017 Google, Inc
@@ -3716,6 +3709,7 @@ index 000000000000..c524088246ee
 +#include <linux/spinlock.h>
 +#include <linux/string.h>
 +#include <linux/types.h>
++#include <linux/usb.h>
 +#include <linux/usb/typec.h>
 +#include <linux/usb/tcpm.h>
 +#include <linux/usb/pd.h>
@@ -3765,7 +3759,6 @@ index 000000000000..c524088246ee
 +	struct i2c_client *i2c_client;
 +	struct tcpm_port *tcpm_port;
 +	struct tcpc_dev tcpc_dev;
-+	struct tcpc_config tcpc_config;
 +
 +	struct regulator *vbus;
 +
@@ -3897,23 +3890,19 @@ index 000000000000..c524088246ee
 +}
 +DEFINE_SHOW_ATTRIBUTE(fusb302_debug);
 +
-+static struct dentry *rootdir;
-+
 +static void fusb302_debugfs_init(struct fusb302_chip *chip)
 +{
-+	mutex_init(&chip->logbuffer_lock);
-+	if (!rootdir)
-+		rootdir = debugfs_create_dir("fusb302", NULL);
++	char name[NAME_MAX];
 +
-+	chip->dentry = debugfs_create_file(dev_name(chip->dev),
-+					   S_IFREG | 0444, rootdir,
++	mutex_init(&chip->logbuffer_lock);
++	snprintf(name, NAME_MAX, "fusb302-%s", dev_name(chip->dev));
++	chip->dentry = debugfs_create_file(name, S_IFREG | 0444, usb_debug_root,
 +					   chip, &fusb302_debug_fops);
 +}
 +
 +static void fusb302_debugfs_exit(struct fusb302_chip *chip)
 +{
 +	debugfs_remove(chip->dentry);
-+	debugfs_remove(rootdir);
 +}
 +
 +#else
@@ -4800,23 +4789,6 @@ index 000000000000..c524088246ee
 +	mutex_unlock(&chip->lock);
 +}
 +
-+#define PDO_FIXED_FLAGS \
-+	(PDO_FIXED_DUAL_ROLE | PDO_FIXED_DATA_SWAP | PDO_FIXED_USB_COMM)
-+
-+static const u32 src_pdo[] = {
-+	PDO_FIXED(5000, 400, PDO_FIXED_FLAGS),
-+};
-+
-+static const struct tcpc_config fusb302_tcpc_config = {
-+	.src_pdo = src_pdo,
-+	.nr_src_pdo = ARRAY_SIZE(src_pdo),
-+	.operating_snk_mw = 2500,
-+	.type = TYPEC_PORT_DRP,
-+	.data = TYPEC_PORT_DRD,
-+	.default_role = TYPEC_SINK,
-+	.alt_modes = NULL,
-+};
-+
 +static void init_tcpc_dev(struct tcpc_dev *fusb302_tcpc_dev)
 +{
 +	fusb302_tcpc_dev->init = tcpm_init;
@@ -5360,27 +5332,36 @@ index 000000000000..c524088246ee
 +	return 0;
 +}
 +
-+static int fusb302_composite_snk_pdo_array(struct fusb302_chip *chip)
++#define PDO_FIXED_FLAGS \
++	(PDO_FIXED_DUAL_ROLE | PDO_FIXED_DATA_SWAP | PDO_FIXED_USB_COMM)
++
++static const u32 src_pdo[] = {
++	PDO_FIXED(5000, 400, PDO_FIXED_FLAGS)
++};
++
++static const u32 snk_pdo[] = {
++	PDO_FIXED(5000, 400, PDO_FIXED_FLAGS)
++};
++
++static const struct property_entry port_props[] = {
++	PROPERTY_ENTRY_STRING("data-role", "dual"),
++	PROPERTY_ENTRY_STRING("power-role", "dual"),
++	PROPERTY_ENTRY_STRING("try-power-role", "sink"),
++	PROPERTY_ENTRY_U32_ARRAY("source-pdos", src_pdo),
++	PROPERTY_ENTRY_U32_ARRAY("sink-pdos", snk_pdo),
++	PROPERTY_ENTRY_U32("op-sink-microwatt", 2500000),
++	{ }
++};
++
++static struct fwnode_handle *fusb302_fwnode_get(struct device *dev)
 +{
-+	struct device *dev = chip->dev;
-+	u32 max_uv, max_ua;
++	struct fwnode_handle *fwnode;
 +
-+	chip->snk_pdo[0] = PDO_FIXED(5000, 400, PDO_FIXED_FLAGS);
++	fwnode = device_get_named_child_node(dev, "connector");
++	if (!fwnode)
++		fwnode = fwnode_create_software_node(port_props, NULL);
 +
-+	/*
-+	 * As max_snk_ma/mv/mw is not needed for tcpc_config,
-+	 * those settings should be passed in via sink PDO, so
-+	 * "fcs, max-sink-*" properties will be deprecated, to
-+	 * perserve compatibility with existing users of them,
-+	 * we read those properties to convert them to be a var
-+	 * PDO.
-+	 */
-+	if (device_property_read_u32(dev, "fcs,max-sink-microvolt", &max_uv) ||
-+		device_property_read_u32(dev, "fcs,max-sink-microamp", &max_ua))
-+		return 1;
-+
-+	chip->snk_pdo[1] = PDO_VAR(5000, max_uv / 1000, max_ua / 1000);
-+	return 2;
++	return fwnode;
 +}
 +
 +static int fusb302_probe(struct i2c_client *client,
@@ -5391,7 +5372,6 @@ index 000000000000..c524088246ee
 +	struct device *dev = &client->dev;
 +	const char *name;
 +	int ret = 0;
-+	u32 v;
 +
 +	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_I2C_BLOCK)) {
 +		dev_err(&client->dev,
@@ -5404,19 +5384,7 @@ index 000000000000..c524088246ee
 +
 +	chip->i2c_client = client;
 +	chip->dev = &client->dev;
-+	chip->tcpc_config = fusb302_tcpc_config;
-+	chip->tcpc_dev.config = &chip->tcpc_config;
 +	mutex_init(&chip->lock);
-+
-+	chip->tcpc_dev.fwnode =
-+		device_get_named_child_node(dev, "connector");
-+
-+	if (!device_property_read_u32(dev, "fcs,operating-sink-microwatt", &v))
-+		chip->tcpc_config.operating_snk_mw = v / 1000;
-+
-+	/* Composite sink PDO */
-+	chip->tcpc_config.nr_snk_pdo = fusb302_composite_snk_pdo_array(chip);
-+	chip->tcpc_config.snk_pdo = chip->snk_pdo;
 +
 +	/*
 +	 * Devicetree platforms should get extcon via phandle (not yet
@@ -5443,6 +5411,7 @@ index 000000000000..c524088246ee
 +	INIT_WORK(&chip->irq_work, fusb302_irq_work);
 +	INIT_DELAYED_WORK(&chip->bc_lvl_handler, fusb302_bc_lvl_handler_work);
 +	init_tcpc_dev(&chip->tcpc_dev);
++	fusb302_debugfs_init(chip);
 +
 +	if (client->irq) {
 +		chip->gpio_int_n_irq = client->irq;
@@ -5452,8 +5421,15 @@ index 000000000000..c524088246ee
 +			goto destroy_workqueue;
 +	}
 +
++	chip->tcpc_dev.fwnode = fusb302_fwnode_get(dev);
++	if (IS_ERR(chip->tcpc_dev.fwnode)) {
++		ret = PTR_ERR(chip->tcpc_dev.fwnode);
++		goto destroy_workqueue;
++	}
++
 +	chip->tcpm_port = tcpm_register_port(&client->dev, &chip->tcpc_dev);
 +	if (IS_ERR(chip->tcpm_port)) {
++		fwnode_handle_put(chip->tcpc_dev.fwnode);
 +		ret = PTR_ERR(chip->tcpm_port);
 +		if (ret != -EPROBE_DEFER)
 +			dev_err(dev, "cannot register tcpm port, ret=%d", ret);
@@ -5468,14 +5444,15 @@ index 000000000000..c524088246ee
 +		goto tcpm_unregister_port;
 +	}
 +	enable_irq_wake(chip->gpio_int_n_irq);
-+	fusb302_debugfs_init(chip);
 +	i2c_set_clientdata(client, chip);
 +
 +	return ret;
 +
 +tcpm_unregister_port:
 +	tcpm_unregister_port(chip->tcpm_port);
++	fwnode_handle_put(chip->tcpc_dev.fwnode);
 +destroy_workqueue:
++	fusb302_debugfs_exit(chip);
 +	destroy_workqueue(chip->wq);
 +
 +	return ret;
@@ -5490,6 +5467,7 @@ index 000000000000..c524088246ee
 +	cancel_work_sync(&chip->irq_work);
 +	cancel_delayed_work_sync(&chip->bc_lvl_handler);
 +	tcpm_unregister_port(chip->tcpm_port);
++	fwnode_handle_put(chip->tcpc_dev.fwnode);
 +	destroy_workqueue(chip->wq);
 +	fusb302_debugfs_exit(chip);
 +
@@ -5743,10 +5721,10 @@ index 000000000000..00b39d365478
 +#endif
 diff --git a/drivers/usb/typec/typec/tcpm/tcpci.c b/drivers/usb/typec/typec/tcpm/tcpci.c
 new file mode 100644
-index 000000000000..c1f7073a56de
+index 000000000000..753645bb2527
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/tcpci.c
-@@ -0,0 +1,616 @@
+@@ -0,0 +1,632 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2015-2017 Google, Inc
@@ -6181,20 +6159,30 @@ index 000000000000..c1f7073a56de
 +
 +	if (status & TCPC_ALERT_RX_STATUS) {
 +		struct pd_message msg;
-+		unsigned int cnt;
++		unsigned int cnt, payload_cnt;
 +		u16 header;
 +
 +		regmap_read(tcpci->regmap, TCPC_RX_BYTE_CNT, &cnt);
++		/*
++		 * 'cnt' corresponds to READABLE_BYTE_COUNT in section 4.4.14
++		 * of the TCPCI spec [Rev 2.0 Ver 1.0 October 2017] and is
++		 * defined in table 4-36 as one greater than the number of
++		 * bytes received. And that number includes the header. So:
++		 */
++		if (cnt > 3)
++			payload_cnt = cnt - (1 + sizeof(msg.header));
++		else
++			payload_cnt = 0;
 +
 +		tcpci_read16(tcpci, TCPC_RX_HDR, &header);
 +		msg.header = cpu_to_le16(header);
 +
-+		if (WARN_ON(cnt > sizeof(msg.payload)))
-+			cnt = sizeof(msg.payload);
++		if (WARN_ON(payload_cnt > sizeof(msg.payload)))
++			payload_cnt = sizeof(msg.payload);
 +
-+		if (cnt > 0)
++		if (payload_cnt > 0)
 +			regmap_raw_read(tcpci->regmap, TCPC_RX_DATA,
-+					&msg.payload, cnt);
++					&msg.payload, payload_cnt);
 +
 +		/* Read complete, clear RX status alert bit */
 +		tcpci_write16(tcpci, TCPC_ALERT, TCPC_ALERT_RX_STATUS);
@@ -6330,6 +6318,12 @@ index 000000000000..c1f7073a56de
 +static int tcpci_remove(struct i2c_client *client)
 +{
 +	struct tcpci_chip *chip = i2c_get_clientdata(client);
++	int err;
++
++	/* Disable chip interrupts before unregistering port */
++	err = tcpci_write16(chip->tcpci, TCPC_ALERT_MASK, 0);
++	if (err < 0)
++		return err;
 +
 +	tcpci_unregister_port(chip->tcpci);
 +
@@ -6510,10 +6504,10 @@ index 000000000000..303ebde26546
 +#endif /* __LINUX_USB_TCPCI_H */
 diff --git a/drivers/usb/typec/typec/tcpm/tcpci_rt1711h.c b/drivers/usb/typec/typec/tcpm/tcpci_rt1711h.c
 new file mode 100644
-index 000000000000..017389021b96
+index 000000000000..b56a0880a044
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/tcpci_rt1711h.c
-@@ -0,0 +1,312 @@
+@@ -0,0 +1,301 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright (C) 2018, Richtek Technology Corporation
@@ -6695,26 +6689,6 @@ index 000000000000..017389021b96
 +	return tcpci_irq(chip->tcpci);
 +}
 +
-+static int rt1711h_init_alert(struct rt1711h_chip *chip,
-+			      struct i2c_client *client)
-+{
-+	int ret;
-+
-+	/* Disable chip interrupts before requesting irq */
-+	ret = rt1711h_write16(chip, TCPC_ALERT_MASK, 0);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = devm_request_threaded_irq(chip->dev, client->irq, NULL,
-+					rt1711h_irq,
-+					IRQF_ONESHOT | IRQF_TRIGGER_LOW,
-+					dev_name(chip->dev), chip);
-+	if (ret < 0)
-+		return ret;
-+	enable_irq_wake(client->irq);
-+	return 0;
-+}
-+
 +static int rt1711h_sw_reset(struct rt1711h_chip *chip)
 +{
 +	int ret;
@@ -6776,7 +6750,8 @@ index 000000000000..017389021b96
 +	if (ret < 0)
 +		return ret;
 +
-+	ret = rt1711h_init_alert(chip, client);
++	/* Disable chip interrupts before requesting irq */
++	ret = rt1711h_write16(chip, TCPC_ALERT_MASK, 0);
 +	if (ret < 0)
 +		return ret;
 +
@@ -6786,6 +6761,14 @@ index 000000000000..017389021b96
 +	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);
 +	if (IS_ERR_OR_NULL(chip->tcpci))
 +		return PTR_ERR(chip->tcpci);
++
++	ret = devm_request_threaded_irq(chip->dev, client->irq, NULL,
++					rt1711h_irq,
++					IRQF_ONESHOT | IRQF_TRIGGER_LOW,
++					dev_name(chip->dev), chip);
++	if (ret < 0)
++		return ret;
++	enable_irq_wake(client->irq);
 +
 +	return 0;
 +}
@@ -6828,10 +6811,10 @@ index 000000000000..017389021b96
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/usb/typec/typec/tcpm/tcpm.c b/drivers/usb/typec/typec/tcpm/tcpm.c
 new file mode 100644
-index 000000000000..a3cf27120164
+index 000000000000..355a2c7fac0b
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/tcpm.c
-@@ -0,0 +1,4864 @@
+@@ -0,0 +1,4881 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2015-2017 Google, Inc
@@ -6853,6 +6836,7 @@ index 000000000000..a3cf27120164
 +#include <linux/seq_file.h>
 +#include <linux/slab.h>
 +#include <linux/spinlock.h>
++#include <linux/usb.h>
 +#include <linux/usb/pd.h>
 +#include <linux/usb/pd_ado.h>
 +#include <linux/usb/pd_bdo.h>
@@ -7405,17 +7389,13 @@ index 000000000000..a3cf27120164
 +}
 +DEFINE_SHOW_ATTRIBUTE(tcpm_debug);
 +
-+static struct dentry *rootdir;
-+
 +static void tcpm_debugfs_init(struct tcpm_port *port)
 +{
-+	mutex_init(&port->logbuffer_lock);
-+	/* /sys/kernel/debug/tcpm/usbcX */
-+	if (!rootdir)
-+		rootdir = debugfs_create_dir("tcpm", NULL);
++	char name[NAME_MAX];
 +
-+	port->dentry = debugfs_create_file(dev_name(port->dev),
-+					   S_IFREG | 0444, rootdir,
++	mutex_init(&port->logbuffer_lock);
++	snprintf(name, NAME_MAX, "tcpm-%s", dev_name(port->dev));
++	port->dentry = debugfs_create_file(name, S_IFREG | 0444, usb_debug_root,
 +					   port, &tcpm_debug_fops);
 +}
 +
@@ -7431,10 +7411,6 @@ index 000000000000..a3cf27120164
 +	mutex_unlock(&port->logbuffer_lock);
 +
 +	debugfs_remove(port->dentry);
-+	if (list_empty(&rootdir->d_subdirs)) {
-+		debugfs_remove(rootdir);
-+		rootdir = NULL;
-+	}
 +}
 +
 +#else
@@ -10609,6 +10585,14 @@ index 000000000000..a3cf27120164
 +		 */
 +		break;
 +
++	case PORT_RESET:
++	case PORT_RESET_WAIT_OFF:
++		/*
++		 * State set back to default mode once the timer completes.
++		 * Ignore CC changes here.
++		 */
++		break;
++
 +	default:
 +		if (tcpm_port_is_disconnected(port))
 +			tcpm_set_state(port, unattached_state(port), 0);
@@ -10670,6 +10654,15 @@ index 000000000000..a3cf27120164
 +	case SRC_TRY_DEBOUNCE:
 +		/* Do nothing, waiting for sink detection */
 +		break;
++
++	case PORT_RESET:
++	case PORT_RESET_WAIT_OFF:
++		/*
++		 * State set back to default mode once the timer completes.
++		 * Ignore vbus changes here.
++		 */
++		break;
++
 +	default:
 +		break;
 +	}
@@ -10723,10 +10716,19 @@ index 000000000000..a3cf27120164
 +	case PORT_RESET_WAIT_OFF:
 +		tcpm_set_state(port, tcpm_default_state(port), 0);
 +		break;
++
 +	case SRC_TRY_WAIT:
 +	case SRC_TRY_DEBOUNCE:
 +		/* Do nothing, waiting for sink detection */
 +		break;
++
++	case PORT_RESET:
++		/*
++		 * State set back to default mode once the timer completes.
++		 * Ignore vbus changes here.
++		 */
++		break;
++
 +	default:
 +		if (port->pwr_role == TYPEC_SINK &&
 +		    port->attached)
@@ -11270,8 +11272,7 @@ index 000000000000..a3cf27120164
 +		goto sink;
 +
 +	/* Get source pdos */
-+	ret = fwnode_property_read_u32_array(fwnode, "source-pdos",
-+					     NULL, 0);
++	ret = fwnode_property_count_u32(fwnode, "source-pdos");
 +	if (ret <= 0)
 +		return -EINVAL;
 +
@@ -11295,8 +11296,7 @@ index 000000000000..a3cf27120164
 +		return -EINVAL;
 +sink:
 +	/* Get sink pdos */
-+	ret = fwnode_property_read_u32_array(fwnode, "sink-pdos",
-+					     NULL, 0);
++	ret = fwnode_property_count_u32(fwnode, "sink-pdos");
 +	if (ret <= 0)
 +		return -EINVAL;
 +
@@ -11698,10 +11698,10 @@ index 000000000000..a3cf27120164
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/usb/typec/typec/tcpm/wcove.c b/drivers/usb/typec/typec/tcpm/wcove.c
 new file mode 100644
-index 000000000000..6b317c150bdd
+index 000000000000..9b745f432c91
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/wcove.c
-@@ -0,0 +1,705 @@
+@@ -0,0 +1,703 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/**
 + * typec_wcove.c - WhiskeyCove PMIC USB Type-C PHY driver
@@ -12301,7 +12301,7 @@ index 000000000000..6b317c150bdd
 +	PROPERTY_ENTRY_STRING("try-power-role", "sink"),
 +	PROPERTY_ENTRY_U32_ARRAY("source-pdos", src_pdo),
 +	PROPERTY_ENTRY_U32_ARRAY("sink-pdos", snk_pdo),
-+	PROPERTY_ENTRY_U32("op-sink-microwatt", 15000),
++	PROPERTY_ENTRY_U32("op-sink-microwatt", 15000000),
 +	{ }
 +};
 +
@@ -12321,10 +12321,8 @@ index 000000000000..6b317c150bdd
 +	wcove->regmap = pmic->regmap;
 +
 +	irq = platform_get_irq(pdev, 0);
-+	if (irq < 0) {
-+		dev_err(&pdev->dev, "Failed to get IRQ: %d\n", irq);
++	if (irq < 0)
 +		return irq;
-+	}
 +
 +	irq = regmap_irq_get_virq(pmic->irq_chip_data_chgr, irq);
 +	if (irq < 0)
@@ -13073,10 +13071,10 @@ index 000000000000..b35e15a1f02c
 +obj-$(CONFIG_UCSI_CCG)			+= ucsi_ccg.o
 diff --git a/drivers/usb/typec/typec/ucsi/displayport.c b/drivers/usb/typec/typec/ucsi/displayport.c
 new file mode 100644
-index 000000000000..d99700cb4dca
+index 000000000000..166c2aabb512
 --- /dev/null
 +++ b/drivers/usb/typec/typec/ucsi/displayport.c
-@@ -0,0 +1,317 @@
+@@ -0,0 +1,327 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * UCSI DisplayPort Alternate Mode Support
@@ -13352,6 +13350,9 @@ index 000000000000..d99700cb4dca
 +		return;
 +
 +	dp = typec_altmode_get_drvdata(alt);
++	if (!dp)
++		return;
++
 +	dp->data.conf = 0;
 +	dp->data.status = 0;
 +	dp->initialized = false;
@@ -13366,6 +13367,8 @@ index 000000000000..d99700cb4dca
 +	struct typec_altmode *alt;
 +	struct ucsi_dp *dp;
 +
++	mutex_lock(&con->lock);
++
 +	/* We can't rely on the firmware with the capabilities. */
 +	desc->vdo |= DP_CAP_DP_SIGNALING | DP_CAP_RECEPTACLE;
 +
@@ -13374,12 +13377,15 @@ index 000000000000..d99700cb4dca
 +	desc->vdo |= all_assignments << 16;
 +
 +	alt = typec_port_register_altmode(con->port, desc);
-+	if (IS_ERR(alt))
++	if (IS_ERR(alt)) {
++		mutex_unlock(&con->lock);
 +		return alt;
++	}
 +
 +	dp = devm_kzalloc(&alt->dev, sizeof(*dp), GFP_KERNEL);
 +	if (!dp) {
 +		typec_unregister_altmode(alt);
++		mutex_unlock(&con->lock);
 +		return ERR_PTR(-ENOMEM);
 +	}
 +
@@ -13391,6 +13397,8 @@ index 000000000000..d99700cb4dca
 +
 +	alt->ops = &ucsi_displayport_ops;
 +	typec_altmode_set_drvdata(alt, dp);
++
++	mutex_unlock(&con->lock);
 +
 +	return alt;
 +}
@@ -15333,10 +15341,10 @@ index 000000000000..a18112a83fae
 +MODULE_DESCRIPTION("UCSI ACPI driver");
 diff --git a/drivers/usb/typec/typec/ucsi/ucsi_ccg.c b/drivers/usb/typec/typec/ucsi/ucsi_ccg.c
 new file mode 100644
-index 000000000000..95378d8f7e4e
+index 000000000000..d772fce51905
 --- /dev/null
 +++ b/drivers/usb/typec/typec/ucsi/ucsi_ccg.c
-@@ -0,0 +1,1249 @@
+@@ -0,0 +1,1242 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * UCSI driver for Cypress CCGx Type-C controller
@@ -16418,14 +16426,11 @@ index 000000000000..95378d8f7e4e
 +
 +static DEVICE_ATTR_WO(do_flash);
 +
-+static struct attribute *ucsi_ccg_sysfs_attrs[] = {
++static struct attribute *ucsi_ccg_attrs[] = {
 +	&dev_attr_do_flash.attr,
 +	NULL,
 +};
-+
-+static struct attribute_group ucsi_ccg_attr_group = {
-+	.attrs = ucsi_ccg_sysfs_attrs,
-+};
++ATTRIBUTE_GROUPS(ucsi_ccg);
 +
 +static int ucsi_ccg_probe(struct i2c_client *client,
 +			  const struct i2c_device_id *id)
@@ -16502,10 +16507,6 @@ index 000000000000..95378d8f7e4e
 +
 +	i2c_set_clientdata(client, uc);
 +
-+	status = sysfs_create_group(&uc->dev->kobj, &ucsi_ccg_attr_group);
-+	if (status)
-+		dev_err(uc->dev, "cannot create sysfs group: %d\n", status);
-+
 +	pm_runtime_set_active(uc->dev);
 +	pm_runtime_enable(uc->dev);
 +	pm_runtime_use_autosuspend(uc->dev);
@@ -16524,7 +16525,6 @@ index 000000000000..95378d8f7e4e
 +	ucsi_unregister_ppm(uc->ucsi);
 +	pm_runtime_disable(uc->dev);
 +	free_irq(uc->irq, uc);
-+	sysfs_remove_group(&uc->dev->kobj, &ucsi_ccg_attr_group);
 +
 +	return 0;
 +}
@@ -16575,6 +16575,7 @@ index 000000000000..95378d8f7e4e
 +	.driver = {
 +		.name = "ucsi_ccg",
 +		.pm = &ucsi_ccg_pm,
++		.dev_groups = ucsi_ccg_groups,
 +	},
 +	.probe = ucsi_ccg_probe,
 +	.remove = ucsi_ccg_remove,
