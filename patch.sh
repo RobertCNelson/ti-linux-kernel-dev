@@ -517,7 +517,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/stmpe/0002-stmpe-wire-up-adc-Kconfig-Makefile.patch"
 
-	backport_tag="v5.1.21"
+	backport_tag="v5.2.21"
 
 	subsystem="typec"
 	#regenerate="enable"
