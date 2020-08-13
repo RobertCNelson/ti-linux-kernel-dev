@@ -534,6 +534,21 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
+	backport_tag="v4.20.17"
+
+	subsystem="typec"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/usb/typec/ ./drivers/usb/typec/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
 	backport_tag="v4.14.77"
 	subsystem="brcm80211"
 	#regenerate="enable"
@@ -598,6 +613,7 @@ drivers () {
 	dir 'drivers/uio_pruss_shmem'
 	dir 'drivers/greybus'
 	dir 'RPi'
+	dir 'fixes'
 }
 
 soc () {
