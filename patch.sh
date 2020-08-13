@@ -534,7 +534,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
-	backport_tag="v4.20.17"
+	backport_tag="v5.0.21"
 
 	subsystem="typec"
 	#regenerate="enable"

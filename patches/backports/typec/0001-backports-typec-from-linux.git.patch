@@ -1,9 +1,9 @@
-From 53ed54d6246d88ea6d9f8f7c9554cdd4590c87ba Mon Sep 17 00:00:00 2001
+From 74b22155ad0689ec154c77a08c96181407fbd539 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 13 Aug 2020 15:31:11 -0500
+Date: Thu, 13 Aug 2020 15:55:14 -0500
 Subject: [PATCH] backports: typec: from: linux.git
 
-Reference: v4.20.17
+Reference: v5.0.21
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/usb/typec/typec/Kconfig               |   66 +
@@ -22,12 +22,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/usb/typec/typec/tcpm/Makefile         |    7 +
  drivers/usb/typec/typec/tcpm/fusb302.c        | 1885 +++++++
  drivers/usb/typec/typec/tcpm/fusb302_reg.h    |  177 +
- drivers/usb/typec/typec/tcpm/tcpci.c          |  612 +++
+ drivers/usb/typec/typec/tcpm/tcpci.c          |  612 ++
  drivers/usb/typec/typec/tcpm/tcpci.h          |  139 +
  drivers/usb/typec/typec/tcpm/tcpci_rt1711h.c  |  312 ++
- drivers/usb/typec/typec/tcpm/tcpm.c           | 4862 +++++++++++++++++
- drivers/usb/typec/typec/tcpm/wcove.c          |  693 +++
- drivers/usb/typec/typec/tps6598x.c            |  522 ++
+ drivers/usb/typec/typec/tcpm/tcpm.c           | 4900 +++++++++++++++++
+ drivers/usb/typec/typec/tcpm/wcove.c          |  698 +++
+ drivers/usb/typec/typec/tps6598x.c            |  536 ++
  drivers/usb/typec/typec/ucsi/Kconfig          |   48 +
  drivers/usb/typec/typec/ucsi/Makefile         |   12 +
  drivers/usb/typec/typec/ucsi/debug.h          |   65 +
@@ -37,7 +37,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/usb/typec/typec/ucsi/ucsi.h           |  337 ++
  drivers/usb/typec/typec/ucsi/ucsi_acpi.c      |  160 +
  drivers/usb/typec/typec/ucsi/ucsi_ccg.c       |  307 ++
- 31 files changed, 14310 insertions(+)
+ 31 files changed, 14367 insertions(+)
  create mode 100644 drivers/usb/typec/typec/Kconfig
  create mode 100644 drivers/usb/typec/typec/Makefile
  create mode 100644 drivers/usb/typec/typec/altmodes/Kconfig
@@ -3374,7 +3374,7 @@ index 000000000000..a5ff6c8eb892
 +obj-$(CONFIG_TYPEC_RT1711H)	+= tcpci_rt1711h.o
 diff --git a/drivers/usb/typec/typec/tcpm/fusb302.c b/drivers/usb/typec/typec/tcpm/fusb302.c
 new file mode 100644
-index 000000000000..43b64d9309d0
+index 000000000000..e9344997329c
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/fusb302.c
 @@ -0,0 +1,1885 @@
@@ -5145,7 +5145,7 @@ index 000000000000..43b64d9309d0
 +	 * to be set by the platform code which also registers the i2c client
 +	 * for the fusb302.
 +	 */
-+	if (device_property_read_string(dev, "fcs,extcon-name", &name) == 0) {
++	if (device_property_read_string(dev, "linux,extcon-name", &name) == 0) {
 +		chip->extcon = extcon_get_extcon_dev(name);
 +		if (!chip->extcon)
 +			return -EPROBE_DEFER;
@@ -6529,10 +6529,10 @@ index 000000000000..017389021b96
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/usb/typec/typec/tcpm/tcpm.c b/drivers/usb/typec/typec/tcpm/tcpm.c
 new file mode 100644
-index 000000000000..ba6e5cdaed2c
+index 000000000000..d34e945e5d09
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/tcpm.c
-@@ -0,0 +1,4862 @@
+@@ -0,0 +1,4900 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2015-2017 Google, Inc
@@ -6572,6 +6572,7 @@ index 000000000000..ba6e5cdaed2c
 +	S(SRC_ATTACHED),			\
 +	S(SRC_STARTUP),				\
 +	S(SRC_SEND_CAPABILITIES),		\
++	S(SRC_SEND_CAPABILITIES_TIMEOUT),	\
 +	S(SRC_NEGOTIATE_CAPABILITIES),		\
 +	S(SRC_TRANSITION_SUPPLY),		\
 +	S(SRC_READY),				\
@@ -8748,7 +8749,8 @@ index 000000000000..ba6e5cdaed2c
 +	unsigned int i, j, max_mw = 0, max_mv = 0;
 +	unsigned int min_src_mv, max_src_mv, src_ma, src_mw;
 +	unsigned int min_snk_mv, max_snk_mv;
-+	u32 pdo;
++	unsigned int max_op_mv;
++	u32 pdo, src, snk;
 +	unsigned int src_pdo = 0, snk_pdo = 0;
 +
 +	/*
@@ -8798,16 +8800,18 @@ index 000000000000..ba6e5cdaed2c
 +					continue;
 +				}
 +
-+				if (max_src_mv <= max_snk_mv &&
-+				    min_src_mv >= min_snk_mv) {
++				if (min_src_mv <= max_snk_mv &&
++				    max_src_mv >= min_snk_mv) {
++					max_op_mv = min(max_src_mv, max_snk_mv);
++					src_mw = (max_op_mv * src_ma) / 1000;
 +					/* Prefer higher voltages if available */
 +					if ((src_mw == max_mw &&
-+					     min_src_mv > max_mv) ||
++					     max_op_mv > max_mv) ||
 +					    src_mw > max_mw) {
 +						src_pdo = i;
 +						snk_pdo = j;
 +						max_mw = src_mw;
-+						max_mv = max_src_mv;
++						max_mv = max_op_mv;
 +					}
 +				}
 +			}
@@ -8820,16 +8824,19 @@ index 000000000000..ba6e5cdaed2c
 +	}
 +
 +	if (src_pdo) {
-+		pdo = port->source_caps[src_pdo];
++		src = port->source_caps[src_pdo];
++		snk = port->snk_pdo[snk_pdo];
 +
-+		port->pps_data.min_volt = pdo_pps_apdo_min_voltage(pdo);
-+		port->pps_data.max_volt = pdo_pps_apdo_max_voltage(pdo);
-+		port->pps_data.max_curr =
-+			min_pps_apdo_current(pdo, port->snk_pdo[snk_pdo]);
-+		port->pps_data.out_volt =
-+			min(pdo_pps_apdo_max_voltage(pdo), port->pps_data.out_volt);
-+		port->pps_data.op_curr =
-+			min(port->pps_data.max_curr, port->pps_data.op_curr);
++		port->pps_data.min_volt = max(pdo_pps_apdo_min_voltage(src),
++					      pdo_pps_apdo_min_voltage(snk));
++		port->pps_data.max_volt = min(pdo_pps_apdo_max_voltage(src),
++					      pdo_pps_apdo_max_voltage(snk));
++		port->pps_data.max_curr = min_pps_apdo_current(src, snk);
++		port->pps_data.out_volt = min(port->pps_data.max_volt,
++					      max(port->pps_data.min_volt,
++						  port->pps_data.out_volt));
++		port->pps_data.op_curr = min(port->pps_data.max_curr,
++					     port->pps_data.op_curr);
 +	}
 +
 +	return src_pdo;
@@ -9495,8 +9502,32 @@ index 000000000000..ba6e5cdaed2c
 +			/* port->hard_reset_count = 0; */
 +			port->caps_count = 0;
 +			port->pd_capable = true;
-+			tcpm_set_state_cond(port, hard_reset_state(port),
++			tcpm_set_state_cond(port, SRC_SEND_CAPABILITIES_TIMEOUT,
 +					    PD_T_SEND_SOURCE_CAP);
++		}
++		break;
++	case SRC_SEND_CAPABILITIES_TIMEOUT:
++		/*
++		 * Error recovery for a PD_DATA_SOURCE_CAP reply timeout.
++		 *
++		 * PD 2.0 sinks are supposed to accept src-capabilities with a
++		 * 3.0 header and simply ignore any src PDOs which the sink does
++		 * not understand such as PPS but some 2.0 sinks instead ignore
++		 * the entire PD_DATA_SOURCE_CAP message, causing contract
++		 * negotiation to fail.
++		 *
++		 * After PD_N_HARD_RESET_COUNT hard-reset attempts, we try
++		 * sending src-capabilities with a lower PD revision to
++		 * make these broken sinks work.
++		 */
++		if (port->hard_reset_count < PD_N_HARD_RESET_COUNT) {
++			tcpm_set_state(port, HARD_RESET_SEND, 0);
++		} else if (port->negotiated_rev > PD_REV20) {
++			port->negotiated_rev--;
++			port->hard_reset_count = 0;
++			tcpm_set_state(port, SRC_SEND_CAPABILITIES, 0);
++		} else {
++			tcpm_set_state(port, hard_reset_state(port), 0);
 +		}
 +		break;
 +	case SRC_NEGOTIATE_CAPABILITIES:
@@ -9805,7 +9836,8 @@ index 000000000000..ba6e5cdaed2c
 +	case SNK_HARD_RESET_SINK_OFF:
 +		memset(&port->pps_data, 0, sizeof(port->pps_data));
 +		tcpm_set_vconn(port, false);
-+		tcpm_set_charge(port, false);
++		if (port->pd_capable)
++			tcpm_set_charge(port, false);
 +		tcpm_set_roles(port, port->self_powered, TYPEC_SINK,
 +			       TYPEC_DEVICE);
 +		/*
@@ -9837,6 +9869,12 @@ index 000000000000..ba6e5cdaed2c
 +		 * Similar, dual-mode ports in source mode should transition
 +		 * to PE_SNK_Transition_to_default.
 +		 */
++		if (port->pd_capable) {
++			tcpm_set_current_limit(port,
++					       tcpm_get_current_limit(port),
++					       5000);
++			tcpm_set_charge(port, true);
++		}
 +		tcpm_set_attached_state(port, true);
 +		tcpm_set_state(port, SNK_STARTUP, 0);
 +		break;
@@ -11397,10 +11435,10 @@ index 000000000000..ba6e5cdaed2c
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/usb/typec/typec/tcpm/wcove.c b/drivers/usb/typec/typec/tcpm/wcove.c
 new file mode 100644
-index 000000000000..423208e19383
+index 000000000000..6770afd40765
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/wcove.c
-@@ -0,0 +1,693 @@
+@@ -0,0 +1,698 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/**
 + * typec_wcove.c - WhiskeyCove PMIC USB Type-C PHY driver
@@ -12018,8 +12056,13 @@ index 000000000000..423208e19383
 +	wcove->dev = &pdev->dev;
 +	wcove->regmap = pmic->regmap;
 +
-+	irq = regmap_irq_get_virq(pmic->irq_chip_data_chgr,
-+				  platform_get_irq(pdev, 0));
++	irq = platform_get_irq(pdev, 0);
++	if (irq < 0) {
++		dev_err(&pdev->dev, "Failed to get IRQ: %d\n", irq);
++		return irq;
++	}
++
++	irq = regmap_irq_get_virq(pmic->irq_chip_data_chgr, irq);
 +	if (irq < 0)
 +		return irq;
 +
@@ -12096,10 +12139,10 @@ index 000000000000..423208e19383
 +MODULE_ALIAS("platform:bxt_wcove_usbc");
 diff --git a/drivers/usb/typec/typec/tps6598x.c b/drivers/usb/typec/typec/tps6598x.c
 new file mode 100644
-index 000000000000..c84c8c189e90
+index 000000000000..e1109b15636d
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tps6598x.c
-@@ -0,0 +1,522 @@
+@@ -0,0 +1,536 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Driver for TI TPS6598x USB Power Delivery controller family
@@ -12212,6 +12255,20 @@ index 000000000000..c84c8c189e90
 +	return 0;
 +}
 +
++static int tps6598x_block_write(struct tps6598x *tps, u8 reg,
++				void *val, size_t len)
++{
++	u8 data[TPS_MAX_LEN + 1];
++
++	if (!tps->i2c_protocol)
++		return regmap_raw_write(tps->regmap, reg, val, len);
++
++	data[0] = len;
++	memcpy(&data[1], val, len);
++
++	return regmap_raw_write(tps->regmap, reg, data, sizeof(data));
++}
++
 +static inline int tps6598x_read16(struct tps6598x *tps, u8 reg, u16 *val)
 +{
 +	return tps6598x_block_read(tps, reg, val, sizeof(u16));
@@ -12229,23 +12286,23 @@ index 000000000000..c84c8c189e90
 +
 +static inline int tps6598x_write16(struct tps6598x *tps, u8 reg, u16 val)
 +{
-+	return regmap_raw_write(tps->regmap, reg, &val, sizeof(u16));
++	return tps6598x_block_write(tps, reg, &val, sizeof(u16));
 +}
 +
 +static inline int tps6598x_write32(struct tps6598x *tps, u8 reg, u32 val)
 +{
-+	return regmap_raw_write(tps->regmap, reg, &val, sizeof(u32));
++	return tps6598x_block_write(tps, reg, &val, sizeof(u32));
 +}
 +
 +static inline int tps6598x_write64(struct tps6598x *tps, u8 reg, u64 val)
 +{
-+	return regmap_raw_write(tps->regmap, reg, &val, sizeof(u64));
++	return tps6598x_block_write(tps, reg, &val, sizeof(u64));
 +}
 +
 +static inline int
 +tps6598x_write_4cc(struct tps6598x *tps, u8 reg, const char *val)
 +{
-+	return regmap_raw_write(tps->regmap, reg, &val, sizeof(u32));
++	return tps6598x_block_write(tps, reg, &val, sizeof(u32));
 +}
 +
 +static int tps6598x_read_partner_identity(struct tps6598x *tps)
@@ -12331,8 +12388,8 @@ index 000000000000..c84c8c189e90
 +		return -EBUSY;
 +
 +	if (in_len) {
-+		ret = regmap_raw_write(tps->regmap, TPS_REG_DATA1,
-+				       in_data, in_len);
++		ret = tps6598x_block_write(tps, TPS_REG_DATA1,
++					   in_data, in_len);
 +		if (ret)
 +			return ret;
 +	}
@@ -12603,19 +12660,19 @@ index 000000000000..c84c8c189e90
 +	return 0;
 +}
 +
-+static const struct acpi_device_id tps6598x_acpi_match[] = {
-+	{ "INT3515", 0 },
++static const struct i2c_device_id tps6598x_id[] = {
++	{ "tps6598x" },
 +	{ }
 +};
-+MODULE_DEVICE_TABLE(acpi, tps6598x_acpi_match);
++MODULE_DEVICE_TABLE(i2c, tps6598x_id);
 +
 +static struct i2c_driver tps6598x_i2c_driver = {
 +	.driver = {
 +		.name = "tps6598x",
-+		.acpi_match_table = tps6598x_acpi_match,
 +	},
 +	.probe_new = tps6598x_probe,
 +	.remove = tps6598x_remove,
++	.id_table = tps6598x_id,
 +};
 +module_i2c_driver(tps6598x_i2c_driver);
 +
