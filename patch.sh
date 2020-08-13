@@ -517,6 +517,22 @@ backports () {
 
 	${git} "${DIR}/patches/backports/stmpe/0002-stmpe-wire-up-adc-Kconfig-Makefile.patch"
 
+	backport_tag="v5.1.21"
+
+	subsystem="typec"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/usb/typec/ ./drivers/usb/typec/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+
 	backport_tag="v5.0.21"
 
 	subsystem="vl53l0x"
@@ -533,21 +549,6 @@ backports () {
 	fi
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
-
-	backport_tag="v5.0.21"
-
-	subsystem="typec"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/usb/typec/ ./drivers/usb/typec/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
 
 	backport_tag="v4.14.77"
 	subsystem="brcm80211"
