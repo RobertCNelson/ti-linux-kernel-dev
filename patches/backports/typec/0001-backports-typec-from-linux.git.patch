@@ -1,26 +1,26 @@
-From f74b6c9857da6da6ec651d04373e3cfe66762efc Mon Sep 17 00:00:00 2001
+From 37402b6dadd207c9c9c245833fa477b115cc5712 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 14 Aug 2020 09:45:39 -0500
+Date: Fri, 14 Aug 2020 09:54:20 -0500
 Subject: [PATCH] backports: typec: from: linux.git
 
-Reference: v5.5.19
+Reference: v5.6.19
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/usb/typec/typec/Kconfig               |   79 +
  drivers/usb/typec/typec/Makefile              |    9 +
  drivers/usb/typec/typec/altmodes/Kconfig      |   25 +
  drivers/usb/typec/typec/altmodes/Makefile     |    6 +
- .../usb/typec/typec/altmodes/displayport.c    |  578 ++
+ .../usb/typec/typec/altmodes/displayport.c    |  579 ++
  .../usb/typec/typec/altmodes/displayport.h    |    8 +
  drivers/usb/typec/typec/altmodes/nvidia.c     |   44 +
- drivers/usb/typec/typec/bus.c                 |  403 ++
+ drivers/usb/typec/typec/bus.c                 |  422 ++
  drivers/usb/typec/typec/bus.h                 |   53 +
- drivers/usb/typec/typec/class.c               | 1692 ++++++
+ drivers/usb/typec/typec/class.c               | 1742 ++++++
  drivers/usb/typec/typec/hd3ss3220.c           |  269 +
  drivers/usb/typec/typec/mux.c                 |  370 ++
  drivers/usb/typec/typec/mux/Kconfig           |   12 +
  drivers/usb/typec/typec/mux/Makefile          |    3 +
- drivers/usb/typec/typec/mux/pi3usb30532.c     |  190 +
+ drivers/usb/typec/typec/mux/pi3usb30532.c     |  191 +
  drivers/usb/typec/typec/tcpm/Kconfig          |   55 +
  drivers/usb/typec/typec/tcpm/Makefile         |    7 +
  drivers/usb/typec/typec/tcpm/fusb302.c        | 1855 +++++++
@@ -28,7 +28,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/usb/typec/typec/tcpm/tcpci.c          |  632 +++
  drivers/usb/typec/typec/tcpm/tcpci.h          |  139 +
  drivers/usb/typec/typec/tcpm/tcpci_rt1711h.c  |  312 ++
- drivers/usb/typec/typec/tcpm/tcpm.c           | 4766 +++++++++++++++++
+ drivers/usb/typec/typec/tcpm/tcpm.c           | 4792 +++++++++++++++++
  drivers/usb/typec/typec/tcpm/wcove.c          |  703 +++
  drivers/usb/typec/typec/tps6598x.c            |  584 ++
  drivers/usb/typec/typec/ucsi/Kconfig          |   50 +
@@ -36,11 +36,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/usb/typec/typec/ucsi/displayport.c    |  325 ++
  drivers/usb/typec/typec/ucsi/trace.c          |   63 +
  drivers/usb/typec/typec/ucsi/trace.h          |  120 +
- drivers/usb/typec/typec/ucsi/ucsi.c           | 1071 ++++
- drivers/usb/typec/typec/ucsi/ucsi.h           |  329 ++
+ drivers/usb/typec/typec/ucsi/ucsi.c           | 1156 ++++
+ drivers/usb/typec/typec/ucsi/ucsi.h           |  343 ++
  drivers/usb/typec/typec/ucsi/ucsi_acpi.c      |  213 +
- drivers/usb/typec/typec/ucsi/ucsi_ccg.c       | 1240 +++++
- 34 files changed, 16397 insertions(+)
+ drivers/usb/typec/typec/ucsi/ucsi_ccg.c       | 1427 +++++
+ 34 files changed, 16780 insertions(+)
  create mode 100644 drivers/usb/typec/typec/Kconfig
  create mode 100644 drivers/usb/typec/typec/Makefile
  create mode 100644 drivers/usb/typec/typec/altmodes/Kconfig
@@ -221,10 +221,10 @@ index 000000000000..45717548b396
 +typec_nvidia-y				:= nvidia.o
 diff --git a/drivers/usb/typec/typec/altmodes/displayport.c b/drivers/usb/typec/typec/altmodes/displayport.c
 new file mode 100644
-index 000000000000..4092248a5936
+index 000000000000..0edfb89e04a8
 --- /dev/null
 +++ b/drivers/usb/typec/typec/altmodes/displayport.c
-@@ -0,0 +1,578 @@
+@@ -0,0 +1,579 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/**
 + * USB Typec-C DisplayPort Alternate Mode driver
@@ -415,7 +415,7 @@ index 000000000000..4092248a5936
 +
 +	switch (dp->state) {
 +	case DP_STATE_ENTER:
-+		ret = typec_altmode_enter(dp->alt);
++		ret = typec_altmode_enter(dp->alt, NULL);
 +		if (ret)
 +			dev_err(&dp->alt->dev, "failed to enter mode\n");
 +		break;
@@ -533,7 +533,8 @@ index 000000000000..4092248a5936
 +
 +static int dp_altmode_activate(struct typec_altmode *alt, int activate)
 +{
-+	return activate ? typec_altmode_enter(alt) : typec_altmode_exit(alt);
++	return activate ? typec_altmode_enter(alt, NULL) :
++			  typec_altmode_exit(alt);
 +}
 +
 +static const struct typec_altmode_ops dp_altmode_ops = {
@@ -869,12 +870,12 @@ index 000000000000..c36769736405
 +MODULE_DESCRIPTION("NVIDIA USB Type-C Alt Mode Driver");
 diff --git a/drivers/usb/typec/typec/bus.c b/drivers/usb/typec/typec/bus.c
 new file mode 100644
-index 000000000000..74cb3c2ecb34
+index 000000000000..f241037df7cb
 --- /dev/null
 +++ b/drivers/usb/typec/typec/bus.c
-@@ -0,0 +1,403 @@
+@@ -0,0 +1,422 @@
 +// SPDX-License-Identifier: GPL-2.0
-+/**
++/*
 + * Bus for USB Type-C Alternate Modes
 + *
 + * Copyright (C) 2018 Intel Corporation
@@ -885,12 +886,23 @@ index 000000000000..74cb3c2ecb34
 +
 +#include "bus.h"
 +
-+static inline int typec_altmode_set_mux(struct altmode *alt, u8 state)
++static inline int
++typec_altmode_set_mux(struct altmode *alt, unsigned long conf, void *data)
 +{
-+	return alt->mux ? alt->mux->set(alt->mux, state) : 0;
++	struct typec_mux_state state;
++
++	if (!alt->mux)
++		return 0;
++
++	state.alt = &alt->adev;
++	state.mode = conf;
++	state.data = data;
++
++	return alt->mux->set(alt->mux, &state);
 +}
 +
-+static int typec_altmode_set_state(struct typec_altmode *adev, int state)
++static int typec_altmode_set_state(struct typec_altmode *adev,
++				   unsigned long conf, void *data)
 +{
 +	bool is_port = is_typec_port(adev->dev.parent);
 +	struct altmode *port_altmode;
@@ -898,11 +910,11 @@ index 000000000000..74cb3c2ecb34
 +
 +	port_altmode = is_port ? to_altmode(adev) : to_altmode(adev)->partner;
 +
-+	ret = typec_altmode_set_mux(port_altmode, state);
++	ret = typec_altmode_set_mux(port_altmode, conf, data);
 +	if (ret)
 +		return ret;
 +
-+	blocking_notifier_call_chain(&port_altmode->nh, state, NULL);
++	blocking_notifier_call_chain(&port_altmode->nh, conf, NULL);
 +
 +	return 0;
 +}
@@ -942,7 +954,7 @@ index 000000000000..74cb3c2ecb34
 +	is_port = is_typec_port(adev->dev.parent);
 +	partner = altmode->partner;
 +
-+	ret = typec_altmode_set_mux(is_port ? altmode : partner, (u8)conf);
++	ret = typec_altmode_set_mux(is_port ? altmode : partner, conf, data);
 +	if (ret)
 +		return ret;
 +
@@ -959,12 +971,14 @@ index 000000000000..74cb3c2ecb34
 +/**
 + * typec_altmode_enter - Enter Mode
 + * @adev: The alternate mode
++ * @vdo: VDO for the Enter Mode command
 + *
 + * The alternate mode drivers use this function to enter mode. The port drivers
 + * use this to inform the alternate mode drivers that the partner has initiated
-+ * Enter Mode command.
++ * Enter Mode command. If the alternate mode does not require VDO, @vdo must be
++ * NULL.
 + */
-+int typec_altmode_enter(struct typec_altmode *adev)
++int typec_altmode_enter(struct typec_altmode *adev, u32 *vdo)
 +{
 +	struct altmode *partner = to_altmode(adev)->partner;
 +	struct typec_altmode *pdev = &partner->adev;
@@ -976,13 +990,16 @@ index 000000000000..74cb3c2ecb34
 +	if (!pdev->ops || !pdev->ops->enter)
 +		return -EOPNOTSUPP;
 +
++	if (is_typec_port(pdev->dev.parent) && !pdev->active)
++		return -EPERM;
++
 +	/* Moving to USB Safe State */
-+	ret = typec_altmode_set_state(adev, TYPEC_STATE_SAFE);
++	ret = typec_altmode_set_state(adev, TYPEC_STATE_SAFE, NULL);
 +	if (ret)
 +		return ret;
 +
 +	/* Enter Mode */
-+	return pdev->ops->enter(pdev);
++	return pdev->ops->enter(pdev, vdo);
 +}
 +EXPORT_SYMBOL_GPL(typec_altmode_enter);
 +
@@ -1005,7 +1022,7 @@ index 000000000000..74cb3c2ecb34
 +		return -EOPNOTSUPP;
 +
 +	/* Moving to USB Safe State */
-+	ret = typec_altmode_set_state(adev, TYPEC_STATE_SAFE);
++	ret = typec_altmode_set_state(adev, TYPEC_STATE_SAFE, NULL);
 +	if (ret)
 +		return ret;
 +
@@ -1067,7 +1084,10 @@ index 000000000000..74cb3c2ecb34
 +const struct typec_altmode *
 +typec_altmode_get_partner(struct typec_altmode *adev)
 +{
-+	return adev ? &to_altmode(adev)->partner->adev : NULL;
++	if (!adev || !to_altmode(adev)->partner)
++		return NULL;
++
++	return &to_altmode(adev)->partner->adev;
 +}
 +EXPORT_SYMBOL_GPL(typec_altmode_get_partner);
 +
@@ -1258,7 +1278,7 @@ index 000000000000..74cb3c2ecb34
 +		drv->remove(to_typec_altmode(dev));
 +
 +	if (adev->active) {
-+		WARN_ON(typec_altmode_set_state(adev, TYPEC_STATE_SAFE));
++		WARN_ON(typec_altmode_set_state(adev, TYPEC_STATE_SAFE, NULL));
 +		typec_altmode_update_active(adev, false);
 +	}
 +
@@ -1337,10 +1357,10 @@ index 000000000000..0c9661c96473
 +#endif /* __USB_TYPEC_ALTMODE_H__ */
 diff --git a/drivers/usb/typec/typec/class.c b/drivers/usb/typec/typec/class.c
 new file mode 100644
-index 000000000000..91d62276b56f
+index 000000000000..7c44e930602f
 --- /dev/null
 +++ b/drivers/usb/typec/typec/class.c
-@@ -0,0 +1,1692 @@
+@@ -0,0 +1,1742 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * USB Type-C Connector Class
@@ -2177,6 +2197,52 @@ index 000000000000..91d62276b56f
 +	.release = typec_cable_release,
 +};
 +
++static int cable_match(struct device *dev, void *data)
++{
++	return is_typec_cable(dev);
++}
++
++/**
++ * typec_cable_get - Get a reference to the USB Type-C cable
++ * @port: The USB Type-C Port the cable is connected to
++ *
++ * The caller must decrement the reference count with typec_cable_put() after
++ * use.
++ */
++struct typec_cable *typec_cable_get(struct typec_port *port)
++{
++	struct device *dev;
++
++	dev = device_find_child(&port->dev, NULL, cable_match);
++	if (!dev)
++		return NULL;
++
++	return to_typec_cable(dev);
++}
++EXPORT_SYMBOL_GPL(typec_cable_get);
++
++/**
++ * typec_cable_get - Decrement the reference count on USB Type-C cable
++ * @cable: The USB Type-C cable
++ */
++void typec_cable_put(struct typec_cable *cable)
++{
++	put_device(&cable->dev);
++}
++EXPORT_SYMBOL_GPL(typec_cable_put);
++
++/**
++ * typec_cable_is_active - Check is the USB Type-C cable active or passive
++ * @cable: The USB Type-C Cable
++ *
++ * Return 1 if the cable is active or 0 if it's passive.
++ */
++int typec_cable_is_active(struct typec_cable *cable)
++{
++	return cable->active;
++}
++EXPORT_SYMBOL_GPL(typec_cable_is_active);
++
 +/**
 + * typec_cable_set_identity - Report result from Discover Identity command
 + * @cable: The cable updated identity values
@@ -2826,7 +2892,11 @@ index 000000000000..91d62276b56f
 + */
 +int typec_set_mode(struct typec_port *port, int mode)
 +{
-+	return port->mux ? port->mux->set(port->mux, mode) : 0;
++	struct typec_mux_state state = { };
++
++	state.mode = mode;
++
++	return port->mux ? port->mux->set(port->mux, &state) : 0;
 +}
 +EXPORT_SYMBOL_GPL(typec_set_mode);
 +
@@ -3310,12 +3380,12 @@ index 000000000000..323dfa8160ab
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/usb/typec/typec/mux.c b/drivers/usb/typec/typec/mux.c
 new file mode 100644
-index 000000000000..57907f26f681
+index 000000000000..5baf0f416c73
 --- /dev/null
 +++ b/drivers/usb/typec/typec/mux.c
 @@ -0,0 +1,370 @@
 +// SPDX-License-Identifier: GPL-2.0
-+/**
++/*
 + * USB Type-C Multiplexer/DeMultiplexer Switch support
 + *
 + * Copyright (C) 2018 Intel Corporation
@@ -3713,10 +3783,10 @@ index 000000000000..1332e469b8a0
 +obj-$(CONFIG_TYPEC_MUX_PI3USB30532)	+= pi3usb30532.o
 diff --git a/drivers/usb/typec/typec/mux/pi3usb30532.c b/drivers/usb/typec/typec/mux/pi3usb30532.c
 new file mode 100644
-index 000000000000..5585b109095b
+index 000000000000..46457c133d2b
 --- /dev/null
 +++ b/drivers/usb/typec/typec/mux/pi3usb30532.c
-@@ -0,0 +1,190 @@
+@@ -0,0 +1,191 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Pericom PI3USB30532 Type-C cross switch / mux driver
@@ -3792,7 +3862,8 @@ index 000000000000..5585b109095b
 +	return ret;
 +}
 +
-+static int pi3usb30532_mux_set(struct typec_mux *mux, int state)
++static int
++pi3usb30532_mux_set(struct typec_mux *mux, struct typec_mux_state *state)
 +{
 +	struct pi3usb30532 *pi = typec_mux_get_drvdata(mux);
 +	u8 new_conf;
@@ -3801,7 +3872,7 @@ index 000000000000..5585b109095b
 +	mutex_lock(&pi->lock);
 +	new_conf = pi->conf;
 +
-+	switch (state) {
++	switch (state->mode) {
 +	case TYPEC_STATE_SAFE:
 +		new_conf = (new_conf & PI3USB30532_CONF_SWAP) |
 +			   PI3USB30532_CONF_OPEN;
@@ -7128,10 +7199,10 @@ index 000000000000..017389021b96
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/usb/typec/typec/tcpm/tcpm.c b/drivers/usb/typec/typec/tcpm/tcpm.c
 new file mode 100644
-index 000000000000..56fc356bc55c
+index 000000000000..c033dfb2dd8a
 --- /dev/null
 +++ b/drivers/usb/typec/typec/tcpm/tcpm.c
-@@ -0,0 +1,4766 @@
+@@ -0,0 +1,4792 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2015-2017 Google, Inc
@@ -8609,16 +8680,16 @@ index 000000000000..56fc356bc55c
 +	return 0;
 +}
 +
-+static int tcpm_altmode_enter(struct typec_altmode *altmode)
++static int tcpm_altmode_enter(struct typec_altmode *altmode, u32 *vdo)
 +{
 +	struct tcpm_port *port = typec_altmode_get_drvdata(altmode);
 +	u32 header;
 +
 +	mutex_lock(&port->lock);
-+	header = VDO(altmode->svid, 1, CMD_ENTER_MODE);
++	header = VDO(altmode->svid, vdo ? 2 : 1, CMD_ENTER_MODE);
 +	header |= VDO_OPOS(altmode->mode);
 +
-+	tcpm_queue_vdm(port, header, NULL, 0);
++	tcpm_queue_vdm(port, header, vdo, vdo ? 1 : 0);
 +	mod_delayed_work(port->wq, &port->vdm_state_machine, 0);
 +	mutex_unlock(&port->lock);
 +
@@ -10893,6 +10964,14 @@ index 000000000000..56fc356bc55c
 +		 */
 +		break;
 +
++	case PORT_RESET:
++	case PORT_RESET_WAIT_OFF:
++		/*
++		 * State set back to default mode once the timer completes.
++		 * Ignore CC changes here.
++		 */
++		break;
++
 +	default:
 +		if (tcpm_port_is_disconnected(port))
 +			tcpm_set_state(port, unattached_state(port), 0);
@@ -10954,6 +11033,15 @@ index 000000000000..56fc356bc55c
 +	case SRC_TRY_DEBOUNCE:
 +		/* Do nothing, waiting for sink detection */
 +		break;
++
++	case PORT_RESET:
++	case PORT_RESET_WAIT_OFF:
++		/*
++		 * State set back to default mode once the timer completes.
++		 * Ignore vbus changes here.
++		 */
++		break;
++
 +	default:
 +		break;
 +	}
@@ -11007,10 +11095,19 @@ index 000000000000..56fc356bc55c
 +	case PORT_RESET_WAIT_OFF:
 +		tcpm_set_state(port, tcpm_default_state(port), 0);
 +		break;
++
 +	case SRC_TRY_WAIT:
 +	case SRC_TRY_DEBOUNCE:
 +		/* Do nothing, waiting for sink detection */
 +		break;
++
++	case PORT_RESET:
++		/*
++		 * State set back to default mode once the timer completes.
++		 * Ignore vbus changes here.
++		 */
++		break;
++
 +	default:
 +		if (port->pwr_role == TYPEC_SINK &&
 +		    port->attached)
@@ -13276,7 +13373,7 @@ index 000000000000..b35e15a1f02c
 +obj-$(CONFIG_UCSI_CCG)			+= ucsi_ccg.o
 diff --git a/drivers/usb/typec/typec/ucsi/displayport.c b/drivers/usb/typec/typec/ucsi/displayport.c
 new file mode 100644
-index 000000000000..77655d9ce549
+index 000000000000..048381c058a5
 --- /dev/null
 +++ b/drivers/usb/typec/typec/ucsi/displayport.c
 @@ -0,0 +1,325 @@
@@ -13327,7 +13424,7 @@ index 000000000000..77655d9ce549
 + * -EOPNOTSUPP.
 + */
 +
-+static int ucsi_displayport_enter(struct typec_altmode *alt)
++static int ucsi_displayport_enter(struct typec_altmode *alt, u32 *vdo)
 +{
 +	struct ucsi_dp *dp = typec_altmode_get_drvdata(alt);
 +	struct ucsi *ucsi = dp->con->ucsi;
@@ -13802,10 +13899,10 @@ index 000000000000..a0d3a934d3d9
 +#include <trace/define_trace.h>
 diff --git a/drivers/usb/typec/typec/ucsi/ucsi.c b/drivers/usb/typec/typec/ucsi/ucsi.c
 new file mode 100644
-index 000000000000..4459bc68aa33
+index 000000000000..d5a6aac86327
 --- /dev/null
 +++ b/drivers/usb/typec/typec/ucsi/ucsi.c
-@@ -0,0 +1,1071 @@
+@@ -0,0 +1,1156 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * USB Type-C Connector System Software Interface driver
@@ -13997,7 +14094,7 @@ index 000000000000..4459bc68aa33
 +	u64 command;
 +
 +	/* Restore UCSI notification enable mask after system resume */
-+	command = UCSI_SET_NOTIFICATION_ENABLE | UCSI_ENABLE_NTFY_ALL;
++	command = UCSI_SET_NOTIFICATION_ENABLE | ucsi->ntfy;
 +
 +	return ucsi_send_command(ucsi, command, NULL, 0);
 +}
@@ -14126,6 +14223,82 @@ index 000000000000..4459bc68aa33
 +	return ret;
 +}
 +
++static int
++ucsi_register_altmodes_nvidia(struct ucsi_connector *con, u8 recipient)
++{
++	int max_altmodes = UCSI_MAX_ALTMODES;
++	struct typec_altmode_desc desc;
++	struct ucsi_altmode alt;
++	struct ucsi_altmode orig[UCSI_MAX_ALTMODES];
++	struct ucsi_altmode updated[UCSI_MAX_ALTMODES];
++	struct ucsi *ucsi = con->ucsi;
++	bool multi_dp = false;
++	u64 command;
++	int ret;
++	int len;
++	int i;
++	int k = 0;
++
++	if (recipient == UCSI_RECIPIENT_CON)
++		max_altmodes = con->ucsi->cap.num_alt_modes;
++
++	memset(orig, 0, sizeof(orig));
++	memset(updated, 0, sizeof(updated));
++
++	/* First get all the alternate modes */
++	for (i = 0; i < max_altmodes; i++) {
++		memset(&alt, 0, sizeof(alt));
++		command = UCSI_GET_ALTERNATE_MODES;
++		command |= UCSI_GET_ALTMODE_RECIPIENT(recipient);
++		command |= UCSI_GET_ALTMODE_CONNECTOR_NUMBER(con->num);
++		command |= UCSI_GET_ALTMODE_OFFSET(i);
++		len = ucsi_run_command(con->ucsi, command, &alt, sizeof(alt));
++		/*
++		 * We are collecting all altmodes first and then registering.
++		 * Some type-C device will return zero length data beyond last
++		 * alternate modes. We should not return if length is zero.
++		 */
++		if (len < 0)
++			return len;
++
++		/* We got all altmodes, now break out and register them */
++		if (!len || !alt.svid)
++			break;
++
++		orig[k].mid = alt.mid;
++		orig[k].svid = alt.svid;
++		k++;
++	}
++	/*
++	 * Update the original altmode table as some ppms may report
++	 * multiple DP altmodes.
++	 */
++	if (recipient == UCSI_RECIPIENT_CON)
++		multi_dp = ucsi->ops->update_altmodes(ucsi, orig, updated);
++
++	/* now register altmodes */
++	for (i = 0; i < max_altmodes; i++) {
++		memset(&desc, 0, sizeof(desc));
++		if (multi_dp && recipient == UCSI_RECIPIENT_CON) {
++			desc.svid = updated[i].svid;
++			desc.vdo = updated[i].mid;
++		} else {
++			desc.svid = orig[i].svid;
++			desc.vdo = orig[i].mid;
++		}
++		desc.roles = TYPEC_PORT_DRD;
++
++		if (!desc.svid)
++			return 0;
++
++		ret = ucsi_register_altmode(con, &desc, recipient);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++
 +static int ucsi_register_altmodes(struct ucsi_connector *con, u8 recipient)
 +{
 +	int max_altmodes = UCSI_MAX_ALTMODES;
@@ -14143,6 +14316,9 @@ index 000000000000..4459bc68aa33
 +
 +	if (recipient == UCSI_RECIPIENT_SOP && con->partner_altmode[0])
 +		return 0;
++
++	if (con->ucsi->ops->update_altmodes)
++		return ucsi_register_altmodes_nvidia(con, recipient);
 +
 +	if (recipient == UCSI_RECIPIENT_CON)
 +		max_altmodes = con->ucsi->cap.num_alt_modes;
@@ -14397,6 +14573,11 @@ index 000000000000..4459bc68aa33
 +{
 +	struct ucsi_connector *con = &ucsi->connector[num - 1];
 +
++	if (!(ucsi->ntfy & UCSI_ENABLE_NTFY_CONNECTOR_CHANGE)) {
++		dev_dbg(ucsi->dev, "Bogus connector change event\n");
++		return;
++	}
++
 +	if (!test_and_set_bit(EVENT_PENDING, &ucsi->flags))
 +		schedule_work(&con->work);
 +}
@@ -14464,7 +14645,7 @@ index 000000000000..4459bc68aa33
 +		ucsi_reset_ppm(con->ucsi);
 +		mutex_unlock(&con->ucsi->ppm_lock);
 +
-+		c = UCSI_SET_NOTIFICATION_ENABLE | UCSI_ENABLE_NTFY_ALL;
++		c = UCSI_SET_NOTIFICATION_ENABLE | con->ucsi->ntfy;
 +		ucsi_send_command(con->ucsi, c, NULL, 0);
 +
 +		ucsi_reset_connector(con, true);
@@ -14698,8 +14879,8 @@ index 000000000000..4459bc68aa33
 +	}
 +
 +	/* Enable basic notifications */
-+	command = UCSI_SET_NOTIFICATION_ENABLE;
-+	command |= UCSI_ENABLE_NTFY_CMD_COMPLETE | UCSI_ENABLE_NTFY_ERROR;
++	ucsi->ntfy = UCSI_ENABLE_NTFY_CMD_COMPLETE | UCSI_ENABLE_NTFY_ERROR;
++	command = UCSI_SET_NOTIFICATION_ENABLE | ucsi->ntfy;
 +	ret = ucsi_run_command(ucsi, command, NULL, 0);
 +	if (ret < 0)
 +		goto err_reset;
@@ -14731,7 +14912,8 @@ index 000000000000..4459bc68aa33
 +	}
 +
 +	/* Enable all notifications */
-+	command = UCSI_SET_NOTIFICATION_ENABLE | UCSI_ENABLE_NTFY_ALL;
++	ucsi->ntfy = UCSI_ENABLE_NTFY_ALL;
++	command = UCSI_SET_NOTIFICATION_ENABLE | ucsi->ntfy;
 +	ret = ucsi_run_command(ucsi, command, NULL, 0);
 +	if (ret < 0)
 +		goto err_unregister;
@@ -14879,10 +15061,10 @@ index 000000000000..4459bc68aa33
 +MODULE_DESCRIPTION("USB Type-C Connector System Software Interface driver");
 diff --git a/drivers/usb/typec/typec/ucsi/ucsi.h b/drivers/usb/typec/typec/ucsi/ucsi.h
 new file mode 100644
-index 000000000000..831c9470bdc1
+index 000000000000..e434b9c9a9eb
 --- /dev/null
 +++ b/drivers/usb/typec/typec/ucsi/ucsi.h
-@@ -0,0 +1,329 @@
+@@ -0,0 +1,343 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +
 +#ifndef __DRIVER_USB_TYPEC_UCSI_H
@@ -14896,6 +15078,7 @@ index 000000000000..831c9470bdc1
 +/* -------------------------------------------------------------------------- */
 +
 +struct ucsi;
++struct ucsi_altmode;
 +
 +/* UCSI offsets (Bytes) */
 +#define UCSI_VERSION			0
@@ -14920,6 +15103,7 @@ index 000000000000..831c9470bdc1
 + * @read: Read operation
 + * @sync_write: Blocking write operation
 + * @async_write: Non-blocking write operation
++ * @update_altmodes: Squashes duplicate DP altmodes
 + *
 + * Read and write routines for UCSI interface. @sync_write must wait for the
 + * Command Completion Event from the PPM before returning, and @async_write must
@@ -14932,6 +15116,8 @@ index 000000000000..831c9470bdc1
 +			  const void *val, size_t val_len);
 +	int (*async_write)(struct ucsi *ucsi, unsigned int offset,
 +			   const void *val, size_t val_len);
++	bool (*update_altmodes)(struct ucsi *ucsi, struct ucsi_altmode *orig,
++				struct ucsi_altmode *updated);
 +};
 +
 +struct ucsi *ucsi_create(struct device *dev, const struct ucsi_operations *ops);
@@ -14967,6 +15153,7 @@ index 000000000000..831c9470bdc1
 +#define UCSI_GET_ERROR_STATUS		0x13
 +
 +#define UCSI_CONNECTOR_NUMBER(_num_)		((u64)(_num_) << 16)
++#define UCSI_COMMAND(_cmd_)			((_cmd_) & 0xff)
 +
 +/* CONNECTOR_RESET command bits */
 +#define UCSI_CONNECTOR_RESET_HARD		BIT(23) /* Deprecated in v1.1 */
@@ -15024,6 +15211,12 @@ index 000000000000..831c9470bdc1
 +#define UCSI_ERROR_HARD_RESET			BIT(10)
 +#define UCSI_ERROR_PPM_POLICY_CONFLICT		BIT(11)
 +#define UCSI_ERROR_SWAP_REJECTED		BIT(12)
++
++#define UCSI_SET_NEW_CAM_ENTER(x)		(((x) >> 23) & 0x1)
++#define UCSI_SET_NEW_CAM_GET_AM(x)		(((x) >> 24) & 0xff)
++#define UCSI_SET_NEW_CAM_AM_MASK		(0xff << 24)
++#define UCSI_SET_NEW_CAM_SET_AM(x)		(((x) & 0xff) << 24)
++#define UCSI_CMD_CONNECTOR_MASK			(0x7)
 +
 +/* Data structure filled by PPM in response to GET_CAPABILITY command. */
 +struct ucsi_capability {
@@ -15154,6 +15347,9 @@ index 000000000000..831c9470bdc1
 +	/* PPM Communication lock */
 +	struct mutex ppm_lock;
 +
++	/* The latest "Notification Enable" bits (SET_NOTIFICATION_ENABLE) */
++	u64 ntfy;
++
 +	/* PPM communication flags */
 +	unsigned long flags;
 +#define EVENT_PENDING	0
@@ -15214,7 +15410,7 @@ index 000000000000..831c9470bdc1
 +#endif /* __DRIVER_USB_TYPEC_UCSI_H */
 diff --git a/drivers/usb/typec/typec/ucsi/ucsi_acpi.c b/drivers/usb/typec/typec/ucsi/ucsi_acpi.c
 new file mode 100644
-index 000000000000..3f1786170098
+index 000000000000..9fc4f338e870
 --- /dev/null
 +++ b/drivers/usb/typec/typec/ucsi/ucsi_acpi.c
 @@ -0,0 +1,213 @@
@@ -15347,7 +15543,7 @@ index 000000000000..3f1786170098
 +		return -ENODEV;
 +	}
 +
-+	/* This will make sure we can use ioremap_nocache() */
++	/* This will make sure we can use ioremap() */
 +	status = acpi_release_memory(ACPI_HANDLE(&pdev->dev), res, 1);
 +	if (ACPI_FAILURE(status))
 +		return -ENOMEM;
@@ -15433,10 +15629,10 @@ index 000000000000..3f1786170098
 +MODULE_DESCRIPTION("UCSI ACPI driver");
 diff --git a/drivers/usb/typec/typec/ucsi/ucsi_ccg.c b/drivers/usb/typec/typec/ucsi/ucsi_ccg.c
 new file mode 100644
-index 000000000000..bd374cea3ba6
+index 000000000000..2658cda5da11
 --- /dev/null
 +++ b/drivers/usb/typec/typec/ucsi/ucsi_ccg.c
-@@ -0,0 +1,1240 @@
+@@ -0,0 +1,1427 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * UCSI driver for Cypress CCGx Type-C controller
@@ -15455,6 +15651,7 @@ index 000000000000..bd374cea3ba6
 +#include <linux/platform_device.h>
 +#include <linux/pm.h>
 +#include <linux/pm_runtime.h>
++#include <linux/usb/typec_dp.h>
 +
 +#include <asm/unaligned.h>
 +#include "ucsi.h"
@@ -15612,6 +15809,15 @@ index 000000000000..bd374cea3ba6
 +	u8 length;
 +};
 +
++struct ucsi_ccg_altmode {
++	u16 svid;
++	u32 mid;
++	u8 linked_idx;
++	u8 active_idx;
++#define UCSI_MULTI_DP_INDEX	(0xff)
++	bool checked;
++} __packed;
++
 +struct ucsi_ccg {
 +	struct device *dev;
 +	struct ucsi *ucsi;
@@ -15637,6 +15843,11 @@ index 000000000000..bd374cea3ba6
 +	struct work_struct pm_work;
 +
 +	struct completion complete;
++
++	u64 last_cmd_sent;
++	bool has_multiple_dp;
++	struct ucsi_ccg_altmode orig[UCSI_MAX_ALTMODES];
++	struct ucsi_ccg_altmode updated[UCSI_MAX_ALTMODES];
 +};
 +
 +static int ccg_read(struct ucsi_ccg *uc, u16 rab, u8 *data, u32 len)
@@ -15758,12 +15969,169 @@ index 000000000000..bd374cea3ba6
 +	return -ETIMEDOUT;
 +}
 +
++static void ucsi_ccg_update_get_current_cam_cmd(struct ucsi_ccg *uc, u8 *data)
++{
++	u8 cam, new_cam;
++
++	cam = data[0];
++	new_cam = uc->orig[cam].linked_idx;
++	uc->updated[new_cam].active_idx = cam;
++	data[0] = new_cam;
++}
++
++static bool ucsi_ccg_update_altmodes(struct ucsi *ucsi,
++				     struct ucsi_altmode *orig,
++				     struct ucsi_altmode *updated)
++{
++	struct ucsi_ccg *uc = ucsi_get_drvdata(ucsi);
++	struct ucsi_ccg_altmode *alt, *new_alt;
++	int i, j, k = 0;
++	bool found = false;
++
++	alt = uc->orig;
++	new_alt = uc->updated;
++	memset(uc->updated, 0, sizeof(uc->updated));
++
++	/*
++	 * Copy original connector altmodes to new structure.
++	 * We need this before second loop since second loop
++	 * checks for duplicate altmodes.
++	 */
++	for (i = 0; i < UCSI_MAX_ALTMODES; i++) {
++		alt[i].svid = orig[i].svid;
++		alt[i].mid = orig[i].mid;
++		if (!alt[i].svid)
++			break;
++	}
++
++	for (i = 0; i < UCSI_MAX_ALTMODES; i++) {
++		if (!alt[i].svid)
++			break;
++
++		/* already checked and considered */
++		if (alt[i].checked)
++			continue;
++
++		if (!DP_CONF_GET_PIN_ASSIGN(alt[i].mid)) {
++			/* Found Non DP altmode */
++			new_alt[k].svid = alt[i].svid;
++			new_alt[k].mid |= alt[i].mid;
++			new_alt[k].linked_idx = i;
++			alt[i].linked_idx = k;
++			updated[k].svid = new_alt[k].svid;
++			updated[k].mid = new_alt[k].mid;
++			k++;
++			continue;
++		}
++
++		for (j = i + 1; j < UCSI_MAX_ALTMODES; j++) {
++			if (alt[i].svid != alt[j].svid ||
++			    !DP_CONF_GET_PIN_ASSIGN(alt[j].mid)) {
++				continue;
++			} else {
++				/* Found duplicate DP mode */
++				new_alt[k].svid = alt[i].svid;
++				new_alt[k].mid |= alt[i].mid | alt[j].mid;
++				new_alt[k].linked_idx = UCSI_MULTI_DP_INDEX;
++				alt[i].linked_idx = k;
++				alt[j].linked_idx = k;
++				alt[j].checked = true;
++				found = true;
++			}
++		}
++		if (found) {
++			uc->has_multiple_dp = true;
++		} else {
++			/* Didn't find any duplicate DP altmode */
++			new_alt[k].svid = alt[i].svid;
++			new_alt[k].mid |= alt[i].mid;
++			new_alt[k].linked_idx = i;
++			alt[i].linked_idx = k;
++		}
++		updated[k].svid = new_alt[k].svid;
++		updated[k].mid = new_alt[k].mid;
++		k++;
++	}
++	return found;
++}
++
++static void ucsi_ccg_update_set_new_cam_cmd(struct ucsi_ccg *uc,
++					    struct ucsi_connector *con,
++					    u64 *cmd)
++{
++	struct ucsi_ccg_altmode *new_port, *port;
++	struct typec_altmode *alt = NULL;
++	u8 new_cam, cam, pin;
++	bool enter_new_mode;
++	int i, j, k = 0xff;
++
++	port = uc->orig;
++	new_cam = UCSI_SET_NEW_CAM_GET_AM(*cmd);
++	new_port = &uc->updated[new_cam];
++	cam = new_port->linked_idx;
++	enter_new_mode = UCSI_SET_NEW_CAM_ENTER(*cmd);
++
++	/*
++	 * If CAM is UCSI_MULTI_DP_INDEX then this is DP altmode
++	 * with multiple DP mode. Find out CAM for best pin assignment
++	 * among all DP mode. Priorite pin E->D->C after making sure
++	 * the partner supports that pin.
++	 */
++	if (cam == UCSI_MULTI_DP_INDEX) {
++		if (enter_new_mode) {
++			for (i = 0; con->partner_altmode[i]; i++) {
++				alt = con->partner_altmode[i];
++				if (alt->svid == new_port->svid)
++					break;
++			}
++			/*
++			 * alt will always be non NULL since this is
++			 * UCSI_SET_NEW_CAM command and so there will be
++			 * at least one con->partner_altmode[i] with svid
++			 * matching with new_port->svid.
++			 */
++			for (j = 0; port[j].svid; j++) {
++				pin = DP_CONF_GET_PIN_ASSIGN(port[j].mid);
++				if (alt && port[j].svid == alt->svid &&
++				    (pin & DP_CONF_GET_PIN_ASSIGN(alt->vdo))) {
++					/* prioritize pin E->D->C */
++					if (k == 0xff || (k != 0xff && pin >
++					    DP_CONF_GET_PIN_ASSIGN(port[k].mid))
++					    ) {
++						k = j;
++					}
++				}
++			}
++			cam = k;
++			new_port->active_idx = cam;
++		} else {
++			cam = new_port->active_idx;
++		}
++	}
++	*cmd &= ~UCSI_SET_NEW_CAM_AM_MASK;
++	*cmd |= UCSI_SET_NEW_CAM_SET_AM(cam);
++}
++
 +static int ucsi_ccg_read(struct ucsi *ucsi, unsigned int offset,
 +			 void *val, size_t val_len)
 +{
++	struct ucsi_ccg *uc = ucsi_get_drvdata(ucsi);
++	int ret;
 +	u16 reg = CCGX_RAB_UCSI_DATA_BLOCK(offset);
 +
-+	return ccg_read(ucsi_get_drvdata(ucsi), reg, val, val_len);
++	ret = ccg_read(uc, reg, val, val_len);
++	if (ret)
++		return ret;
++
++	if (offset == UCSI_MESSAGE_IN) {
++		if (UCSI_COMMAND(uc->last_cmd_sent) == UCSI_GET_CURRENT_CAM &&
++		    uc->has_multiple_dp) {
++			ucsi_ccg_update_get_current_cam_cmd(uc, (u8 *)val);
++		}
++		uc->last_cmd_sent = 0;
++	}
++
++	return ret;
 +}
 +
 +static int ucsi_ccg_async_write(struct ucsi *ucsi, unsigned int offset,
@@ -15778,11 +16146,25 @@ index 000000000000..bd374cea3ba6
 +			       const void *val, size_t val_len)
 +{
 +	struct ucsi_ccg *uc = ucsi_get_drvdata(ucsi);
++	struct ucsi_connector *con;
++	int con_index;
 +	int ret;
 +
 +	mutex_lock(&uc->lock);
 +	pm_runtime_get_sync(uc->dev);
 +	set_bit(DEV_CMD_PENDING, &uc->flags);
++
++	if (offset == UCSI_CONTROL && val_len == sizeof(uc->last_cmd_sent)) {
++		uc->last_cmd_sent = *(u64 *)val;
++
++		if (UCSI_COMMAND(uc->last_cmd_sent) == UCSI_SET_NEW_CAM &&
++		    uc->has_multiple_dp) {
++			con_index = (uc->last_cmd_sent >> 16) &
++				    UCSI_CMD_CONNECTOR_MASK;
++			con = &uc->ucsi->connector[con_index - 1];
++			ucsi_ccg_update_set_new_cam_cmd(uc, con, (u64 *)val);
++		}
++	}
 +
 +	ret = ucsi_ccg_async_write(ucsi, offset, val, val_len);
 +	if (ret)
@@ -15802,7 +16184,8 @@ index 000000000000..bd374cea3ba6
 +static const struct ucsi_operations ucsi_ccg_ops = {
 +	.read = ucsi_ccg_read,
 +	.sync_write = ucsi_ccg_sync_write,
-+	.async_write = ucsi_ccg_async_write
++	.async_write = ucsi_ccg_async_write,
++	.update_altmodes = ucsi_ccg_update_altmodes
 +};
 +
 +static irqreturn_t ccg_irq_handler(int irq, void *data)
