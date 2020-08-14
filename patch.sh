@@ -498,7 +498,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.20.17"
+	backport_tag="v5.0.21"
 
 	subsystem="typec"
 	#regenerate="enable"
