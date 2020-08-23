@@ -603,6 +603,7 @@ drivers () {
 	dir 'drivers/tps65217'
 	dir 'drivers/opp'
 	dir 'drivers/wiznet'
+	dir 'drivers/ctag'
 
 	dir 'drivers/ti/overlays'
 	dir 'drivers/ti/cpsw'
