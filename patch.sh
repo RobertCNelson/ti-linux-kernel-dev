@@ -617,6 +617,7 @@ drivers () {
 	dir 'drivers/uio_pruss_shmem'
 	dir 'drivers/greybus'
 	dir 'RPi'
+	dir 'gsoc'
 	dir 'fixes'
 }
 
