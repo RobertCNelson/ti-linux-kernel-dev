@@ -498,6 +498,24 @@ patch_backports (){
 }
 
 backports () {
+	backport_tag="v5.0.21"
+
+	subsystem="typec"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		rm -rf ./drivers/usb/typec/
+		mkdir -p ./drivers/usb/typec/
+		cp -rv ~/linux-src/drivers/usb/typec/* ./drivers/usb/typec/
+		cp -v ~/linux-src/include/linux/usb/typec*.h ./include/linux/usb/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
 	backport_tag="v5.3.18"
 
 	subsystem="stmpe"
@@ -601,7 +619,6 @@ drivers () {
 	dir 'RPi'
 	dir 'gsoc'
 	dir 'fixes'
-	dir 'typec'
 }
 
 soc () {
