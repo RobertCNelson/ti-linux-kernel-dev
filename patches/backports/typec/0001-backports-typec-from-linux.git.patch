@@ -1,6 +1,6 @@
-From d3552649e1f3e78d392d9cab4f0cf8df6763ba0e Mon Sep 17 00:00:00 2001
+From b9fa5e610a2d8fd5253c2eddc555d8a797232965 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 30 Jul 2020 16:26:17 -0500
+Date: Fri, 25 Sep 2020 11:54:41 -0500
 Subject: [PATCH] backports: typec: from: linux.git
 
 Reference: v5.5.19
@@ -19,10 +19,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/usb/typec/ucsi/trace.h         |  79 +---
  drivers/usb/typec/ucsi/ucsi.c          | 609 +++++++++++++------------
  drivers/usb/typec/ucsi/ucsi.h          | 417 ++++++-----------
- drivers/usb/typec/ucsi/ucsi_acpi.c     |  91 +++-
+ drivers/usb/typec/ucsi/ucsi_acpi.c     |  95 +++-
  drivers/usb/typec/ucsi/ucsi_ccg.c      | 168 ++++---
  include/linux/usb/typec.h              |  41 +-
- 16 files changed, 1056 insertions(+), 969 deletions(-)
+ 16 files changed, 1056 insertions(+), 973 deletions(-)
  create mode 100644 drivers/usb/typec/hd3ss3220.c
 
 diff --git a/drivers/usb/typec/Kconfig b/drivers/usb/typec/Kconfig
@@ -2720,7 +2720,7 @@ index de87d0b8319d..831c9470bdc1 100644
  
  void ucsi_altmode_update_active(struct ucsi_connector *con);
 diff --git a/drivers/usb/typec/ucsi/ucsi_acpi.c b/drivers/usb/typec/ucsi/ucsi_acpi.c
-index a18112a83fae..3f1786170098 100644
+index dda8bd39c918..3f1786170098 100644
 --- a/drivers/usb/typec/ucsi/ucsi_acpi.c
 +++ b/drivers/usb/typec/ucsi/ucsi_acpi.c
 @@ -19,7 +19,9 @@
@@ -2734,7 +2734,7 @@ index a18112a83fae..3f1786170098 100644
  	guid_t guid;
  };
  
-@@ -39,27 +41,73 @@ static int ucsi_acpi_dsm(struct ucsi_acpi *ua, int func)
+@@ -39,40 +41,82 @@ static int ucsi_acpi_dsm(struct ucsi_acpi *ua, int func)
  	return 0;
  }
  
@@ -2749,7 +2749,8 @@ index a18112a83fae..3f1786170098 100644
 +	ret = ucsi_acpi_dsm(ua, UCSI_DSM_FUNC_READ);
 +	if (ret)
 +		return ret;
-+
+ 
+-	ppm->data->ctrl.raw_cmd = ctrl->raw_cmd;
 +	memcpy(val, (const void __force *)(ua->base + offset), val_len);
 +
 +	return 0;
@@ -2759,8 +2760,7 @@ index a18112a83fae..3f1786170098 100644
 +				 const void *val, size_t val_len)
 +{
 +	struct ucsi_acpi *ua = ucsi_get_drvdata(ucsi);
- 
--	ppm->data->ctrl.raw_cmd = ctrl->raw_cmd;
++
 +	memcpy((void __force *)(ua->base + offset), val, val_len);
  
  	return ucsi_acpi_dsm(ua, UCSI_DSM_FUNC_WRITE);
@@ -2779,11 +2779,11 @@ index a18112a83fae..3f1786170098 100644
 +	ret = ucsi_acpi_async_write(ucsi, offset, val, val_len);
 +	if (ret)
 +		goto out_clear_bit;
- 
--	return ucsi_acpi_dsm(ua, UCSI_DSM_FUNC_READ);
++
 +	if (!wait_for_completion_timeout(&ua->complete, msecs_to_jiffies(5000)))
 +		ret = -ETIMEDOUT;
-+
+ 
+-	return ucsi_acpi_dsm(ua, UCSI_DSM_FUNC_READ);
 +out_clear_bit:
 +	clear_bit(COMMAND_PENDING, &ua->flags);
 +
@@ -2801,12 +2801,12 @@ index a18112a83fae..3f1786170098 100644
  	struct ucsi_acpi *ua = data;
 +	u32 cci;
 +	int ret;
-+
+ 
+-	ucsi_notify(ua->ucsi);
 +	ret = ucsi_acpi_read(ua->ucsi, UCSI_CCI, &cci, sizeof(cci));
 +	if (ret)
 +		return;
- 
--	ucsi_notify(ua->ucsi);
++
 +	if (test_bit(COMMAND_PENDING, &ua->flags) &&
 +	    cci & (UCSI_CCI_ACK_COMPLETE | UCSI_CCI_COMMAND_COMPLETE))
 +		complete(&ua->complete);
@@ -2815,7 +2815,20 @@ index a18112a83fae..3f1786170098 100644
  }
  
  static int ucsi_acpi_probe(struct platform_device *pdev)
-@@ -90,35 +138,39 @@ static int ucsi_acpi_probe(struct platform_device *pdev)
+ {
+-	struct acpi_device *adev = ACPI_COMPANION(&pdev->dev);
+ 	struct ucsi_acpi *ua;
+ 	struct resource *res;
+ 	acpi_status status;
+ 	int ret;
+ 
+-	if (adev->dep_unmet)
+-		return -EPROBE_DEFER;
+-
+ 	ua = devm_kzalloc(&pdev->dev, sizeof(*ua), GFP_KERNEL);
+ 	if (!ua)
+ 		return -ENOMEM;
+@@ -94,35 +138,39 @@ static int ucsi_acpi_probe(struct platform_device *pdev)
  	 * it can not be requested here, and we can not use
  	 * devm_ioremap_resource().
  	 */
@@ -2865,7 +2878,7 @@ index a18112a83fae..3f1786170098 100644
  	}
  
  	platform_set_drvdata(pdev, ua);
-@@ -130,7 +182,8 @@ static int ucsi_acpi_remove(struct platform_device *pdev)
+@@ -134,7 +182,8 @@ static int ucsi_acpi_remove(struct platform_device *pdev)
  {
  	struct ucsi_acpi *ua = platform_get_drvdata(pdev);
  
@@ -3241,5 +3254,5 @@ index 7df4ecabc78a..0f52723a11bd 100644
  int typec_find_power_role(const char *name);
  int typec_find_port_data_role(const char *name);
 -- 
-2.27.0
+2.28.0
 
