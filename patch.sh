@@ -428,6 +428,9 @@ beagleboard_dtbs () {
 
 		device="am335x-revolve.dtb" ; dtb_makefile_append
 
+		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
+
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $branch" -m "${https_repo}/tree/${branch}" -m "${https_repo}/commit/${git_hash}" -s
@@ -673,12 +676,14 @@ readme () {
 
 		mkdir -p "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
 		cp -v "${DIR}/3rdparty/readme/bug_report.md" "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
+		cp -v "${DIR}/3rdparty/readme/FUNDING.yml" "${DIR}/KERNEL/.github/"
 
 		git add -f README.md
 		git add -f jenkins_build.sh
 		git add -f Jenkinsfile
 
 		git add -f .github/ISSUE_TEMPLATE/bug_report.md
+		git add -f .github/FUNDING.yml
 
 		git commit -a -m 'enable: Jenkins: http://gfnd.rcn-ee.org:8080' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
