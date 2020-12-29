@@ -226,6 +226,7 @@ wireguard () {
 		#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=v5.4.34&id=f8c60f7a00516820589c4c9da5614e4b7f4d0b2f
 		sed -i -e 's:skb_reset_tc:skb_reset_redirect:g' ./net/wireguard/queueing.h
 		sed -i -e 's:skb_reset_tc:skb_reset_redirect:g' ./net/wireguard/compat/compat.h
+		#sed -i -e 's:5, 5, 0):5, 4, 0):g' ./net/wireguard/compat/compat-asm.h
 
 		${git_bin} commit -a -m 'merge: WireGuard' -m "https://git.zx2c4.com/WireGuard/commit/${wireguard_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/WireGuard/
@@ -404,7 +405,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.8.16"
+	backport_tag="v5.8.18"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -428,6 +429,7 @@ backports () {
 		pre_backports
 
 		cp -v ~/linux-src/drivers/staging/exfat/* ./drivers/staging/exfat/
+		sed -i -e 's:CONFIG_EXFAT_FS:CONFIG_STAGING_EXFAT_FS:g' ./drivers/staging/Makefile
 
 		post_backports
 		exit 2
@@ -547,12 +549,14 @@ readme () {
 
 		mkdir -p "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
 		cp -v "${DIR}/3rdparty/readme/bug_report.md" "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
+		cp -v "${DIR}/3rdparty/readme/FUNDING.yml" "${DIR}/KERNEL/.github/"
 
 		git add -f README.md
 		git add -f jenkins_build.sh
 		git add -f Jenkinsfile
 
 		git add -f .github/ISSUE_TEMPLATE/bug_report.md
+		git add -f .github/FUNDING.yml
 
 		git commit -a -m 'enable: Jenkins: http://gfnd.rcn-ee.org:8080' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
