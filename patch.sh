@@ -510,6 +510,7 @@ drivers () {
 
 soc () {
 	dir 'bootup_hacks'
+	dir 'jadonk'
 }
 
 ###
