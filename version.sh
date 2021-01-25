@@ -46,10 +46,10 @@ toolchain="gcc_arm_gnueabihf_8"
 
 #Kernel
 KERNEL_REL=5.4
-KERNEL_TAG=${KERNEL_REL}.70
-kernel_rt=".70-rt40"
+KERNEL_TAG=${KERNEL_REL}.87
+kernel_rt=".84-rt47"
 #Kernel Build
-BUILD=${build_prefix}22
+BUILD=${build_prefix}22.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -62,5 +62,5 @@ DISTRO=xross
 
 ti_git_old_release="05b5a584edd4f87bc81874f4d0ad0b7b0c31875b"
         ti_git_pre="05b5a584edd4f87bc81874f4d0ad0b7b0c31875b"
-       ti_git_post="05b5a584edd4f87bc81874f4d0ad0b7b0c31875b"
+       ti_git_post="60de748aca87c99a32f726a6abf1b6472f297ae3"
 #

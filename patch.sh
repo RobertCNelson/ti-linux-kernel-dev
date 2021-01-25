@@ -118,6 +118,7 @@ external_git () {
 	else
 		echo "${top_of_branch}"
 	fi
+	#exit 2
 }
 
 can_isotp () {
@@ -450,7 +451,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.8.18"
+	backport_tag="v5.9.16"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -466,7 +467,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.6.19"
+	backport_tag="1657f11c7ca109b6f7e7bec4e241bf6cbbe2d4b0"
 
 	subsystem="exfat"
 	#regenerate="enable"
