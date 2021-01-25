@@ -118,7 +118,7 @@ external_git () {
 	else
 		echo "${top_of_branch}"
 	fi
-	exit 2
+	#exit 2
 }
 
 aufs_fail () {
