@@ -427,8 +427,6 @@ beagleboard_dtbs () {
 		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
 
-		device="am335x-revolve.dtb" ; dtb_makefile_append
-
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
 
