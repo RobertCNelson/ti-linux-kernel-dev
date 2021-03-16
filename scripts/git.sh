@@ -330,11 +330,11 @@ torvalds_linux="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.g
 unsecure_torvalds_linux="git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 linux_stable="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
 unsecure_linux_stable="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
-xenomai="https://gitlab.denx.de/Xenomai/xenomai.git"
+xenomai="https://source.denx.de/Xenomai/xenomai.git"
 
 if [ ! -f "${DIR}/.yakbuild" ] ; then
 	git_kernel
-	#git_xenomai
+	git_xenomai
 else
 	. "${DIR}/recipe.sh"
 	git_shallow
