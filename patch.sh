@@ -486,15 +486,15 @@ beagleboard_dtbs
 #local_patch
 
 ipipe () {
-	kernel_base="v4.14.110"
-	xenomai_branch="ipipe-core-4.14.110-arm-7"
+	kernel_base="v4.19.110"
+	xenomai_branch="ipipe-core-4.19.110-arm-07"
 	echo "dir: ipipe"
 
 	#${git_bin} revert --no-edit a8aac659b9652430ccf898dd61bc6f996e3aef9d
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		#https://gitlab.denx.de/Xenomai/ipipe-arm
+		#https://source.denx.de/Xenomai/ipipe-arm
 		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
 		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
 		if [ "x${test_for_branch}" != "x" ] ; then
@@ -503,19 +503,10 @@ ipipe () {
 
 		${git_bin} checkout ${kernel_base} -b ${xenomai_branch}
 
-		cp -v drivers/pci/dwc/pcie-designware-host.c ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c
-
-		echo "${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}"
-		${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}
-
-		#0001-gpio-omap-ipipe-enable-interrupt-pipelining.patch
-		${git_bin} revert --no-edit 952b7cf69c4ca921d37a5b32e8ab5d9256aa88cc -s
+		echo "${git_bin} pull --no-edit https://source.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}"
+		${git_bin} pull --no-edit https://source.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}
 
 		${git_bin} diff ${kernel_base}...HEAD > ../patches/ipipe/ipipe.diff
-
-		sed -i -s 's:arch/arm/plat-omap/include/plat/dmtimer.h:include/clocksource/timer-ti-dm.h:g' ../patches/ipipe/ipipe.diff
-		sed -i -s 's:arch/arm/plat-omap/dmtimer.c:drivers/clocksource/timer-ti-dm.c:g' ../patches/ipipe/ipipe.diff
-		sed -i -s 's:__ASM_ARCH_DMTIMER_H:CONFIG_ARCH_OMAP1 || CONFIG_ARCH_OMAP2PLUS:g' ../patches/ipipe/ipipe.diff
 
 		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
 		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
@@ -523,39 +514,33 @@ ipipe () {
 			${git_bin} branch "${xenomai_branch}" -D
 		fi
 
-		cp -v ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c drivers/pci/dwc/pcie-designware-host.c
+		#exit 2
+
+		#${git_bin} add --all
+		#${git_bin} commit --allow-empty -a -m 'xenomai pre-patchset'
+
+		patch -p1 < ../patches/ipipe/ipipe.diff
 
 		#exit 2
 
 		${git_bin} add --all
-		${git_bin} commit --allow-empty -a -m 'xenomai pre-patchset'
-
-		sed -i -s 's:#endif :\n#endif :g' include/clocksource/timer-ti-dm.h
-		sed -i -s 's:#ifdef CONFIG_MMU:\n#ifdef CONFIG_MMU:g' arch/arm/include/asm/uaccess.h
-
-		patch -p1 < ../patches/ipipe/ipipe.diff
-
-		#drivers/clocksource/timer-ti-dm.c
-		#include/clocksource/timer-ti-dm.h
-
-		${git_bin} add --all
 		${git_bin} commit -a -m 'xenomai ipipe patchset'
-		${git_bin} format-patch -2 -o ../patches/ipipe/
+		${git_bin} format-patch -1 -o ../patches/ipipe/
 
-		${git_bin} reset --hard HEAD~2
+		${git_bin} reset --hard HEAD~1
 
 		start_cleanup
 
-		${git} "${DIR}/patches/ipipe/0001-xenomai-pre-patchset.patch"
-		${git} "${DIR}/patches/ipipe/0002-xenomai-ipipe-patchset.patch"
+		#${git} "${DIR}/patches/ipipe/0001-xenomai-pre-patchset.patch"
+		${git} "${DIR}/patches/ipipe/0001-xenomai-ipipe-patchset.patch"
 
 		wdir="ipipe"
-		number=2
+		number=1
 		cleanup
 	fi
 
-	${git} "${DIR}/patches/ipipe/0001-xenomai-pre-patchset.patch"
-	${git} "${DIR}/patches/ipipe/0002-xenomai-ipipe-patchset.patch"
+	#${git} "${DIR}/patches/ipipe/0001-xenomai-pre-patchset.patch"
+	${git} "${DIR}/patches/ipipe/0001-xenomai-ipipe-patchset.patch"
 
 	echo "dir: xenomai - prepare_kernel"
 	# Add the rest of xenomai to the kernel
@@ -568,6 +553,8 @@ ipipe () {
 	# and apply it
 	${git_bin} apply "${OUTPATCH}"
 
+	patch -p1 < ../patches/ipipe/0001-xenomai-fixes.patch
+
 	${git_bin} add .
 	${git_bin} commit -a -m 'xenomai patchset'
 
@@ -576,7 +563,7 @@ ipipe () {
 	fi
 }
 
-#ipipe
+ipipe
 
 pre_backports () {
 	echo "dir: backports/${subsystem}"
