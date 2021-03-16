@@ -131,7 +131,7 @@ config="CONFIG_PCI" ; config_disable
 # Kernel Features
 #
 config="CONFIG_NR_CPUS" ; option="2" ; config_value
-config="CONFIG_PREEMPT_RT_FULL" ; config_enable
+config="CONFIG_PREEMPT" ; config_enable
 config="CONFIG_HZ_100" ; config_disable
 config="CONFIG_HZ_250" ; config_enable
 config="CONFIG_HZ" ; option="250" ; config_value

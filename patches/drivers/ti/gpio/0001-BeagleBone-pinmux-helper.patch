@@ -1,6 +1,6 @@
-From 441c5f31265bf7a3e03fdfdaeec7264ba6c8897d Mon Sep 17 00:00:00 2001
+From baff097e6c14f236aac7ba79afbe4a571c5bee3f Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 28 Sep 2017 08:46:45 -0500
+Date: Mon, 29 Jan 2018 13:43:56 -0600
 Subject: [PATCH] BeagleBone pinmux helper
 
 Authors:
@@ -16,21 +16,19 @@ https://github.com/RobertCNelson/linux-dev/tree/35e301ae8436e9f56f65bf1a7440021e
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- .../arm/boot/dts/am335x-bone-common-universal.dtsi | 2052 ++++++++++++++++++++
- arch/arm/boot/dts/am33xx.dtsi                      |    2 +-
- drivers/gpio/Kconfig                               |   14 +
- drivers/gpio/Makefile                              |    1 +
- drivers/gpio/gpio-of-helper.c                      |  435 +++++
- drivers/gpio/gpiolib-sysfs.c                       |   35 +-
- drivers/misc/Kconfig                               |    1 +
- drivers/misc/Makefile                              |    1 +
- drivers/misc/cape/Kconfig                          |    5 +
- drivers/misc/cape/Makefile                         |    5 +
- drivers/misc/cape/beaglebone/Kconfig               |   10 +
- drivers/misc/cape/beaglebone/Makefile              |    5 +
- drivers/misc/cape/beaglebone/bone-pinmux-helper.c  |  242 +++
- 13 files changed, 2804 insertions(+), 4 deletions(-)
- create mode 100644 arch/arm/boot/dts/am335x-bone-common-universal.dtsi
+ arch/arm/boot/dts/am33xx.dtsi                     |   2 +-
+ drivers/gpio/Kconfig                              |  14 +
+ drivers/gpio/Makefile                             |   1 +
+ drivers/gpio/gpio-of-helper.c                     | 435 ++++++++++++++++++++++
+ drivers/gpio/gpiolib-sysfs.c                      |  35 +-
+ drivers/misc/Kconfig                              |   1 +
+ drivers/misc/Makefile                             |   1 +
+ drivers/misc/cape/Kconfig                         |   5 +
+ drivers/misc/cape/Makefile                        |   5 +
+ drivers/misc/cape/beaglebone/Kconfig              |  10 +
+ drivers/misc/cape/beaglebone/Makefile             |   5 +
+ drivers/misc/cape/beaglebone/bone-pinmux-helper.c | 242 ++++++++++++
+ 12 files changed, 752 insertions(+), 4 deletions(-)
  create mode 100644 drivers/gpio/gpio-of-helper.c
  create mode 100644 drivers/misc/cape/Kconfig
  create mode 100644 drivers/misc/cape/Makefile
@@ -39,7 +37,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 drivers/misc/cape/beaglebone/bone-pinmux-helper.c
 
 diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index 3388d54ba114..d148a0870f78 100644
+index 8dbb2280538d..e0781ba629e3 100644
 --- a/drivers/gpio/Kconfig
 +++ b/drivers/gpio/Kconfig
 @@ -61,6 +61,20 @@ config GPIO_SYSFS
@@ -64,10 +62,10 @@ index 3388d54ba114..d148a0870f78 100644
  	depends on HAS_IOMEM # Only for IOMEM drivers
  	tristate
 diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
-index aeb70e9de6f2..1c457c7947c5 100644
+index cccb0d40846c..a50ea0310003 100644
 --- a/drivers/gpio/Makefile
 +++ b/drivers/gpio/Makefile
-@@ -9,6 +9,7 @@ obj-$(CONFIG_GPIOLIB)		+= gpiolib-devprop.o
+@@ -10,6 +10,7 @@ obj-$(CONFIG_GPIOLIB)		+= gpiolib-devprop.o
  obj-$(CONFIG_OF_GPIO)		+= gpiolib-of.o
  obj-$(CONFIG_GPIO_SYSFS)	+= gpiolib-sysfs.o
  obj-$(CONFIG_GPIO_ACPI)		+= gpiolib-acpi.o
@@ -517,10 +515,10 @@ index 000000000000..83f362f7da5f
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:gpio-of-helper");
 diff --git a/drivers/gpio/gpiolib-sysfs.c b/drivers/gpio/gpiolib-sysfs.c
-index 3f454eaf2101..e5fa99e57548 100644
+index 3dbaf489a8a5..7015730d84f9 100644
 --- a/drivers/gpio/gpiolib-sysfs.c
 +++ b/drivers/gpio/gpiolib-sysfs.c
-@@ -36,10 +36,10 @@ static DEFINE_MUTEX(sysfs_lock);
+@@ -37,10 +37,10 @@ static DEFINE_MUTEX(sysfs_lock);
  /*
   * /sys/class/gpio/gpioN... only for GPIOs that are exported
   *   /direction
@@ -532,7 +530,7 @@ index 3f454eaf2101..e5fa99e57548 100644
   *   /value
   *      * always readable, subject to hardware behavior
   *      * may be writable, as zero/nonzero
-@@ -52,6 +52,8 @@ static DEFINE_MUTEX(sysfs_lock);
+@@ -53,6 +53,8 @@ static DEFINE_MUTEX(sysfs_lock);
   *      * is read/write as zero/nonzero
   *      * also affects existing and subsequent "falling" and "rising"
   *        /edge configuration
@@ -541,7 +539,7 @@ index 3f454eaf2101..e5fa99e57548 100644
   */
  
  static ssize_t direction_show(struct device *dev,
-@@ -82,7 +84,9 @@ static ssize_t direction_store(struct device *dev,
+@@ -83,7 +85,9 @@ static ssize_t direction_store(struct device *dev,
  
  	mutex_lock(&data->mutex);
  
@@ -552,7 +550,7 @@ index 3f454eaf2101..e5fa99e57548 100644
  		status = gpiod_direction_output_raw(desc, 1);
  	else if (sysfs_streq(buf, "out") || sysfs_streq(buf, "low"))
  		status = gpiod_direction_output_raw(desc, 0);
-@@ -351,6 +355,23 @@ static ssize_t active_low_store(struct device *dev,
+@@ -362,6 +366,23 @@ static ssize_t active_low_store(struct device *dev,
  }
  static DEVICE_ATTR_RW(active_low);
  
@@ -576,7 +574,7 @@ index 3f454eaf2101..e5fa99e57548 100644
  static umode_t gpio_is_visible(struct kobject *kobj, struct attribute *attr,
  			       int n)
  {
-@@ -362,12 +383,15 @@ static umode_t gpio_is_visible(struct kobject *kobj, struct attribute *attr,
+@@ -373,12 +394,15 @@ static umode_t gpio_is_visible(struct kobject *kobj, struct attribute *attr,
  
  	if (attr == &dev_attr_direction.attr) {
  		if (!show_direction)
@@ -593,7 +591,7 @@ index 3f454eaf2101..e5fa99e57548 100644
  	}
  
  	return mode;
-@@ -378,6 +402,7 @@ static struct attribute *gpio_attrs[] = {
+@@ -389,6 +413,7 @@ static struct attribute *gpio_attrs[] = {
  	&dev_attr_edge.attr,
  	&dev_attr_value.attr,
  	&dev_attr_active_low.attr,
@@ -601,7 +599,7 @@ index 3f454eaf2101..e5fa99e57548 100644
  	NULL,
  };
  
-@@ -391,6 +416,10 @@ static const struct attribute_group *gpio_groups[] = {
+@@ -402,6 +427,10 @@ static const struct attribute_group *gpio_groups[] = {
  	NULL
  };
  
@@ -613,22 +611,22 @@ index 3f454eaf2101..e5fa99e57548 100644
   * /sys/class/gpio/gpiochipN/
   *   /base ... matching gpio_chip.base (N)
 diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
-index 5e52fcac5128..f1c4c891cda3 100644
+index 886f466e3485..4f50f5b28868 100644
 --- a/drivers/misc/Kconfig
 +++ b/drivers/misc/Kconfig
-@@ -546,6 +546,7 @@ source "drivers/misc/mei/Kconfig"
+@@ -521,6 +521,7 @@ source "drivers/misc/mei/Kconfig"
  source "drivers/misc/vmw_vmci/Kconfig"
  source "drivers/misc/mic/Kconfig"
  source "drivers/misc/genwqe/Kconfig"
 +source "drivers/misc/cape/Kconfig"
  source "drivers/misc/echo/Kconfig"
  source "drivers/misc/cxl/Kconfig"
- endmenu
+ source "drivers/misc/ocxl/Kconfig"
 diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
-index a87cbd9238c5..51f53bcb3f9e 100644
+index 34e54dc28ac9..9d47283bacc4 100644
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
-@@ -52,6 +52,7 @@ obj-$(CONFIG_SRAM)		+= sram.o
+@@ -50,6 +50,7 @@ obj-$(CONFIG_SRAM)		+= sram.o
  obj-$(CONFIG_SRAM_EXEC)		+= sram-exec.o
  obj-y				+= mic/
  obj-$(CONFIG_GENWQE)		+= genwqe/
@@ -934,5 +932,5 @@ index 000000000000..d81363a77b10
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:bone-pinmux-helper");
 -- 
-2.14.2
+2.16.1
 

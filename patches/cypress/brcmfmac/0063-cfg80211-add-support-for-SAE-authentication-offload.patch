@@ -16,22 +16,22 @@ Signed-off-by: Chung-Hsien Hsu <stanley.hsu@cypress.com>
  4 files changed, 38 insertions(+)
 
 diff --git a/include/linux/ieee80211.h b/include/linux/ieee80211.h
-index 55a604a..83b3446 100644
+index c83478271c2e..6cf1971a4691 100644
 --- a/include/linux/ieee80211.h
 +++ b/include/linux/ieee80211.h
-@@ -2112,6 +2112,7 @@ enum ieee80211_key_len {
+@@ -2542,6 +2542,7 @@ enum ieee80211_key_len {
  #define FILS_ERP_MAX_RRK_LEN		64
  
- #define PMK_MAX_LEN			48
+ #define PMK_MAX_LEN			64
 +#define SAE_PASSWORD_MAX_LEN		128
  
  /* Public action codes (IEEE Std 802.11-2016, 9.6.8.1, Table 9-307) */
  enum ieee80211_pub_actioncode {
 diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
-index a34bf99..519914f 100644
+index 468deae5d603..d5dc5788ec91 100644
 --- a/include/net/cfg80211.h
 +++ b/include/net/cfg80211.h
-@@ -650,6 +650,9 @@ struct survey_info {
+@@ -740,6 +740,9 @@ struct survey_info {
   *	CFG80211_MAX_WEP_KEYS WEP keys
   * @wep_tx_key: key index (0..3) of the default TX static WEP key
   * @psk: PSK (for devices supporting 4-way-handshake offload)
@@ -41,7 +41,7 @@ index a34bf99..519914f 100644
   */
  struct cfg80211_crypto_settings {
  	u32 wpa_versions;
-@@ -664,6 +667,8 @@ struct cfg80211_crypto_settings {
+@@ -755,6 +758,8 @@ struct cfg80211_crypto_settings {
  	struct key_params *wep_keys;
  	int wep_tx_key;
  	const u8 *psk;
@@ -51,13 +51,14 @@ index a34bf99..519914f 100644
  
  /**
 diff --git a/include/uapi/linux/nl80211.h b/include/uapi/linux/nl80211.h
-index 36afef5..c7d29d1 100644
+index bb51b5c8f169..5d4c8906c9dd 100644
 --- a/include/uapi/linux/nl80211.h
 +++ b/include/uapi/linux/nl80211.h
-@@ -232,6 +232,15 @@
+@@ -234,6 +234,15 @@
+  * use in a FILS shared key connection with PMKSA caching.
   */
  
- /**
++/**
 + * DOC: SAE authentication offload
 + *
 + * By setting @NL80211_EXT_FEATURE_SAE_OFFLOAD flag drivers can indicate they
@@ -66,11 +67,10 @@ index 36afef5..c7d29d1 100644
 + * %NL80211_ATTR_SAE_PASSWORD.
 + */
 +
-+/**
+ /**
   * enum nl80211_commands - supported nl80211 commands
   *
-  * @NL80211_CMD_UNSPEC: unspecified command to catch errors
-@@ -2171,6 +2180,10 @@ enum nl80211_commands {
+@@ -2241,6 +2250,10 @@ enum nl80211_commands {
   *	association request when used with NL80211_CMD_NEW_STATION). Can be set
   *	only if %NL80211_STA_FLAG_WME is set.
   *
@@ -81,7 +81,7 @@ index 36afef5..c7d29d1 100644
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -2612,6 +2625,8 @@ enum nl80211_attrs {
+@@ -2682,6 +2695,8 @@ enum nl80211_attrs {
  
  	NL80211_ATTR_HE_CAPABILITY,
  
@@ -90,7 +90,7 @@ index 36afef5..c7d29d1 100644
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
-@@ -4996,6 +5011,8 @@ enum nl80211_feature_flags {
+@@ -5224,6 +5239,8 @@ enum nl80211_feature_flags {
   * @NL80211_EXT_FEATURE_SCAN_MIN_PREQ_CONTENT: Driver/device can omit all data
   *	except for supported rates from the probe request content if requested
   *	by the %NL80211_SCAN_FLAG_MIN_PREQ_CONTENT flag.
@@ -99,7 +99,7 @@ index 36afef5..c7d29d1 100644
   *
   * @NUM_NL80211_EXT_FEATURES: number of extended features.
   * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
-@@ -5032,6 +5049,7 @@ enum nl80211_ext_feature_index {
+@@ -5260,6 +5277,7 @@ enum nl80211_ext_feature_index {
  	NL80211_EXT_FEATURE_TXQS,
  	NL80211_EXT_FEATURE_SCAN_RANDOM_SN,
  	NL80211_EXT_FEATURE_SCAN_MIN_PREQ_CONTENT,
@@ -108,19 +108,19 @@ index 36afef5..c7d29d1 100644
  	/* add new features before the definition below */
  	NUM_NL80211_EXT_FEATURES,
 diff --git a/net/wireless/nl80211.c b/net/wireless/nl80211.c
-index f24f66e..6561d8e 100644
+index 70f64e80d10e..3a1a839b38c4 100644
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -421,6 +421,8 @@ enum nl80211_multicast_groups {
+@@ -456,6 +456,8 @@ static const struct nla_policy nl80211_policy[NUM_NL80211_ATTR] = {
  	[NL80211_ATTR_FILS_CACHE_ID] = { .len = 2 },
  	[NL80211_ATTR_PMK] = { .type = NLA_BINARY, .len = PMK_MAX_LEN },
  	[NL80211_ATTR_SCHED_SCAN_MULTI] = { .type = NLA_FLAG },
 +	[NL80211_ATTR_SAE_PASSWORD] = { .type = NLA_BINARY,
 +					.len = SAE_PASSWORD_MAX_LEN },
- };
+ 	[NL80211_ATTR_EXTERNAL_AUTH_SUPPORT] = { .type = NLA_FLAG },
  
- /* policy for the key attributes */
-@@ -3864,6 +3866,8 @@ static bool nl80211_valid_auth_type(struct cfg80211_registered_device *rdev,
+ 	[NL80211_ATTR_TXQ_LIMIT] = { .type = NLA_U32 },
+@@ -4184,6 +4186,8 @@ static bool nl80211_valid_auth_type(struct cfg80211_registered_device *rdev,
  		return true;
  	case NL80211_CMD_CONNECT:
  		if (!(rdev->wiphy.features & NL80211_FEATURE_SAE) &&
@@ -129,7 +129,7 @@ index f24f66e..6561d8e 100644
  		    auth_type == NL80211_AUTHTYPE_SAE)
  			return false;
  
-@@ -8182,6 +8186,16 @@ static int nl80211_crypto_settings(struct cfg80211_registered_device *rdev,
+@@ -8646,6 +8650,16 @@ static int nl80211_crypto_settings(struct cfg80211_registered_device *rdev,
  		settings->psk = nla_data(info->attrs[NL80211_ATTR_PMK]);
  	}
  
@@ -147,5 +147,5 @@ index f24f66e..6561d8e 100644
  }
  
 -- 
-1.9.1
+2.24.1
 

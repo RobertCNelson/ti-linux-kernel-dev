@@ -1,0 +1,158 @@
+From 0b31edeebcd8151b3860a0063c8dca49e57c32f6 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Wed, 10 Apr 2019 15:23:54 -0500
+Subject: [PATCH] merge: brcm80211
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ .../broadcom/brcm80211/brcmfmac/cfg80211.c    | 22 ++++++++++++++-----
+ .../broadcom/brcm80211/brcmfmac/common.c      |  2 +-
+ .../broadcom/brcm80211/brcmfmac/core.c        | 11 +++++-----
+ .../broadcom/brcm80211/brcmfmac/core.h        |  1 +
+ .../broadcom/brcm80211/brcmfmac/sdio.c        |  3 ++-
+ 5 files changed, 27 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+index 6f3faaf1b1cb..72822c828a99 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/cfg80211.c
+@@ -2697,6 +2697,8 @@ brcmf_cfg80211_set_power_mgmt(struct wiphy *wiphy, struct net_device *ndev,
+ 	 * preference in cfg struct to apply this to
+ 	 * FW later while initializing the dongle
+ 	 */
++	pr_info("power management disabled\n");
++	enabled = false;
+ 	cfg->pwr_save = enabled;
+ 	if (!check_vif_up(ifp->vif)) {
+ 
+@@ -6770,12 +6772,18 @@ static s32 brcmf_translate_country_code(struct brcmf_pub *drvr, char alpha2[2],
+ 	struct brcmfmac_pd_cc *country_codes;
+ 	struct brcmfmac_pd_cc_entry *cc;
+ 	s32 found_index;
++	char ccode[BRCMF_COUNTRY_BUF_SZ];
++	int rev;
+ 	int i;
+ 
++	memcpy(ccode, alpha2, sizeof(ccode));
++	rev = -1;
++
+ 	country_codes = drvr->settings->country_codes;
+ 	if (!country_codes) {
+-		brcmf_dbg(TRACE, "No country codes configured for device\n");
+-		return -EINVAL;
++		brcmf_dbg(TRACE, "No country codes configured for device"
++				 " - use requested value\n");
++		goto use_input_value;
+ 	}
+ 
+ 	if ((alpha2[0] == ccreq->country_abbrev[0]) &&
+@@ -6799,10 +6807,14 @@ static s32 brcmf_translate_country_code(struct brcmf_pub *drvr, char alpha2[2],
+ 		brcmf_dbg(TRACE, "No country code match found\n");
+ 		return -EINVAL;
+ 	}
+-	memset(ccreq, 0, sizeof(*ccreq));
+-	ccreq->rev = cpu_to_le32(country_codes->table[found_index].rev);
+-	memcpy(ccreq->ccode, country_codes->table[found_index].cc,
++	rev = country_codes->table[found_index].rev;
++	memcpy(ccode, country_codes->table[found_index].cc,
+ 	       BRCMF_COUNTRY_BUF_SZ);
++
++use_input_value:
++	memset(ccreq, 0, sizeof(*ccreq));
++	ccreq->rev = cpu_to_le32(rev);
++	memcpy(ccreq->ccode, ccode, sizeof(ccode));
+ 	ccreq->country_abbrev[0] = alpha2[0];
+ 	ccreq->country_abbrev[1] = alpha2[1];
+ 	ccreq->country_abbrev[2] = 0;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index cd3651069d0c..27893af63ebc 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -149,7 +149,7 @@ static int brcmf_c_process_clm_blob(struct brcmf_if *ifp)
+ 		return err;
+ 	}
+ 
+-	err = request_firmware(&clm, clm_name, bus->dev);
++	err = firmware_request_nowarn(&clm, clm_name, bus->dev);
+ 	if (err) {
+ 		brcmf_info("no clm_blob available (err=%d), device may have limited channels available\n",
+ 			   err);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+index 860a4372cb56..6d593dde61cc 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
+@@ -88,25 +88,25 @@ void brcmf_configure_arp_nd_offload(struct brcmf_if *ifp, bool enable)
+ 	if (err) {
+ 		brcmf_dbg(TRACE, "failed to set ARP offload mode to 0x%x, err = %d\n",
+ 			  mode, err);
++		err = 0;
+ 	} else {
+ 		err = brcmf_fil_iovar_int_set(ifp, "arpoe", enable);
+ 		if (err) {
+ 			brcmf_dbg(TRACE, "failed to configure (%d) ARP offload err = %d\n",
+ 				  enable, err);
+-		} else {
++			err = 0;
++		} else
+ 			brcmf_dbg(TRACE, "successfully configured (%d) ARP offload to 0x%x\n",
+ 				  enable, mode);
+-		}
+ 	}
+ 
+ 	err = brcmf_fil_iovar_int_set(ifp, "ndoe", enable);
+-	if (err) {
++	if (err)
+ 		brcmf_dbg(TRACE, "failed to configure (%d) ND offload err = %d\n",
+ 			  enable, err);
+-	} else {
++	else
+ 		brcmf_dbg(TRACE, "successfully configured (%d) ND offload to 0x%x\n",
+ 			  enable, mode);
+-	}
+ }
+ 
+ static void _brcmf_set_multicast_list(struct work_struct *work)
+@@ -172,6 +172,7 @@ static void _brcmf_set_multicast_list(struct work_struct *work)
+ 	if (err < 0)
+ 		brcmf_err("Setting BRCMF_C_SET_PROMISC failed, %d\n",
+ 			  err);
++
+ 	brcmf_configure_arp_nd_offload(ifp, !cmd_value);
+ }
+ 
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
+index dcf6e27cc16f..edfb09eae141 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.h
+@@ -210,6 +210,7 @@ char *brcmf_ifname(struct brcmf_if *ifp);
+ struct brcmf_if *brcmf_get_ifp(struct brcmf_pub *drvr, int ifidx);
+ void brcmf_configure_arp_nd_offload(struct brcmf_if *ifp, bool enable);
+ int brcmf_net_attach(struct brcmf_if *ifp, bool rtnl_locked);
++void brcmf_configure_arp_nd_offload(struct brcmf_if *ifp, bool enable);
+ struct brcmf_if *brcmf_add_if(struct brcmf_pub *drvr, s32 bsscfgidx, s32 ifidx,
+ 			      bool is_p2pdev, const char *name, u8 *mac_addr);
+ void brcmf_remove_interface(struct brcmf_if *ifp, bool rtnl_locked);
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index a907d7b065fa..7efe5df07ad0 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -608,6 +608,7 @@ BRCMF_FW_DEF(4329, "brcmfmac4329-sdio");
+ BRCMF_FW_DEF(4330, "brcmfmac4330-sdio");
+ BRCMF_FW_DEF(4334, "brcmfmac4334-sdio");
+ BRCMF_FW_DEF(43340, "brcmfmac43340-sdio");
++BRCMF_FW_DEF(43341, "brcmfmac43341-sdio");
+ BRCMF_FW_DEF(4335, "brcmfmac4335-sdio");
+ BRCMF_FW_DEF(43362, "brcmfmac43362-sdio");
+ BRCMF_FW_DEF(4339, "brcmfmac4339-sdio");
+@@ -628,7 +629,7 @@ static const struct brcmf_firmware_mapping brcmf_sdio_fwnames[] = {
+ 	BRCMF_FW_ENTRY(BRCM_CC_4330_CHIP_ID, 0xFFFFFFFF, 4330),
+ 	BRCMF_FW_ENTRY(BRCM_CC_4334_CHIP_ID, 0xFFFFFFFF, 4334),
+ 	BRCMF_FW_ENTRY(BRCM_CC_43340_CHIP_ID, 0xFFFFFFFF, 43340),
+-	BRCMF_FW_ENTRY(BRCM_CC_43341_CHIP_ID, 0xFFFFFFFF, 43340),
++	BRCMF_FW_ENTRY(BRCM_CC_43341_CHIP_ID, 0xFFFFFFFF, 43341),
+ 	BRCMF_FW_ENTRY(BRCM_CC_4335_CHIP_ID, 0xFFFFFFFF, 4335),
+ 	BRCMF_FW_ENTRY(BRCM_CC_43362_CHIP_ID, 0xFFFFFFFE, 43362),
+ 	BRCMF_FW_ENTRY(BRCM_CC_4339_CHIP_ID, 0xFFFFFFFF, 4339),
+-- 
+2.20.1
+

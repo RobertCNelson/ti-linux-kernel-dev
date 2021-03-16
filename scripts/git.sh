@@ -334,7 +334,7 @@ xenomai="https://gitlab.denx.de/Xenomai/xenomai.git"
 
 if [ ! -f "${DIR}/.yakbuild" ] ; then
 	git_kernel
-	git_xenomai
+	#git_xenomai
 else
 	. "${DIR}/recipe.sh"
 	git_shallow

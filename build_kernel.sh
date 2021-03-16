@@ -214,7 +214,9 @@ if [ "${FULL_REBUILD}" ] ; then
 	fi
 
 	patch_kernel
-	flash_kernel_db
+	if [ ! "${AUTO_BUILD}" ] ; then
+		flash_kernel_db
+	fi
 	copy_defconfig
 fi
 if [ ! "${AUTO_BUILD}" ] ; then

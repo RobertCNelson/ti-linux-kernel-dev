@@ -1,0 +1,121 @@
+From 3436b658415406644bcbdcc2a7b04abc471dc199 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Wed, 12 Aug 2020 08:57:53 -0500
+Subject: [PATCH] Overlays: Port RPi Overlay building
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ arch/arm/boot/dts/Makefile | 20 +++-----------------
+ scripts/Kbuild.include     |  2 +-
+ scripts/Makefile.dtbinst   | 15 +++++----------
+ scripts/Makefile.lib       | 12 ++++++++++++
+ 4 files changed, 21 insertions(+), 28 deletions(-)
+
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index 89354571bc44..fa322802b0c6 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -1262,22 +1262,8 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
+ 	aspeed-bmc-portwell-neptune.dtb \
+ 	aspeed-bmc-quanta-q71l.dtb
+ 
+-ifeq ($(BUILD_ITBS),y)
+-dtb-y=
+-dtb-merge-y=
+-else
+-dts-dirs=
+-endif
+-
+-always		+= $(dtb-merge-y)
+-
+-$(addprefix $(obj)/,$(dtb-merge-y)): TI_DTBOS
+-	@$(srctree)/scripts/dtb-merge $(srctree) $(objtree) $@ $(objtree)/scripts/dtc/fdtoverlay $(src)/ti
+-
+-TI_DTBOS:
+-	$(Q)$(MAKE) $(build)=$(src)/ti
++targets += dtbs dtbs_install
++targets += $(dtb-y)
+ 
+-PHONY += TI_DTBOS
++subdir-y	:= overlays
+ 
+-subdir-y	+= $(dts-dirs)
+-subdir-		+= ti
+diff --git a/scripts/Kbuild.include b/scripts/Kbuild.include
+index ce53639a864a..6d9e4233e66a 100644
+--- a/scripts/Kbuild.include
++++ b/scripts/Kbuild.include
+@@ -287,7 +287,7 @@ ksym_dep_filter =                                                            \
+ 	    $(CPP) $(call flags_nodeps,c_flags) -D__KSYM_DEPS__ $< ;;        \
+ 	  as_*_S|cpp_s_S)                                                    \
+ 	    $(CPP) $(call flags_nodeps,a_flags) -D__KSYM_DEPS__ $< ;;        \
+-	  boot*|build*|cpp_its_S|*cpp_lds_S|dtc|host*|vdso*) : ;;            \
++	  boot*|build*|cpp_its_S|*cpp_lds_S|dtc*|host*|vdso*) : ;;            \
+ 	  *) echo "Don't know how to preprocess $(1)" >&2; false ;;          \
+ 	esac | tr ";" "\n" | sed -n 's/^.*=== __KSYM_\(.*\) ===.*$$/_\1/p'
+ 
+diff --git a/scripts/Makefile.dtbinst b/scripts/Makefile.dtbinst
+index 6ce32a932099..da2af04a6d7d 100644
+--- a/scripts/Makefile.dtbinst
++++ b/scripts/Makefile.dtbinst
+@@ -20,6 +20,7 @@ include scripts/Kbuild.include
+ include $(src)/Makefile
+ 
+ dtbinst-files	:= $(sort $(dtb-y) $(if $(CONFIG_OF_ALL_DTBS), $(dtb-)))
++dtboinst-files	:= $(sort $(dtbo-y) $(if $(CONFIG_OF_ALL_DTBS), $(dtb-)))
+ dtbinst-dirs	:= $(subdir-y) $(subdir-m)
+ 
+ # Helper targets for Installing DTBs into the boot directory
+@@ -28,22 +29,16 @@ quiet_cmd_dtb_install =	INSTALL $<
+ 
+ install-dir = $(patsubst $(dtbinst_root)%,$(INSTALL_DTBS_PATH)%,$(obj))
+ 
+-$(filter %.dtb,$(dtbinst-files)): %.dtb: $(obj)/%.dtb
++$(dtbinst-files): %.dtb: $(obj)/%.dtb
+ 	$(call cmd,dtb_install,$(install-dir))
+ 
+-$(filter %.dtbo,$(dtbinst-files)): %.dtbo: $(obj)/%.dtbo
+-	$(call cmd,dtb_install,$(install-dir))
+-
+-$(filter %.itb,$(dtbinst-files)): %.itb: $(obj)/%.itb
++$(dtboinst-files): %.dtbo: $(obj)/%.dtbo
+ 	$(call cmd,dtb_install,$(install-dir))
+ 
+ $(dtbinst-dirs):
+ 	$(Q)$(MAKE) $(dtbinst)=$(obj)/$@
+ 
+-dummy:
+-	@echo > /dev/null
+-
+-PHONY += $(dtbinst-files) $(dtbinst-dirs) dummy
+-__dtbs_install: $(dtbinst-files) $(dtbinst-dirs) dummy
++PHONY += $(dtbinst-files) $(dtboinst-files) $(dtbinst-dirs)
++__dtbs_install: $(dtbinst-files) $(dtboinst-files) $(dtbinst-dirs)
+ 
+ .PHONY: $(PHONY)
+diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
+index a232741e3fd3..18381b50fa8e 100644
+--- a/scripts/Makefile.lib
++++ b/scripts/Makefile.lib
+@@ -293,6 +293,18 @@ cmd_dtc = mkdir -p $(dir ${dtc-tmp}) ; \
+ $(obj)/%.dtb: $(src)/%.dts $(DTC) FORCE
+ 	$(call if_changed_dep,dtc)
+ 
++quiet_cmd_dtco = DTCO    $@
++cmd_dtco = mkdir -p $(dir ${dtc-tmp}) ; \
++	$(CPP) $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $< ; \
++	$(DTC) -@ -H epapr -O dtb -o $@ -b 0 \
++		-i $(dir $<) $(DTC_FLAGS) \
++		-Wno-interrupts_property \
++		-d $(depfile).dtc.tmp $(dtc-tmp) ; \
++	cat $(depfile).pre.tmp $(depfile).dtc.tmp > $(depfile)
++
++$(obj)/%.dtbo: $(src)/%.dts FORCE
++	$(call if_changed_dep,dtco)
++
+ dtc-tmp = $(subst $(comma),_,$(dot-target).dts.tmp)
+ 
+ # Bzip2
+-- 
+2.28.0
+
