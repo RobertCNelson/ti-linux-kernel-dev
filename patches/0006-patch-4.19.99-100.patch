@@ -1,0 +1,4359 @@
+From 93ae3e4890458fde7b5a9523924f805541549c18 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Tue, 16 Mar 2021 14:25:51 -0500
+Subject: [PATCH 06/16] patch-4.19.99-100
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ .../admin-guide/kernel-parameters.txt         |   6 +
+ arch/ia64/mm/init.c                           |  15 +-
+ arch/powerpc/mm/mem.c                         |  25 +-
+ arch/powerpc/platforms/powernv/memtrace.c     |   2 +-
+ .../platforms/pseries/hotplug-memory.c        |   6 +-
+ arch/s390/mm/init.c                           |  16 +-
+ arch/sh/mm/init.c                             |  15 +-
+ arch/x86/mm/init_32.c                         |   9 +-
+ arch/x86/mm/init_64.c                         |  17 +-
+ drivers/acpi/acpi_memhotplug.c                |   2 +-
+ drivers/atm/firestream.c                      |   3 +
+ drivers/base/memory.c                         | 203 ++++++----
+ drivers/base/node.c                           |  52 +--
+ drivers/crypto/geode-aes.c                    |  57 +--
+ drivers/crypto/geode-aes.h                    |   2 +-
+ drivers/hwmon/adt7475.c                       |   5 +-
+ drivers/hwmon/hwmon.c                         |  68 ++--
+ drivers/hwmon/nct7802.c                       |   4 +-
+ drivers/hwtracing/coresight/coresight-etb10.c |   4 +-
+ .../hwtracing/coresight/coresight-tmc-etf.c   |   4 +-
+ drivers/infiniband/ulp/isert/ib_isert.c       |  12 -
+ drivers/input/misc/keyspan_remote.c           |   9 +-
+ drivers/input/misc/pm8xxx-vibrator.c          |   2 +-
+ drivers/input/rmi4/rmi_smbus.c                |   2 +
+ drivers/input/tablet/aiptek.c                 |   6 +-
+ drivers/input/tablet/gtco.c                   |  10 +-
+ drivers/input/tablet/pegasus_notetaker.c      |   2 +-
+ drivers/input/touchscreen/sun4i-ts.c          |   6 +-
+ drivers/input/touchscreen/sur40.c             |   2 +-
+ drivers/media/v4l2-core/v4l2-ioctl.c          |  24 +-
+ drivers/mmc/host/sdhci-tegra.c                |   2 +-
+ drivers/mmc/host/sdhci.c                      |  10 +-
+ drivers/net/can/slcan.c                       |  12 +-
+ .../net/ethernet/broadcom/genet/bcmgenet.c    |   4 +-
+ .../net/ethernet/chelsio/cxgb3/cxgb3_main.c   |   2 +
+ drivers/net/ethernet/natsemi/sonic.c          | 380 +++++++++++-------
+ drivers/net/ethernet/natsemi/sonic.h          |  44 +-
+ drivers/net/gtp.c                             |  10 +-
+ drivers/net/slip/slip.c                       |  12 +-
+ drivers/net/tun.c                             |   4 +
+ drivers/net/usb/lan78xx.c                     |  15 +
+ drivers/net/wireless/marvell/libertas/cfg.c   |  16 +-
+ drivers/pci/quirks.c                          |  19 +-
+ drivers/scsi/scsi_transport_iscsi.c           |   7 +
+ drivers/scsi/sd.c                             |   8 +-
+ drivers/target/iscsi/iscsi_target.c           |   6 +-
+ fs/afs/cell.c                                 |  11 +-
+ fs/namei.c                                    |  17 +-
+ include/linux/memory.h                        |   8 +-
+ include/linux/memory_hotplug.h                |  22 +-
+ include/linux/mmzone.h                        |   3 +-
+ include/linux/netdevice.h                     |   2 +
+ include/linux/netfilter/ipset/ip_set.h        |   7 -
+ include/linux/node.h                          |   7 +-
+ include/trace/events/xen.h                    |   6 +-
+ kernel/memremap.c                             |  12 +-
+ kernel/trace/trace_events_hist.c              | 177 ++++++--
+ kernel/trace/trace_events_trigger.c           |  20 +-
+ mm/hmm.c                                      |   8 +-
+ mm/memory_hotplug.c                           | 166 ++++----
+ mm/sparse.c                                   |  27 +-
+ net/core/dev.c                                |  33 +-
+ net/core/net-sysfs.c                          |  39 +-
+ net/core/rtnetlink.c                          |  13 +-
+ net/ipv4/ip_tunnel.c                          |   4 +-
+ net/ipv4/tcp.c                                |   1 +
+ net/ipv4/tcp_bbr.c                            |   3 +-
+ net/ipv4/tcp_input.c                          |   1 +
+ net/ipv4/tcp_output.c                         |   1 +
+ net/ipv4/udp.c                                |   3 +-
+ net/ipv6/ip6_gre.c                            |   3 -
+ net/ipv6/ip6_tunnel.c                         |   4 +-
+ net/ipv6/seg6_local.c                         |   4 +-
+ net/netfilter/ipset/ip_set_bitmap_gen.h       |   2 +-
+ net/netfilter/ipset/ip_set_bitmap_ip.c        |   6 +-
+ net/netfilter/ipset/ip_set_bitmap_ipmac.c     |   6 +-
+ net/netfilter/ipset/ip_set_bitmap_port.c      |   6 +-
+ net/netfilter/nf_tables_api.c                 |  29 +-
+ net/netfilter/nft_osf.c                       |   3 +
+ net/sched/ematch.c                            |   2 +-
+ net/x25/af_x25.c                              |   6 +-
+ scripts/recordmcount.c                        |  17 +
+ 82 files changed, 1100 insertions(+), 720 deletions(-)
+
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index e6b6ec974eeb..8bf0c0532046 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -1946,6 +1946,12 @@
+ 			Built with CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF=y,
+ 			the default is off.
+ 
++	kpti=		[ARM64] Control page table isolation of user
++			and kernel address spaces.
++			Default: enabled on cores which need mitigation.
++			0: force disabled
++			1: force enabled
++
+ 	kvm.ignore_msrs=[KVM] Ignore guest accesses to unhandled MSRs.
+ 			Default is 0 (don't ignore, but inject #GP)
+ 
+diff --git a/arch/ia64/mm/init.c b/arch/ia64/mm/init.c
+index 3b85c3ecac38..79e5cc70f1fd 100644
+--- a/arch/ia64/mm/init.c
++++ b/arch/ia64/mm/init.c
+@@ -661,21 +661,12 @@ int arch_add_memory(int nid, u64 start, u64 size, struct vmem_altmap *altmap,
+ 	return ret;
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+-int arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap)
++void arch_remove_memory(int nid, u64 start, u64 size,
++			struct vmem_altmap *altmap)
+ {
+ 	unsigned long start_pfn = start >> PAGE_SHIFT;
+ 	unsigned long nr_pages = size >> PAGE_SHIFT;
+-	struct zone *zone;
+-	int ret;
+-
+-	zone = page_zone(pfn_to_page(start_pfn));
+-	ret = __remove_pages(zone, start_pfn, nr_pages, altmap);
+-	if (ret)
+-		pr_warn("%s: Problem encountered in __remove_pages() as"
+-			" ret=%d\n", __func__,  ret);
+ 
+-	return ret;
++	__remove_pages(start_pfn, nr_pages, altmap);
+ }
+ #endif
+-#endif
+diff --git a/arch/powerpc/mm/mem.c b/arch/powerpc/mm/mem.c
+index 9a6afd9f3f9b..84a012e42a7e 100644
+--- a/arch/powerpc/mm/mem.c
++++ b/arch/powerpc/mm/mem.c
+@@ -118,8 +118,8 @@ int __weak remove_section_mapping(unsigned long start, unsigned long end)
+ 	return -ENODEV;
+ }
+ 
+-int __meminit arch_add_memory(int nid, u64 start, u64 size, struct vmem_altmap *altmap,
+-		bool want_memblock)
++int __ref arch_add_memory(int nid, u64 start, u64 size, struct vmem_altmap *altmap,
++			  bool want_memblock)
+ {
+ 	unsigned long start_pfn = start >> PAGE_SHIFT;
+ 	unsigned long nr_pages = size >> PAGE_SHIFT;
+@@ -139,30 +139,20 @@ int __meminit arch_add_memory(int nid, u64 start, u64 size, struct vmem_altmap *
+ 	return __add_pages(nid, start_pfn, nr_pages, altmap, want_memblock);
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+-int __meminit arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap)
++void __ref arch_remove_memory(int nid, u64 start, u64 size,
++			     struct vmem_altmap *altmap)
+ {
+ 	unsigned long start_pfn = start >> PAGE_SHIFT;
+ 	unsigned long nr_pages = size >> PAGE_SHIFT;
+-	struct page *page;
+ 	int ret;
+ 
+-	/*
+-	 * If we have an altmap then we need to skip over any reserved PFNs
+-	 * when querying the zone.
+-	 */
+-	page = pfn_to_page(start_pfn);
+-	if (altmap)
+-		page += vmem_altmap_offset(altmap);
+-
+-	ret = __remove_pages(page_zone(page), start_pfn, nr_pages, altmap);
+-	if (ret)
+-		return ret;
++	__remove_pages(start_pfn, nr_pages, altmap);
+ 
+ 	/* Remove htab bolted mappings for this section of memory */
+ 	start = (unsigned long)__va(start);
+ 	flush_inval_dcache_range(start, start + size);
+ 	ret = remove_section_mapping(start, start + size);
++	WARN_ON_ONCE(ret);
+ 
+ 	/* Ensure all vmalloc mappings are flushed in case they also
+ 	 * hit that section of memory
+@@ -170,11 +160,8 @@ int __meminit arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap
+ 	vm_unmap_aliases();
+ 
+ 	resize_hpt_for_hotplug(memblock_phys_mem_size());
+-
+-	return ret;
+ }
+ #endif
+-#endif /* CONFIG_MEMORY_HOTPLUG */
+ 
+ /*
+  * walk_memory_resource() needs to make sure there is no holes in a given
+diff --git a/arch/powerpc/platforms/powernv/memtrace.c b/arch/powerpc/platforms/powernv/memtrace.c
+index dd3cc4632b9a..84d038ed3882 100644
+--- a/arch/powerpc/platforms/powernv/memtrace.c
++++ b/arch/powerpc/platforms/powernv/memtrace.c
+@@ -122,7 +122,7 @@ static u64 memtrace_alloc_node(u32 nid, u64 size)
+ 			 */
+ 			end_pfn = base_pfn + nr_pages;
+ 			for (pfn = base_pfn; pfn < end_pfn; pfn += bytes>> PAGE_SHIFT) {
+-				remove_memory(nid, pfn << PAGE_SHIFT, bytes);
++				__remove_memory(nid, pfn << PAGE_SHIFT, bytes);
+ 			}
+ 			unlock_device_hotplug();
+ 			return base_pfn << PAGE_SHIFT;
+diff --git a/arch/powerpc/platforms/pseries/hotplug-memory.c b/arch/powerpc/platforms/pseries/hotplug-memory.c
+index 62d3c72cd931..c2c6f32848e1 100644
+--- a/arch/powerpc/platforms/pseries/hotplug-memory.c
++++ b/arch/powerpc/platforms/pseries/hotplug-memory.c
+@@ -301,7 +301,7 @@ static int pseries_remove_memblock(unsigned long base, unsigned int memblock_siz
+ 	nid = memory_add_physaddr_to_nid(base);
+ 
+ 	for (i = 0; i < sections_per_block; i++) {
+-		remove_memory(nid, base, MIN_MEMORY_BLOCK_SIZE);
++		__remove_memory(nid, base, MIN_MEMORY_BLOCK_SIZE);
+ 		base += MIN_MEMORY_BLOCK_SIZE;
+ 	}
+ 
+@@ -393,7 +393,7 @@ static int dlpar_remove_lmb(struct drmem_lmb *lmb)
+ 	block_sz = pseries_memory_block_size();
+ 	nid = memory_add_physaddr_to_nid(lmb->base_addr);
+ 
+-	remove_memory(nid, lmb->base_addr, block_sz);
++	__remove_memory(nid, lmb->base_addr, block_sz);
+ 
+ 	/* Update memory regions for memory remove */
+ 	memblock_remove(lmb->base_addr, block_sz);
+@@ -680,7 +680,7 @@ static int dlpar_add_lmb(struct drmem_lmb *lmb)
+ 
+ 	rc = dlpar_online_lmb(lmb);
+ 	if (rc) {
+-		remove_memory(nid, lmb->base_addr, block_sz);
++		__remove_memory(nid, lmb->base_addr, block_sz);
+ 		invalidate_lmb_associativity_index(lmb);
+ 	} else {
+ 		lmb->flags |= DRCONF_MEM_ASSIGNED;
+diff --git a/arch/s390/mm/init.c b/arch/s390/mm/init.c
+index 3fa3e5323612..379a925d9e82 100644
+--- a/arch/s390/mm/init.c
++++ b/arch/s390/mm/init.c
+@@ -239,15 +239,13 @@ int arch_add_memory(int nid, u64 start, u64 size, struct vmem_altmap *altmap,
+ 	return rc;
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+-int arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap)
++void arch_remove_memory(int nid, u64 start, u64 size,
++			struct vmem_altmap *altmap)
+ {
+-	/*
+-	 * There is no hardware or firmware interface which could trigger a
+-	 * hot memory remove on s390. So there is nothing that needs to be
+-	 * implemented.
+-	 */
+-	return -EBUSY;
++	unsigned long start_pfn = start >> PAGE_SHIFT;
++	unsigned long nr_pages = size >> PAGE_SHIFT;
++
++	__remove_pages(start_pfn, nr_pages, altmap);
++	vmem_remove_mapping(start, size);
+ }
+-#endif
+ #endif /* CONFIG_MEMORY_HOTPLUG */
+diff --git a/arch/sh/mm/init.c b/arch/sh/mm/init.c
+index 7713c084d040..47882be91121 100644
+--- a/arch/sh/mm/init.c
++++ b/arch/sh/mm/init.c
+@@ -443,21 +443,12 @@ int memory_add_physaddr_to_nid(u64 addr)
+ EXPORT_SYMBOL_GPL(memory_add_physaddr_to_nid);
+ #endif
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+-int arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap)
++void arch_remove_memory(int nid, u64 start, u64 size,
++			struct vmem_altmap *altmap)
+ {
+ 	unsigned long start_pfn = PFN_DOWN(start);
+ 	unsigned long nr_pages = size >> PAGE_SHIFT;
+-	struct zone *zone;
+-	int ret;
+-
+-	zone = page_zone(pfn_to_page(start_pfn));
+-	ret = __remove_pages(zone, start_pfn, nr_pages, altmap);
+-	if (unlikely(ret))
+-		pr_warn("%s: Failed, __remove_pages() == %d\n", __func__,
+-			ret);
+ 
+-	return ret;
++	__remove_pages(start_pfn, nr_pages, altmap);
+ }
+-#endif
+ #endif /* CONFIG_MEMORY_HOTPLUG */
+diff --git a/arch/x86/mm/init_32.c b/arch/x86/mm/init_32.c
+index 979e0a02cbe1..79b95910fd9f 100644
+--- a/arch/x86/mm/init_32.c
++++ b/arch/x86/mm/init_32.c
+@@ -860,18 +860,15 @@ int arch_add_memory(int nid, u64 start, u64 size, struct vmem_altmap *altmap,
+ 	return __add_pages(nid, start_pfn, nr_pages, altmap, want_memblock);
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+-int arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap)
++void arch_remove_memory(int nid, u64 start, u64 size,
++			struct vmem_altmap *altmap)
+ {
+ 	unsigned long start_pfn = start >> PAGE_SHIFT;
+ 	unsigned long nr_pages = size >> PAGE_SHIFT;
+-	struct zone *zone;
+ 
+-	zone = page_zone(pfn_to_page(start_pfn));
+-	return __remove_pages(zone, start_pfn, nr_pages, altmap);
++	__remove_pages(start_pfn, nr_pages, altmap);
+ }
+ #endif
+-#endif
+ 
+ int kernel_set_to_readonly __read_mostly;
+ 
+diff --git a/arch/x86/mm/init_64.c b/arch/x86/mm/init_64.c
+index a3e9c6ee3cf2..81e85a8dd300 100644
+--- a/arch/x86/mm/init_64.c
++++ b/arch/x86/mm/init_64.c
+@@ -1132,7 +1132,6 @@ void __ref vmemmap_free(unsigned long start, unsigned long end,
+ 	remove_pagetable(start, end, false, altmap);
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+ static void __meminit
+ kernel_physical_mapping_remove(unsigned long start, unsigned long end)
+ {
+@@ -1142,25 +1141,15 @@ kernel_physical_mapping_remove(unsigned long start, unsigned long end)
+ 	remove_pagetable(start, end, true, NULL);
+ }
+ 
+-int __ref arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap)
++void __ref arch_remove_memory(int nid, u64 start, u64 size,
++			      struct vmem_altmap *altmap)
+ {
+ 	unsigned long start_pfn = start >> PAGE_SHIFT;
+ 	unsigned long nr_pages = size >> PAGE_SHIFT;
+-	struct page *page = pfn_to_page(start_pfn);
+-	struct zone *zone;
+-	int ret;
+ 
+-	/* With altmap the first mapped page is offset from @start */
+-	if (altmap)
+-		page += vmem_altmap_offset(altmap);
+-	zone = page_zone(page);
+-	ret = __remove_pages(zone, start_pfn, nr_pages, altmap);
+-	WARN_ON_ONCE(ret);
++	__remove_pages(start_pfn, nr_pages, altmap);
+ 	kernel_physical_mapping_remove(start, start + size);
+-
+-	return ret;
+ }
+-#endif
+ #endif /* CONFIG_MEMORY_HOTPLUG */
+ 
+ static struct kcore_list kcore_vsyscall;
+diff --git a/drivers/acpi/acpi_memhotplug.c b/drivers/acpi/acpi_memhotplug.c
+index 2ccfbb61ca89..8fe0960ea572 100644
+--- a/drivers/acpi/acpi_memhotplug.c
++++ b/drivers/acpi/acpi_memhotplug.c
+@@ -282,7 +282,7 @@ static void acpi_memory_remove_memory(struct acpi_memory_device *mem_device)
+ 			nid = memory_add_physaddr_to_nid(info->start_addr);
+ 
+ 		acpi_unbind_memory_blocks(info);
+-		remove_memory(nid, info->start_addr, info->length);
++		__remove_memory(nid, info->start_addr, info->length);
+ 		list_del(&info->list);
+ 		kfree(info);
+ 	}
+diff --git a/drivers/atm/firestream.c b/drivers/atm/firestream.c
+index 4e46dc9e41ad..112b1001c269 100644
+--- a/drivers/atm/firestream.c
++++ b/drivers/atm/firestream.c
+@@ -927,6 +927,7 @@ static int fs_open(struct atm_vcc *atm_vcc)
+ 			}
+ 			if (!to) {
+ 				printk ("No more free channels for FS50..\n");
++				kfree(vcc);
+ 				return -EBUSY;
+ 			}
+ 			vcc->channo = dev->channo;
+@@ -937,6 +938,7 @@ static int fs_open(struct atm_vcc *atm_vcc)
+ 			if (((DO_DIRECTION(rxtp) && dev->atm_vccs[vcc->channo])) ||
+ 			    ( DO_DIRECTION(txtp) && test_bit (vcc->channo, dev->tx_inuse))) {
+ 				printk ("Channel is in use for FS155.\n");
++				kfree(vcc);
+ 				return -EBUSY;
+ 			}
+ 		}
+@@ -950,6 +952,7 @@ static int fs_open(struct atm_vcc *atm_vcc)
+ 			    tc, sizeof (struct fs_transmit_config));
+ 		if (!tc) {
+ 			fs_dprintk (FS_DEBUG_OPEN, "fs: can't alloc transmit_config.\n");
++			kfree(vcc);
+ 			return -ENOMEM;
+ 		}
+ 
+diff --git a/drivers/base/memory.c b/drivers/base/memory.c
+index ac1574a69610..e270abc86d46 100644
+--- a/drivers/base/memory.c
++++ b/drivers/base/memory.c
+@@ -39,6 +39,11 @@ static inline int base_memory_block_id(int section_nr)
+ 	return section_nr / sections_per_block;
+ }
+ 
++static inline int pfn_to_block_id(unsigned long pfn)
++{
++	return base_memory_block_id(pfn_to_section_nr(pfn));
++}
++
+ static int memory_subsys_online(struct device *dev);
+ static int memory_subsys_offline(struct device *dev);
+ 
+@@ -230,13 +235,14 @@ static bool pages_correctly_probed(unsigned long start_pfn)
+  * OK to have direct references to sparsemem variables in here.
+  */
+ static int
+-memory_block_action(unsigned long phys_index, unsigned long action, int online_type)
++memory_block_action(unsigned long start_section_nr, unsigned long action,
++		    int online_type)
+ {
+ 	unsigned long start_pfn;
+ 	unsigned long nr_pages = PAGES_PER_SECTION * sections_per_block;
+ 	int ret;
+ 
+-	start_pfn = section_nr_to_pfn(phys_index);
++	start_pfn = section_nr_to_pfn(start_section_nr);
+ 
+ 	switch (action) {
+ 	case MEM_ONLINE:
+@@ -250,7 +256,7 @@ memory_block_action(unsigned long phys_index, unsigned long action, int online_t
+ 		break;
+ 	default:
+ 		WARN(1, KERN_WARNING "%s(%ld, %ld) unknown action: "
+-		     "%ld\n", __func__, phys_index, action, action);
++		     "%ld\n", __func__, start_section_nr, action, action);
+ 		ret = -EINVAL;
+ 	}
+ 
+@@ -590,10 +596,9 @@ int __weak arch_get_memory_phys_device(unsigned long start_pfn)
+  * A reference for the returned object is held and the reference for the
+  * hinted object is released.
+  */
+-struct memory_block *find_memory_block_hinted(struct mem_section *section,
+-					      struct memory_block *hint)
++static struct memory_block *find_memory_block_by_id(int block_id,
++						    struct memory_block *hint)
+ {
+-	int block_id = base_memory_block_id(__section_nr(section));
+ 	struct device *hintdev = hint ? &hint->dev : NULL;
+ 	struct device *dev;
+ 
+@@ -605,6 +610,14 @@ struct memory_block *find_memory_block_hinted(struct mem_section *section,
+ 	return to_memory_block(dev);
+ }
+ 
++struct memory_block *find_memory_block_hinted(struct mem_section *section,
++					      struct memory_block *hint)
++{
++	int block_id = base_memory_block_id(__section_nr(section));
++
++	return find_memory_block_by_id(block_id, hint);
++}
++
+ /*
+  * For now, we have a linear search to go find the appropriate
+  * memory_block corresponding to a particular phys_index. If
+@@ -659,25 +672,28 @@ int register_memory(struct memory_block *memory)
+ 	return ret;
+ }
+ 
+-static int init_memory_block(struct memory_block **memory,
+-			     struct mem_section *section, unsigned long state)
++static int init_memory_block(struct memory_block **memory, int block_id,
++			     unsigned long state)
+ {
+ 	struct memory_block *mem;
+ 	unsigned long start_pfn;
+-	int scn_nr;
+ 	int ret = 0;
+ 
++	mem = find_memory_block_by_id(block_id, NULL);
++	if (mem) {
++		put_device(&mem->dev);
++		return -EEXIST;
++	}
+ 	mem = kzalloc(sizeof(*mem), GFP_KERNEL);
+ 	if (!mem)
+ 		return -ENOMEM;
+ 
+-	scn_nr = __section_nr(section);
+-	mem->start_section_nr =
+-			base_memory_block_id(scn_nr) * sections_per_block;
++	mem->start_section_nr = block_id * sections_per_block;
+ 	mem->end_section_nr = mem->start_section_nr + sections_per_block - 1;
+ 	mem->state = state;
+ 	start_pfn = section_nr_to_pfn(mem->start_section_nr);
+ 	mem->phys_device = arch_get_memory_phys_device(start_pfn);
++	mem->nid = NUMA_NO_NODE;
+ 
+ 	ret = register_memory(mem);
+ 
+@@ -688,101 +704,98 @@ static int init_memory_block(struct memory_block **memory,
+ static int add_memory_block(int base_section_nr)
+ {
+ 	struct memory_block *mem;
+-	int i, ret, section_count = 0, section_nr;
++	int i, ret, section_count = 0;
+ 
+ 	for (i = base_section_nr;
+-	     (i < base_section_nr + sections_per_block) && i < NR_MEM_SECTIONS;
+-	     i++) {
+-		if (!present_section_nr(i))
+-			continue;
+-		if (section_count == 0)
+-			section_nr = i;
+-		section_count++;
+-	}
++	     i < base_section_nr + sections_per_block;
++	     i++)
++		if (present_section_nr(i))
++			section_count++;
+ 
+ 	if (section_count == 0)
+ 		return 0;
+-	ret = init_memory_block(&mem, __nr_to_section(section_nr), MEM_ONLINE);
++	ret = init_memory_block(&mem, base_memory_block_id(base_section_nr),
++				MEM_ONLINE);
+ 	if (ret)
+ 		return ret;
+ 	mem->section_count = section_count;
+ 	return 0;
+ }
+ 
++static void unregister_memory(struct memory_block *memory)
++{
++	if (WARN_ON_ONCE(memory->dev.bus != &memory_subsys))
++		return;
++
++	/* drop the ref. we got via find_memory_block() */
++	put_device(&memory->dev);
++	device_unregister(&memory->dev);
++}
++
+ /*
+- * need an interface for the VM to add new memory regions,
+- * but without onlining it.
++ * Create memory block devices for the given memory area. Start and size
++ * have to be aligned to memory block granularity. Memory block devices
++ * will be initialized as offline.
+  */
+-int hotplug_memory_register(int nid, struct mem_section *section)
++int create_memory_block_devices(unsigned long start, unsigned long size)
+ {
+-	int ret = 0;
++	const int start_block_id = pfn_to_block_id(PFN_DOWN(start));
++	int end_block_id = pfn_to_block_id(PFN_DOWN(start + size));
+ 	struct memory_block *mem;
++	unsigned long block_id;
++	int ret = 0;
+ 
+-	mutex_lock(&mem_sysfs_mutex);
++	if (WARN_ON_ONCE(!IS_ALIGNED(start, memory_block_size_bytes()) ||
++			 !IS_ALIGNED(size, memory_block_size_bytes())))
++		return -EINVAL;
+ 
+-	mem = find_memory_block(section);
+-	if (mem) {
+-		mem->section_count++;
+-		put_device(&mem->dev);
+-	} else {
+-		ret = init_memory_block(&mem, section, MEM_OFFLINE);
++	mutex_lock(&mem_sysfs_mutex);
++	for (block_id = start_block_id; block_id != end_block_id; block_id++) {
++		ret = init_memory_block(&mem, block_id, MEM_OFFLINE);
+ 		if (ret)
+-			goto out;
+-		mem->section_count++;
++			break;
++		mem->section_count = sections_per_block;
++	}
++	if (ret) {
++		end_block_id = block_id;
++		for (block_id = start_block_id; block_id != end_block_id;
++		     block_id++) {
++			mem = find_memory_block_by_id(block_id, NULL);
++			mem->section_count = 0;
++			unregister_memory(mem);
++		}
+ 	}
+-
+-out:
+ 	mutex_unlock(&mem_sysfs_mutex);
+ 	return ret;
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+-static void
+-unregister_memory(struct memory_block *memory)
+-{
+-	BUG_ON(memory->dev.bus != &memory_subsys);
+-
+-	/* drop the ref. we got in remove_memory_block() */
+-	put_device(&memory->dev);
+-	device_unregister(&memory->dev);
+-}
+-
+-static int remove_memory_section(unsigned long node_id,
+-			       struct mem_section *section, int phys_device)
++/*
++ * Remove memory block devices for the given memory area. Start and size
++ * have to be aligned to memory block granularity. Memory block devices
++ * have to be offline.
++ */
++void remove_memory_block_devices(unsigned long start, unsigned long size)
+ {
++	const int start_block_id = pfn_to_block_id(PFN_DOWN(start));
++	const int end_block_id = pfn_to_block_id(PFN_DOWN(start + size));
+ 	struct memory_block *mem;
++	int block_id;
+ 
+-	mutex_lock(&mem_sysfs_mutex);
+-
+-	/*
+-	 * Some users of the memory hotplug do not want/need memblock to
+-	 * track all sections. Skip over those.
+-	 */
+-	mem = find_memory_block(section);
+-	if (!mem)
+-		goto out_unlock;
++	if (WARN_ON_ONCE(!IS_ALIGNED(start, memory_block_size_bytes()) ||
++			 !IS_ALIGNED(size, memory_block_size_bytes())))
++		return;
+ 
+-	unregister_mem_sect_under_nodes(mem, __section_nr(section));
+-
+-	mem->section_count--;
+-	if (mem->section_count == 0)
++	mutex_lock(&mem_sysfs_mutex);
++	for (block_id = start_block_id; block_id != end_block_id; block_id++) {
++		mem = find_memory_block_by_id(block_id, NULL);
++		if (WARN_ON_ONCE(!mem))
++			continue;
++		mem->section_count = 0;
++		unregister_memory_block_under_nodes(mem);
+ 		unregister_memory(mem);
+-	else
+-		put_device(&mem->dev);
+-
+-out_unlock:
++	}
+ 	mutex_unlock(&mem_sysfs_mutex);
+-	return 0;
+-}
+-
+-int unregister_memory_section(struct mem_section *section)
+-{
+-	if (!present_section(section))
+-		return -EINVAL;
+-
+-	return remove_memory_section(0, section, 0);
+ }
+-#endif /* CONFIG_MEMORY_HOTREMOVE */
+ 
+ /* return true if the memory block is offlined, otherwise, return false */
+ bool is_memblock_offlined(struct memory_block *mem)
+@@ -849,3 +862,39 @@ int __init memory_dev_init(void)
+ 		printk(KERN_ERR "%s() failed: %d\n", __func__, ret);
+ 	return ret;
+ }
++
++struct for_each_memory_block_cb_data {
++	walk_memory_blocks_func_t func;
++	void *arg;
++};
++
++static int for_each_memory_block_cb(struct device *dev, void *data)
++{
++	struct memory_block *mem = to_memory_block(dev);
++	struct for_each_memory_block_cb_data *cb_data = data;
++
++	return cb_data->func(mem, cb_data->arg);
++}
++
++/**
++ * for_each_memory_block - walk through all present memory blocks
++ *
++ * @arg: argument passed to func
++ * @func: callback for each memory block walked
++ *
++ * This function walks through all present memory blocks, calling func on
++ * each memory block.
++ *
++ * In case func() returns an error, walking is aborted and the error is
++ * returned.
++ */
++int for_each_memory_block(void *arg, walk_memory_blocks_func_t func)
++{
++	struct for_each_memory_block_cb_data cb_data = {
++		.func = func,
++		.arg = arg,
++	};
++
++	return bus_for_each_dev(&memory_subsys, NULL, &cb_data,
++				for_each_memory_block_cb);
++}
+diff --git a/drivers/base/node.c b/drivers/base/node.c
+index c3968e2d0a98..f3565c2dbc52 100644
+--- a/drivers/base/node.c
++++ b/drivers/base/node.c
+@@ -409,8 +409,6 @@ int register_mem_sect_under_node(struct memory_block *mem_blk, void *arg)
+ 	int ret, nid = *(int *)arg;
+ 	unsigned long pfn, sect_start_pfn, sect_end_pfn;
+ 
+-	mem_blk->nid = nid;
+-
+ 	sect_start_pfn = section_nr_to_pfn(mem_blk->start_section_nr);
+ 	sect_end_pfn = section_nr_to_pfn(mem_blk->end_section_nr);
+ 	sect_end_pfn += PAGES_PER_SECTION - 1;
+@@ -439,6 +437,13 @@ int register_mem_sect_under_node(struct memory_block *mem_blk, void *arg)
+ 			if (page_nid != nid)
+ 				continue;
+ 		}
++
++		/*
++		 * If this memory block spans multiple nodes, we only indicate
++		 * the last processed node.
++		 */
++		mem_blk->nid = nid;
++
+ 		ret = sysfs_create_link_nowarn(&node_devices[nid]->dev.kobj,
+ 					&mem_blk->dev.kobj,
+ 					kobject_name(&mem_blk->dev.kobj));
+@@ -453,40 +458,19 @@ int register_mem_sect_under_node(struct memory_block *mem_blk, void *arg)
+ 	return 0;
+ }
+ 
+-/* unregister memory section under all nodes that it spans */
+-int unregister_mem_sect_under_nodes(struct memory_block *mem_blk,
+-				    unsigned long phys_index)
++/*
++ * Unregister a memory block device under the node it spans. Memory blocks
++ * with multiple nodes cannot be offlined and therefore also never be removed.
++ */
++void unregister_memory_block_under_nodes(struct memory_block *mem_blk)
+ {
+-	NODEMASK_ALLOC(nodemask_t, unlinked_nodes, GFP_KERNEL);
+-	unsigned long pfn, sect_start_pfn, sect_end_pfn;
+-
+-	if (!mem_blk) {
+-		NODEMASK_FREE(unlinked_nodes);
+-		return -EFAULT;
+-	}
+-	if (!unlinked_nodes)
+-		return -ENOMEM;
+-	nodes_clear(*unlinked_nodes);
+-
+-	sect_start_pfn = section_nr_to_pfn(phys_index);
+-	sect_end_pfn = sect_start_pfn + PAGES_PER_SECTION - 1;
+-	for (pfn = sect_start_pfn; pfn <= sect_end_pfn; pfn++) {
+-		int nid;
++	if (mem_blk->nid == NUMA_NO_NODE)
++		return;
+ 
+-		nid = get_nid_for_pfn(pfn);
+-		if (nid < 0)
+-			continue;
+-		if (!node_online(nid))
+-			continue;
+-		if (node_test_and_set(nid, *unlinked_nodes))
+-			continue;
+-		sysfs_remove_link(&node_devices[nid]->dev.kobj,
+-			 kobject_name(&mem_blk->dev.kobj));
+-		sysfs_remove_link(&mem_blk->dev.kobj,
+-			 kobject_name(&node_devices[nid]->dev.kobj));
+-	}
+-	NODEMASK_FREE(unlinked_nodes);
+-	return 0;
++	sysfs_remove_link(&node_devices[mem_blk->nid]->dev.kobj,
++			  kobject_name(&mem_blk->dev.kobj));
++	sysfs_remove_link(&mem_blk->dev.kobj,
++			  kobject_name(&node_devices[mem_blk->nid]->dev.kobj));
+ }
+ 
+ int link_mem_sections(int nid, unsigned long start_pfn, unsigned long end_pfn)
+diff --git a/drivers/crypto/geode-aes.c b/drivers/crypto/geode-aes.c
+index eb2a0a73cbed..d670f7000cbb 100644
+--- a/drivers/crypto/geode-aes.c
++++ b/drivers/crypto/geode-aes.c
+@@ -14,6 +14,7 @@
+ #include <linux/spinlock.h>
+ #include <crypto/algapi.h>
+ #include <crypto/aes.h>
++#include <crypto/skcipher.h>
+ 
+ #include <linux/io.h>
+ #include <linux/delay.h>
+@@ -170,13 +171,15 @@ static int geode_setkey_blk(struct crypto_tfm *tfm, const u8 *key,
+ 	/*
+ 	 * The requested key size is not supported by HW, do a fallback
+ 	 */
+-	op->fallback.blk->base.crt_flags &= ~CRYPTO_TFM_REQ_MASK;
+-	op->fallback.blk->base.crt_flags |= (tfm->crt_flags & CRYPTO_TFM_REQ_MASK);
++	crypto_skcipher_clear_flags(op->fallback.blk, CRYPTO_TFM_REQ_MASK);
++	crypto_skcipher_set_flags(op->fallback.blk,
++				  tfm->crt_flags & CRYPTO_TFM_REQ_MASK);
+ 
+-	ret = crypto_blkcipher_setkey(op->fallback.blk, key, len);
++	ret = crypto_skcipher_setkey(op->fallback.blk, key, len);
+ 	if (ret) {
+ 		tfm->crt_flags &= ~CRYPTO_TFM_RES_MASK;
+-		tfm->crt_flags |= (op->fallback.blk->base.crt_flags & CRYPTO_TFM_RES_MASK);
++		tfm->crt_flags |= crypto_skcipher_get_flags(op->fallback.blk) &
++				  CRYPTO_TFM_RES_MASK;
+ 	}
+ 	return ret;
+ }
+@@ -185,33 +188,28 @@ static int fallback_blk_dec(struct blkcipher_desc *desc,
+ 		struct scatterlist *dst, struct scatterlist *src,
+ 		unsigned int nbytes)
+ {
+-	unsigned int ret;
+-	struct crypto_blkcipher *tfm;
+ 	struct geode_aes_op *op = crypto_blkcipher_ctx(desc->tfm);
++	SKCIPHER_REQUEST_ON_STACK(req, op->fallback.blk);
+ 
+-	tfm = desc->tfm;
+-	desc->tfm = op->fallback.blk;
+-
+-	ret = crypto_blkcipher_decrypt_iv(desc, dst, src, nbytes);
++	skcipher_request_set_tfm(req, op->fallback.blk);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, src, dst, nbytes, desc->info);
+ 
+-	desc->tfm = tfm;
+-	return ret;
++	return crypto_skcipher_decrypt(req);
+ }
++
+ static int fallback_blk_enc(struct blkcipher_desc *desc,
+ 		struct scatterlist *dst, struct scatterlist *src,
+ 		unsigned int nbytes)
+ {
+-	unsigned int ret;
+-	struct crypto_blkcipher *tfm;
+ 	struct geode_aes_op *op = crypto_blkcipher_ctx(desc->tfm);
++	SKCIPHER_REQUEST_ON_STACK(req, op->fallback.blk);
+ 
+-	tfm = desc->tfm;
+-	desc->tfm = op->fallback.blk;
+-
+-	ret = crypto_blkcipher_encrypt_iv(desc, dst, src, nbytes);
++	skcipher_request_set_tfm(req, op->fallback.blk);
++	skcipher_request_set_callback(req, 0, NULL, NULL);
++	skcipher_request_set_crypt(req, src, dst, nbytes, desc->info);
+ 
+-	desc->tfm = tfm;
+-	return ret;
++	return crypto_skcipher_encrypt(req);
+ }
+ 
+ static void
+@@ -311,6 +309,9 @@ geode_cbc_decrypt(struct blkcipher_desc *desc,
+ 	struct blkcipher_walk walk;
+ 	int err, ret;
+ 
++	if (nbytes % AES_BLOCK_SIZE)
++		return -EINVAL;
++
+ 	if (unlikely(op->keylen != AES_KEYSIZE_128))
+ 		return fallback_blk_dec(desc, dst, src, nbytes);
+ 
+@@ -343,6 +344,9 @@ geode_cbc_encrypt(struct blkcipher_desc *desc,
+ 	struct blkcipher_walk walk;
+ 	int err, ret;
+ 
++	if (nbytes % AES_BLOCK_SIZE)
++		return -EINVAL;
++
+ 	if (unlikely(op->keylen != AES_KEYSIZE_128))
+ 		return fallback_blk_enc(desc, dst, src, nbytes);
+ 
+@@ -370,8 +374,9 @@ static int fallback_init_blk(struct crypto_tfm *tfm)
+ 	const char *name = crypto_tfm_alg_name(tfm);
+ 	struct geode_aes_op *op = crypto_tfm_ctx(tfm);
+ 
+-	op->fallback.blk = crypto_alloc_blkcipher(name, 0,
+-			CRYPTO_ALG_ASYNC | CRYPTO_ALG_NEED_FALLBACK);
++	op->fallback.blk = crypto_alloc_skcipher(name, 0,
++						 CRYPTO_ALG_ASYNC |
++						 CRYPTO_ALG_NEED_FALLBACK);
+ 
+ 	if (IS_ERR(op->fallback.blk)) {
+ 		printk(KERN_ERR "Error allocating fallback algo %s\n", name);
+@@ -385,7 +390,7 @@ static void fallback_exit_blk(struct crypto_tfm *tfm)
+ {
+ 	struct geode_aes_op *op = crypto_tfm_ctx(tfm);
+ 
+-	crypto_free_blkcipher(op->fallback.blk);
++	crypto_free_skcipher(op->fallback.blk);
+ 	op->fallback.blk = NULL;
+ }
+ 
+@@ -424,6 +429,9 @@ geode_ecb_decrypt(struct blkcipher_desc *desc,
+ 	struct blkcipher_walk walk;
+ 	int err, ret;
+ 
++	if (nbytes % AES_BLOCK_SIZE)
++		return -EINVAL;
++
+ 	if (unlikely(op->keylen != AES_KEYSIZE_128))
+ 		return fallback_blk_dec(desc, dst, src, nbytes);
+ 
+@@ -454,6 +462,9 @@ geode_ecb_encrypt(struct blkcipher_desc *desc,
+ 	struct blkcipher_walk walk;
+ 	int err, ret;
+ 
++	if (nbytes % AES_BLOCK_SIZE)
++		return -EINVAL;
++
+ 	if (unlikely(op->keylen != AES_KEYSIZE_128))
+ 		return fallback_blk_enc(desc, dst, src, nbytes);
+ 
+diff --git a/drivers/crypto/geode-aes.h b/drivers/crypto/geode-aes.h
+index f442ca972e3c..c5763a041bb8 100644
+--- a/drivers/crypto/geode-aes.h
++++ b/drivers/crypto/geode-aes.h
+@@ -64,7 +64,7 @@ struct geode_aes_op {
+ 	u8 *iv;
+ 
+ 	union {
+-		struct crypto_blkcipher *blk;
++		struct crypto_skcipher *blk;
+ 		struct crypto_cipher *cip;
+ 	} fallback;
+ 	u32 keylen;
+diff --git a/drivers/hwmon/adt7475.c b/drivers/hwmon/adt7475.c
+index f4c7516eb989..0a87c5b51286 100644
+--- a/drivers/hwmon/adt7475.c
++++ b/drivers/hwmon/adt7475.c
+@@ -296,9 +296,10 @@ static inline u16 volt2reg(int channel, long volt, u8 bypass_attn)
+ 	long reg;
+ 
+ 	if (bypass_attn & (1 << channel))
+-		reg = (volt * 1024) / 2250;
++		reg = DIV_ROUND_CLOSEST(volt * 1024, 2250);
+ 	else
+-		reg = (volt * r[1] * 1024) / ((r[0] + r[1]) * 2250);
++		reg = DIV_ROUND_CLOSEST(volt * r[1] * 1024,
++					(r[0] + r[1]) * 2250);
+ 	return clamp_val(reg, 0, 1023) & (0xff << 2);
+ }
+ 
+diff --git a/drivers/hwmon/hwmon.c b/drivers/hwmon/hwmon.c
+index 6b3559f58b67..d34de21d43ad 100644
+--- a/drivers/hwmon/hwmon.c
++++ b/drivers/hwmon/hwmon.c
+@@ -51,6 +51,7 @@ struct hwmon_device_attribute {
+ 
+ #define to_hwmon_attr(d) \
+ 	container_of(d, struct hwmon_device_attribute, dev_attr)
++#define to_dev_attr(a) container_of(a, struct device_attribute, attr)
+ 
+ /*
+  * Thermal zone information
+@@ -58,7 +59,7 @@ struct hwmon_device_attribute {
+  * also provides the sensor index.
+  */
+ struct hwmon_thermal_data {
+-	struct hwmon_device *hwdev;	/* Reference to hwmon device */
++	struct device *dev;		/* Reference to hwmon device */
+ 	int index;			/* sensor index */
+ };
+ 
+@@ -95,9 +96,27 @@ static const struct attribute_group *hwmon_dev_attr_groups[] = {
+ 	NULL
+ };
+ 
++static void hwmon_free_attrs(struct attribute **attrs)
++{
++	int i;
++
++	for (i = 0; attrs[i]; i++) {
++		struct device_attribute *dattr = to_dev_attr(attrs[i]);
++		struct hwmon_device_attribute *hattr = to_hwmon_attr(dattr);
++
++		kfree(hattr);
++	}
++	kfree(attrs);
++}
++
+ static void hwmon_dev_release(struct device *dev)
+ {
+-	kfree(to_hwmon_device(dev));
++	struct hwmon_device *hwdev = to_hwmon_device(dev);
++
++	if (hwdev->group.attrs)
++		hwmon_free_attrs(hwdev->group.attrs);
++	kfree(hwdev->groups);
++	kfree(hwdev);
+ }
+ 
+ static struct class hwmon_class = {
+@@ -121,11 +140,11 @@ static DEFINE_IDA(hwmon_ida);
+ static int hwmon_thermal_get_temp(void *data, int *temp)
+ {
+ 	struct hwmon_thermal_data *tdata = data;
+-	struct hwmon_device *hwdev = tdata->hwdev;
++	struct hwmon_device *hwdev = to_hwmon_device(tdata->dev);
+ 	int ret;
+ 	long t;
+ 
+-	ret = hwdev->chip->ops->read(&hwdev->dev, hwmon_temp, hwmon_temp_input,
++	ret = hwdev->chip->ops->read(tdata->dev, hwmon_temp, hwmon_temp_input,
+ 				     tdata->index, &t);
+ 	if (ret < 0)
+ 		return ret;
+@@ -139,8 +158,7 @@ static const struct thermal_zone_of_device_ops hwmon_thermal_ops = {
+ 	.get_temp = hwmon_thermal_get_temp,
+ };
+ 
+-static int hwmon_thermal_add_sensor(struct device *dev,
+-				    struct hwmon_device *hwdev, int index)
++static int hwmon_thermal_add_sensor(struct device *dev, int index)
+ {
+ 	struct hwmon_thermal_data *tdata;
+ 	struct thermal_zone_device *tzd;
+@@ -149,10 +167,10 @@ static int hwmon_thermal_add_sensor(struct device *dev,
+ 	if (!tdata)
+ 		return -ENOMEM;
+ 
+-	tdata->hwdev = hwdev;
++	tdata->dev = dev;
+ 	tdata->index = index;
+ 
+-	tzd = devm_thermal_zone_of_sensor_register(&hwdev->dev, index, tdata,
++	tzd = devm_thermal_zone_of_sensor_register(dev, index, tdata,
+ 						   &hwmon_thermal_ops);
+ 	/*
+ 	 * If CONFIG_THERMAL_OF is disabled, this returns -ENODEV,
+@@ -164,8 +182,7 @@ static int hwmon_thermal_add_sensor(struct device *dev,
+ 	return 0;
+ }
+ #else
+-static int hwmon_thermal_add_sensor(struct device *dev,
+-				    struct hwmon_device *hwdev, int index)
++static int hwmon_thermal_add_sensor(struct device *dev, int index)
+ {
+ 	return 0;
+ }
+@@ -242,8 +259,7 @@ static bool is_string_attr(enum hwmon_sensor_types type, u32 attr)
+ 	       (type == hwmon_fan && attr == hwmon_fan_label);
+ }
+ 
+-static struct attribute *hwmon_genattr(struct device *dev,
+-				       const void *drvdata,
++static struct attribute *hwmon_genattr(const void *drvdata,
+ 				       enum hwmon_sensor_types type,
+ 				       u32 attr,
+ 				       int index,
+@@ -271,7 +287,7 @@ static struct attribute *hwmon_genattr(struct device *dev,
+ 	if ((mode & S_IWUGO) && !ops->write)
+ 		return ERR_PTR(-EINVAL);
+ 
+-	hattr = devm_kzalloc(dev, sizeof(*hattr), GFP_KERNEL);
++	hattr = kzalloc(sizeof(*hattr), GFP_KERNEL);
+ 	if (!hattr)
+ 		return ERR_PTR(-ENOMEM);
+ 
+@@ -478,8 +494,7 @@ static int hwmon_num_channel_attrs(const struct hwmon_channel_info *info)
+ 	return n;
+ }
+ 
+-static int hwmon_genattrs(struct device *dev,
+-			  const void *drvdata,
++static int hwmon_genattrs(const void *drvdata,
+ 			  struct attribute **attrs,
+ 			  const struct hwmon_ops *ops,
+ 			  const struct hwmon_channel_info *info)
+@@ -505,7 +520,7 @@ static int hwmon_genattrs(struct device *dev,
+ 			attr_mask &= ~BIT(attr);
+ 			if (attr >= template_size)
+ 				return -EINVAL;
+-			a = hwmon_genattr(dev, drvdata, info->type, attr, i,
++			a = hwmon_genattr(drvdata, info->type, attr, i,
+ 					  templates[attr], ops);
+ 			if (IS_ERR(a)) {
+ 				if (PTR_ERR(a) != -ENOENT)
+@@ -519,8 +534,7 @@ static int hwmon_genattrs(struct device *dev,
+ }
+ 
+ static struct attribute **
+-__hwmon_create_attrs(struct device *dev, const void *drvdata,
+-		     const struct hwmon_chip_info *chip)
++__hwmon_create_attrs(const void *drvdata, const struct hwmon_chip_info *chip)
+ {
+ 	int ret, i, aindex = 0, nattrs = 0;
+ 	struct attribute **attrs;
+@@ -531,15 +545,17 @@ __hwmon_create_attrs(struct device *dev, const void *drvdata,
+ 	if (nattrs == 0)
+ 		return ERR_PTR(-EINVAL);
+ 
+-	attrs = devm_kcalloc(dev, nattrs + 1, sizeof(*attrs), GFP_KERNEL);
++	attrs = kcalloc(nattrs + 1, sizeof(*attrs), GFP_KERNEL);
+ 	if (!attrs)
+ 		return ERR_PTR(-ENOMEM);
+ 
+ 	for (i = 0; chip->info[i]; i++) {
+-		ret = hwmon_genattrs(dev, drvdata, &attrs[aindex], chip->ops,
++		ret = hwmon_genattrs(drvdata, &attrs[aindex], chip->ops,
+ 				     chip->info[i]);
+-		if (ret < 0)
++		if (ret < 0) {
++			hwmon_free_attrs(attrs);
+ 			return ERR_PTR(ret);
++		}
+ 		aindex += ret;
+ 	}
+ 
+@@ -581,14 +597,13 @@ __hwmon_device_register(struct device *dev, const char *name, void *drvdata,
+ 			for (i = 0; groups[i]; i++)
+ 				ngroups++;
+ 
+-		hwdev->groups = devm_kcalloc(dev, ngroups, sizeof(*groups),
+-					     GFP_KERNEL);
++		hwdev->groups = kcalloc(ngroups, sizeof(*groups), GFP_KERNEL);
+ 		if (!hwdev->groups) {
+ 			err = -ENOMEM;
+ 			goto free_hwmon;
+ 		}
+ 
+-		attrs = __hwmon_create_attrs(dev, drvdata, chip);
++		attrs = __hwmon_create_attrs(drvdata, chip);
+ 		if (IS_ERR(attrs)) {
+ 			err = PTR_ERR(attrs);
+ 			goto free_hwmon;
+@@ -633,8 +648,7 @@ __hwmon_device_register(struct device *dev, const char *name, void *drvdata,
+ 							   hwmon_temp_input, j))
+ 					continue;
+ 				if (info[i]->config[j] & HWMON_T_INPUT) {
+-					err = hwmon_thermal_add_sensor(dev,
+-								hwdev, j);
++					err = hwmon_thermal_add_sensor(hdev, j);
+ 					if (err) {
+ 						device_unregister(hdev);
+ 						goto ida_remove;
+@@ -647,7 +661,7 @@ __hwmon_device_register(struct device *dev, const char *name, void *drvdata,
+ 	return hdev;
+ 
+ free_hwmon:
+-	kfree(hwdev);
++	hwmon_dev_release(hdev);
+ ida_remove:
+ 	ida_simple_remove(&hwmon_ida, id);
+ 	return ERR_PTR(err);
+diff --git a/drivers/hwmon/nct7802.c b/drivers/hwmon/nct7802.c
+index 38ffbdb0a85f..779ec8fdfae0 100644
+--- a/drivers/hwmon/nct7802.c
++++ b/drivers/hwmon/nct7802.c
+@@ -32,8 +32,8 @@
+ static const u8 REG_VOLTAGE[5] = { 0x09, 0x0a, 0x0c, 0x0d, 0x0e };
+ 
+ static const u8 REG_VOLTAGE_LIMIT_LSB[2][5] = {
+-	{ 0x40, 0x00, 0x42, 0x44, 0x46 },
+-	{ 0x3f, 0x00, 0x41, 0x43, 0x45 },
++	{ 0x46, 0x00, 0x40, 0x42, 0x44 },
++	{ 0x45, 0x00, 0x3f, 0x41, 0x43 },
+ };
+ 
+ static const u8 REG_VOLTAGE_LIMIT_MSB[5] = { 0x48, 0x00, 0x47, 0x47, 0x48 };
+diff --git a/drivers/hwtracing/coresight/coresight-etb10.c b/drivers/hwtracing/coresight/coresight-etb10.c
+index 0dad8626bcfb..6cf28b049635 100644
+--- a/drivers/hwtracing/coresight/coresight-etb10.c
++++ b/drivers/hwtracing/coresight/coresight-etb10.c
+@@ -275,9 +275,7 @@ static void *etb_alloc_buffer(struct coresight_device *csdev, int cpu,
+ 	int node;
+ 	struct cs_buffers *buf;
+ 
+-	if (cpu == -1)
+-		cpu = smp_processor_id();
+-	node = cpu_to_node(cpu);
++	node = (cpu == -1) ? NUMA_NO_NODE : cpu_to_node(cpu);
+ 
+ 	buf = kzalloc_node(sizeof(struct cs_buffers), GFP_KERNEL, node);
+ 	if (!buf)
+diff --git a/drivers/hwtracing/coresight/coresight-tmc-etf.c b/drivers/hwtracing/coresight/coresight-tmc-etf.c
+index e31061308e19..e90af39283b1 100644
+--- a/drivers/hwtracing/coresight/coresight-tmc-etf.c
++++ b/drivers/hwtracing/coresight/coresight-tmc-etf.c
+@@ -304,9 +304,7 @@ static void *tmc_alloc_etf_buffer(struct coresight_device *csdev, int cpu,
+ 	int node;
+ 	struct cs_buffers *buf;
+ 
+-	if (cpu == -1)
+-		cpu = smp_processor_id();
+-	node = cpu_to_node(cpu);
++	node = (cpu == -1) ? NUMA_NO_NODE : cpu_to_node(cpu);
+ 
+ 	/* Allocate memory structure for interaction with Perf */
+ 	buf = kzalloc_node(sizeof(struct cs_buffers), GFP_KERNEL, node);
+diff --git a/drivers/infiniband/ulp/isert/ib_isert.c b/drivers/infiniband/ulp/isert/ib_isert.c
+index f39670c5c25c..9899f7e155a5 100644
+--- a/drivers/infiniband/ulp/isert/ib_isert.c
++++ b/drivers/infiniband/ulp/isert/ib_isert.c
+@@ -2584,17 +2584,6 @@ isert_wait4logout(struct isert_conn *isert_conn)
+ 	}
+ }
+ 
+-static void
+-isert_wait4cmds(struct iscsi_conn *conn)
+-{
+-	isert_info("iscsi_conn %p\n", conn);
+-
+-	if (conn->sess) {
+-		target_sess_cmd_list_set_waiting(conn->sess->se_sess);
+-		target_wait_for_sess_cmds(conn->sess->se_sess);
+-	}
+-}
+-
+ /**
+  * isert_put_unsol_pending_cmds() - Drop commands waiting for
+  *     unsolicitate dataout
+@@ -2642,7 +2631,6 @@ static void isert_wait_conn(struct iscsi_conn *conn)
+ 
+ 	ib_drain_qp(isert_conn->qp);
+ 	isert_put_unsol_pending_cmds(conn);
+-	isert_wait4cmds(conn);
+ 	isert_wait4logout(isert_conn);
+ 
+ 	queue_work(isert_release_wq, &isert_conn->release_work);
+diff --git a/drivers/input/misc/keyspan_remote.c b/drivers/input/misc/keyspan_remote.c
+index a8937ceac66a..af4db1350915 100644
+--- a/drivers/input/misc/keyspan_remote.c
++++ b/drivers/input/misc/keyspan_remote.c
+@@ -339,7 +339,8 @@ static int keyspan_setup(struct usb_device* dev)
+ 	int retval = 0;
+ 
+ 	retval = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
+-				 0x11, 0x40, 0x5601, 0x0, NULL, 0, 0);
++				 0x11, 0x40, 0x5601, 0x0, NULL, 0,
++				 USB_CTRL_SET_TIMEOUT);
+ 	if (retval) {
+ 		dev_dbg(&dev->dev, "%s - failed to set bit rate due to error: %d\n",
+ 			__func__, retval);
+@@ -347,7 +348,8 @@ static int keyspan_setup(struct usb_device* dev)
+ 	}
+ 
+ 	retval = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
+-				 0x44, 0x40, 0x0, 0x0, NULL, 0, 0);
++				 0x44, 0x40, 0x0, 0x0, NULL, 0,
++				 USB_CTRL_SET_TIMEOUT);
+ 	if (retval) {
+ 		dev_dbg(&dev->dev, "%s - failed to set resume sensitivity due to error: %d\n",
+ 			__func__, retval);
+@@ -355,7 +357,8 @@ static int keyspan_setup(struct usb_device* dev)
+ 	}
+ 
+ 	retval = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
+-				 0x22, 0x40, 0x0, 0x0, NULL, 0, 0);
++				 0x22, 0x40, 0x0, 0x0, NULL, 0,
++				 USB_CTRL_SET_TIMEOUT);
+ 	if (retval) {
+ 		dev_dbg(&dev->dev, "%s - failed to turn receive on due to error: %d\n",
+ 			__func__, retval);
+diff --git a/drivers/input/misc/pm8xxx-vibrator.c b/drivers/input/misc/pm8xxx-vibrator.c
+index 7dd1c1fbe42a..27b3db154a33 100644
+--- a/drivers/input/misc/pm8xxx-vibrator.c
++++ b/drivers/input/misc/pm8xxx-vibrator.c
+@@ -98,7 +98,7 @@ static int pm8xxx_vib_set(struct pm8xxx_vib *vib, bool on)
+ 
+ 	if (regs->enable_mask)
+ 		rc = regmap_update_bits(vib->regmap, regs->enable_addr,
+-					on ? regs->enable_mask : 0, val);
++					regs->enable_mask, on ? ~0 : 0);
+ 
+ 	return rc;
+ }
+diff --git a/drivers/input/rmi4/rmi_smbus.c b/drivers/input/rmi4/rmi_smbus.c
+index 4b2466cf2fb1..b6ccf39c6a7b 100644
+--- a/drivers/input/rmi4/rmi_smbus.c
++++ b/drivers/input/rmi4/rmi_smbus.c
+@@ -166,6 +166,7 @@ static int rmi_smb_write_block(struct rmi_transport_dev *xport, u16 rmiaddr,
+ 		/* prepare to write next block of bytes */
+ 		cur_len -= SMB_MAX_COUNT;
+ 		databuff += SMB_MAX_COUNT;
++		rmiaddr += SMB_MAX_COUNT;
+ 	}
+ exit:
+ 	mutex_unlock(&rmi_smb->page_mutex);
+@@ -217,6 +218,7 @@ static int rmi_smb_read_block(struct rmi_transport_dev *xport, u16 rmiaddr,
+ 		/* prepare to read next block of bytes */
+ 		cur_len -= SMB_MAX_COUNT;
+ 		databuff += SMB_MAX_COUNT;
++		rmiaddr += SMB_MAX_COUNT;
+ 	}
+ 
+ 	retval = 0;
+diff --git a/drivers/input/tablet/aiptek.c b/drivers/input/tablet/aiptek.c
+index c82cd5079d0e..dc2ad1cc8fe1 100644
+--- a/drivers/input/tablet/aiptek.c
++++ b/drivers/input/tablet/aiptek.c
+@@ -1815,14 +1815,14 @@ aiptek_probe(struct usb_interface *intf, const struct usb_device_id *id)
+ 	input_set_abs_params(inputdev, ABS_WHEEL, AIPTEK_WHEEL_MIN, AIPTEK_WHEEL_MAX - 1, 0, 0);
+ 
+ 	/* Verify that a device really has an endpoint */
+-	if (intf->altsetting[0].desc.bNumEndpoints < 1) {
++	if (intf->cur_altsetting->desc.bNumEndpoints < 1) {
+ 		dev_err(&intf->dev,
+ 			"interface has %d endpoints, but must have minimum 1\n",
+-			intf->altsetting[0].desc.bNumEndpoints);
++			intf->cur_altsetting->desc.bNumEndpoints);
+ 		err = -EINVAL;
+ 		goto fail3;
+ 	}
+-	endpoint = &intf->altsetting[0].endpoint[0].desc;
++	endpoint = &intf->cur_altsetting->endpoint[0].desc;
+ 
+ 	/* Go set up our URB, which is called when the tablet receives
+ 	 * input.
+diff --git a/drivers/input/tablet/gtco.c b/drivers/input/tablet/gtco.c
+index 35031228a6d0..799c94dda651 100644
+--- a/drivers/input/tablet/gtco.c
++++ b/drivers/input/tablet/gtco.c
+@@ -875,18 +875,14 @@ static int gtco_probe(struct usb_interface *usbinterface,
+ 	}
+ 
+ 	/* Sanity check that a device has an endpoint */
+-	if (usbinterface->altsetting[0].desc.bNumEndpoints < 1) {
++	if (usbinterface->cur_altsetting->desc.bNumEndpoints < 1) {
+ 		dev_err(&usbinterface->dev,
+ 			"Invalid number of endpoints\n");
+ 		error = -EINVAL;
+ 		goto err_free_urb;
+ 	}
+ 
+-	/*
+-	 * The endpoint is always altsetting 0, we know this since we know
+-	 * this device only has one interrupt endpoint
+-	 */
+-	endpoint = &usbinterface->altsetting[0].endpoint[0].desc;
++	endpoint = &usbinterface->cur_altsetting->endpoint[0].desc;
+ 
+ 	/* Some debug */
+ 	dev_dbg(&usbinterface->dev, "gtco # interfaces: %d\n", usbinterface->num_altsetting);
+@@ -973,7 +969,7 @@ static int gtco_probe(struct usb_interface *usbinterface,
+ 	input_dev->dev.parent = &usbinterface->dev;
+ 
+ 	/* Setup the URB, it will be posted later on open of input device */
+-	endpoint = &usbinterface->altsetting[0].endpoint[0].desc;
++	endpoint = &usbinterface->cur_altsetting->endpoint[0].desc;
+ 
+ 	usb_fill_int_urb(gtco->urbinfo,
+ 			 udev,
+diff --git a/drivers/input/tablet/pegasus_notetaker.c b/drivers/input/tablet/pegasus_notetaker.c
+index ffd03cfe3131..570cdaef3558 100644
+--- a/drivers/input/tablet/pegasus_notetaker.c
++++ b/drivers/input/tablet/pegasus_notetaker.c
+@@ -274,7 +274,7 @@ static int pegasus_probe(struct usb_interface *intf,
+ 		return -ENODEV;
+ 
+ 	/* Sanity check that the device has an endpoint */
+-	if (intf->altsetting[0].desc.bNumEndpoints < 1) {
++	if (intf->cur_altsetting->desc.bNumEndpoints < 1) {
+ 		dev_err(&intf->dev, "Invalid number of endpoints\n");
+ 		return -EINVAL;
+ 	}
+diff --git a/drivers/input/touchscreen/sun4i-ts.c b/drivers/input/touchscreen/sun4i-ts.c
+index d2e14d9e5975..ab44eb0352d0 100644
+--- a/drivers/input/touchscreen/sun4i-ts.c
++++ b/drivers/input/touchscreen/sun4i-ts.c
+@@ -246,6 +246,7 @@ static int sun4i_ts_probe(struct platform_device *pdev)
+ 	struct device *dev = &pdev->dev;
+ 	struct device_node *np = dev->of_node;
+ 	struct device *hwmon;
++	struct thermal_zone_device *thermal;
+ 	int error;
+ 	u32 reg;
+ 	bool ts_attached;
+@@ -365,7 +366,10 @@ static int sun4i_ts_probe(struct platform_device *pdev)
+ 	if (IS_ERR(hwmon))
+ 		return PTR_ERR(hwmon);
+ 
+-	devm_thermal_zone_of_sensor_register(ts->dev, 0, ts, &sun4i_ts_tz_ops);
++	thermal = devm_thermal_zone_of_sensor_register(ts->dev, 0, ts,
++						       &sun4i_ts_tz_ops);
++	if (IS_ERR(thermal))
++		return PTR_ERR(thermal);
+ 
+ 	writel(TEMP_IRQ_EN(1), ts->base + TP_INT_FIFOC);
+ 
+diff --git a/drivers/input/touchscreen/sur40.c b/drivers/input/touchscreen/sur40.c
+index 894843a7ec7b..caa3aca2ea54 100644
+--- a/drivers/input/touchscreen/sur40.c
++++ b/drivers/input/touchscreen/sur40.c
+@@ -657,7 +657,7 @@ static int sur40_probe(struct usb_interface *interface,
+ 	int error;
+ 
+ 	/* Check if we really have the right interface. */
+-	iface_desc = &interface->altsetting[0];
++	iface_desc = interface->cur_altsetting;
+ 	if (iface_desc->desc.bInterfaceClass != 0xFF)
+ 		return -ENODEV;
+ 
+diff --git a/drivers/media/v4l2-core/v4l2-ioctl.c b/drivers/media/v4l2-core/v4l2-ioctl.c
+index 14b614c36293..cfa86bc97f0c 100644
+--- a/drivers/media/v4l2-core/v4l2-ioctl.c
++++ b/drivers/media/v4l2-core/v4l2-ioctl.c
+@@ -1550,12 +1550,12 @@ static int v4l_s_fmt(const struct v4l2_ioctl_ops *ops,
+ 	case V4L2_BUF_TYPE_VBI_CAPTURE:
+ 		if (unlikely(!ops->vidioc_s_fmt_vbi_cap))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.vbi);
++		CLEAR_AFTER_FIELD(p, fmt.vbi.flags);
+ 		return ops->vidioc_s_fmt_vbi_cap(file, fh, arg);
+ 	case V4L2_BUF_TYPE_SLICED_VBI_CAPTURE:
+ 		if (unlikely(!ops->vidioc_s_fmt_sliced_vbi_cap))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.sliced);
++		CLEAR_AFTER_FIELD(p, fmt.sliced.io_size);
+ 		return ops->vidioc_s_fmt_sliced_vbi_cap(file, fh, arg);
+ 	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
+ 		if (unlikely(!ops->vidioc_s_fmt_vid_out))
+@@ -1578,22 +1578,22 @@ static int v4l_s_fmt(const struct v4l2_ioctl_ops *ops,
+ 	case V4L2_BUF_TYPE_VBI_OUTPUT:
+ 		if (unlikely(!ops->vidioc_s_fmt_vbi_out))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.vbi);
++		CLEAR_AFTER_FIELD(p, fmt.vbi.flags);
+ 		return ops->vidioc_s_fmt_vbi_out(file, fh, arg);
+ 	case V4L2_BUF_TYPE_SLICED_VBI_OUTPUT:
+ 		if (unlikely(!ops->vidioc_s_fmt_sliced_vbi_out))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.sliced);
++		CLEAR_AFTER_FIELD(p, fmt.sliced.io_size);
+ 		return ops->vidioc_s_fmt_sliced_vbi_out(file, fh, arg);
+ 	case V4L2_BUF_TYPE_SDR_CAPTURE:
+ 		if (unlikely(!ops->vidioc_s_fmt_sdr_cap))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.sdr);
++		CLEAR_AFTER_FIELD(p, fmt.sdr.buffersize);
+ 		return ops->vidioc_s_fmt_sdr_cap(file, fh, arg);
+ 	case V4L2_BUF_TYPE_SDR_OUTPUT:
+ 		if (unlikely(!ops->vidioc_s_fmt_sdr_out))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.sdr);
++		CLEAR_AFTER_FIELD(p, fmt.sdr.buffersize);
+ 		return ops->vidioc_s_fmt_sdr_out(file, fh, arg);
+ 	case V4L2_BUF_TYPE_META_CAPTURE:
+ 		if (unlikely(!ops->vidioc_s_fmt_meta_cap))
+@@ -1637,12 +1637,12 @@ static int v4l_try_fmt(const struct v4l2_ioctl_ops *ops,
+ 	case V4L2_BUF_TYPE_VBI_CAPTURE:
+ 		if (unlikely(!ops->vidioc_try_fmt_vbi_cap))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.vbi);
++		CLEAR_AFTER_FIELD(p, fmt.vbi.flags);
+ 		return ops->vidioc_try_fmt_vbi_cap(file, fh, arg);
+ 	case V4L2_BUF_TYPE_SLICED_VBI_CAPTURE:
+ 		if (unlikely(!ops->vidioc_try_fmt_sliced_vbi_cap))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.sliced);
++		CLEAR_AFTER_FIELD(p, fmt.sliced.io_size);
+ 		return ops->vidioc_try_fmt_sliced_vbi_cap(file, fh, arg);
+ 	case V4L2_BUF_TYPE_VIDEO_OUTPUT:
+ 		if (unlikely(!ops->vidioc_try_fmt_vid_out))
+@@ -1665,22 +1665,22 @@ static int v4l_try_fmt(const struct v4l2_ioctl_ops *ops,
+ 	case V4L2_BUF_TYPE_VBI_OUTPUT:
+ 		if (unlikely(!ops->vidioc_try_fmt_vbi_out))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.vbi);
++		CLEAR_AFTER_FIELD(p, fmt.vbi.flags);
+ 		return ops->vidioc_try_fmt_vbi_out(file, fh, arg);
+ 	case V4L2_BUF_TYPE_SLICED_VBI_OUTPUT:
+ 		if (unlikely(!ops->vidioc_try_fmt_sliced_vbi_out))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.sliced);
++		CLEAR_AFTER_FIELD(p, fmt.sliced.io_size);
+ 		return ops->vidioc_try_fmt_sliced_vbi_out(file, fh, arg);
+ 	case V4L2_BUF_TYPE_SDR_CAPTURE:
+ 		if (unlikely(!ops->vidioc_try_fmt_sdr_cap))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.sdr);
++		CLEAR_AFTER_FIELD(p, fmt.sdr.buffersize);
+ 		return ops->vidioc_try_fmt_sdr_cap(file, fh, arg);
+ 	case V4L2_BUF_TYPE_SDR_OUTPUT:
+ 		if (unlikely(!ops->vidioc_try_fmt_sdr_out))
+ 			break;
+-		CLEAR_AFTER_FIELD(p, fmt.sdr);
++		CLEAR_AFTER_FIELD(p, fmt.sdr.buffersize);
+ 		return ops->vidioc_try_fmt_sdr_out(file, fh, arg);
+ 	case V4L2_BUF_TYPE_META_CAPTURE:
+ 		if (unlikely(!ops->vidioc_try_fmt_meta_cap))
+diff --git a/drivers/mmc/host/sdhci-tegra.c b/drivers/mmc/host/sdhci-tegra.c
+index 908b23e6a03c..14d749a0de95 100644
+--- a/drivers/mmc/host/sdhci-tegra.c
++++ b/drivers/mmc/host/sdhci-tegra.c
+@@ -177,7 +177,7 @@ static void tegra_sdhci_reset(struct sdhci_host *host, u8 mask)
+ 			misc_ctrl |= SDHCI_MISC_CTRL_ENABLE_DDR50;
+ 		if (soc_data->nvquirks & NVQUIRK_ENABLE_SDR104)
+ 			misc_ctrl |= SDHCI_MISC_CTRL_ENABLE_SDR104;
+-		if (soc_data->nvquirks & SDHCI_MISC_CTRL_ENABLE_SDR50)
++		if (soc_data->nvquirks & NVQUIRK_ENABLE_SDR50)
+ 			clk_ctrl |= SDHCI_CLOCK_CTRL_SDR50_TUNING_OVERRIDE;
+ 	}
+ 
+diff --git a/drivers/mmc/host/sdhci.c b/drivers/mmc/host/sdhci.c
+index 369817a29c22..5a7fd89a8f2b 100644
+--- a/drivers/mmc/host/sdhci.c
++++ b/drivers/mmc/host/sdhci.c
+@@ -3700,11 +3700,13 @@ int sdhci_setup_host(struct sdhci_host *host)
+ 	if (host->ops->get_min_clock)
+ 		mmc->f_min = host->ops->get_min_clock(host);
+ 	else if (host->version >= SDHCI_SPEC_300) {
+-		if (host->clk_mul) {
+-			mmc->f_min = (host->max_clk * host->clk_mul) / 1024;
++		if (host->clk_mul)
+ 			max_clk = host->max_clk * host->clk_mul;
+-		} else
+-			mmc->f_min = host->max_clk / SDHCI_MAX_DIV_SPEC_300;
++		/*
++		 * Divided Clock Mode minimum clock rate is always less than
++		 * Programmable Clock Mode minimum clock rate.
++		 */
++		mmc->f_min = host->max_clk / SDHCI_MAX_DIV_SPEC_300;
+ 	} else
+ 		mmc->f_min = host->max_clk / SDHCI_MAX_DIV_SPEC_200;
+ 
+diff --git a/drivers/net/can/slcan.c b/drivers/net/can/slcan.c
+index cf0769ad39cd..b2e5bcae7fbe 100644
+--- a/drivers/net/can/slcan.c
++++ b/drivers/net/can/slcan.c
+@@ -343,9 +343,16 @@ static void slcan_transmit(struct work_struct *work)
+  */
+ static void slcan_write_wakeup(struct tty_struct *tty)
+ {
+-	struct slcan *sl = tty->disc_data;
++	struct slcan *sl;
++
++	rcu_read_lock();
++	sl = rcu_dereference(tty->disc_data);
++	if (!sl)
++		goto out;
+ 
+ 	schedule_work(&sl->tx_work);
++out:
++	rcu_read_unlock();
+ }
+ 
+ /* Send a can_frame to a TTY queue. */
+@@ -640,10 +647,11 @@ static void slcan_close(struct tty_struct *tty)
+ 		return;
+ 
+ 	spin_lock_bh(&sl->lock);
+-	tty->disc_data = NULL;
++	rcu_assign_pointer(tty->disc_data, NULL);
+ 	sl->tty = NULL;
+ 	spin_unlock_bh(&sl->lock);
+ 
++	synchronize_rcu();
+ 	flush_work(&sl->tx_work);
+ 
+ 	/* Flush network side */
+diff --git a/drivers/net/ethernet/broadcom/genet/bcmgenet.c b/drivers/net/ethernet/broadcom/genet/bcmgenet.c
+index b7d75011cede..736a6a5fbd98 100644
+--- a/drivers/net/ethernet/broadcom/genet/bcmgenet.c
++++ b/drivers/net/ethernet/broadcom/genet/bcmgenet.c
+@@ -2166,8 +2166,8 @@ static void bcmgenet_init_tx_ring(struct bcmgenet_priv *priv,
+ 				  DMA_END_ADDR);
+ 
+ 	/* Initialize Tx NAPI */
+-	netif_napi_add(priv->dev, &ring->napi, bcmgenet_tx_poll,
+-		       NAPI_POLL_WEIGHT);
++	netif_tx_napi_add(priv->dev, &ring->napi, bcmgenet_tx_poll,
++			  NAPI_POLL_WEIGHT);
+ }
+ 
+ /* Initialize a RDMA ring */
+diff --git a/drivers/net/ethernet/chelsio/cxgb3/cxgb3_main.c b/drivers/net/ethernet/chelsio/cxgb3/cxgb3_main.c
+index 6be6de0774b6..c82469ab7aba 100644
+--- a/drivers/net/ethernet/chelsio/cxgb3/cxgb3_main.c
++++ b/drivers/net/ethernet/chelsio/cxgb3/cxgb3_main.c
+@@ -2449,6 +2449,8 @@ static int cxgb_extension_ioctl(struct net_device *dev, void __user *useraddr)
+ 
+ 		if (!is_offload(adapter))
+ 			return -EOPNOTSUPP;
++		if (!capable(CAP_NET_ADMIN))
++			return -EPERM;
+ 		if (!(adapter->flags & FULL_INIT_DONE))
+ 			return -EIO;	/* need the memory controllers */
+ 		if (copy_from_user(&t, useraddr, sizeof(t)))
+diff --git a/drivers/net/ethernet/natsemi/sonic.c b/drivers/net/ethernet/natsemi/sonic.c
+index 5f1875fe47cd..69282f31d519 100644
+--- a/drivers/net/ethernet/natsemi/sonic.c
++++ b/drivers/net/ethernet/natsemi/sonic.c
+@@ -63,6 +63,8 @@ static int sonic_open(struct net_device *dev)
+ 
+ 	netif_dbg(lp, ifup, dev, "%s: initializing sonic driver\n", __func__);
+ 
++	spin_lock_init(&lp->lock);
++
+ 	for (i = 0; i < SONIC_NUM_RRS; i++) {
+ 		struct sk_buff *skb = netdev_alloc_skb(dev, SONIC_RBSIZE + 2);
+ 		if (skb == NULL) {
+@@ -113,6 +115,24 @@ static int sonic_open(struct net_device *dev)
+ 	return 0;
+ }
+ 
++/* Wait for the SONIC to become idle. */
++static void sonic_quiesce(struct net_device *dev, u16 mask)
++{
++	struct sonic_local * __maybe_unused lp = netdev_priv(dev);
++	int i;
++	u16 bits;
++
++	for (i = 0; i < 1000; ++i) {
++		bits = SONIC_READ(SONIC_CMD) & mask;
++		if (!bits)
++			return;
++		if (irqs_disabled() || in_interrupt())
++			udelay(20);
++		else
++			usleep_range(100, 200);
++	}
++	WARN_ONCE(1, "command deadline expired! 0x%04x\n", bits);
++}
+ 
+ /*
+  * Close the SONIC device
+@@ -129,6 +149,9 @@ static int sonic_close(struct net_device *dev)
+ 	/*
+ 	 * stop the SONIC, disable interrupts
+ 	 */
++	SONIC_WRITE(SONIC_CMD, SONIC_CR_RXDIS);
++	sonic_quiesce(dev, SONIC_CR_ALL);
++
+ 	SONIC_WRITE(SONIC_IMR, 0);
+ 	SONIC_WRITE(SONIC_ISR, 0x7fff);
+ 	SONIC_WRITE(SONIC_CMD, SONIC_CR_RST);
+@@ -168,6 +191,9 @@ static void sonic_tx_timeout(struct net_device *dev)
+ 	 * put the Sonic into software-reset mode and
+ 	 * disable all interrupts before releasing DMA buffers
+ 	 */
++	SONIC_WRITE(SONIC_CMD, SONIC_CR_RXDIS);
++	sonic_quiesce(dev, SONIC_CR_ALL);
++
+ 	SONIC_WRITE(SONIC_IMR, 0);
+ 	SONIC_WRITE(SONIC_ISR, 0x7fff);
+ 	SONIC_WRITE(SONIC_CMD, SONIC_CR_RST);
+@@ -205,8 +231,6 @@ static void sonic_tx_timeout(struct net_device *dev)
+  *   wake the tx queue
+  * Concurrently with all of this, the SONIC is potentially writing to
+  * the status flags of the TDs.
+- * Until some mutual exclusion is added, this code will not work with SMP. However,
+- * MIPS Jazz machines and m68k Macs were all uni-processor machines.
+  */
+ 
+ static int sonic_send_packet(struct sk_buff *skb, struct net_device *dev)
+@@ -214,7 +238,8 @@ static int sonic_send_packet(struct sk_buff *skb, struct net_device *dev)
+ 	struct sonic_local *lp = netdev_priv(dev);
+ 	dma_addr_t laddr;
+ 	int length;
+-	int entry = lp->next_tx;
++	int entry;
++	unsigned long flags;
+ 
+ 	netif_dbg(lp, tx_queued, dev, "%s: skb=%p\n", __func__, skb);
+ 
+@@ -236,6 +261,10 @@ static int sonic_send_packet(struct sk_buff *skb, struct net_device *dev)
+ 		return NETDEV_TX_OK;
+ 	}
+ 
++	spin_lock_irqsave(&lp->lock, flags);
++
++	entry = lp->next_tx;
++
+ 	sonic_tda_put(dev, entry, SONIC_TD_STATUS, 0);       /* clear status */
+ 	sonic_tda_put(dev, entry, SONIC_TD_FRAG_COUNT, 1);   /* single fragment */
+ 	sonic_tda_put(dev, entry, SONIC_TD_PKTSIZE, length); /* length of packet */
+@@ -245,10 +274,6 @@ static int sonic_send_packet(struct sk_buff *skb, struct net_device *dev)
+ 	sonic_tda_put(dev, entry, SONIC_TD_LINK,
+ 		sonic_tda_get(dev, entry, SONIC_TD_LINK) | SONIC_EOL);
+ 
+-	/*
+-	 * Must set tx_skb[entry] only after clearing status, and
+-	 * before clearing EOL and before stopping queue
+-	 */
+ 	wmb();
+ 	lp->tx_len[entry] = length;
+ 	lp->tx_laddr[entry] = laddr;
+@@ -271,6 +296,8 @@ static int sonic_send_packet(struct sk_buff *skb, struct net_device *dev)
+ 
+ 	SONIC_WRITE(SONIC_CMD, SONIC_CR_TXP);
+ 
++	spin_unlock_irqrestore(&lp->lock, flags);
++
+ 	return NETDEV_TX_OK;
+ }
+ 
+@@ -283,15 +310,28 @@ static irqreturn_t sonic_interrupt(int irq, void *dev_id)
+ 	struct net_device *dev = dev_id;
+ 	struct sonic_local *lp = netdev_priv(dev);
+ 	int status;
++	unsigned long flags;
++
++	/* The lock has two purposes. Firstly, it synchronizes sonic_interrupt()
++	 * with sonic_send_packet() so that the two functions can share state.
++	 * Secondly, it makes sonic_interrupt() re-entrant, as that is required
++	 * by macsonic which must use two IRQs with different priority levels.
++	 */
++	spin_lock_irqsave(&lp->lock, flags);
++
++	status = SONIC_READ(SONIC_ISR) & SONIC_IMR_DEFAULT;
++	if (!status) {
++		spin_unlock_irqrestore(&lp->lock, flags);
+ 
+-	if (!(status = SONIC_READ(SONIC_ISR) & SONIC_IMR_DEFAULT))
+ 		return IRQ_NONE;
++	}
+ 
+ 	do {
++		SONIC_WRITE(SONIC_ISR, status); /* clear the interrupt(s) */
++
+ 		if (status & SONIC_INT_PKTRX) {
+ 			netif_dbg(lp, intr, dev, "%s: packet rx\n", __func__);
+ 			sonic_rx(dev);	/* got packet(s) */
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_PKTRX); /* clear the interrupt */
+ 		}
+ 
+ 		if (status & SONIC_INT_TXDN) {
+@@ -299,11 +339,12 @@ static irqreturn_t sonic_interrupt(int irq, void *dev_id)
+ 			int td_status;
+ 			int freed_some = 0;
+ 
+-			/* At this point, cur_tx is the index of a TD that is one of:
+-			 *   unallocated/freed                          (status set   & tx_skb[entry] clear)
+-			 *   allocated and sent                         (status set   & tx_skb[entry] set  )
+-			 *   allocated and not yet sent                 (status clear & tx_skb[entry] set  )
+-			 *   still being allocated by sonic_send_packet (status clear & tx_skb[entry] clear)
++			/* The state of a Transmit Descriptor may be inferred
++			 * from { tx_skb[entry], td_status } as follows.
++			 * { clear, clear } => the TD has never been used
++			 * { set,   clear } => the TD was handed to SONIC
++			 * { set,   set   } => the TD was handed back
++			 * { clear, set   } => the TD is available for re-use
+ 			 */
+ 
+ 			netif_dbg(lp, intr, dev, "%s: tx done\n", __func__);
+@@ -312,18 +353,19 @@ static irqreturn_t sonic_interrupt(int irq, void *dev_id)
+ 				if ((td_status = sonic_tda_get(dev, entry, SONIC_TD_STATUS)) == 0)
+ 					break;
+ 
+-				if (td_status & 0x0001) {
++				if (td_status & SONIC_TCR_PTX) {
+ 					lp->stats.tx_packets++;
+ 					lp->stats.tx_bytes += sonic_tda_get(dev, entry, SONIC_TD_PKTSIZE);
+ 				} else {
+-					lp->stats.tx_errors++;
+-					if (td_status & 0x0642)
++					if (td_status & (SONIC_TCR_EXD |
++					    SONIC_TCR_EXC | SONIC_TCR_BCM))
+ 						lp->stats.tx_aborted_errors++;
+-					if (td_status & 0x0180)
++					if (td_status &
++					    (SONIC_TCR_NCRS | SONIC_TCR_CRLS))
+ 						lp->stats.tx_carrier_errors++;
+-					if (td_status & 0x0020)
++					if (td_status & SONIC_TCR_OWC)
+ 						lp->stats.tx_window_errors++;
+-					if (td_status & 0x0004)
++					if (td_status & SONIC_TCR_FU)
+ 						lp->stats.tx_fifo_errors++;
+ 				}
+ 
+@@ -345,7 +387,6 @@ static irqreturn_t sonic_interrupt(int irq, void *dev_id)
+ 			if (freed_some || lp->tx_skb[entry] == NULL)
+ 				netif_wake_queue(dev);  /* The ring is no longer full */
+ 			lp->cur_tx = entry;
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_TXDN); /* clear the interrupt */
+ 		}
+ 
+ 		/*
+@@ -354,42 +395,37 @@ static irqreturn_t sonic_interrupt(int irq, void *dev_id)
+ 		if (status & SONIC_INT_RFO) {
+ 			netif_dbg(lp, rx_err, dev, "%s: rx fifo overrun\n",
+ 				  __func__);
+-			lp->stats.rx_fifo_errors++;
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_RFO); /* clear the interrupt */
+ 		}
+ 		if (status & SONIC_INT_RDE) {
+ 			netif_dbg(lp, rx_err, dev, "%s: rx descriptors exhausted\n",
+ 				  __func__);
+-			lp->stats.rx_dropped++;
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_RDE); /* clear the interrupt */
+ 		}
+ 		if (status & SONIC_INT_RBAE) {
+ 			netif_dbg(lp, rx_err, dev, "%s: rx buffer area exceeded\n",
+ 				  __func__);
+-			lp->stats.rx_dropped++;
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_RBAE); /* clear the interrupt */
+ 		}
+ 
+ 		/* counter overruns; all counters are 16bit wide */
+-		if (status & SONIC_INT_FAE) {
++		if (status & SONIC_INT_FAE)
+ 			lp->stats.rx_frame_errors += 65536;
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_FAE); /* clear the interrupt */
+-		}
+-		if (status & SONIC_INT_CRC) {
++		if (status & SONIC_INT_CRC)
+ 			lp->stats.rx_crc_errors += 65536;
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_CRC); /* clear the interrupt */
+-		}
+-		if (status & SONIC_INT_MP) {
++		if (status & SONIC_INT_MP)
+ 			lp->stats.rx_missed_errors += 65536;
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_MP); /* clear the interrupt */
+-		}
+ 
+ 		/* transmit error */
+ 		if (status & SONIC_INT_TXER) {
+-			if (SONIC_READ(SONIC_TCR) & SONIC_TCR_FU)
+-				netif_dbg(lp, tx_err, dev, "%s: tx fifo underrun\n",
+-					  __func__);
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_TXER); /* clear the interrupt */
++			u16 tcr = SONIC_READ(SONIC_TCR);
++
++			netif_dbg(lp, tx_err, dev, "%s: TXER intr, TCR %04x\n",
++				  __func__, tcr);
++
++			if (tcr & (SONIC_TCR_EXD | SONIC_TCR_EXC |
++				   SONIC_TCR_FU | SONIC_TCR_BCM)) {
++				/* Aborted transmission. Try again. */
++				netif_stop_queue(dev);
++				SONIC_WRITE(SONIC_CMD, SONIC_CR_TXP);
++			}
+ 		}
+ 
+ 		/* bus retry */
+@@ -399,107 +435,164 @@ static irqreturn_t sonic_interrupt(int irq, void *dev_id)
+ 			/* ... to help debug DMA problems causing endless interrupts. */
+ 			/* Bounce the eth interface to turn on the interrupt again. */
+ 			SONIC_WRITE(SONIC_IMR, 0);
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_BR); /* clear the interrupt */
+ 		}
+ 
+-		/* load CAM done */
+-		if (status & SONIC_INT_LCD)
+-			SONIC_WRITE(SONIC_ISR, SONIC_INT_LCD); /* clear the interrupt */
+-	} while((status = SONIC_READ(SONIC_ISR) & SONIC_IMR_DEFAULT));
++		status = SONIC_READ(SONIC_ISR) & SONIC_IMR_DEFAULT;
++	} while (status);
++
++	spin_unlock_irqrestore(&lp->lock, flags);
++
+ 	return IRQ_HANDLED;
+ }
+ 
++/* Return the array index corresponding to a given Receive Buffer pointer. */
++static int index_from_addr(struct sonic_local *lp, dma_addr_t addr,
++			   unsigned int last)
++{
++	unsigned int i = last;
++
++	do {
++		i = (i + 1) & SONIC_RRS_MASK;
++		if (addr == lp->rx_laddr[i])
++			return i;
++	} while (i != last);
++
++	return -ENOENT;
++}
++
++/* Allocate and map a new skb to be used as a receive buffer. */
++static bool sonic_alloc_rb(struct net_device *dev, struct sonic_local *lp,
++			   struct sk_buff **new_skb, dma_addr_t *new_addr)
++{
++	*new_skb = netdev_alloc_skb(dev, SONIC_RBSIZE + 2);
++	if (!*new_skb)
++		return false;
++
++	if (SONIC_BUS_SCALE(lp->dma_bitmode) == 2)
++		skb_reserve(*new_skb, 2);
++
++	*new_addr = dma_map_single(lp->device, skb_put(*new_skb, SONIC_RBSIZE),
++				   SONIC_RBSIZE, DMA_FROM_DEVICE);
++	if (!*new_addr) {
++		dev_kfree_skb(*new_skb);
++		*new_skb = NULL;
++		return false;
++	}
++
++	return true;
++}
++
++/* Place a new receive resource in the Receive Resource Area and update RWP. */
++static void sonic_update_rra(struct net_device *dev, struct sonic_local *lp,
++			     dma_addr_t old_addr, dma_addr_t new_addr)
++{
++	unsigned int entry = sonic_rr_entry(dev, SONIC_READ(SONIC_RWP));
++	unsigned int end = sonic_rr_entry(dev, SONIC_READ(SONIC_RRP));
++	u32 buf;
++
++	/* The resources in the range [RRP, RWP) belong to the SONIC. This loop
++	 * scans the other resources in the RRA, those in the range [RWP, RRP).
++	 */
++	do {
++		buf = (sonic_rra_get(dev, entry, SONIC_RR_BUFADR_H) << 16) |
++		      sonic_rra_get(dev, entry, SONIC_RR_BUFADR_L);
++
++		if (buf == old_addr)
++			break;
++
++		entry = (entry + 1) & SONIC_RRS_MASK;
++	} while (entry != end);
++
++	WARN_ONCE(buf != old_addr, "failed to find resource!\n");
++
++	sonic_rra_put(dev, entry, SONIC_RR_BUFADR_H, new_addr >> 16);
++	sonic_rra_put(dev, entry, SONIC_RR_BUFADR_L, new_addr & 0xffff);
++
++	entry = (entry + 1) & SONIC_RRS_MASK;
++
++	SONIC_WRITE(SONIC_RWP, sonic_rr_addr(dev, entry));
++}
++
+ /*
+  * We have a good packet(s), pass it/them up the network stack.
+  */
+ static void sonic_rx(struct net_device *dev)
+ {
+ 	struct sonic_local *lp = netdev_priv(dev);
+-	int status;
+ 	int entry = lp->cur_rx;
++	int prev_entry = lp->eol_rx;
++	bool rbe = false;
+ 
+ 	while (sonic_rda_get(dev, entry, SONIC_RD_IN_USE) == 0) {
+-		struct sk_buff *used_skb;
+-		struct sk_buff *new_skb;
+-		dma_addr_t new_laddr;
+-		u16 bufadr_l;
+-		u16 bufadr_h;
+-		int pkt_len;
+-
+-		status = sonic_rda_get(dev, entry, SONIC_RD_STATUS);
+-		if (status & SONIC_RCR_PRX) {
+-			/* Malloc up new buffer. */
+-			new_skb = netdev_alloc_skb(dev, SONIC_RBSIZE + 2);
+-			if (new_skb == NULL) {
+-				lp->stats.rx_dropped++;
++		u16 status = sonic_rda_get(dev, entry, SONIC_RD_STATUS);
++
++		/* If the RD has LPKT set, the chip has finished with the RB */
++		if ((status & SONIC_RCR_PRX) && (status & SONIC_RCR_LPKT)) {
++			struct sk_buff *new_skb;
++			dma_addr_t new_laddr;
++			u32 addr = (sonic_rda_get(dev, entry,
++						  SONIC_RD_PKTPTR_H) << 16) |
++				   sonic_rda_get(dev, entry, SONIC_RD_PKTPTR_L);
++			int i = index_from_addr(lp, addr, entry);
++
++			if (i < 0) {
++				WARN_ONCE(1, "failed to find buffer!\n");
+ 				break;
+ 			}
+-			/* provide 16 byte IP header alignment unless DMA requires otherwise */
+-			if(SONIC_BUS_SCALE(lp->dma_bitmode) == 2)
+-				skb_reserve(new_skb, 2);
+-
+-			new_laddr = dma_map_single(lp->device, skb_put(new_skb, SONIC_RBSIZE),
+-		                               SONIC_RBSIZE, DMA_FROM_DEVICE);
+-			if (!new_laddr) {
+-				dev_kfree_skb(new_skb);
+-				printk(KERN_ERR "%s: Failed to map rx buffer, dropping packet.\n", dev->name);
++
++			if (sonic_alloc_rb(dev, lp, &new_skb, &new_laddr)) {
++				struct sk_buff *used_skb = lp->rx_skb[i];
++				int pkt_len;
++
++				/* Pass the used buffer up the stack */
++				dma_unmap_single(lp->device, addr, SONIC_RBSIZE,
++						 DMA_FROM_DEVICE);
++
++				pkt_len = sonic_rda_get(dev, entry,
++							SONIC_RD_PKTLEN);
++				skb_trim(used_skb, pkt_len);
++				used_skb->protocol = eth_type_trans(used_skb,
++								    dev);
++				netif_rx(used_skb);
++				lp->stats.rx_packets++;
++				lp->stats.rx_bytes += pkt_len;
++
++				lp->rx_skb[i] = new_skb;
++				lp->rx_laddr[i] = new_laddr;
++			} else {
++				/* Failed to obtain a new buffer so re-use it */
++				new_laddr = addr;
+ 				lp->stats.rx_dropped++;
+-				break;
+ 			}
+-
+-			/* now we have a new skb to replace it, pass the used one up the stack */
+-			dma_unmap_single(lp->device, lp->rx_laddr[entry], SONIC_RBSIZE, DMA_FROM_DEVICE);
+-			used_skb = lp->rx_skb[entry];
+-			pkt_len = sonic_rda_get(dev, entry, SONIC_RD_PKTLEN);
+-			skb_trim(used_skb, pkt_len);
+-			used_skb->protocol = eth_type_trans(used_skb, dev);
+-			netif_rx(used_skb);
+-			lp->stats.rx_packets++;
+-			lp->stats.rx_bytes += pkt_len;
+-
+-			/* and insert the new skb */
+-			lp->rx_laddr[entry] = new_laddr;
+-			lp->rx_skb[entry] = new_skb;
+-
+-			bufadr_l = (unsigned long)new_laddr & 0xffff;
+-			bufadr_h = (unsigned long)new_laddr >> 16;
+-			sonic_rra_put(dev, entry, SONIC_RR_BUFADR_L, bufadr_l);
+-			sonic_rra_put(dev, entry, SONIC_RR_BUFADR_H, bufadr_h);
+-		} else {
+-			/* This should only happen, if we enable accepting broken packets. */
+-			lp->stats.rx_errors++;
+-			if (status & SONIC_RCR_FAER)
+-				lp->stats.rx_frame_errors++;
+-			if (status & SONIC_RCR_CRCR)
+-				lp->stats.rx_crc_errors++;
+-		}
+-		if (status & SONIC_RCR_LPKT) {
+-			/*
+-			 * this was the last packet out of the current receive buffer
+-			 * give the buffer back to the SONIC
++			/* If RBE is already asserted when RWP advances then
++			 * it's safe to clear RBE after processing this packet.
+ 			 */
+-			lp->cur_rwp += SIZEOF_SONIC_RR * SONIC_BUS_SCALE(lp->dma_bitmode);
+-			if (lp->cur_rwp >= lp->rra_end) lp->cur_rwp = lp->rra_laddr & 0xffff;
+-			SONIC_WRITE(SONIC_RWP, lp->cur_rwp);
+-			if (SONIC_READ(SONIC_ISR) & SONIC_INT_RBE) {
+-				netif_dbg(lp, rx_err, dev, "%s: rx buffer exhausted\n",
+-					  __func__);
+-				SONIC_WRITE(SONIC_ISR, SONIC_INT_RBE); /* clear the flag */
+-			}
+-		} else
+-			printk(KERN_ERR "%s: rx desc without RCR_LPKT. Shouldn't happen !?\n",
+-			     dev->name);
++			rbe = rbe || SONIC_READ(SONIC_ISR) & SONIC_INT_RBE;
++			sonic_update_rra(dev, lp, addr, new_laddr);
++		}
+ 		/*
+ 		 * give back the descriptor
+ 		 */
+-		sonic_rda_put(dev, entry, SONIC_RD_LINK,
+-			sonic_rda_get(dev, entry, SONIC_RD_LINK) | SONIC_EOL);
++		sonic_rda_put(dev, entry, SONIC_RD_STATUS, 0);
+ 		sonic_rda_put(dev, entry, SONIC_RD_IN_USE, 1);
+-		sonic_rda_put(dev, lp->eol_rx, SONIC_RD_LINK,
+-			sonic_rda_get(dev, lp->eol_rx, SONIC_RD_LINK) & ~SONIC_EOL);
+-		lp->eol_rx = entry;
+-		lp->cur_rx = entry = (entry + 1) & SONIC_RDS_MASK;
++
++		prev_entry = entry;
++		entry = (entry + 1) & SONIC_RDS_MASK;
++	}
++
++	lp->cur_rx = entry;
++
++	if (prev_entry != lp->eol_rx) {
++		/* Advance the EOL flag to put descriptors back into service */
++		sonic_rda_put(dev, prev_entry, SONIC_RD_LINK, SONIC_EOL |
++			      sonic_rda_get(dev, prev_entry, SONIC_RD_LINK));
++		sonic_rda_put(dev, lp->eol_rx, SONIC_RD_LINK, ~SONIC_EOL &
++			      sonic_rda_get(dev, lp->eol_rx, SONIC_RD_LINK));
++		lp->eol_rx = prev_entry;
+ 	}
++
++	if (rbe)
++		SONIC_WRITE(SONIC_ISR, SONIC_INT_RBE);
+ 	/*
+ 	 * If any worth-while packets have been received, netif_rx()
+ 	 * has done a mark_bh(NET_BH) for us and will work on them
+@@ -549,6 +642,8 @@ static void sonic_multicast_list(struct net_device *dev)
+ 		    (netdev_mc_count(dev) > 15)) {
+ 			rcr |= SONIC_RCR_AMC;
+ 		} else {
++			unsigned long flags;
++
+ 			netif_dbg(lp, ifup, dev, "%s: mc_count %d\n", __func__,
+ 				  netdev_mc_count(dev));
+ 			sonic_set_cam_enable(dev, 1);  /* always enable our own address */
+@@ -562,9 +657,14 @@ static void sonic_multicast_list(struct net_device *dev)
+ 				i++;
+ 			}
+ 			SONIC_WRITE(SONIC_CDC, 16);
+-			/* issue Load CAM command */
+ 			SONIC_WRITE(SONIC_CDP, lp->cda_laddr & 0xffff);
++
++			/* LCAM and TXP commands can't be used simultaneously */
++			spin_lock_irqsave(&lp->lock, flags);
++			sonic_quiesce(dev, SONIC_CR_TXP);
+ 			SONIC_WRITE(SONIC_CMD, SONIC_CR_LCAM);
++			sonic_quiesce(dev, SONIC_CR_LCAM);
++			spin_unlock_irqrestore(&lp->lock, flags);
+ 		}
+ 	}
+ 
+@@ -579,7 +679,6 @@ static void sonic_multicast_list(struct net_device *dev)
+  */
+ static int sonic_init(struct net_device *dev)
+ {
+-	unsigned int cmd;
+ 	struct sonic_local *lp = netdev_priv(dev);
+ 	int i;
+ 
+@@ -591,12 +690,16 @@ static int sonic_init(struct net_device *dev)
+ 	SONIC_WRITE(SONIC_ISR, 0x7fff);
+ 	SONIC_WRITE(SONIC_CMD, SONIC_CR_RST);
+ 
++	/* While in reset mode, clear CAM Enable register */
++	SONIC_WRITE(SONIC_CE, 0);
++
+ 	/*
+ 	 * clear software reset flag, disable receiver, clear and
+ 	 * enable interrupts, then completely initialize the SONIC
+ 	 */
+ 	SONIC_WRITE(SONIC_CMD, 0);
+-	SONIC_WRITE(SONIC_CMD, SONIC_CR_RXDIS);
++	SONIC_WRITE(SONIC_CMD, SONIC_CR_RXDIS | SONIC_CR_STP);
++	sonic_quiesce(dev, SONIC_CR_ALL);
+ 
+ 	/*
+ 	 * initialize the receive resource area
+@@ -614,15 +717,10 @@ static int sonic_init(struct net_device *dev)
+ 	}
+ 
+ 	/* initialize all RRA registers */
+-	lp->rra_end = (lp->rra_laddr + SONIC_NUM_RRS * SIZEOF_SONIC_RR *
+-					SONIC_BUS_SCALE(lp->dma_bitmode)) & 0xffff;
+-	lp->cur_rwp = (lp->rra_laddr + (SONIC_NUM_RRS - 1) * SIZEOF_SONIC_RR *
+-					SONIC_BUS_SCALE(lp->dma_bitmode)) & 0xffff;
+-
+-	SONIC_WRITE(SONIC_RSA, lp->rra_laddr & 0xffff);
+-	SONIC_WRITE(SONIC_REA, lp->rra_end);
+-	SONIC_WRITE(SONIC_RRP, lp->rra_laddr & 0xffff);
+-	SONIC_WRITE(SONIC_RWP, lp->cur_rwp);
++	SONIC_WRITE(SONIC_RSA, sonic_rr_addr(dev, 0));
++	SONIC_WRITE(SONIC_REA, sonic_rr_addr(dev, SONIC_NUM_RRS));
++	SONIC_WRITE(SONIC_RRP, sonic_rr_addr(dev, 0));
++	SONIC_WRITE(SONIC_RWP, sonic_rr_addr(dev, SONIC_NUM_RRS - 1));
+ 	SONIC_WRITE(SONIC_URRA, lp->rra_laddr >> 16);
+ 	SONIC_WRITE(SONIC_EOBC, (SONIC_RBSIZE >> 1) - (lp->dma_bitmode ? 2 : 1));
+ 
+@@ -630,14 +728,7 @@ static int sonic_init(struct net_device *dev)
+ 	netif_dbg(lp, ifup, dev, "%s: issuing RRRA command\n", __func__);
+ 
+ 	SONIC_WRITE(SONIC_CMD, SONIC_CR_RRRA);
+-	i = 0;
+-	while (i++ < 100) {
+-		if (SONIC_READ(SONIC_CMD) & SONIC_CR_RRRA)
+-			break;
+-	}
+-
+-	netif_dbg(lp, ifup, dev, "%s: status=%x, i=%d\n", __func__,
+-		  SONIC_READ(SONIC_CMD), i);
++	sonic_quiesce(dev, SONIC_CR_RRRA);
+ 
+ 	/*
+ 	 * Initialize the receive descriptors so that they
+@@ -712,28 +803,17 @@ static int sonic_init(struct net_device *dev)
+ 	 * load the CAM
+ 	 */
+ 	SONIC_WRITE(SONIC_CMD, SONIC_CR_LCAM);
+-
+-	i = 0;
+-	while (i++ < 100) {
+-		if (SONIC_READ(SONIC_ISR) & SONIC_INT_LCD)
+-			break;
+-	}
+-	netif_dbg(lp, ifup, dev, "%s: CMD=%x, ISR=%x, i=%d\n", __func__,
+-		  SONIC_READ(SONIC_CMD), SONIC_READ(SONIC_ISR), i);
++	sonic_quiesce(dev, SONIC_CR_LCAM);
+ 
+ 	/*
+ 	 * enable receiver, disable loopback
+ 	 * and enable all interrupts
+ 	 */
+-	SONIC_WRITE(SONIC_CMD, SONIC_CR_RXEN | SONIC_CR_STP);
+ 	SONIC_WRITE(SONIC_RCR, SONIC_RCR_DEFAULT);
+ 	SONIC_WRITE(SONIC_TCR, SONIC_TCR_DEFAULT);
+ 	SONIC_WRITE(SONIC_ISR, 0x7fff);
+ 	SONIC_WRITE(SONIC_IMR, SONIC_IMR_DEFAULT);
+-
+-	cmd = SONIC_READ(SONIC_CMD);
+-	if ((cmd & SONIC_CR_RXEN) == 0 || (cmd & SONIC_CR_STP) == 0)
+-		printk(KERN_ERR "sonic_init: failed, status=%x\n", cmd);
++	SONIC_WRITE(SONIC_CMD, SONIC_CR_RXEN);
+ 
+ 	netif_dbg(lp, ifup, dev, "%s: new status=%x\n", __func__,
+ 		  SONIC_READ(SONIC_CMD));
+diff --git a/drivers/net/ethernet/natsemi/sonic.h b/drivers/net/ethernet/natsemi/sonic.h
+index 2b27f7049acb..1df6d2f06cc4 100644
+--- a/drivers/net/ethernet/natsemi/sonic.h
++++ b/drivers/net/ethernet/natsemi/sonic.h
+@@ -110,6 +110,9 @@
+ #define SONIC_CR_TXP            0x0002
+ #define SONIC_CR_HTX            0x0001
+ 
++#define SONIC_CR_ALL (SONIC_CR_LCAM | SONIC_CR_RRRA | \
++		      SONIC_CR_RXEN | SONIC_CR_TXP)
++
+ /*
+  * SONIC data configuration bits
+  */
+@@ -175,6 +178,7 @@
+ #define SONIC_TCR_NCRS          0x0100
+ #define SONIC_TCR_CRLS          0x0080
+ #define SONIC_TCR_EXC           0x0040
++#define SONIC_TCR_OWC           0x0020
+ #define SONIC_TCR_PMB           0x0008
+ #define SONIC_TCR_FU            0x0004
+ #define SONIC_TCR_BCM           0x0002
+@@ -274,8 +278,9 @@
+ #define SONIC_NUM_RDS   SONIC_NUM_RRS /* number of receive descriptors */
+ #define SONIC_NUM_TDS   16            /* number of transmit descriptors */
+ 
+-#define SONIC_RDS_MASK  (SONIC_NUM_RDS-1)
+-#define SONIC_TDS_MASK  (SONIC_NUM_TDS-1)
++#define SONIC_RRS_MASK  (SONIC_NUM_RRS - 1)
++#define SONIC_RDS_MASK  (SONIC_NUM_RDS - 1)
++#define SONIC_TDS_MASK  (SONIC_NUM_TDS - 1)
+ 
+ #define SONIC_RBSIZE	1520          /* size of one resource buffer */
+ 
+@@ -312,8 +317,6 @@ struct sonic_local {
+ 	u32 rda_laddr;              /* logical DMA address of RDA */
+ 	dma_addr_t rx_laddr[SONIC_NUM_RRS]; /* logical DMA addresses of rx skbuffs */
+ 	dma_addr_t tx_laddr[SONIC_NUM_TDS]; /* logical DMA addresses of tx skbuffs */
+-	unsigned int rra_end;
+-	unsigned int cur_rwp;
+ 	unsigned int cur_rx;
+ 	unsigned int cur_tx;           /* first unacked transmit packet */
+ 	unsigned int eol_rx;
+@@ -322,6 +325,7 @@ struct sonic_local {
+ 	int msg_enable;
+ 	struct device *device;         /* generic device */
+ 	struct net_device_stats stats;
++	spinlock_t lock;
+ };
+ 
+ #define TX_TIMEOUT (3 * HZ)
+@@ -344,30 +348,30 @@ static void sonic_msg_init(struct net_device *dev);
+    as far as we can tell. */
+ /* OpenBSD calls this "SWO".  I'd like to think that sonic_buf_put()
+    is a much better name. */
+-static inline void sonic_buf_put(void* base, int bitmode,
++static inline void sonic_buf_put(u16 *base, int bitmode,
+ 				 int offset, __u16 val)
+ {
+ 	if (bitmode)
+ #ifdef __BIG_ENDIAN
+-		((__u16 *) base + (offset*2))[1] = val;
++		__raw_writew(val, base + (offset * 2) + 1);
+ #else
+-		((__u16 *) base + (offset*2))[0] = val;
++		__raw_writew(val, base + (offset * 2) + 0);
+ #endif
+ 	else
+-	 	((__u16 *) base)[offset] = val;
++		__raw_writew(val, base + (offset * 1) + 0);
+ }
+ 
+-static inline __u16 sonic_buf_get(void* base, int bitmode,
++static inline __u16 sonic_buf_get(u16 *base, int bitmode,
+ 				  int offset)
+ {
+ 	if (bitmode)
+ #ifdef __BIG_ENDIAN
+-		return ((volatile __u16 *) base + (offset*2))[1];
++		return __raw_readw(base + (offset * 2) + 1);
+ #else
+-		return ((volatile __u16 *) base + (offset*2))[0];
++		return __raw_readw(base + (offset * 2) + 0);
+ #endif
+ 	else
+-		return ((volatile __u16 *) base)[offset];
++		return __raw_readw(base + (offset * 1) + 0);
+ }
+ 
+ /* Inlines that you should actually use for reading/writing DMA buffers */
+@@ -447,6 +451,22 @@ static inline __u16 sonic_rra_get(struct net_device* dev, int entry,
+ 			     (entry * SIZEOF_SONIC_RR) + offset);
+ }
+ 
++static inline u16 sonic_rr_addr(struct net_device *dev, int entry)
++{
++	struct sonic_local *lp = netdev_priv(dev);
++
++	return lp->rra_laddr +
++	       entry * SIZEOF_SONIC_RR * SONIC_BUS_SCALE(lp->dma_bitmode);
++}
++
++static inline u16 sonic_rr_entry(struct net_device *dev, u16 addr)
++{
++	struct sonic_local *lp = netdev_priv(dev);
++
++	return (addr - (u16)lp->rra_laddr) / (SIZEOF_SONIC_RR *
++					      SONIC_BUS_SCALE(lp->dma_bitmode));
++}
++
+ static const char version[] =
+     "sonic.c:v0.92 20.9.98 tsbogend@alpha.franken.de\n";
+ 
+diff --git a/drivers/net/gtp.c b/drivers/net/gtp.c
+index 6571cac6e786..ee086441dcbe 100644
+--- a/drivers/net/gtp.c
++++ b/drivers/net/gtp.c
+@@ -809,19 +809,21 @@ static struct sock *gtp_encap_enable_socket(int fd, int type,
+ 		return NULL;
+ 	}
+ 
+-	if (sock->sk->sk_protocol != IPPROTO_UDP) {
++	sk = sock->sk;
++	if (sk->sk_protocol != IPPROTO_UDP ||
++	    sk->sk_type != SOCK_DGRAM ||
++	    (sk->sk_family != AF_INET && sk->sk_family != AF_INET6)) {
+ 		pr_debug("socket fd=%d not UDP\n", fd);
+ 		sk = ERR_PTR(-EINVAL);
+ 		goto out_sock;
+ 	}
+ 
+-	lock_sock(sock->sk);
+-	if (sock->sk->sk_user_data) {
++	lock_sock(sk);
++	if (sk->sk_user_data) {
+ 		sk = ERR_PTR(-EBUSY);
+ 		goto out_rel_sock;
+ 	}
+ 
+-	sk = sock->sk;
+ 	sock_hold(sk);
+ 
+ 	tuncfg.sk_user_data = gtp;
+diff --git a/drivers/net/slip/slip.c b/drivers/net/slip/slip.c
+index 77207f936871..93f303ec17e2 100644
+--- a/drivers/net/slip/slip.c
++++ b/drivers/net/slip/slip.c
+@@ -452,9 +452,16 @@ static void slip_transmit(struct work_struct *work)
+  */
+ static void slip_write_wakeup(struct tty_struct *tty)
+ {
+-	struct slip *sl = tty->disc_data;
++	struct slip *sl;
++
++	rcu_read_lock();
++	sl = rcu_dereference(tty->disc_data);
++	if (!sl)
++		goto out;
+ 
+ 	schedule_work(&sl->tx_work);
++out:
++	rcu_read_unlock();
+ }
+ 
+ static void sl_tx_timeout(struct net_device *dev)
+@@ -882,10 +889,11 @@ static void slip_close(struct tty_struct *tty)
+ 		return;
+ 
+ 	spin_lock_bh(&sl->lock);
+-	tty->disc_data = NULL;
++	rcu_assign_pointer(tty->disc_data, NULL);
+ 	sl->tty = NULL;
+ 	spin_unlock_bh(&sl->lock);
+ 
++	synchronize_rcu();
+ 	flush_work(&sl->tx_work);
+ 
+ 	/* VSV = very important to remove timers */
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index bbd92221c6ca..09c444d3b496 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -1900,6 +1900,10 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 			if (ret != XDP_PASS) {
+ 				rcu_read_unlock();
+ 				local_bh_enable();
++				if (frags) {
++					tfile->napi.skb = NULL;
++					mutex_unlock(&tfile->napi_mutex);
++				}
+ 				return total_len;
+ 			}
+ 		}
+diff --git a/drivers/net/usb/lan78xx.c b/drivers/net/usb/lan78xx.c
+index 7d708aeb4576..92548887df2f 100644
+--- a/drivers/net/usb/lan78xx.c
++++ b/drivers/net/usb/lan78xx.c
+@@ -31,6 +31,7 @@
+ #include <linux/mdio.h>
+ #include <linux/phy.h>
+ #include <net/ip6_checksum.h>
++#include <net/vxlan.h>
+ #include <linux/interrupt.h>
+ #include <linux/irqdomain.h>
+ #include <linux/irq.h>
+@@ -3686,6 +3687,19 @@ static void lan78xx_tx_timeout(struct net_device *net)
+ 	tasklet_schedule(&dev->bh);
+ }
+ 
++static netdev_features_t lan78xx_features_check(struct sk_buff *skb,
++						struct net_device *netdev,
++						netdev_features_t features)
++{
++	if (skb->len + TX_OVERHEAD > MAX_SINGLE_PACKET_SIZE)
++		features &= ~NETIF_F_GSO_MASK;
++
++	features = vlan_features_check(skb, features);
++	features = vxlan_features_check(skb, features);
++
++	return features;
++}
++
+ static const struct net_device_ops lan78xx_netdev_ops = {
+ 	.ndo_open		= lan78xx_open,
+ 	.ndo_stop		= lan78xx_stop,
+@@ -3699,6 +3713,7 @@ static const struct net_device_ops lan78xx_netdev_ops = {
+ 	.ndo_set_features	= lan78xx_set_features,
+ 	.ndo_vlan_rx_add_vid	= lan78xx_vlan_rx_add_vid,
+ 	.ndo_vlan_rx_kill_vid	= lan78xx_vlan_rx_kill_vid,
++	.ndo_features_check	= lan78xx_features_check,
+ };
+ 
+ static void lan78xx_stat_monitor(struct timer_list *t)
+diff --git a/drivers/net/wireless/marvell/libertas/cfg.c b/drivers/net/wireless/marvell/libertas/cfg.c
+index 57edfada0665..c9401c121a14 100644
+--- a/drivers/net/wireless/marvell/libertas/cfg.c
++++ b/drivers/net/wireless/marvell/libertas/cfg.c
+@@ -273,6 +273,10 @@ add_ie_rates(u8 *tlv, const u8 *ie, int *nrates)
+ 	int hw, ap, ap_max = ie[1];
+ 	u8 hw_rate;
+ 
++	if (ap_max > MAX_RATES) {
++		lbs_deb_assoc("invalid rates\n");
++		return tlv;
++	}
+ 	/* Advance past IE header */
+ 	ie += 2;
+ 
+@@ -1717,6 +1721,9 @@ static int lbs_ibss_join_existing(struct lbs_private *priv,
+ 	struct cmd_ds_802_11_ad_hoc_join cmd;
+ 	u8 preamble = RADIO_PREAMBLE_SHORT;
+ 	int ret = 0;
++	int hw, i;
++	u8 rates_max;
++	u8 *rates;
+ 
+ 	/* TODO: set preamble based on scan result */
+ 	ret = lbs_set_radio(priv, preamble, 1);
+@@ -1775,9 +1782,12 @@ static int lbs_ibss_join_existing(struct lbs_private *priv,
+ 	if (!rates_eid) {
+ 		lbs_add_rates(cmd.bss.rates);
+ 	} else {
+-		int hw, i;
+-		u8 rates_max = rates_eid[1];
+-		u8 *rates = cmd.bss.rates;
++		rates_max = rates_eid[1];
++		if (rates_max > MAX_RATES) {
++			lbs_deb_join("invalid rates");
++			goto out;
++		}
++		rates = cmd.bss.rates;
+ 		for (hw = 0; hw < ARRAY_SIZE(lbs_rates); hw++) {
+ 			u8 hw_rate = lbs_rates[hw].bitrate / 5;
+ 			for (i = 0; i < rates_max; i++) {
+diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
+index 20a57a48ae1e..36f8eb9f24a7 100644
+--- a/drivers/pci/quirks.c
++++ b/drivers/pci/quirks.c
+@@ -4891,18 +4891,25 @@ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_SERVERWORKS, 0x0422, quirk_no_ext_tags);
+ 
+ #ifdef CONFIG_PCI_ATS
+ /*
+- * Some devices have a broken ATS implementation causing IOMMU stalls.
+- * Don't use ATS for those devices.
++ * Some devices require additional driver setup to enable ATS.  Don't use
++ * ATS for those devices as ATS will be enabled before the driver has had a
++ * chance to load and configure the device.
+  */
+-static void quirk_no_ats(struct pci_dev *pdev)
++static void quirk_amd_harvest_no_ats(struct pci_dev *pdev)
+ {
+-	pci_info(pdev, "disabling ATS (broken on this device)\n");
++	if (pdev->device == 0x7340 && pdev->revision != 0xc5)
++		return;
++
++	pci_info(pdev, "disabling ATS\n");
+ 	pdev->ats_cap = 0;
+ }
+ 
+ /* AMD Stoney platform GPU */
+-DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_ATI, 0x98e4, quirk_no_ats);
+-DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_ATI, 0x6900, quirk_no_ats);
++DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_ATI, 0x98e4, quirk_amd_harvest_no_ats);
++/* AMD Iceland dGPU */
++DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_ATI, 0x6900, quirk_amd_harvest_no_ats);
++/* AMD Navi14 dGPU */
++DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_ATI, 0x7340, quirk_amd_harvest_no_ats);
+ #endif /* CONFIG_PCI_ATS */
+ 
+ /* Freescale PCIe doesn't support MSI in RC mode */
+diff --git a/drivers/scsi/scsi_transport_iscsi.c b/drivers/scsi/scsi_transport_iscsi.c
+index 1e872ab4718f..b97b8abafb82 100644
+--- a/drivers/scsi/scsi_transport_iscsi.c
++++ b/drivers/scsi/scsi_transport_iscsi.c
+@@ -37,6 +37,8 @@
+ 
+ #define ISCSI_TRANSPORT_VERSION "2.0-870"
+ 
++#define ISCSI_SEND_MAX_ALLOWED  10
++
+ static int dbg_session;
+ module_param_named(debug_session, dbg_session, int,
+ 		   S_IRUGO | S_IWUSR);
+@@ -3677,6 +3679,7 @@ iscsi_if_rx(struct sk_buff *skb)
+ 		struct nlmsghdr	*nlh;
+ 		struct iscsi_uevent *ev;
+ 		uint32_t group;
++		int retries = ISCSI_SEND_MAX_ALLOWED;
+ 
+ 		nlh = nlmsg_hdr(skb);
+ 		if (nlh->nlmsg_len < sizeof(*nlh) + sizeof(*ev) ||
+@@ -3707,6 +3710,10 @@ iscsi_if_rx(struct sk_buff *skb)
+ 				break;
+ 			err = iscsi_if_send_reply(portid, nlh->nlmsg_type,
+ 						  ev, sizeof(*ev));
++			if (err == -EAGAIN && --retries < 0) {
++				printk(KERN_WARNING "Send reply failed, error %d\n", err);
++				break;
++			}
+ 		} while (err < 0 && err != -ECONNREFUSED && err != -ESRCH);
+ 		skb_pull(skb, rlen);
+ 	}
+diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
+index 7d868d37ab5f..345b18d52ec6 100644
+--- a/drivers/scsi/sd.c
++++ b/drivers/scsi/sd.c
+@@ -1969,9 +1969,13 @@ static int sd_done(struct scsi_cmnd *SCpnt)
+ 		}
+ 		break;
+ 	case REQ_OP_ZONE_REPORT:
++		/* To avoid that the block layer performs an incorrect
++		 * bio_advance() call and restart of the remainder of
++		 * incomplete report zone BIOs, always indicate a full
++		 * completion of REQ_OP_ZONE_REPORT.
++		 */
+ 		if (!result) {
+-			good_bytes = scsi_bufflen(SCpnt)
+-				- scsi_get_resid(SCpnt);
++			good_bytes = scsi_bufflen(SCpnt);
+ 			scsi_set_resid(SCpnt, 0);
+ 		} else {
+ 			good_bytes = 0;
+diff --git a/drivers/target/iscsi/iscsi_target.c b/drivers/target/iscsi/iscsi_target.c
+index 317d0f3f7a14..14bd54d0e79d 100644
+--- a/drivers/target/iscsi/iscsi_target.c
++++ b/drivers/target/iscsi/iscsi_target.c
+@@ -4123,9 +4123,6 @@ int iscsit_close_connection(
+ 	iscsit_stop_nopin_response_timer(conn);
+ 	iscsit_stop_nopin_timer(conn);
+ 
+-	if (conn->conn_transport->iscsit_wait_conn)
+-		conn->conn_transport->iscsit_wait_conn(conn);
+-
+ 	/*
+ 	 * During Connection recovery drop unacknowledged out of order
+ 	 * commands for this connection, and prepare the other commands
+@@ -4211,6 +4208,9 @@ int iscsit_close_connection(
+ 	target_sess_cmd_list_set_waiting(sess->se_sess);
+ 	target_wait_for_sess_cmds(sess->se_sess);
+ 
++	if (conn->conn_transport->iscsit_wait_conn)
++		conn->conn_transport->iscsit_wait_conn(conn);
++
+ 	ahash_request_free(conn->conn_tx_hash);
+ 	if (conn->conn_rx_hash) {
+ 		struct crypto_ahash *tfm;
+diff --git a/fs/afs/cell.c b/fs/afs/cell.c
+index ee07162d35c7..cce0e23b2454 100644
+--- a/fs/afs/cell.c
++++ b/fs/afs/cell.c
+@@ -135,8 +135,17 @@ static struct afs_cell *afs_alloc_cell(struct afs_net *net,
+ 		_leave(" = -ENAMETOOLONG");
+ 		return ERR_PTR(-ENAMETOOLONG);
+ 	}
+-	if (namelen == 5 && memcmp(name, "@cell", 5) == 0)
++
++	/* Prohibit cell names that contain unprintable chars, '/' and '@' or
++	 * that begin with a dot.  This also precludes "@cell".
++	 */
++	if (name[0] == '.')
+ 		return ERR_PTR(-EINVAL);
++	for (i = 0; i < namelen; i++) {
++		char ch = name[i];
++		if (!isprint(ch) || ch == '/' || ch == '@')
++			return ERR_PTR(-EINVAL);
++	}
+ 
+ 	_enter("%*.*s,%s", namelen, namelen, name, vllist);
+ 
+diff --git a/fs/namei.c b/fs/namei.c
+index 914178cdbe94..2aad8042a05b 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1009,7 +1009,8 @@ static int may_linkat(struct path *link)
+  * may_create_in_sticky - Check whether an O_CREAT open in a sticky directory
+  *			  should be allowed, or not, on files that already
+  *			  exist.
+- * @dir: the sticky parent directory
++ * @dir_mode: mode bits of directory
++ * @dir_uid: owner of directory
+  * @inode: the inode of the file to open
+  *
+  * Block an O_CREAT open of a FIFO (or a regular file) when:
+@@ -1025,18 +1026,18 @@ static int may_linkat(struct path *link)
+  *
+  * Returns 0 if the open is allowed, -ve on error.
+  */
+-static int may_create_in_sticky(struct dentry * const dir,
++static int may_create_in_sticky(umode_t dir_mode, kuid_t dir_uid,
+ 				struct inode * const inode)
+ {
+ 	if ((!sysctl_protected_fifos && S_ISFIFO(inode->i_mode)) ||
+ 	    (!sysctl_protected_regular && S_ISREG(inode->i_mode)) ||
+-	    likely(!(dir->d_inode->i_mode & S_ISVTX)) ||
+-	    uid_eq(inode->i_uid, dir->d_inode->i_uid) ||
++	    likely(!(dir_mode & S_ISVTX)) ||
++	    uid_eq(inode->i_uid, dir_uid) ||
+ 	    uid_eq(current_fsuid(), inode->i_uid))
+ 		return 0;
+ 
+-	if (likely(dir->d_inode->i_mode & 0002) ||
+-	    (dir->d_inode->i_mode & 0020 &&
++	if (likely(dir_mode & 0002) ||
++	    (dir_mode & 0020 &&
+ 	     ((sysctl_protected_fifos >= 2 && S_ISFIFO(inode->i_mode)) ||
+ 	      (sysctl_protected_regular >= 2 && S_ISREG(inode->i_mode))))) {
+ 		return -EACCES;
+@@ -3258,6 +3259,8 @@ static int do_last(struct nameidata *nd,
+ 		   struct file *file, const struct open_flags *op)
+ {
+ 	struct dentry *dir = nd->path.dentry;
++	kuid_t dir_uid = dir->d_inode->i_uid;
++	umode_t dir_mode = dir->d_inode->i_mode;
+ 	int open_flag = op->open_flag;
+ 	bool will_truncate = (open_flag & O_TRUNC) != 0;
+ 	bool got_write = false;
+@@ -3393,7 +3396,7 @@ static int do_last(struct nameidata *nd,
+ 		error = -EISDIR;
+ 		if (d_is_dir(nd->path.dentry))
+ 			goto out;
+-		error = may_create_in_sticky(dir,
++		error = may_create_in_sticky(dir_mode, dir_uid,
+ 					     d_backing_inode(nd->path.dentry));
+ 		if (unlikely(error))
+ 			goto out;
+diff --git a/include/linux/memory.h b/include/linux/memory.h
+index a6ddefc60517..5c411365cdbe 100644
+--- a/include/linux/memory.h
++++ b/include/linux/memory.h
+@@ -111,16 +111,16 @@ extern int register_memory_notifier(struct notifier_block *nb);
+ extern void unregister_memory_notifier(struct notifier_block *nb);
+ extern int register_memory_isolate_notifier(struct notifier_block *nb);
+ extern void unregister_memory_isolate_notifier(struct notifier_block *nb);
+-int hotplug_memory_register(int nid, struct mem_section *section);
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+-extern int unregister_memory_section(struct mem_section *);
+-#endif
++int create_memory_block_devices(unsigned long start, unsigned long size);
++void remove_memory_block_devices(unsigned long start, unsigned long size);
+ extern int memory_dev_init(void);
+ extern int memory_notify(unsigned long val, void *v);
+ extern int memory_isolate_notify(unsigned long val, void *v);
+ extern struct memory_block *find_memory_block_hinted(struct mem_section *,
+ 							struct memory_block *);
+ extern struct memory_block *find_memory_block(struct mem_section *);
++typedef int (*walk_memory_blocks_func_t)(struct memory_block *, void *);
++extern int for_each_memory_block(void *arg, walk_memory_blocks_func_t func);
+ #define CONFIG_MEM_BLOCK_SIZE	(PAGES_PER_SECTION<<PAGE_SHIFT)
+ #endif /* CONFIG_MEMORY_HOTPLUG_SPARSE */
+ 
+diff --git a/include/linux/memory_hotplug.h b/include/linux/memory_hotplug.h
+index 4915e6cd7fd5..d17d45c41a0b 100644
+--- a/include/linux/memory_hotplug.h
++++ b/include/linux/memory_hotplug.h
+@@ -108,12 +108,10 @@ static inline bool movable_node_is_enabled(void)
+ 	return movable_node_enabled;
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+-extern int arch_remove_memory(u64 start, u64 size,
+-		struct vmem_altmap *altmap);
+-extern int __remove_pages(struct zone *zone, unsigned long start_pfn,
+-	unsigned long nr_pages, struct vmem_altmap *altmap);
+-#endif /* CONFIG_MEMORY_HOTREMOVE */
++extern void arch_remove_memory(int nid, u64 start, u64 size,
++			       struct vmem_altmap *altmap);
++extern void __remove_pages(unsigned long start_pfn, unsigned long nr_pages,
++			   struct vmem_altmap *altmap);
+ 
+ /* reasonably generic interface to expand the physical pages */
+ extern int __add_pages(int nid, unsigned long start_pfn, unsigned long nr_pages,
+@@ -303,6 +301,7 @@ extern bool is_mem_section_removable(unsigned long pfn, unsigned long nr_pages);
+ extern void try_offline_node(int nid);
+ extern int offline_pages(unsigned long start_pfn, unsigned long nr_pages);
+ extern void remove_memory(int nid, u64 start, u64 size);
++extern void __remove_memory(int nid, u64 start, u64 size);
+ 
+ #else
+ static inline bool is_mem_section_removable(unsigned long pfn,
+@@ -319,6 +318,7 @@ static inline int offline_pages(unsigned long start_pfn, unsigned long nr_pages)
+ }
+ 
+ static inline void remove_memory(int nid, u64 start, u64 size) {}
++static inline void __remove_memory(int nid, u64 start, u64 size) {}
+ #endif /* CONFIG_MEMORY_HOTREMOVE */
+ 
+ extern void __ref free_area_init_core_hotplug(int nid);
+@@ -331,12 +331,14 @@ extern int arch_add_memory(int nid, u64 start, u64 size,
+ 		struct vmem_altmap *altmap, bool want_memblock);
+ extern void move_pfn_range_to_zone(struct zone *zone, unsigned long start_pfn,
+ 		unsigned long nr_pages, struct vmem_altmap *altmap);
++extern void remove_pfn_range_from_zone(struct zone *zone,
++				       unsigned long start_pfn,
++				       unsigned long nr_pages);
+ extern int offline_pages(unsigned long start_pfn, unsigned long nr_pages);
+ extern bool is_memblock_offlined(struct memory_block *mem);
+-extern void remove_memory(int nid, u64 start, u64 size);
+-extern int sparse_add_one_section(struct pglist_data *pgdat,
+-		unsigned long start_pfn, struct vmem_altmap *altmap);
+-extern void sparse_remove_one_section(struct zone *zone, struct mem_section *ms,
++extern int sparse_add_one_section(int nid, unsigned long start_pfn,
++				  struct vmem_altmap *altmap);
++extern void sparse_remove_one_section(struct mem_section *ms,
+ 		unsigned long map_offset, struct vmem_altmap *altmap);
+ extern struct page *sparse_decode_mem_map(unsigned long coded_mem_map,
+ 					  unsigned long pnum);
+diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
+index d4b0c79d2924..d6791e2df30a 100644
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -637,8 +637,7 @@ typedef struct pglist_data {
+ #if defined(CONFIG_MEMORY_HOTPLUG) || defined(CONFIG_DEFERRED_STRUCT_PAGE_INIT)
+ 	/*
+ 	 * Must be held any time you expect node_start_pfn, node_present_pages
+-	 * or node_spanned_pages stay constant.  Holding this will also
+-	 * guarantee that any pfn_valid() stays that way.
++	 * or node_spanned_pages stay constant.
+ 	 *
+ 	 * pgdat_resize_lock() and pgdat_resize_unlock() are provided to
+ 	 * manipulate node_size_lock without checking for CONFIG_MEMORY_HOTPLUG
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index d5527e3828d1..84bbdcbb199a 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -3579,6 +3579,8 @@ int dev_set_alias(struct net_device *, const char *, size_t);
+ int dev_get_alias(const struct net_device *, char *, size_t);
+ int dev_change_net_namespace(struct net_device *, struct net *, const char *);
+ int __dev_set_mtu(struct net_device *, int);
++int dev_validate_mtu(struct net_device *dev, int mtu,
++		     struct netlink_ext_ack *extack);
+ int dev_set_mtu_ext(struct net_device *dev, int mtu,
+ 		    struct netlink_ext_ack *extack);
+ int dev_set_mtu(struct net_device *, int);
+diff --git a/include/linux/netfilter/ipset/ip_set.h b/include/linux/netfilter/ipset/ip_set.h
+index 1d100efe74ec..7e39049d2ce6 100644
+--- a/include/linux/netfilter/ipset/ip_set.h
++++ b/include/linux/netfilter/ipset/ip_set.h
+@@ -451,13 +451,6 @@ ip6addrptr(const struct sk_buff *skb, bool src, struct in6_addr *addr)
+ 	       sizeof(*addr));
+ }
+ 
+-/* Calculate the bytes required to store the inclusive range of a-b */
+-static inline int
+-bitmap_bytes(u32 a, u32 b)
+-{
+-	return 4 * ((((b - a + 8) / 8) + 3) / 4);
+-}
+-
+ #include <linux/netfilter/ipset/ip_set_timeout.h>
+ #include <linux/netfilter/ipset/ip_set_comment.h>
+ #include <linux/netfilter/ipset/ip_set_counter.h>
+diff --git a/include/linux/node.h b/include/linux/node.h
+index 257bb3d6d014..708939bae9aa 100644
+--- a/include/linux/node.h
++++ b/include/linux/node.h
+@@ -72,8 +72,7 @@ extern int register_cpu_under_node(unsigned int cpu, unsigned int nid);
+ extern int unregister_cpu_under_node(unsigned int cpu, unsigned int nid);
+ extern int register_mem_sect_under_node(struct memory_block *mem_blk,
+ 						void *arg);
+-extern int unregister_mem_sect_under_nodes(struct memory_block *mem_blk,
+-					   unsigned long phys_index);
++extern void unregister_memory_block_under_nodes(struct memory_block *mem_blk);
+ 
+ #ifdef CONFIG_HUGETLBFS
+ extern void register_hugetlbfs_with_node(node_registration_func_t doregister,
+@@ -105,10 +104,8 @@ static inline int register_mem_sect_under_node(struct memory_block *mem_blk,
+ {
+ 	return 0;
+ }
+-static inline int unregister_mem_sect_under_nodes(struct memory_block *mem_blk,
+-						  unsigned long phys_index)
++static inline void unregister_memory_block_under_nodes(struct memory_block *mem_blk)
+ {
+-	return 0;
+ }
+ 
+ static inline void register_hugetlbfs_with_node(node_registration_func_t reg,
+diff --git a/include/trace/events/xen.h b/include/trace/events/xen.h
+index fdcf88bcf0ea..bb76c03898cc 100644
+--- a/include/trace/events/xen.h
++++ b/include/trace/events/xen.h
+@@ -66,7 +66,11 @@ TRACE_EVENT(xen_mc_callback,
+ 	    TP_PROTO(xen_mc_callback_fn_t fn, void *data),
+ 	    TP_ARGS(fn, data),
+ 	    TP_STRUCT__entry(
+-		    __field(xen_mc_callback_fn_t, fn)
++		    /*
++		     * Use field_struct to avoid is_signed_type()
++		     * comparison of a function pointer.
++		     */
++		    __field_struct(xen_mc_callback_fn_t, fn)
+ 		    __field(void *, data)
+ 		    ),
+ 	    TP_fast_assign(
+diff --git a/kernel/memremap.c b/kernel/memremap.c
+index 7c5fb8a208ac..331baad8efec 100644
+--- a/kernel/memremap.c
++++ b/kernel/memremap.c
+@@ -120,7 +120,9 @@ static void devm_memremap_pages_release(void *data)
+ 	struct device *dev = pgmap->dev;
+ 	struct resource *res = &pgmap->res;
+ 	resource_size_t align_start, align_size;
++	struct page *first_page;
+ 	unsigned long pfn;
++	int nid;
+ 
+ 	pgmap->kill(pgmap->ref);
+ 	for_each_device_pfn(pfn, pgmap)
+@@ -131,13 +133,17 @@ static void devm_memremap_pages_release(void *data)
+ 	align_size = ALIGN(res->start + resource_size(res), SECTION_SIZE)
+ 		- align_start;
+ 
++	/* make sure to access a memmap that was actually initialized */
++	first_page = pfn_to_page(pfn_first(pgmap));
++
++	nid = page_to_nid(first_page);
++
+ 	mem_hotplug_begin();
+ 	if (pgmap->type == MEMORY_DEVICE_PRIVATE) {
+ 		pfn = align_start >> PAGE_SHIFT;
+-		__remove_pages(page_zone(pfn_to_page(pfn)), pfn,
+-				align_size >> PAGE_SHIFT, NULL);
++		__remove_pages(pfn, align_size >> PAGE_SHIFT, NULL);
+ 	} else {
+-		arch_remove_memory(align_start, align_size,
++		arch_remove_memory(nid, align_start, align_size,
+ 				pgmap->altmap_valid ? &pgmap->altmap : NULL);
+ 		kasan_remove_zero_shadow(__va(align_start), align_size);
+ 	}
+diff --git a/kernel/trace/trace_events_hist.c b/kernel/trace/trace_events_hist.c
+index 0fb92d0c7b20..dbd3c97d1501 100644
+--- a/kernel/trace/trace_events_hist.c
++++ b/kernel/trace/trace_events_hist.c
+@@ -49,6 +49,7 @@ struct hist_field {
+ 	struct ftrace_event_field	*field;
+ 	unsigned long			flags;
+ 	hist_field_fn_t			fn;
++	unsigned int			ref;
+ 	unsigned int			size;
+ 	unsigned int			offset;
+ 	unsigned int                    is_signed;
+@@ -1274,6 +1275,17 @@ static u64 hist_field_cpu(struct hist_field *hist_field,
+ 	return cpu;
+ }
+ 
++/**
++ * check_field_for_var_ref - Check if a VAR_REF field references a variable
++ * @hist_field: The VAR_REF field to check
++ * @var_data: The hist trigger that owns the variable
++ * @var_idx: The trigger variable identifier
++ *
++ * Check the given VAR_REF field to see whether or not it references
++ * the given variable associated with the given trigger.
++ *
++ * Return: The VAR_REF field if it does reference the variable, NULL if not
++ */
+ static struct hist_field *
+ check_field_for_var_ref(struct hist_field *hist_field,
+ 			struct hist_trigger_data *var_data,
+@@ -1324,6 +1336,18 @@ check_field_for_var_refs(struct hist_trigger_data *hist_data,
+ 	return found;
+ }
+ 
++/**
++ * find_var_ref - Check if a trigger has a reference to a trigger variable
++ * @hist_data: The hist trigger that might have a reference to the variable
++ * @var_data: The hist trigger that owns the variable
++ * @var_idx: The trigger variable identifier
++ *
++ * Check the list of var_refs[] on the first hist trigger to see
++ * whether any of them are references to the variable on the second
++ * trigger.
++ *
++ * Return: The VAR_REF field referencing the variable if so, NULL if not
++ */
+ static struct hist_field *find_var_ref(struct hist_trigger_data *hist_data,
+ 				       struct hist_trigger_data *var_data,
+ 				       unsigned int var_idx)
+@@ -1350,6 +1374,20 @@ static struct hist_field *find_var_ref(struct hist_trigger_data *hist_data,
+ 	return found;
+ }
+ 
++/**
++ * find_any_var_ref - Check if there is a reference to a given trigger variable
++ * @hist_data: The hist trigger
++ * @var_idx: The trigger variable identifier
++ *
++ * Check to see whether the given variable is currently referenced by
++ * any other trigger.
++ *
++ * The trigger the variable is defined on is explicitly excluded - the
++ * assumption being that a self-reference doesn't prevent a trigger
++ * from being removed.
++ *
++ * Return: The VAR_REF field referencing the variable if so, NULL if not
++ */
+ static struct hist_field *find_any_var_ref(struct hist_trigger_data *hist_data,
+ 					   unsigned int var_idx)
+ {
+@@ -1368,6 +1406,19 @@ static struct hist_field *find_any_var_ref(struct hist_trigger_data *hist_data,
+ 	return found;
+ }
+ 
++/**
++ * check_var_refs - Check if there is a reference to any of trigger's variables
++ * @hist_data: The hist trigger
++ *
++ * A trigger can define one or more variables.  If any one of them is
++ * currently referenced by any other trigger, this function will
++ * determine that.
++
++ * Typically used to determine whether or not a trigger can be removed
++ * - if there are any references to a trigger's variables, it cannot.
++ *
++ * Return: True if there is a reference to any of trigger's variables
++ */
+ static bool check_var_refs(struct hist_trigger_data *hist_data)
+ {
+ 	struct hist_field *field;
+@@ -1511,11 +1562,13 @@ static struct hist_field *find_var(struct hist_trigger_data *hist_data,
+ 	struct event_trigger_data *test;
+ 	struct hist_field *hist_field;
+ 
++	lockdep_assert_held(&event_mutex);
++
+ 	hist_field = find_var_field(hist_data, var_name);
+ 	if (hist_field)
+ 		return hist_field;
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
+ 			test_data = test->private_data;
+ 			hist_field = find_var_field(test_data, var_name);
+@@ -1565,7 +1618,9 @@ static struct hist_field *find_file_var(struct trace_event_file *file,
+ 	struct event_trigger_data *test;
+ 	struct hist_field *hist_field;
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	lockdep_assert_held(&event_mutex);
++
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
+ 			test_data = test->private_data;
+ 			hist_field = find_var_field(test_data, var_name);
+@@ -2171,6 +2226,23 @@ static int contains_operator(char *str)
+ 	return field_op;
+ }
+ 
++static void get_hist_field(struct hist_field *hist_field)
++{
++	hist_field->ref++;
++}
++
++static void __destroy_hist_field(struct hist_field *hist_field)
++{
++	if (--hist_field->ref > 1)
++		return;
++
++	kfree(hist_field->var.name);
++	kfree(hist_field->name);
++	kfree(hist_field->type);
++
++	kfree(hist_field);
++}
++
+ static void destroy_hist_field(struct hist_field *hist_field,
+ 			       unsigned int level)
+ {
+@@ -2182,14 +2254,13 @@ static void destroy_hist_field(struct hist_field *hist_field,
+ 	if (!hist_field)
+ 		return;
+ 
++	if (hist_field->flags & HIST_FIELD_FL_VAR_REF)
++		return; /* var refs will be destroyed separately */
++
+ 	for (i = 0; i < HIST_FIELD_OPERANDS_MAX; i++)
+ 		destroy_hist_field(hist_field->operands[i], level + 1);
+ 
+-	kfree(hist_field->var.name);
+-	kfree(hist_field->name);
+-	kfree(hist_field->type);
+-
+-	kfree(hist_field);
++	__destroy_hist_field(hist_field);
+ }
+ 
+ static struct hist_field *create_hist_field(struct hist_trigger_data *hist_data,
+@@ -2206,6 +2277,8 @@ static struct hist_field *create_hist_field(struct hist_trigger_data *hist_data,
+ 	if (!hist_field)
+ 		return NULL;
+ 
++	hist_field->ref = 1;
++
+ 	hist_field->hist_data = hist_data;
+ 
+ 	if (flags & HIST_FIELD_FL_EXPR || flags & HIST_FIELD_FL_ALIAS)
+@@ -2316,6 +2389,12 @@ static void destroy_hist_fields(struct hist_trigger_data *hist_data)
+ 			hist_data->fields[i] = NULL;
+ 		}
+ 	}
++
++	for (i = 0; i < hist_data->n_var_refs; i++) {
++		WARN_ON(!(hist_data->var_refs[i]->flags & HIST_FIELD_FL_VAR_REF));
++		__destroy_hist_field(hist_data->var_refs[i]);
++		hist_data->var_refs[i] = NULL;
++	}
+ }
+ 
+ static int init_var_ref(struct hist_field *ref_field,
+@@ -2374,11 +2453,38 @@ static int init_var_ref(struct hist_field *ref_field,
+ 	goto out;
+ }
+ 
+-static struct hist_field *create_var_ref(struct hist_field *var_field,
++/**
++ * create_var_ref - Create a variable reference and attach it to trigger
++ * @hist_data: The trigger that will be referencing the variable
++ * @var_field: The VAR field to create a reference to
++ * @system: The optional system string
++ * @event_name: The optional event_name string
++ *
++ * Given a variable hist_field, create a VAR_REF hist_field that
++ * represents a reference to it.
++ *
++ * This function also adds the reference to the trigger that
++ * now references the variable.
++ *
++ * Return: The VAR_REF field if successful, NULL if not
++ */
++static struct hist_field *create_var_ref(struct hist_trigger_data *hist_data,
++					 struct hist_field *var_field,
+ 					 char *system, char *event_name)
+ {
+ 	unsigned long flags = HIST_FIELD_FL_VAR_REF;
+ 	struct hist_field *ref_field;
++	int i;
++
++	/* Check if the variable already exists */
++	for (i = 0; i < hist_data->n_var_refs; i++) {
++		ref_field = hist_data->var_refs[i];
++		if (ref_field->var.idx == var_field->var.idx &&
++		    ref_field->var.hist_data == var_field->hist_data) {
++			get_hist_field(ref_field);
++			return ref_field;
++		}
++	}
+ 
+ 	ref_field = create_hist_field(var_field->hist_data, NULL, flags, NULL);
+ 	if (ref_field) {
+@@ -2386,6 +2492,9 @@ static struct hist_field *create_var_ref(struct hist_field *var_field,
+ 			destroy_hist_field(ref_field, 0);
+ 			return NULL;
+ 		}
++
++		hist_data->var_refs[hist_data->n_var_refs] = ref_field;
++		ref_field->var_ref_idx = hist_data->n_var_refs++;
+ 	}
+ 
+ 	return ref_field;
+@@ -2459,7 +2568,8 @@ static struct hist_field *parse_var_ref(struct hist_trigger_data *hist_data,
+ 
+ 	var_field = find_event_var(hist_data, system, event_name, var_name);
+ 	if (var_field)
+-		ref_field = create_var_ref(var_field, system, event_name);
++		ref_field = create_var_ref(hist_data, var_field,
++					   system, event_name);
+ 
+ 	if (!ref_field)
+ 		hist_err_event("Couldn't find variable: $",
+@@ -2579,8 +2689,6 @@ static struct hist_field *parse_atom(struct hist_trigger_data *hist_data,
+ 	if (!s) {
+ 		hist_field = parse_var_ref(hist_data, ref_system, ref_event, ref_var);
+ 		if (hist_field) {
+-			hist_data->var_refs[hist_data->n_var_refs] = hist_field;
+-			hist_field->var_ref_idx = hist_data->n_var_refs++;
+ 			if (var_name) {
+ 				hist_field = create_alias(hist_data, hist_field, var_name);
+ 				if (!hist_field) {
+@@ -2828,7 +2936,9 @@ static char *find_trigger_filter(struct hist_trigger_data *hist_data,
+ {
+ 	struct event_trigger_data *test;
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	lockdep_assert_held(&event_mutex);
++
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
+ 			if (test->private_data == hist_data)
+ 				return test->filter_str;
+@@ -2879,9 +2989,11 @@ find_compatible_hist(struct hist_trigger_data *target_hist_data,
+ 	struct event_trigger_data *test;
+ 	unsigned int n_keys;
+ 
++	lockdep_assert_held(&event_mutex);
++
+ 	n_keys = target_hist_data->n_fields - target_hist_data->n_vals;
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
+ 			hist_data = test->private_data;
+ 
+@@ -3354,7 +3466,6 @@ static int onmax_create(struct hist_trigger_data *hist_data,
+ 	unsigned int var_ref_idx = hist_data->n_var_refs;
+ 	struct field_var *field_var;
+ 	char *onmax_var_str, *param;
+-	unsigned long flags;
+ 	unsigned int i;
+ 	int ret = 0;
+ 
+@@ -3371,18 +3482,10 @@ static int onmax_create(struct hist_trigger_data *hist_data,
+ 		return -EINVAL;
+ 	}
+ 
+-	flags = HIST_FIELD_FL_VAR_REF;
+-	ref_field = create_hist_field(hist_data, NULL, flags, NULL);
++	ref_field = create_var_ref(hist_data, var_field, NULL, NULL);
+ 	if (!ref_field)
+ 		return -ENOMEM;
+ 
+-	if (init_var_ref(ref_field, var_field, NULL, NULL)) {
+-		destroy_hist_field(ref_field, 0);
+-		ret = -ENOMEM;
+-		goto out;
+-	}
+-	hist_data->var_refs[hist_data->n_var_refs] = ref_field;
+-	ref_field->var_ref_idx = hist_data->n_var_refs++;
+ 	data->onmax.var = ref_field;
+ 
+ 	data->fn = onmax_save;
+@@ -3573,9 +3676,6 @@ static void save_synth_var_ref(struct hist_trigger_data *hist_data,
+ 			 struct hist_field *var_ref)
+ {
+ 	hist_data->synth_var_refs[hist_data->n_synth_var_refs++] = var_ref;
+-
+-	hist_data->var_refs[hist_data->n_var_refs] = var_ref;
+-	var_ref->var_ref_idx = hist_data->n_var_refs++;
+ }
+ 
+ static int check_synth_field(struct synth_event *event,
+@@ -3730,7 +3830,8 @@ static int onmatch_create(struct hist_trigger_data *hist_data,
+ 		}
+ 
+ 		if (check_synth_field(event, hist_field, field_pos) == 0) {
+-			var_ref = create_var_ref(hist_field, system, event_name);
++			var_ref = create_var_ref(hist_data, hist_field,
++						 system, event_name);
+ 			if (!var_ref) {
+ 				kfree(p);
+ 				ret = -ENOMEM;
+@@ -4905,7 +5006,7 @@ static int hist_show(struct seq_file *m, void *v)
+ 		goto out_unlock;
+ 	}
+ 
+-	list_for_each_entry_rcu(data, &event_file->triggers, list) {
++	list_for_each_entry(data, &event_file->triggers, list) {
+ 		if (data->cmd_ops->trigger_type == ETT_EVENT_HIST)
+ 			hist_trigger_show(m, data, n++);
+ 	}
+@@ -5296,7 +5397,9 @@ static int hist_register_trigger(char *glob, struct event_trigger_ops *ops,
+ 	if (hist_data->attrs->name && !named_data)
+ 		goto new;
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	lockdep_assert_held(&event_mutex);
++
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
+ 			if (!hist_trigger_match(data, test, named_data, false))
+ 				continue;
+@@ -5380,10 +5483,12 @@ static bool have_hist_trigger_match(struct event_trigger_data *data,
+ 	struct event_trigger_data *test, *named_data = NULL;
+ 	bool match = false;
+ 
++	lockdep_assert_held(&event_mutex);
++
+ 	if (hist_data->attrs->name)
+ 		named_data = find_named_trigger(hist_data->attrs->name);
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
+ 			if (hist_trigger_match(data, test, named_data, false)) {
+ 				match = true;
+@@ -5401,10 +5506,12 @@ static bool hist_trigger_check_refs(struct event_trigger_data *data,
+ 	struct hist_trigger_data *hist_data = data->private_data;
+ 	struct event_trigger_data *test, *named_data = NULL;
+ 
++	lockdep_assert_held(&event_mutex);
++
+ 	if (hist_data->attrs->name)
+ 		named_data = find_named_trigger(hist_data->attrs->name);
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
+ 			if (!hist_trigger_match(data, test, named_data, false))
+ 				continue;
+@@ -5426,10 +5533,12 @@ static void hist_unregister_trigger(char *glob, struct event_trigger_ops *ops,
+ 	struct event_trigger_data *test, *named_data = NULL;
+ 	bool unregistered = false;
+ 
++	lockdep_assert_held(&event_mutex);
++
+ 	if (hist_data->attrs->name)
+ 		named_data = find_named_trigger(hist_data->attrs->name);
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
+ 			if (!hist_trigger_match(data, test, named_data, false))
+ 				continue;
+@@ -5455,7 +5564,9 @@ static bool hist_file_check_refs(struct trace_event_file *file)
+ 	struct hist_trigger_data *hist_data;
+ 	struct event_trigger_data *test;
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	lockdep_assert_held(&event_mutex);
++
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == ETT_EVENT_HIST) {
+ 			hist_data = test->private_data;
+ 			if (check_var_refs(hist_data))
+diff --git a/kernel/trace/trace_events_trigger.c b/kernel/trace/trace_events_trigger.c
+index cd12ecb66eb9..b05d1b6a6291 100644
+--- a/kernel/trace/trace_events_trigger.c
++++ b/kernel/trace/trace_events_trigger.c
+@@ -495,7 +495,9 @@ void update_cond_flag(struct trace_event_file *file)
+ 	struct event_trigger_data *data;
+ 	bool set_cond = false;
+ 
+-	list_for_each_entry_rcu(data, &file->triggers, list) {
++	lockdep_assert_held(&event_mutex);
++
++	list_for_each_entry(data, &file->triggers, list) {
+ 		if (data->filter || event_command_post_trigger(data->cmd_ops) ||
+ 		    event_command_needs_rec(data->cmd_ops)) {
+ 			set_cond = true;
+@@ -530,7 +532,9 @@ static int register_trigger(char *glob, struct event_trigger_ops *ops,
+ 	struct event_trigger_data *test;
+ 	int ret = 0;
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	lockdep_assert_held(&event_mutex);
++
++	list_for_each_entry(test, &file->triggers, list) {
+ 		if (test->cmd_ops->trigger_type == data->cmd_ops->trigger_type) {
+ 			ret = -EEXIST;
+ 			goto out;
+@@ -575,7 +579,9 @@ static void unregister_trigger(char *glob, struct event_trigger_ops *ops,
+ 	struct event_trigger_data *data;
+ 	bool unregistered = false;
+ 
+-	list_for_each_entry_rcu(data, &file->triggers, list) {
++	lockdep_assert_held(&event_mutex);
++
++	list_for_each_entry(data, &file->triggers, list) {
+ 		if (data->cmd_ops->trigger_type == test->cmd_ops->trigger_type) {
+ 			unregistered = true;
+ 			list_del_rcu(&data->list);
+@@ -1490,7 +1496,9 @@ int event_enable_register_trigger(char *glob,
+ 	struct event_trigger_data *test;
+ 	int ret = 0;
+ 
+-	list_for_each_entry_rcu(test, &file->triggers, list) {
++	lockdep_assert_held(&event_mutex);
++
++	list_for_each_entry(test, &file->triggers, list) {
+ 		test_enable_data = test->private_data;
+ 		if (test_enable_data &&
+ 		    (test->cmd_ops->trigger_type ==
+@@ -1530,7 +1538,9 @@ void event_enable_unregister_trigger(char *glob,
+ 	struct event_trigger_data *data;
+ 	bool unregistered = false;
+ 
+-	list_for_each_entry_rcu(data, &file->triggers, list) {
++	lockdep_assert_held(&event_mutex);
++
++	list_for_each_entry(data, &file->triggers, list) {
+ 		enable_data = data->private_data;
+ 		if (enable_data &&
+ 		    (data->cmd_ops->trigger_type ==
+diff --git a/mm/hmm.c b/mm/hmm.c
+index 57f0d2a4ff34..c482c07bbab7 100644
+--- a/mm/hmm.c
++++ b/mm/hmm.c
+@@ -997,21 +997,21 @@ static void hmm_devmem_release(void *data)
+ 	struct hmm_devmem *devmem = data;
+ 	struct resource *resource = devmem->resource;
+ 	unsigned long start_pfn, npages;
+-	struct zone *zone;
+ 	struct page *page;
++	int nid;
+ 
+ 	/* pages are dead and unused, undo the arch mapping */
+ 	start_pfn = (resource->start & ~(PA_SECTION_SIZE - 1)) >> PAGE_SHIFT;
+ 	npages = ALIGN(resource_size(resource), PA_SECTION_SIZE) >> PAGE_SHIFT;
+ 
+ 	page = pfn_to_page(start_pfn);
+-	zone = page_zone(page);
++	nid = page_to_nid(page);
+ 
+ 	mem_hotplug_begin();
+ 	if (resource->desc == IORES_DESC_DEVICE_PRIVATE_MEMORY)
+-		__remove_pages(zone, start_pfn, npages, NULL);
++		__remove_pages(start_pfn, npages, NULL);
+ 	else
+-		arch_remove_memory(start_pfn << PAGE_SHIFT,
++		arch_remove_memory(nid, start_pfn << PAGE_SHIFT,
+ 				   npages << PAGE_SHIFT, NULL);
+ 	mem_hotplug_done();
+ 
+diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
+index 413f6709039a..abc10dcbc9d5 100644
+--- a/mm/memory_hotplug.c
++++ b/mm/memory_hotplug.c
+@@ -255,14 +255,8 @@ static int __meminit __add_section(int nid, unsigned long phys_start_pfn,
+ 	if (pfn_valid(phys_start_pfn))
+ 		return -EEXIST;
+ 
+-	ret = sparse_add_one_section(NODE_DATA(nid), phys_start_pfn, altmap);
+-	if (ret < 0)
+-		return ret;
+-
+-	if (!want_memblock)
+-		return 0;
+-
+-	return hotplug_memory_register(nid, __pfn_to_section(phys_start_pfn));
++	ret = sparse_add_one_section(nid, phys_start_pfn, altmap);
++	return ret < 0 ? ret : 0;
+ }
+ 
+ /*
+@@ -315,7 +309,6 @@ int __ref __add_pages(int nid, unsigned long phys_start_pfn,
+ 	return err;
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+ /* find the smallest valid pfn in the range [start_pfn, end_pfn) */
+ static unsigned long find_smallest_section_pfn(int nid, struct zone *zone,
+ 				     unsigned long start_pfn,
+@@ -456,10 +449,11 @@ static void update_pgdat_span(struct pglist_data *pgdat)
+ 	pgdat->node_spanned_pages = node_end_pfn - node_start_pfn;
+ }
+ 
+-static void __remove_zone(struct zone *zone, unsigned long start_pfn)
++void __ref remove_pfn_range_from_zone(struct zone *zone,
++				      unsigned long start_pfn,
++				      unsigned long nr_pages)
+ {
+ 	struct pglist_data *pgdat = zone->zone_pgdat;
+-	int nr_pages = PAGES_PER_SECTION;
+ 	unsigned long flags;
+ 
+ #ifdef CONFIG_ZONE_DEVICE
+@@ -472,37 +466,33 @@ static void __remove_zone(struct zone *zone, unsigned long start_pfn)
+ 		return;
+ #endif
+ 
++	clear_zone_contiguous(zone);
++
+ 	pgdat_resize_lock(zone->zone_pgdat, &flags);
+ 	shrink_zone_span(zone, start_pfn, start_pfn + nr_pages);
+ 	update_pgdat_span(pgdat);
+ 	pgdat_resize_unlock(zone->zone_pgdat, &flags);
++
++	set_zone_contiguous(zone);
+ }
+ 
+-static int __remove_section(struct zone *zone, struct mem_section *ms,
+-		unsigned long map_offset, struct vmem_altmap *altmap)
++static void __remove_section(struct mem_section *ms, unsigned long map_offset,
++			     struct vmem_altmap *altmap)
+ {
+ 	unsigned long start_pfn;
+ 	int scn_nr;
+-	int ret = -EINVAL;
+ 
+-	if (!valid_section(ms))
+-		return ret;
+-
+-	ret = unregister_memory_section(ms);
+-	if (ret)
+-		return ret;
++	if (WARN_ON_ONCE(!valid_section(ms)))
++		return;
+ 
+ 	scn_nr = __section_nr(ms);
+ 	start_pfn = section_nr_to_pfn((unsigned long)scn_nr);
+-	__remove_zone(zone, start_pfn);
+ 
+-	sparse_remove_one_section(zone, ms, map_offset, altmap);
+-	return 0;
++	sparse_remove_one_section(ms, map_offset, altmap);
+ }
+ 
+ /**
+- * __remove_pages() - remove sections of pages from a zone
+- * @zone: zone from which pages need to be removed
++ * __remove_pages() - remove sections of pages
+  * @phys_start_pfn: starting pageframe (must be aligned to start of a section)
+  * @nr_pages: number of pages to remove (must be multiple of section size)
+  * @altmap: alternative device page map or %NULL if default memmap is used
+@@ -512,34 +502,15 @@ static int __remove_section(struct zone *zone, struct mem_section *ms,
+  * sure that pages are marked reserved and zones are adjust properly by
+  * calling offline_pages().
+  */
+-int __remove_pages(struct zone *zone, unsigned long phys_start_pfn,
+-		 unsigned long nr_pages, struct vmem_altmap *altmap)
++void __remove_pages(unsigned long phys_start_pfn, unsigned long nr_pages,
++		    struct vmem_altmap *altmap)
+ {
+ 	unsigned long i;
+ 	unsigned long map_offset = 0;
+-	int sections_to_remove, ret = 0;
+-
+-	/* In the ZONE_DEVICE case device driver owns the memory region */
+-	if (is_dev_zone(zone)) {
+-		if (altmap)
+-			map_offset = vmem_altmap_offset(altmap);
+-	} else {
+-		resource_size_t start, size;
++	int sections_to_remove;
+ 
+-		start = phys_start_pfn << PAGE_SHIFT;
+-		size = nr_pages * PAGE_SIZE;
+-
+-		ret = release_mem_region_adjustable(&iomem_resource, start,
+-					size);
+-		if (ret) {
+-			resource_size_t endres = start + size - 1;
+-
+-			pr_warn("Unable to release resource <%pa-%pa> (%d)\n",
+-					&start, &endres, ret);
+-		}
+-	}
+-
+-	clear_zone_contiguous(zone);
++	if (altmap)
++		map_offset = vmem_altmap_offset(altmap);
+ 
+ 	/*
+ 	 * We can only remove entire sections
+@@ -552,18 +523,10 @@ int __remove_pages(struct zone *zone, unsigned long phys_start_pfn,
+ 		unsigned long pfn = phys_start_pfn + i*PAGES_PER_SECTION;
+ 
+ 		cond_resched();
+-		ret = __remove_section(zone, __pfn_to_section(pfn), map_offset,
+-				altmap);
++		__remove_section(__pfn_to_section(pfn), map_offset, altmap);
+ 		map_offset = 0;
+-		if (ret)
+-			break;
+ 	}
+-
+-	set_zone_contiguous(zone);
+-
+-	return ret;
+ }
+-#endif /* CONFIG_MEMORY_HOTREMOVE */
+ 
+ int set_online_page_callback(online_page_callback_t callback)
+ {
+@@ -932,6 +895,7 @@ int __ref online_pages(unsigned long pfn, unsigned long nr_pages, int online_typ
+ 		 (unsigned long long) pfn << PAGE_SHIFT,
+ 		 (((unsigned long long) pfn + nr_pages) << PAGE_SHIFT) - 1);
+ 	memory_notify(MEM_CANCEL_ONLINE, &arg);
++	remove_pfn_range_from_zone(zone, pfn, nr_pages);
+ 	mem_hotplug_done();
+ 	return ret;
+ }
+@@ -1119,6 +1083,13 @@ int __ref add_memory_resource(int nid, struct resource *res, bool online)
+ 	if (ret < 0)
+ 		goto error;
+ 
++	/* create memory block devices after memory was added */
++	ret = create_memory_block_devices(start, size);
++	if (ret) {
++		arch_remove_memory(nid, start, size, NULL);
++		goto error;
++	}
++
+ 	if (new_node) {
+ 		/* If sysfs file of new node can't be created, cpu on the node
+ 		 * can't be hot-added. There is no rollback way now.
+@@ -1709,6 +1680,7 @@ static int __ref __offline_pages(unsigned long start_pfn,
+ 	writeback_set_ratelimit();
+ 
+ 	memory_notify(MEM_OFFLINE, &arg);
++	remove_pfn_range_from_zone(zone, start_pfn, nr_pages);
+ 	mem_hotplug_done();
+ 	return 0;
+ 
+@@ -1839,6 +1811,18 @@ static int check_and_unmap_cpu_on_node(pg_data_t *pgdat)
+ 	return 0;
+ }
+ 
++static int check_no_memblock_for_node_cb(struct memory_block *mem, void *arg)
++{
++	int nid = *(int *)arg;
++
++	/*
++	 * If a memory block belongs to multiple nodes, the stored nid is not
++	 * reliable. However, such blocks are always online (e.g., cannot get
++	 * offlined) and, therefore, are still spanned by the node.
++	 */
++	return mem->nid == nid ? -EEXIST : 0;
++}
++
+ /**
+  * try_offline_node
+  * @nid: the node ID
+@@ -1851,25 +1835,24 @@ static int check_and_unmap_cpu_on_node(pg_data_t *pgdat)
+ void try_offline_node(int nid)
+ {
+ 	pg_data_t *pgdat = NODE_DATA(nid);
+-	unsigned long start_pfn = pgdat->node_start_pfn;
+-	unsigned long end_pfn = start_pfn + pgdat->node_spanned_pages;
+-	unsigned long pfn;
+-
+-	for (pfn = start_pfn; pfn < end_pfn; pfn += PAGES_PER_SECTION) {
+-		unsigned long section_nr = pfn_to_section_nr(pfn);
+-
+-		if (!present_section_nr(section_nr))
+-			continue;
++	int rc;
+ 
+-		if (pfn_to_nid(pfn) != nid)
+-			continue;
++	/*
++	 * If the node still spans pages (especially ZONE_DEVICE), don't
++	 * offline it. A node spans memory after move_pfn_range_to_zone(),
++	 * e.g., after the memory block was onlined.
++	 */
++	if (pgdat->node_spanned_pages)
++		return;
+ 
+-		/*
+-		 * some memory sections of this node are not removed, and we
+-		 * can't offline node now.
+-		 */
++	/*
++	 * Especially offline memory blocks might not be spanned by the
++	 * node. They will get spanned by the node once they get onlined.
++	 * However, they link to the node in sysfs and can get onlined later.
++	 */
++	rc = for_each_memory_block(&nid, check_no_memblock_for_node_cb);
++	if (rc)
+ 		return;
+-	}
+ 
+ 	if (check_and_unmap_cpu_on_node(pgdat))
+ 		return;
+@@ -1883,6 +1866,26 @@ void try_offline_node(int nid)
+ }
+ EXPORT_SYMBOL(try_offline_node);
+ 
++static void __release_memory_resource(resource_size_t start,
++				      resource_size_t size)
++{
++	int ret;
++
++	/*
++	 * When removing memory in the same granularity as it was added,
++	 * this function never fails. It might only fail if resources
++	 * have to be adjusted or split. We'll ignore the error, as
++	 * removing of memory cannot fail.
++	 */
++	ret = release_mem_region_adjustable(&iomem_resource, start, size);
++	if (ret) {
++		resource_size_t endres = start + size - 1;
++
++		pr_warn("Unable to release resource <%pa-%pa> (%d)\n",
++			&start, &endres, ret);
++	}
++}
++
+ /**
+  * remove_memory
+  * @nid: the node ID
+@@ -1893,7 +1896,7 @@ EXPORT_SYMBOL(try_offline_node);
+  * and online/offline operations before this call, as required by
+  * try_offline_node().
+  */
+-void __ref remove_memory(int nid, u64 start, u64 size)
++void __ref __remove_memory(int nid, u64 start, u64 size)
+ {
+ 	int ret;
+ 
+@@ -1916,11 +1919,22 @@ void __ref remove_memory(int nid, u64 start, u64 size)
+ 	memblock_free(start, size);
+ 	memblock_remove(start, size);
+ 
+-	arch_remove_memory(start, size, NULL);
++	/* remove memory block devices before removing memory */
++	remove_memory_block_devices(start, size);
++
++	arch_remove_memory(nid, start, size, NULL);
++	__release_memory_resource(start, size);
+ 
+ 	try_offline_node(nid);
+ 
+ 	mem_hotplug_done();
+ }
++
++void remove_memory(int nid, u64 start, u64 size)
++{
++	lock_device_hotplug();
++	__remove_memory(nid, start, size);
++	unlock_device_hotplug();
++}
+ EXPORT_SYMBOL_GPL(remove_memory);
+ #endif /* CONFIG_MEMORY_HOTREMOVE */
+diff --git a/mm/sparse.c b/mm/sparse.c
+index 45950a074bdb..3b24ba903d9e 100644
+--- a/mm/sparse.c
++++ b/mm/sparse.c
+@@ -576,7 +576,6 @@ static void __kfree_section_memmap(struct page *memmap,
+ 
+ 	vmemmap_free(start, end, altmap);
+ }
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+ static void free_map_bootmem(struct page *memmap)
+ {
+ 	unsigned long start = (unsigned long)memmap;
+@@ -584,7 +583,6 @@ static void free_map_bootmem(struct page *memmap)
+ 
+ 	vmemmap_free(start, end, NULL);
+ }
+-#endif /* CONFIG_MEMORY_HOTREMOVE */
+ #else
+ static struct page *__kmalloc_section_memmap(void)
+ {
+@@ -623,7 +621,6 @@ static void __kfree_section_memmap(struct page *memmap,
+ 			   get_order(sizeof(struct page) * PAGES_PER_SECTION));
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+ static void free_map_bootmem(struct page *memmap)
+ {
+ 	unsigned long maps_section_nr, removing_section_nr, i;
+@@ -653,7 +650,6 @@ static void free_map_bootmem(struct page *memmap)
+ 			put_page_bootmem(page);
+ 	}
+ }
+-#endif /* CONFIG_MEMORY_HOTREMOVE */
+ #endif /* CONFIG_SPARSEMEM_VMEMMAP */
+ 
+ /*
+@@ -661,25 +657,24 @@ static void free_map_bootmem(struct page *memmap)
+  * set.  If this is <=0, then that means that the passed-in
+  * map was not consumed and must be freed.
+  */
+-int __meminit sparse_add_one_section(struct pglist_data *pgdat,
+-		unsigned long start_pfn, struct vmem_altmap *altmap)
++int __meminit sparse_add_one_section(int nid, unsigned long start_pfn,
++				     struct vmem_altmap *altmap)
+ {
+ 	unsigned long section_nr = pfn_to_section_nr(start_pfn);
+ 	struct mem_section *ms;
+ 	struct page *memmap;
+ 	unsigned long *usemap;
+-	unsigned long flags;
+ 	int ret;
+ 
+ 	/*
+ 	 * no locking for this, because it does its own
+ 	 * plus, it does a kmalloc
+ 	 */
+-	ret = sparse_index_init(section_nr, pgdat->node_id);
++	ret = sparse_index_init(section_nr, nid);
+ 	if (ret < 0 && ret != -EEXIST)
+ 		return ret;
+ 	ret = 0;
+-	memmap = kmalloc_section_memmap(section_nr, pgdat->node_id, altmap);
++	memmap = kmalloc_section_memmap(section_nr, nid, altmap);
+ 	if (!memmap)
+ 		return -ENOMEM;
+ 	usemap = __kmalloc_section_usemap();
+@@ -688,8 +683,6 @@ int __meminit sparse_add_one_section(struct pglist_data *pgdat,
+ 		return -ENOMEM;
+ 	}
+ 
+-	pgdat_resize_lock(pgdat, &flags);
+-
+ 	ms = __pfn_to_section(start_pfn);
+ 	if (ms->section_mem_map & SECTION_MARKED_PRESENT) {
+ 		ret = -EEXIST;
+@@ -708,7 +701,6 @@ int __meminit sparse_add_one_section(struct pglist_data *pgdat,
+ 	sparse_init_one_section(ms, section_nr, memmap, usemap);
+ 
+ out:
+-	pgdat_resize_unlock(pgdat, &flags);
+ 	if (ret < 0) {
+ 		kfree(usemap);
+ 		__kfree_section_memmap(memmap, altmap);
+@@ -716,7 +708,6 @@ int __meminit sparse_add_one_section(struct pglist_data *pgdat,
+ 	return ret;
+ }
+ 
+-#ifdef CONFIG_MEMORY_HOTREMOVE
+ #ifdef CONFIG_MEMORY_FAILURE
+ static void clear_hwpoisoned_pages(struct page *memmap, int nr_pages)
+ {
+@@ -766,14 +757,12 @@ static void free_section_usemap(struct page *memmap, unsigned long *usemap,
+ 		free_map_bootmem(memmap);
+ }
+ 
+-void sparse_remove_one_section(struct zone *zone, struct mem_section *ms,
+-		unsigned long map_offset, struct vmem_altmap *altmap)
++void sparse_remove_one_section(struct mem_section *ms, unsigned long map_offset,
++			       struct vmem_altmap *altmap)
+ {
+ 	struct page *memmap = NULL;
+-	unsigned long *usemap = NULL, flags;
+-	struct pglist_data *pgdat = zone->zone_pgdat;
++	unsigned long *usemap = NULL;
+ 
+-	pgdat_resize_lock(pgdat, &flags);
+ 	if (ms->section_mem_map) {
+ 		usemap = ms->pageblock_flags;
+ 		memmap = sparse_decode_mem_map(ms->section_mem_map,
+@@ -781,11 +770,9 @@ void sparse_remove_one_section(struct zone *zone, struct mem_section *ms,
+ 		ms->section_mem_map = 0;
+ 		ms->pageblock_flags = NULL;
+ 	}
+-	pgdat_resize_unlock(pgdat, &flags);
+ 
+ 	clear_hwpoisoned_pages(memmap + map_offset,
+ 			PAGES_PER_SECTION - map_offset);
+ 	free_section_usemap(memmap, usemap, altmap);
+ }
+-#endif /* CONFIG_MEMORY_HOTREMOVE */
+ #endif /* CONFIG_MEMORY_HOTPLUG */
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 73ebacabfde8..1c0224e8fc78 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -7752,6 +7752,22 @@ int __dev_set_mtu(struct net_device *dev, int new_mtu)
+ }
+ EXPORT_SYMBOL(__dev_set_mtu);
+ 
++int dev_validate_mtu(struct net_device *dev, int new_mtu,
++		     struct netlink_ext_ack *extack)
++{
++	/* MTU must be positive, and in range */
++	if (new_mtu < 0 || new_mtu < dev->min_mtu) {
++		NL_SET_ERR_MSG(extack, "mtu less than device minimum");
++		return -EINVAL;
++	}
++
++	if (dev->max_mtu > 0 && new_mtu > dev->max_mtu) {
++		NL_SET_ERR_MSG(extack, "mtu greater than device maximum");
++		return -EINVAL;
++	}
++	return 0;
++}
++
+ /**
+  *	dev_set_mtu_ext - Change maximum transfer unit
+  *	@dev: device
+@@ -7768,16 +7784,9 @@ int dev_set_mtu_ext(struct net_device *dev, int new_mtu,
+ 	if (new_mtu == dev->mtu)
+ 		return 0;
+ 
+-	/* MTU must be positive, and in range */
+-	if (new_mtu < 0 || new_mtu < dev->min_mtu) {
+-		NL_SET_ERR_MSG(extack, "mtu less than device minimum");
+-		return -EINVAL;
+-	}
+-
+-	if (dev->max_mtu > 0 && new_mtu > dev->max_mtu) {
+-		NL_SET_ERR_MSG(extack, "mtu greater than device maximum");
+-		return -EINVAL;
+-	}
++	err = dev_validate_mtu(dev, new_mtu, extack);
++	if (err)
++		return err;
+ 
+ 	if (!netif_device_present(dev))
+ 		return -ENODEV;
+@@ -8696,8 +8705,10 @@ int register_netdevice(struct net_device *dev)
+ 		goto err_uninit;
+ 
+ 	ret = netdev_register_kobject(dev);
+-	if (ret)
++	if (ret) {
++		dev->reg_state = NETREG_UNREGISTERED;
+ 		goto err_uninit;
++	}
+ 	dev->reg_state = NETREG_REGISTERED;
+ 
+ 	__netdev_update_features(dev);
+diff --git a/net/core/net-sysfs.c b/net/core/net-sysfs.c
+index bf9a3b6ac885..7614a4f42bfc 100644
+--- a/net/core/net-sysfs.c
++++ b/net/core/net-sysfs.c
+@@ -928,25 +928,30 @@ static int rx_queue_add_kobject(struct net_device *dev, int index)
+ 	struct kobject *kobj = &queue->kobj;
+ 	int error = 0;
+ 
++	/* Kobject_put later will trigger rx_queue_release call which
++	 * decreases dev refcount: Take that reference here
++	 */
++	dev_hold(queue->dev);
++
+ 	kobj->kset = dev->queues_kset;
+ 	error = kobject_init_and_add(kobj, &rx_queue_ktype, NULL,
+ 				     "rx-%u", index);
+ 	if (error)
+-		return error;
+-
+-	dev_hold(queue->dev);
++		goto err;
+ 
+ 	if (dev->sysfs_rx_queue_group) {
+ 		error = sysfs_create_group(kobj, dev->sysfs_rx_queue_group);
+-		if (error) {
+-			kobject_put(kobj);
+-			return error;
+-		}
++		if (error)
++			goto err;
+ 	}
+ 
+ 	kobject_uevent(kobj, KOBJ_ADD);
+ 
+ 	return error;
++
++err:
++	kobject_put(kobj);
++	return error;
+ }
+ #endif /* CONFIG_SYSFS */
+ 
+@@ -1467,25 +1472,29 @@ static int netdev_queue_add_kobject(struct net_device *dev, int index)
+ 	struct kobject *kobj = &queue->kobj;
+ 	int error = 0;
+ 
++	/* Kobject_put later will trigger netdev_queue_release call
++	 * which decreases dev refcount: Take that reference here
++	 */
++	dev_hold(queue->dev);
++
+ 	kobj->kset = dev->queues_kset;
+ 	error = kobject_init_and_add(kobj, &netdev_queue_ktype, NULL,
+ 				     "tx-%u", index);
+ 	if (error)
+-		return error;
+-
+-	dev_hold(queue->dev);
++		goto err;
+ 
+ #ifdef CONFIG_BQL
+ 	error = sysfs_create_group(kobj, &dql_group);
+-	if (error) {
+-		kobject_put(kobj);
+-		return error;
+-	}
++	if (error)
++		goto err;
+ #endif
+ 
+ 	kobject_uevent(kobj, KOBJ_ADD);
+-
+ 	return 0;
++
++err:
++	kobject_put(kobj);
++	return error;
+ }
+ #endif /* CONFIG_SYSFS */
+ 
+diff --git a/net/core/rtnetlink.c b/net/core/rtnetlink.c
+index dbb3c0c7c132..f51973f458e4 100644
+--- a/net/core/rtnetlink.c
++++ b/net/core/rtnetlink.c
+@@ -2875,8 +2875,17 @@ struct net_device *rtnl_create_link(struct net *net,
+ 	dev->rtnl_link_ops = ops;
+ 	dev->rtnl_link_state = RTNL_LINK_INITIALIZING;
+ 
+-	if (tb[IFLA_MTU])
+-		dev->mtu = nla_get_u32(tb[IFLA_MTU]);
++	if (tb[IFLA_MTU]) {
++		u32 mtu = nla_get_u32(tb[IFLA_MTU]);
++		int err;
++
++		err = dev_validate_mtu(dev, mtu, NULL);
++		if (err) {
++			free_netdev(dev);
++			return ERR_PTR(err);
++		}
++		dev->mtu = mtu;
++	}
+ 	if (tb[IFLA_ADDRESS]) {
+ 		memcpy(dev->dev_addr, nla_data(tb[IFLA_ADDRESS]),
+ 				nla_len(tb[IFLA_ADDRESS]));
+diff --git a/net/ipv4/ip_tunnel.c b/net/ipv4/ip_tunnel.c
+index f03a1b68e70f..14fd8a37a729 100644
+--- a/net/ipv4/ip_tunnel.c
++++ b/net/ipv4/ip_tunnel.c
+@@ -1203,10 +1203,8 @@ int ip_tunnel_init(struct net_device *dev)
+ 	iph->version		= 4;
+ 	iph->ihl		= 5;
+ 
+-	if (tunnel->collect_md) {
+-		dev->features |= NETIF_F_NETNS_LOCAL;
++	if (tunnel->collect_md)
+ 		netif_keep_dst(dev);
+-	}
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(ip_tunnel_init);
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index af9361eba64a..e80eb1788f80 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -2507,6 +2507,7 @@ static void tcp_rtx_queue_purge(struct sock *sk)
+ {
+ 	struct rb_node *p = rb_first(&sk->tcp_rtx_queue);
+ 
++	tcp_sk(sk)->highest_sack = NULL;
+ 	while (p) {
+ 		struct sk_buff *skb = rb_to_skb(p);
+ 
+diff --git a/net/ipv4/tcp_bbr.c b/net/ipv4/tcp_bbr.c
+index 02ff2dde9609..b371e66502c3 100644
+--- a/net/ipv4/tcp_bbr.c
++++ b/net/ipv4/tcp_bbr.c
+@@ -680,8 +680,7 @@ static void bbr_update_bw(struct sock *sk, const struct rate_sample *rs)
+ 	 * bandwidth sample. Delivered is in packets and interval_us in uS and
+ 	 * ratio will be <<1 for most connections. So delivered is first scaled.
+ 	 */
+-	bw = (u64)rs->delivered * BW_UNIT;
+-	do_div(bw, rs->interval_us);
++	bw = div64_long((u64)rs->delivered * BW_UNIT, rs->interval_us);
+ 
+ 	/* If this sample is application-limited, it is likely to have a very
+ 	 * low delivered count that represents application behavior rather than
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index e286a9647a73..38b6d8f90a44 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -3149,6 +3149,7 @@ static int tcp_clean_rtx_queue(struct sock *sk, u32 prior_fack,
+ 			tp->retransmit_skb_hint = NULL;
+ 		if (unlikely(skb == tp->lost_skb_hint))
+ 			tp->lost_skb_hint = NULL;
++		tcp_highest_sack_replace(sk, skb, next);
+ 		tcp_rtx_queue_unlink_and_free(skb, sk);
+ 	}
+ 
+diff --git a/net/ipv4/tcp_output.c b/net/ipv4/tcp_output.c
+index 1cc20edf4762..cc4ba42052c2 100644
+--- a/net/ipv4/tcp_output.c
++++ b/net/ipv4/tcp_output.c
+@@ -3165,6 +3165,7 @@ int tcp_send_synack(struct sock *sk)
+ 			if (!nskb)
+ 				return -ENOMEM;
+ 			INIT_LIST_HEAD(&nskb->tcp_tsorted_anchor);
++			tcp_highest_sack_replace(sk, skb, nskb);
+ 			tcp_rtx_queue_unlink_and_free(skb, sk);
+ 			__skb_header_release(nskb);
+ 			tcp_rbtree_insert(&sk->tcp_rtx_queue, nskb);
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index 2eeae0455b14..0ef04cda1b27 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -1305,7 +1305,8 @@ static void udp_rmem_release(struct sock *sk, int size, int partial,
+ 	if (likely(partial)) {
+ 		up->forward_deficit += size;
+ 		size = up->forward_deficit;
+-		if (size < (sk->sk_rcvbuf >> 2))
++		if (size < (sk->sk_rcvbuf >> 2) &&
++		    !skb_queue_empty(&up->reader_queue))
+ 			return;
+ 	} else {
+ 		size += up->forward_deficit;
+diff --git a/net/ipv6/ip6_gre.c b/net/ipv6/ip6_gre.c
+index 1f2d0022ba6f..90621d498fd1 100644
+--- a/net/ipv6/ip6_gre.c
++++ b/net/ipv6/ip6_gre.c
+@@ -1486,7 +1486,6 @@ static int ip6gre_tunnel_init_common(struct net_device *dev)
+ 		dev->mtu -= 8;
+ 
+ 	if (tunnel->parms.collect_md) {
+-		dev->features |= NETIF_F_NETNS_LOCAL;
+ 		netif_keep_dst(dev);
+ 	}
+ 	ip6gre_tnl_init_features(dev);
+@@ -1914,7 +1913,6 @@ static void ip6gre_tap_setup(struct net_device *dev)
+ 	dev->needs_free_netdev = true;
+ 	dev->priv_destructor = ip6gre_dev_free;
+ 
+-	dev->features |= NETIF_F_NETNS_LOCAL;
+ 	dev->priv_flags &= ~IFF_TX_SKB_SHARING;
+ 	dev->priv_flags |= IFF_LIVE_ADDR_CHANGE;
+ 	netif_keep_dst(dev);
+@@ -2223,7 +2221,6 @@ static void ip6erspan_tap_setup(struct net_device *dev)
+ 	dev->needs_free_netdev = true;
+ 	dev->priv_destructor = ip6gre_dev_free;
+ 
+-	dev->features |= NETIF_F_NETNS_LOCAL;
+ 	dev->priv_flags &= ~IFF_TX_SKB_SHARING;
+ 	dev->priv_flags |= IFF_LIVE_ADDR_CHANGE;
+ 	netif_keep_dst(dev);
+diff --git a/net/ipv6/ip6_tunnel.c b/net/ipv6/ip6_tunnel.c
+index e3b4237b2832..8e70a015c792 100644
+--- a/net/ipv6/ip6_tunnel.c
++++ b/net/ipv6/ip6_tunnel.c
+@@ -1882,10 +1882,8 @@ static int ip6_tnl_dev_init(struct net_device *dev)
+ 	if (err)
+ 		return err;
+ 	ip6_tnl_link_config(t);
+-	if (t->parms.collect_md) {
+-		dev->features |= NETIF_F_NETNS_LOCAL;
++	if (t->parms.collect_md)
+ 		netif_keep_dst(dev);
+-	}
+ 	return 0;
+ }
+ 
+diff --git a/net/ipv6/seg6_local.c b/net/ipv6/seg6_local.c
+index 60325dbfe88b..607709a8847c 100644
+--- a/net/ipv6/seg6_local.c
++++ b/net/ipv6/seg6_local.c
+@@ -28,6 +28,7 @@
+ #include <net/addrconf.h>
+ #include <net/ip6_route.h>
+ #include <net/dst_cache.h>
++#include <net/ip_tunnels.h>
+ #ifdef CONFIG_IPV6_SEG6_HMAC
+ #include <net/seg6_hmac.h>
+ #endif
+@@ -135,7 +136,8 @@ static bool decap_and_validate(struct sk_buff *skb, int proto)
+ 
+ 	skb_reset_network_header(skb);
+ 	skb_reset_transport_header(skb);
+-	skb->encapsulation = 0;
++	if (iptunnel_pull_offloads(skb))
++		return false;
+ 
+ 	return true;
+ }
+diff --git a/net/netfilter/ipset/ip_set_bitmap_gen.h b/net/netfilter/ipset/ip_set_bitmap_gen.h
+index af480ffefaf3..37f68062be41 100644
+--- a/net/netfilter/ipset/ip_set_bitmap_gen.h
++++ b/net/netfilter/ipset/ip_set_bitmap_gen.h
+@@ -79,7 +79,7 @@ mtype_flush(struct ip_set *set)
+ 
+ 	if (set->extensions & IPSET_EXT_DESTROY)
+ 		mtype_ext_cleanup(set);
+-	memset(map->members, 0, map->memsize);
++	bitmap_zero(map->members, map->elements);
+ 	set->elements = 0;
+ 	set->ext_size = 0;
+ }
+diff --git a/net/netfilter/ipset/ip_set_bitmap_ip.c b/net/netfilter/ipset/ip_set_bitmap_ip.c
+index 488d6d05c65c..e3257077158f 100644
+--- a/net/netfilter/ipset/ip_set_bitmap_ip.c
++++ b/net/netfilter/ipset/ip_set_bitmap_ip.c
+@@ -40,7 +40,7 @@ MODULE_ALIAS("ip_set_bitmap:ip");
+ 
+ /* Type structure */
+ struct bitmap_ip {
+-	void *members;		/* the set members */
++	unsigned long *members;	/* the set members */
+ 	u32 first_ip;		/* host byte order, included in range */
+ 	u32 last_ip;		/* host byte order, included in range */
+ 	u32 elements;		/* number of max elements in the set */
+@@ -223,7 +223,7 @@ init_map_ip(struct ip_set *set, struct bitmap_ip *map,
+ 	    u32 first_ip, u32 last_ip,
+ 	    u32 elements, u32 hosts, u8 netmask)
+ {
+-	map->members = ip_set_alloc(map->memsize);
++	map->members = bitmap_zalloc(elements, GFP_KERNEL | __GFP_NOWARN);
+ 	if (!map->members)
+ 		return false;
+ 	map->first_ip = first_ip;
+@@ -313,7 +313,7 @@ bitmap_ip_create(struct net *net, struct ip_set *set, struct nlattr *tb[],
+ 	if (!map)
+ 		return -ENOMEM;
+ 
+-	map->memsize = bitmap_bytes(0, elements - 1);
++	map->memsize = BITS_TO_LONGS(elements) * sizeof(unsigned long);
+ 	set->variant = &bitmap_ip;
+ 	if (!init_map_ip(set, map, first_ip, last_ip,
+ 			 elements, hosts, netmask)) {
+diff --git a/net/netfilter/ipset/ip_set_bitmap_ipmac.c b/net/netfilter/ipset/ip_set_bitmap_ipmac.c
+index 794e0335a864..9669cace4522 100644
+--- a/net/netfilter/ipset/ip_set_bitmap_ipmac.c
++++ b/net/netfilter/ipset/ip_set_bitmap_ipmac.c
+@@ -46,7 +46,7 @@ enum {
+ 
+ /* Type structure */
+ struct bitmap_ipmac {
+-	void *members;		/* the set members */
++	unsigned long *members;	/* the set members */
+ 	u32 first_ip;		/* host byte order, included in range */
+ 	u32 last_ip;		/* host byte order, included in range */
+ 	u32 elements;		/* number of max elements in the set */
+@@ -303,7 +303,7 @@ static bool
+ init_map_ipmac(struct ip_set *set, struct bitmap_ipmac *map,
+ 	       u32 first_ip, u32 last_ip, u32 elements)
+ {
+-	map->members = ip_set_alloc(map->memsize);
++	map->members = bitmap_zalloc(elements, GFP_KERNEL | __GFP_NOWARN);
+ 	if (!map->members)
+ 		return false;
+ 	map->first_ip = first_ip;
+@@ -364,7 +364,7 @@ bitmap_ipmac_create(struct net *net, struct ip_set *set, struct nlattr *tb[],
+ 	if (!map)
+ 		return -ENOMEM;
+ 
+-	map->memsize = bitmap_bytes(0, elements - 1);
++	map->memsize = BITS_TO_LONGS(elements) * sizeof(unsigned long);
+ 	set->variant = &bitmap_ipmac;
+ 	if (!init_map_ipmac(set, map, first_ip, last_ip, elements)) {
+ 		kfree(map);
+diff --git a/net/netfilter/ipset/ip_set_bitmap_port.c b/net/netfilter/ipset/ip_set_bitmap_port.c
+index b561ca8b3659..ae09f2af6a19 100644
+--- a/net/netfilter/ipset/ip_set_bitmap_port.c
++++ b/net/netfilter/ipset/ip_set_bitmap_port.c
+@@ -34,7 +34,7 @@ MODULE_ALIAS("ip_set_bitmap:port");
+ 
+ /* Type structure */
+ struct bitmap_port {
+-	void *members;		/* the set members */
++	unsigned long *members;	/* the set members */
+ 	u16 first_port;		/* host byte order, included in range */
+ 	u16 last_port;		/* host byte order, included in range */
+ 	u32 elements;		/* number of max elements in the set */
+@@ -208,7 +208,7 @@ static bool
+ init_map_port(struct ip_set *set, struct bitmap_port *map,
+ 	      u16 first_port, u16 last_port)
+ {
+-	map->members = ip_set_alloc(map->memsize);
++	map->members = bitmap_zalloc(map->elements, GFP_KERNEL | __GFP_NOWARN);
+ 	if (!map->members)
+ 		return false;
+ 	map->first_port = first_port;
+@@ -248,7 +248,7 @@ bitmap_port_create(struct net *net, struct ip_set *set, struct nlattr *tb[],
+ 		return -ENOMEM;
+ 
+ 	map->elements = elements;
+-	map->memsize = bitmap_bytes(0, map->elements);
++	map->memsize = BITS_TO_LONGS(elements) * sizeof(unsigned long);
+ 	set->variant = &bitmap_port;
+ 	if (!init_map_port(set, map, first_port, last_port)) {
+ 		kfree(map);
+diff --git a/net/netfilter/nf_tables_api.c b/net/netfilter/nf_tables_api.c
+index 7f0d3ffd5469..5881f6668817 100644
+--- a/net/netfilter/nf_tables_api.c
++++ b/net/netfilter/nf_tables_api.c
+@@ -471,15 +471,28 @@ static inline u64 nf_tables_alloc_handle(struct nft_table *table)
+ 
+ static const struct nft_chain_type *chain_type[NFPROTO_NUMPROTO][NFT_CHAIN_T_MAX];
+ 
++static const struct nft_chain_type *
++__nft_chain_type_get(u8 family, enum nft_chain_types type)
++{
++	if (family >= NFPROTO_NUMPROTO ||
++	    type >= NFT_CHAIN_T_MAX)
++		return NULL;
++
++	return chain_type[family][type];
++}
++
+ static const struct nft_chain_type *
+ __nf_tables_chain_type_lookup(const struct nlattr *nla, u8 family)
+ {
++	const struct nft_chain_type *type;
+ 	int i;
+ 
+ 	for (i = 0; i < NFT_CHAIN_T_MAX; i++) {
+-		if (chain_type[family][i] != NULL &&
+-		    !nla_strcmp(nla, chain_type[family][i]->name))
+-			return chain_type[family][i];
++		type = __nft_chain_type_get(family, i);
++		if (!type)
++			continue;
++		if (!nla_strcmp(nla, type->name))
++			return type;
+ 	}
+ 	return NULL;
+ }
+@@ -1050,11 +1063,8 @@ static void nf_tables_table_destroy(struct nft_ctx *ctx)
+ 
+ void nft_register_chain_type(const struct nft_chain_type *ctype)
+ {
+-	if (WARN_ON(ctype->family >= NFPROTO_NUMPROTO))
+-		return;
+-
+ 	nfnl_lock(NFNL_SUBSYS_NFTABLES);
+-	if (WARN_ON(chain_type[ctype->family][ctype->type] != NULL)) {
++	if (WARN_ON(__nft_chain_type_get(ctype->family, ctype->type))) {
+ 		nfnl_unlock(NFNL_SUBSYS_NFTABLES);
+ 		return;
+ 	}
+@@ -1511,7 +1521,10 @@ static int nft_chain_parse_hook(struct net *net,
+ 	hook->num = ntohl(nla_get_be32(ha[NFTA_HOOK_HOOKNUM]));
+ 	hook->priority = ntohl(nla_get_be32(ha[NFTA_HOOK_PRIORITY]));
+ 
+-	type = chain_type[family][NFT_CHAIN_T_DEFAULT];
++	type = __nft_chain_type_get(family, NFT_CHAIN_T_DEFAULT);
++	if (!type)
++		return -EOPNOTSUPP;
++
+ 	if (nla[NFTA_CHAIN_TYPE]) {
+ 		type = nf_tables_chain_type_lookup(net, nla[NFTA_CHAIN_TYPE],
+ 						   family, autoload);
+diff --git a/net/netfilter/nft_osf.c b/net/netfilter/nft_osf.c
+index df4e3e0412ed..a003533ff4d9 100644
+--- a/net/netfilter/nft_osf.c
++++ b/net/netfilter/nft_osf.c
+@@ -47,6 +47,9 @@ static int nft_osf_init(const struct nft_ctx *ctx,
+ 	struct nft_osf *priv = nft_expr_priv(expr);
+ 	int err;
+ 
++	if (!tb[NFTA_OSF_DREG])
++		return -EINVAL;
++
+ 	priv->dreg = nft_parse_register(tb[NFTA_OSF_DREG]);
+ 	err = nft_validate_register_store(ctx, priv->dreg, NULL,
+ 					  NFT_DATA_VALUE, NFT_OSF_MAXGENRELEN);
+diff --git a/net/sched/ematch.c b/net/sched/ematch.c
+index 1331a4c2d8ff..750d88d0cfd9 100644
+--- a/net/sched/ematch.c
++++ b/net/sched/ematch.c
+@@ -267,12 +267,12 @@ static int tcf_em_validate(struct tcf_proto *tp,
+ 				}
+ 				em->data = (unsigned long) v;
+ 			}
++			em->datalen = data_len;
+ 		}
+ 	}
+ 
+ 	em->matchid = em_hdr->matchid;
+ 	em->flags = em_hdr->flags;
+-	em->datalen = data_len;
+ 	em->net = net;
+ 
+ 	err = 0;
+diff --git a/net/x25/af_x25.c b/net/x25/af_x25.c
+index 20a511398389..bd1cbbfe5924 100644
+--- a/net/x25/af_x25.c
++++ b/net/x25/af_x25.c
+@@ -765,6 +765,10 @@ static int x25_connect(struct socket *sock, struct sockaddr *uaddr,
+ 	if (sk->sk_state == TCP_ESTABLISHED)
+ 		goto out;
+ 
++	rc = -EALREADY;	/* Do nothing if call is already in progress */
++	if (sk->sk_state == TCP_SYN_SENT)
++		goto out;
++
+ 	sk->sk_state   = TCP_CLOSE;
+ 	sock->state = SS_UNCONNECTED;
+ 
+@@ -811,7 +815,7 @@ static int x25_connect(struct socket *sock, struct sockaddr *uaddr,
+ 	/* Now the loop */
+ 	rc = -EINPROGRESS;
+ 	if (sk->sk_state != TCP_ESTABLISHED && (flags & O_NONBLOCK))
+-		goto out_put_neigh;
++		goto out;
+ 
+ 	rc = x25_wait_for_connection_establishment(sk);
+ 	if (rc)
+diff --git a/scripts/recordmcount.c b/scripts/recordmcount.c
+index 895c40e8679f..3b0dcf38fd8b 100644
+--- a/scripts/recordmcount.c
++++ b/scripts/recordmcount.c
+@@ -39,6 +39,10 @@
+ #define R_AARCH64_ABS64	257
+ #endif
+ 
++#define R_ARM_PC24		1
++#define R_ARM_THM_CALL		10
++#define R_ARM_CALL		28
++
+ static int fd_map;	/* File descriptor for file being modified. */
+ static int mmap_failed; /* Boolean flag. */
+ static char gpfx;	/* prefix for global symbol name (sometimes '_') */
+@@ -414,6 +418,18 @@ is_mcounted_section_name(char const *const txtname)
+ #define RECORD_MCOUNT_64
+ #include "recordmcount.h"
+ 
++static int arm_is_fake_mcount(Elf32_Rel const *rp)
++{
++	switch (ELF32_R_TYPE(w(rp->r_info))) {
++	case R_ARM_THM_CALL:
++	case R_ARM_CALL:
++	case R_ARM_PC24:
++		return 0;
++	}
++
++	return 1;
++}
++
+ /* 64-bit EM_MIPS has weird ELF64_Rela.r_info.
+  * http://techpubs.sgi.com/library/manuals/4000/007-4658-001/pdf/007-4658-001.pdf
+  * We interpret Table 29 Relocation Operation (Elf64_Rel, Elf64_Rela) [p.40]
+@@ -515,6 +531,7 @@ do_file(char const *const fname)
+ 			 altmcount = "__gnu_mcount_nc";
+ 			 make_nop = make_nop_arm;
+ 			 rel_type_nop = R_ARM_NONE;
++			 is_fake_mcount32 = arm_is_fake_mcount;
+ 			 break;
+ 	case EM_AARCH64:
+ 			reltype = R_AARCH64_ABS64;
+-- 
+2.30.2
+

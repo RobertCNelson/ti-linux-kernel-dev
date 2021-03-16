@@ -1,6 +1,6 @@
-From 0e9cdc3ba54aed95b61b7bcf2da33859020ebfbc Mon Sep 17 00:00:00 2001
+From f18cf75becf702adc9ae2c0b877a5589252ddee3 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 16 Mar 2021 13:30:26 -0500
+Date: Tue, 16 Mar 2021 15:44:54 -0500
 Subject: [PATCH] backports: brcm80211: from: linux.git
 
 Reference: v4.14.77
@@ -11,14 +11,14 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../broadcom/brcm80211/brcmfmac/bcdc.h        |    6 +-
  .../broadcom/brcm80211/brcmfmac/bcmsdh.c      |  532 ++++--
  .../broadcom/brcm80211/brcmfmac/btcoex.c      |    8 +-
- .../broadcom/brcm80211/brcmfmac/bus.h         |   14 +-
+ .../broadcom/brcm80211/brcmfmac/bus.h         |   24 +-
  .../broadcom/brcm80211/brcmfmac/cfg80211.c    |  378 ++--
  .../broadcom/brcm80211/brcmfmac/cfg80211.h    |   19 +-
  .../broadcom/brcm80211/brcmfmac/chip.c        |   16 +-
  .../broadcom/brcm80211/brcmfmac/chip.h        |    3 +-
  .../broadcom/brcm80211/brcmfmac/common.c      |  161 +-
  .../broadcom/brcm80211/brcmfmac/common.h      |    3 +-
- .../broadcom/brcm80211/brcmfmac/core.c        |  305 +--
+ .../broadcom/brcm80211/brcmfmac/core.c        |  306 +--
  .../broadcom/brcm80211/brcmfmac/core.h        |   11 +-
  .../broadcom/brcm80211/brcmfmac/debug.c       |   45 +-
  .../broadcom/brcm80211/brcmfmac/debug.h       |   17 +
@@ -40,7 +40,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../broadcom/brcm80211/brcmfmac/pcie.c        |  235 +--
  .../broadcom/brcm80211/brcmfmac/proto.c       |   13 +-
  .../broadcom/brcm80211/brcmfmac/proto.h       |   24 +-
- .../broadcom/brcm80211/brcmfmac/sdio.c        |  767 ++++----
+ .../broadcom/brcm80211/brcmfmac/sdio.c        |  775 ++++----
  .../broadcom/brcm80211/brcmfmac/sdio.h        |   82 +-
  .../broadcom/brcm80211/brcmfmac/usb.c         |  150 +-
  .../broadcom/brcm80211/brcmfmac/vendor.c      |    5 +-
@@ -56,7 +56,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../broadcom/brcm80211/brcmutil/d11.c         |   37 +-
  .../broadcom/brcm80211/include/brcm_hw_ids.h  |    1 -
  .../broadcom/brcm80211/include/brcmu_wifi.h   |    2 -
- 50 files changed, 2749 insertions(+), 3093 deletions(-)
+ 50 files changed, 2753 insertions(+), 3108 deletions(-)
 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/Kconfig b/drivers/net/wireless/broadcom/brcm80211/Kconfig
 index 6acba67bca07..9d99eb42d917 100644
@@ -201,7 +201,7 @@ index 4bc52240ccea..3b0e9eff21b5 100644
  
  #endif /* BRCMFMAC_BCDC_H */
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
-index d2f788d88668..dd6e27513cc1 100644
+index 710dc59c5d34..dd6e27513cc1 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
 @@ -118,7 +118,7 @@ int brcmf_sdiod_intr_register(struct brcmf_sdio_dev *sdiodev)
@@ -490,15 +490,15 @@ index d2f788d88668..dd6e27513cc1 100644
 +		err = brcmf_sdiod_set_sbaddr_window(sdiodev, bar0);
 +		if (err)
 +			return err;
-+
-+		sdiodev->sbwad = bar0;
-+	}
  
 -	addr &= SBSDIO_SB_OFT_ADDR_MASK;
 -	addr |= SBSDIO_SB_ACCESS_2_4B_FLAG;
-+	*addr &= SBSDIO_SB_OFT_ADDR_MASK;
++		sdiodev->sbwad = bar0;
++	}
  
 -	data = sdio_readl(sdiodev->func1, addr, &retval);
++	*addr &= SBSDIO_SB_OFT_ADDR_MASK;
++
 +	if (width == 4)
 +		*addr |= SBSDIO_SB_ACCESS_2_4B_FLAG;
 +
@@ -784,24 +784,23 @@ index d2f788d88668..dd6e27513cc1 100644
  	if (!mypkt) {
  		brcmf_err("brcmu_pkt_buf_get_skb failed: len %d\n",
  			  nbytes);
-@@ -615,49 +756,40 @@ int brcmf_sdiod_send_buf(struct brcmf_sdio_dev *sdiodev, u8 *buf, uint nbytes)
+@@ -615,47 +756,40 @@ int brcmf_sdiod_send_buf(struct brcmf_sdio_dev *sdiodev, u8 *buf, uint nbytes)
  
  	memcpy(mypkt->data, buf, nbytes);
  
 -	err = brcmf_sdiod_set_backplane_window(sdiodev, addr);
 -	if (err)
--		return err;
--
--	addr &= SBSDIO_SB_OFT_ADDR_MASK;
--	addr |= SBSDIO_SB_ACCESS_2_4B_FLAG;
+-		goto out;
 +	err = brcmf_sdiod_addrprep(sdiodev, 4, &addr);
  
- 	if (!err)
--		err = brcmf_sdiod_skbuff_write(sdiodev, sdiodev->func2, addr,
--					       mypkt);
+-	addr &= SBSDIO_SB_OFT_ADDR_MASK;
+-	addr |= SBSDIO_SB_ACCESS_2_4B_FLAG;
++	if (!err)
 +		err = brcmf_sdiod_buffrw(sdiodev, SDIO_FUNC_2, true, addr,
 +					 mypkt);
  
+-	err = brcmf_sdiod_skbuff_write(sdiodev, sdiodev->func2, addr, mypkt);
+-out:
  	brcmu_pkt_buf_free_skb(mypkt);
 -
  	return err;
@@ -846,7 +845,7 @@ index d2f788d88668..dd6e27513cc1 100644
  
  	return err;
  }
-@@ -666,7 +798,7 @@ int
+@@ -664,7 +798,7 @@ int
  brcmf_sdiod_ramrw(struct brcmf_sdio_dev *sdiodev, bool write, u32 address,
  		  u8 *data, uint size)
  {
@@ -855,7 +854,7 @@ index d2f788d88668..dd6e27513cc1 100644
  	struct sk_buff *pkt;
  	u32 sdaddr;
  	uint dsize;
-@@ -686,13 +818,13 @@ brcmf_sdiod_ramrw(struct brcmf_sdio_dev *sdiodev, bool write, u32 address,
+@@ -684,13 +818,13 @@ brcmf_sdiod_ramrw(struct brcmf_sdio_dev *sdiodev, bool write, u32 address,
  	else
  		dsize = size;
  
@@ -872,7 +871,7 @@ index d2f788d88668..dd6e27513cc1 100644
  			break;
  
  		brcmf_dbg(SDIO, "%s %d bytes at offset 0x%08x in window 0x%08x\n",
-@@ -703,17 +835,11 @@ brcmf_sdiod_ramrw(struct brcmf_sdio_dev *sdiodev, bool write, u32 address,
+@@ -701,17 +835,11 @@ brcmf_sdiod_ramrw(struct brcmf_sdio_dev *sdiodev, bool write, u32 address,
  		sdaddr |= SBSDIO_SB_ACCESS_2_4B_FLAG;
  
  		skb_put(pkt, dsize);
@@ -894,7 +893,7 @@ index d2f788d88668..dd6e27513cc1 100644
  			brcmf_err("membytes transfer failed\n");
  			break;
  		}
-@@ -733,17 +859,24 @@ brcmf_sdiod_ramrw(struct brcmf_sdio_dev *sdiodev, bool write, u32 address,
+@@ -731,17 +859,24 @@ brcmf_sdiod_ramrw(struct brcmf_sdio_dev *sdiodev, bool write, u32 address,
  
  	dev_kfree_skb(pkt);
  
@@ -924,7 +923,7 @@ index d2f788d88668..dd6e27513cc1 100644
  
  	brcmf_dbg(SDIO, "Exit\n");
  	return 0;
-@@ -757,7 +890,7 @@ void brcmf_sdiod_sgtable_alloc(struct brcmf_sdio_dev *sdiodev)
+@@ -755,7 +890,7 @@ void brcmf_sdiod_sgtable_alloc(struct brcmf_sdio_dev *sdiodev)
  	uint nents;
  	int err;
  
@@ -933,7 +932,7 @@ index d2f788d88668..dd6e27513cc1 100644
  	host = func->card->host;
  	sdiodev->sg_support = host->max_segs > 1;
  	max_blocks = min_t(uint, host->max_blk_count, 511u);
-@@ -818,17 +951,17 @@ static int brcmf_sdiod_freezer_on(struct brcmf_sdio_dev *sdiodev)
+@@ -816,17 +951,17 @@ static int brcmf_sdiod_freezer_on(struct brcmf_sdio_dev *sdiodev)
  	brcmf_sdio_trigger_dpc(sdiodev->bus);
  	wait_event(sdiodev->freezer->thread_freeze,
  		   atomic_read(expect) == sdiodev->freezer->frozen_count);
@@ -955,7 +954,7 @@ index d2f788d88668..dd6e27513cc1 100644
  	atomic_set(&sdiodev->freezer->freezing, 0);
  	complete_all(&sdiodev->freezer->resumed);
  }
-@@ -878,19 +1011,19 @@ static int brcmf_sdiod_remove(struct brcmf_sdio_dev *sdiodev)
+@@ -876,19 +1011,19 @@ static int brcmf_sdiod_remove(struct brcmf_sdio_dev *sdiodev)
  	brcmf_sdiod_freezer_detach(sdiodev);
  
  	/* Disable Function 2 */
@@ -982,7 +981,7 @@ index d2f788d88668..dd6e27513cc1 100644
  	return 0;
  }
  
-@@ -906,27 +1039,29 @@ static int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
+@@ -904,27 +1039,29 @@ static int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
  {
  	int ret = 0;
  
@@ -1020,7 +1019,7 @@ index d2f788d88668..dd6e27513cc1 100644
  	if (ret) {
  		brcmf_err("Failed to enable F1: err=%d\n", ret);
  		goto out;
-@@ -942,7 +1077,7 @@ static int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
+@@ -940,7 +1077,7 @@ static int brcmf_sdiod_probe(struct brcmf_sdio_dev *sdiodev)
  		ret = -ENODEV;
  		goto out;
  	}
@@ -1029,7 +1028,7 @@ index d2f788d88668..dd6e27513cc1 100644
  out:
  	if (ret)
  		brcmf_sdiod_remove(sdiodev);
-@@ -1004,10 +1139,6 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
+@@ -1002,10 +1139,6 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
  	brcmf_dbg(SDIO, "Function#: %d\n", func->num);
  
  	dev = &func->dev;
@@ -1040,7 +1039,7 @@ index d2f788d88668..dd6e27513cc1 100644
  	/* prohibit ACPI power management for this device */
  	brcmf_sdiod_acpi_set_power_manageable(dev, 0);
  
-@@ -1031,15 +1162,17 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
+@@ -1029,15 +1162,17 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
  	/* store refs to functions used. mmc_card does
  	 * not hold the F0 function pointer.
  	 */
@@ -1062,7 +1061,7 @@ index d2f788d88668..dd6e27513cc1 100644
  
  	brcmf_sdiod_change_state(sdiodev, BRCMF_SDIOD_DOWN);
  
-@@ -1055,7 +1188,8 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
+@@ -1053,7 +1188,8 @@ static int brcmf_ops_sdio_probe(struct sdio_func *func,
  
  fail:
  	dev_set_drvdata(&func->dev, NULL);
@@ -1072,7 +1071,7 @@ index d2f788d88668..dd6e27513cc1 100644
  	kfree(sdiodev);
  	kfree(bus_if);
  	return err;
-@@ -1084,10 +1218,11 @@ static void brcmf_ops_sdio_remove(struct sdio_func *func)
+@@ -1082,10 +1218,11 @@ static void brcmf_ops_sdio_remove(struct sdio_func *func)
  		/* only proceed with rest of cleanup if func 1 */
  		brcmf_sdiod_remove(sdiodev);
  
@@ -1086,7 +1085,7 @@ index d2f788d88668..dd6e27513cc1 100644
  		kfree(sdiodev);
  	}
  
-@@ -1113,7 +1248,7 @@ static int brcmf_ops_sdio_suspend(struct device *dev)
+@@ -1111,7 +1248,7 @@ static int brcmf_ops_sdio_suspend(struct device *dev)
  
  	func = container_of(dev, struct sdio_func, dev);
  	brcmf_dbg(SDIO, "Enter: F%d\n", func->num);
@@ -1095,7 +1094,7 @@ index d2f788d88668..dd6e27513cc1 100644
  		return 0;
  
  
-@@ -1130,7 +1265,7 @@ static int brcmf_ops_sdio_suspend(struct device *dev)
+@@ -1128,7 +1265,7 @@ static int brcmf_ops_sdio_suspend(struct device *dev)
  		else
  			sdio_flags |= MMC_PM_WAKE_SDIO_IRQ;
  	}
@@ -1104,7 +1103,7 @@ index d2f788d88668..dd6e27513cc1 100644
  		brcmf_err("Failed to set pm_flags %x\n", sdio_flags);
  	return 0;
  }
-@@ -1142,7 +1277,7 @@ static int brcmf_ops_sdio_resume(struct device *dev)
+@@ -1140,7 +1277,7 @@ static int brcmf_ops_sdio_resume(struct device *dev)
  	struct sdio_func *func = container_of(dev, struct sdio_func, dev);
  
  	brcmf_dbg(SDIO, "Enter: F%d\n", func->num);
@@ -1113,7 +1112,7 @@ index d2f788d88668..dd6e27513cc1 100644
  		return 0;
  
  	brcmf_sdiod_freezer_off(sdiodev);
-@@ -1165,7 +1300,6 @@ static struct sdio_driver brcmf_sdmmc_driver = {
+@@ -1163,7 +1300,6 @@ static struct sdio_driver brcmf_sdmmc_driver = {
  #ifdef CONFIG_PM_SLEEP
  		.pm = &brcmf_sdio_pm_ops,
  #endif	/* CONFIG_PM_SLEEP */
@@ -1156,7 +1155,7 @@ index 372363a6e752..3559fb5b8fb0 100644
  	struct brcmf_if *ifp = brcmf_get_ifp(cfg->pub, 0);
  
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
-index c4965184cdf3..163ddc49f951 100644
+index 3d441c5c745c..163ddc49f951 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bus.h
 @@ -71,7 +71,6 @@ struct brcmf_bus_dcmd {
@@ -1167,16 +1166,17 @@ index c4965184cdf3..163ddc49f951 100644
   *
   * This structure provides an abstract interface towards the
   * bus specific driver. For control messages to common driver
-@@ -88,8 +87,6 @@ struct brcmf_bus_ops {
+@@ -88,9 +87,6 @@ struct brcmf_bus_ops {
  	void (*wowl_config)(struct device *dev, bool enabled);
  	size_t (*get_ramsize)(struct device *dev);
  	int (*get_memdump)(struct device *dev, void *data, size_t len);
 -	int (*get_fwname)(struct device *dev, const char *ext,
 -			  unsigned char *fw_name);
+-	void (*debugfs_create)(struct device *dev);
  };
  
  
-@@ -140,7 +137,6 @@ struct brcmf_bus_stats {
+@@ -141,7 +137,6 @@ struct brcmf_bus_stats {
   * @always_use_fws_queue: bus wants use queue also when fwsignal is inactive.
   * @wowl_supported: is wowl supported by bus driver.
   * @chiprev: revision of the dongle chip.
@@ -1184,7 +1184,7 @@ index c4965184cdf3..163ddc49f951 100644
   */
  struct brcmf_bus {
  	union {
-@@ -228,13 +224,6 @@ int brcmf_bus_get_memdump(struct brcmf_bus *bus, void *data, size_t len)
+@@ -229,22 +224,6 @@ int brcmf_bus_get_memdump(struct brcmf_bus *bus, void *data, size_t len)
  	return bus->ops->get_memdump(bus->dev, data, len);
  }
  
@@ -1195,10 +1195,19 @@ index c4965184cdf3..163ddc49f951 100644
 -	return bus->ops->get_fwname(bus->dev, ext, fw_name);
 -}
 -
+-static inline
+-void brcmf_bus_debugfs_create(struct brcmf_bus *bus)
+-{
+-	if (!bus->ops->debugfs_create)
+-		return;
+-
+-	return bus->ops->debugfs_create(bus->dev);
+-}
+-
  /*
   * interface functions from common layer
   */
-@@ -250,12 +239,11 @@ int brcmf_attach(struct device *dev, struct brcmf_mp_device *settings);
+@@ -260,12 +239,11 @@ int brcmf_attach(struct device *dev, struct brcmf_mp_device *settings);
  void brcmf_detach(struct device *dev);
  /* Indication from bus module that dongle should be reset */
  void brcmf_dev_reset(struct device *dev);
@@ -2484,7 +2493,7 @@ index a34642cb4d2f..a62f8e70b320 100644
  	struct brcmfmac_pd_cc *country_codes;
  	union {
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
-index 584e05fdca6a..5cc3a07dda9e 100644
+index 9d7b8834b854..5cc3a07dda9e 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/core.c
 @@ -21,7 +21,6 @@
@@ -2827,7 +2836,7 @@ index 584e05fdca6a..5cc3a07dda9e 100644
  					     drvr->settings->p2p_enable);
  	if (drvr->config == NULL) {
  		ret = -ENOMEM;
-@@ -1101,11 +1029,6 @@ static int brcmf_bus_started(struct brcmf_pub *drvr, struct cfg80211_ops *ops)
+@@ -1101,12 +1029,6 @@ static int brcmf_bus_started(struct brcmf_pub *drvr, struct cfg80211_ops *ops)
  #endif
  #endif /* CONFIG_INET */
  
@@ -2835,11 +2844,12 @@ index 584e05fdca6a..5cc3a07dda9e 100644
 -	brcmf_debugfs_add_entry(drvr, "revinfo", brcmf_revinfo_read);
 -	brcmf_feat_debugfs_create(drvr);
 -	brcmf_proto_debugfs_create(drvr);
+-	brcmf_bus_debugfs_create(bus_if);
 -
  	return 0;
  
  fail:
-@@ -1125,69 +1048,6 @@ static int brcmf_bus_started(struct brcmf_pub *drvr, struct cfg80211_ops *ops)
+@@ -1126,69 +1048,6 @@ static int brcmf_bus_started(struct brcmf_pub *drvr, struct cfg80211_ops *ops)
  	return ret;
  }
  
@@ -2909,7 +2919,7 @@ index 584e05fdca6a..5cc3a07dda9e 100644
  void brcmf_bus_add_txhdrlen(struct device *dev, uint len)
  {
  	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
-@@ -1210,14 +1070,6 @@ void brcmf_dev_reset(struct device *dev)
+@@ -1211,14 +1070,6 @@ void brcmf_dev_reset(struct device *dev)
  		brcmf_fil_cmd_int_set(drvr->iflist[0], BRCMF_C_TERMINATED, 1);
  }
  
@@ -2924,7 +2934,7 @@ index 584e05fdca6a..5cc3a07dda9e 100644
  void brcmf_detach(struct device *dev)
  {
  	s32 i;
-@@ -1244,26 +1096,19 @@ void brcmf_detach(struct device *dev)
+@@ -1245,26 +1096,19 @@ void brcmf_detach(struct device *dev)
  
  	brcmf_bus_change_state(bus_if, BRCMF_BUS_DOWN);
  
@@ -2954,7 +2964,7 @@ index 584e05fdca6a..5cc3a07dda9e 100644
  }
  
  s32 brcmf_iovar_data_set(struct device *dev, char *name, void *data, u32 len)
-@@ -1300,12 +1145,6 @@ void brcmf_bus_change_state(struct brcmf_bus *bus, enum brcmf_bus_state state)
+@@ -1301,12 +1145,6 @@ void brcmf_bus_change_state(struct brcmf_bus *bus, enum brcmf_bus_state state)
  	int ifidx;
  
  	brcmf_dbg(TRACE, "%d -> %d\n", bus->state, state);
@@ -5079,7 +5089,7 @@ index 72355aea9028..2404f8a7c31c 100644
 -
  #endif /* BRCMFMAC_PROTO_H */
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
-index abaed2fa2def..4c28b04ea605 100644
+index 5c3b62e61980..4c28b04ea605 100644
 --- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
 +++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
 @@ -49,10 +49,6 @@
@@ -6050,7 +6060,31 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	seq_printf(seq, "dongle assert: %s:%d: assert(%s)\n",
  		   file, sh->assert_line, expr);
-@@ -3307,7 +3301,7 @@ static int brcmf_sdio_download_firmware(struct brcmf_sdio *bus,
+@@ -3131,12 +3125,9 @@ static int brcmf_debugfs_sdio_count_read(struct seq_file *seq, void *data)
+ 	return 0;
+ }
+ 
+-static void brcmf_sdio_debugfs_create(struct device *dev)
++static void brcmf_sdio_debugfs_create(struct brcmf_sdio *bus)
+ {
+-	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
+-	struct brcmf_pub *drvr = bus_if->drvr;
+-	struct brcmf_sdio_dev *sdiodev = bus_if->bus_priv.sdio;
+-	struct brcmf_sdio *bus = sdiodev->bus;
++	struct brcmf_pub *drvr = bus->sdiodev->bus_if->drvr;
+ 	struct dentry *dentry = brcmf_debugfs_get_devdir(drvr);
+ 
+ 	if (IS_ERR_OR_NULL(dentry))
+@@ -3156,7 +3147,7 @@ static int brcmf_sdio_checkdied(struct brcmf_sdio *bus)
+ 	return 0;
+ }
+ 
+-static void brcmf_sdio_debugfs_create(struct device *dev)
++static void brcmf_sdio_debugfs_create(struct brcmf_sdio *bus)
+ {
+ }
+ #endif /* DEBUG */
+@@ -3310,7 +3301,7 @@ static int brcmf_sdio_download_firmware(struct brcmf_sdio *bus,
  	int bcmerror;
  	u32 rstvec;
  
@@ -6059,7 +6093,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	brcmf_sdio_clkctl(bus, CLK_AVAIL, false);
  
  	rstvec = get_unaligned_le32(fw->data);
-@@ -3336,7 +3330,7 @@ static int brcmf_sdio_download_firmware(struct brcmf_sdio *bus,
+@@ -3339,7 +3330,7 @@ static int brcmf_sdio_download_firmware(struct brcmf_sdio *bus,
  
  err:
  	brcmf_sdio_clkctl(bus, CLK_SDONLY, false);
@@ -6068,7 +6102,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	return bcmerror;
  }
  
-@@ -3347,31 +3341,31 @@ static void brcmf_sdio_sr_init(struct brcmf_sdio *bus)
+@@ -3350,31 +3341,31 @@ static void brcmf_sdio_sr_init(struct brcmf_sdio *bus)
  
  	brcmf_dbg(TRACE, "Enter\n");
  
@@ -6108,7 +6142,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	if (err) {
  		brcmf_err("error writing SBSDIO_FUNC1_CHIPCLKCSR\n");
  		return;
-@@ -3385,17 +3379,16 @@ static void brcmf_sdio_sr_init(struct brcmf_sdio *bus)
+@@ -3388,17 +3379,16 @@ static void brcmf_sdio_sr_init(struct brcmf_sdio *bus)
  /* enable KSO bit */
  static int brcmf_sdio_kso_init(struct brcmf_sdio *bus)
  {
@@ -6128,7 +6162,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	if (err) {
  		brcmf_err("error reading SBSDIO_FUNC1_SLEEPCSR\n");
  		return err;
-@@ -3404,8 +3397,8 @@ static int brcmf_sdio_kso_init(struct brcmf_sdio *bus)
+@@ -3407,8 +3397,8 @@ static int brcmf_sdio_kso_init(struct brcmf_sdio *bus)
  	if (!(val & SBSDIO_FUNC1_SLEEPCSR_KSO_MASK)) {
  		val |= (SBSDIO_FUNC1_SLEEPCSR_KSO_EN <<
  			SBSDIO_FUNC1_SLEEPCSR_KSO_SHIFT);
@@ -6139,7 +6173,7 @@ index abaed2fa2def..4c28b04ea605 100644
  		if (err) {
  			brcmf_err("error writing SBSDIO_FUNC1_SLEEPCSR\n");
  			return err;
-@@ -3421,30 +3414,15 @@ static int brcmf_sdio_bus_preinit(struct device *dev)
+@@ -3424,28 +3414,15 @@ static int brcmf_sdio_bus_preinit(struct device *dev)
  	struct brcmf_bus *bus_if = dev_get_drvdata(dev);
  	struct brcmf_sdio_dev *sdiodev = bus_if->bus_priv.sdio;
  	struct brcmf_sdio *bus = sdiodev->bus;
@@ -6160,8 +6194,6 @@ index abaed2fa2def..4c28b04ea605 100644
 -	if (bus->rxbuf)
 -		bus->rxblen = value;
 -
--	brcmf_sdio_debugfs_create(bus);
--
  	/* the commands below use the terms tx and rx from
  	 * a device perspective, ie. bus:txglom affects the
  	 * bus transfers from device to host.
@@ -6171,7 +6203,7 @@ index abaed2fa2def..4c28b04ea605 100644
  		/* for sdio core rev < 12, disable txgloming */
  		value = 0;
  		err = brcmf_iovar_data_set(dev, "bus:txglom", &value,
-@@ -3465,7 +3443,7 @@ static int brcmf_sdio_bus_preinit(struct device *dev)
+@@ -3466,7 +3443,7 @@ static int brcmf_sdio_bus_preinit(struct device *dev)
  	if (sdiodev->sg_support) {
  		bus->txglom = false;
  		value = 1;
@@ -6180,7 +6212,7 @@ index abaed2fa2def..4c28b04ea605 100644
  		err = brcmf_iovar_data_set(bus->sdiodev->dev, "bus:rxglom",
  					   &value, sizeof(u32));
  		if (err < 0) {
-@@ -3507,7 +3485,7 @@ static int brcmf_sdio_bus_get_memdump(struct device *dev, void *data,
+@@ -3508,7 +3485,7 @@ static int brcmf_sdio_bus_get_memdump(struct device *dev, void *data,
  
  	address = bus->ci->rambase;
  	offset = err = 0;
@@ -6189,7 +6221,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	while (offset < mem_size) {
  		len = ((offset + MEMBLOCK) < mem_size) ? MEMBLOCK :
  		      mem_size - offset;
-@@ -3523,7 +3501,7 @@ static int brcmf_sdio_bus_get_memdump(struct device *dev, void *data,
+@@ -3524,7 +3501,7 @@ static int brcmf_sdio_bus_get_memdump(struct device *dev, void *data,
  	}
  
  done:
@@ -6198,7 +6230,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	return err;
  }
  
-@@ -3580,10 +3558,11 @@ static void brcmf_sdio_bus_watchdog(struct brcmf_sdio *bus)
+@@ -3581,10 +3558,11 @@ static void brcmf_sdio_bus_watchdog(struct brcmf_sdio *bus)
  			if (!bus->dpc_triggered) {
  				u8 devpend;
  
@@ -6214,7 +6246,7 @@ index abaed2fa2def..4c28b04ea605 100644
  				intstatus = devpend & (INTR_STATUS_FUNC1 |
  						       INTR_STATUS_FUNC2);
  			}
-@@ -3609,13 +3588,13 @@ static void brcmf_sdio_bus_watchdog(struct brcmf_sdio *bus)
+@@ -3610,13 +3588,13 @@ static void brcmf_sdio_bus_watchdog(struct brcmf_sdio *bus)
  		bus->console.count += jiffies_to_msecs(BRCMF_WD_POLL);
  		if (bus->console.count >= bus->console_interval) {
  			bus->console.count -= bus->console_interval;
@@ -6230,7 +6262,7 @@ index abaed2fa2def..4c28b04ea605 100644
  		}
  	}
  #endif				/* DEBUG */
-@@ -3628,11 +3607,11 @@ static void brcmf_sdio_bus_watchdog(struct brcmf_sdio *bus)
+@@ -3629,11 +3607,11 @@ static void brcmf_sdio_bus_watchdog(struct brcmf_sdio *bus)
  			bus->idlecount++;
  			if (bus->idlecount > bus->idletime) {
  				brcmf_dbg(SDIO, "idle\n");
@@ -6244,7 +6276,7 @@ index abaed2fa2def..4c28b04ea605 100644
  			}
  		} else {
  			bus->idlecount = 0;
-@@ -3649,7 +3628,7 @@ static void brcmf_sdio_dataworker(struct work_struct *work)
+@@ -3650,7 +3628,7 @@ static void brcmf_sdio_dataworker(struct work_struct *work)
  
  	bus->dpc_running = true;
  	wmb();
@@ -6253,7 +6285,7 @@ index abaed2fa2def..4c28b04ea605 100644
  		bus->dpc_triggered = false;
  		brcmf_sdio_dpc(bus);
  		bus->idlecount = 0;
-@@ -3720,12 +3699,12 @@ brcmf_sdio_drivestrengthinit(struct brcmf_sdio_dev *sdiodev,
+@@ -3721,12 +3699,12 @@ brcmf_sdio_drivestrengthinit(struct brcmf_sdio_dev *sdiodev,
  			}
  		}
  		addr = CORE_CC_REG(pmu->base, chipcontrol_addr);
@@ -6269,7 +6301,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  		brcmf_dbg(INFO, "SDIO: %d mA (req=%d mA) drive strength selected, set to 0x%08x\n",
  			  str_tab[i].strength, drivestrength, cc_data_temp);
-@@ -3740,7 +3719,7 @@ static int brcmf_sdio_buscoreprep(void *ctx)
+@@ -3741,7 +3719,7 @@ static int brcmf_sdio_buscoreprep(void *ctx)
  
  	/* Try forcing SDIO core to do ALPAvail request only */
  	clkset = SBSDIO_FORCE_HW_CLKREQ_OFF | SBSDIO_ALP_AVAIL_REQ;
@@ -6278,7 +6310,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	if (err) {
  		brcmf_err("error writing for HT off\n");
  		return err;
-@@ -3748,7 +3727,8 @@ static int brcmf_sdio_buscoreprep(void *ctx)
+@@ -3749,7 +3727,8 @@ static int brcmf_sdio_buscoreprep(void *ctx)
  
  	/* If register supported, wait for ALPAvail and then force ALP */
  	/* This may take up to 15 milliseconds */
@@ -6288,7 +6320,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	if ((clkval & ~SBSDIO_AVBITS) != clkset) {
  		brcmf_err("ChipClkCSR access: wrote 0x%02x read 0x%02x\n",
-@@ -3756,11 +3736,10 @@ static int brcmf_sdio_buscoreprep(void *ctx)
+@@ -3757,11 +3736,10 @@ static int brcmf_sdio_buscoreprep(void *ctx)
  		return -EACCES;
  	}
  
@@ -6304,7 +6336,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	if (!SBSDIO_ALPAV(clkval)) {
  		brcmf_err("timeout on ALPAV wait, clkval 0x%02x\n",
  			  clkval);
-@@ -3768,11 +3747,11 @@ static int brcmf_sdio_buscoreprep(void *ctx)
+@@ -3769,11 +3747,11 @@ static int brcmf_sdio_buscoreprep(void *ctx)
  	}
  
  	clkset = SBSDIO_FORCE_HW_CLKREQ_OFF | SBSDIO_FORCE_ALP;
@@ -6318,7 +6350,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	return 0;
  }
-@@ -3781,12 +3760,13 @@ static void brcmf_sdio_buscore_activate(void *ctx, struct brcmf_chip *chip,
+@@ -3782,12 +3760,13 @@ static void brcmf_sdio_buscore_activate(void *ctx, struct brcmf_chip *chip,
  					u32 rstvec)
  {
  	struct brcmf_sdio_dev *sdiodev = ctx;
@@ -6335,7 +6367,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	if (rstvec)
  		/* Write reset vector to address 0 */
-@@ -3799,25 +3779,16 @@ static u32 brcmf_sdio_buscore_read32(void *ctx, u32 addr)
+@@ -3800,25 +3779,16 @@ static u32 brcmf_sdio_buscore_read32(void *ctx, u32 addr)
  	struct brcmf_sdio_dev *sdiodev = ctx;
  	u32 val, rev;
  
@@ -6365,7 +6397,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	return val;
  }
  
-@@ -3825,7 +3796,7 @@ static void brcmf_sdio_buscore_write32(void *ctx, u32 addr, u32 val)
+@@ -3826,7 +3796,7 @@ static void brcmf_sdio_buscore_write32(void *ctx, u32 addr, u32 val)
  {
  	struct brcmf_sdio_dev *sdiodev = ctx;
  
@@ -6374,7 +6406,7 @@ index abaed2fa2def..4c28b04ea605 100644
  }
  
  static const struct brcmf_buscore_ops brcmf_sdio_buscore_ops = {
-@@ -3846,21 +3817,21 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
+@@ -3847,21 +3817,21 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
  	u32 drivestrength;
  
  	sdiodev = bus->sdiodev;
@@ -6402,7 +6434,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	if (err || ((clkctl & ~SBSDIO_AVBITS) != BRCMF_INIT_CLKCTL1)) {
  		brcmf_err("ChipClkCSR access: err %d wrote 0x%02x read 0x%02x\n",
-@@ -3874,17 +3845,6 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
+@@ -3875,17 +3845,6 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
  		bus->ci = NULL;
  		goto fail;
  	}
@@ -6420,7 +6452,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	sdiodev->settings = brcmf_get_module_param(sdiodev->dev,
  						   BRCMF_BUSTYPE_SDIO,
  						   bus->ci->chip,
-@@ -3913,8 +3873,8 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
+@@ -3914,8 +3873,8 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
  	/* wowl can be supported when KEEP_POWER is true and (WAKE_SDIO_IRQ
  	 * is true or when platform data OOB irq is true).
  	 */
@@ -6431,7 +6463,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	     (sdiodev->settings->bus.sdio.oob_irq_supported)))
  		sdiodev->bus_if->wowl_supported = true;
  #endif
-@@ -3931,29 +3891,29 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
+@@ -3932,29 +3891,29 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
  	brcmf_sdio_drivestrengthinit(sdiodev, bus->ci, drivestrength);
  
  	/* Set card control so an SDIO card reset does a WLAN backplane reset */
@@ -6466,7 +6498,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	brcmu_pktq_init(&bus->txq, (PRIOMASK + 1), TXQLEN);
  
-@@ -3974,7 +3934,7 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
+@@ -3975,7 +3934,7 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
  	return true;
  
  fail:
@@ -6475,7 +6507,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	return false;
  }
  
-@@ -4006,9 +3966,9 @@ brcmf_sdio_watchdog_thread(void *data)
+@@ -4007,9 +3966,9 @@ brcmf_sdio_watchdog_thread(void *data)
  }
  
  static void
@@ -6487,7 +6519,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	if (bus->watchdog_tsk) {
  		complete(&bus->watchdog_wait);
-@@ -4019,26 +3979,6 @@ brcmf_sdio_watchdog(struct timer_list *t)
+@@ -4020,26 +3979,6 @@ brcmf_sdio_watchdog(struct timer_list *t)
  	}
  }
  
@@ -6514,11 +6546,12 @@ index abaed2fa2def..4c28b04ea605 100644
  static const struct brcmf_bus_ops brcmf_sdio_bus_ops = {
  	.stop = brcmf_sdio_bus_stop,
  	.preinit = brcmf_sdio_bus_preinit,
-@@ -4049,34 +3989,27 @@ static const struct brcmf_bus_ops brcmf_sdio_bus_ops = {
+@@ -4050,35 +3989,27 @@ static const struct brcmf_bus_ops brcmf_sdio_bus_ops = {
  	.wowl_config = brcmf_sdio_wowl_config,
  	.get_ramsize = brcmf_sdio_bus_get_ramsize,
  	.get_memdump = brcmf_sdio_bus_get_memdump,
 -	.get_fwname = brcmf_sdio_get_fwname,
+-	.debugfs_create = brcmf_sdio_debugfs_create
  };
  
 -#define BRCMF_SDIO_FW_CODE	0
@@ -6560,7 +6593,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	/* try to download image and nvram to the dongle */
  	bus->alp_only = true;
-@@ -4089,7 +4022,7 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+@@ -4091,7 +4022,7 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
  	bus->sdcnt.tickcnt = 0;
  	brcmf_sdio_wd_timer(bus, true);
  
@@ -6569,7 +6602,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	/* Make sure backplane clock is on, needed to generate F2 interrupt */
  	brcmf_sdio_clkctl(bus, CLK_AVAIL, false);
-@@ -4097,10 +4030,10 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+@@ -4099,10 +4030,10 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
  		goto release;
  
  	/* Force clocks on backplane to be sure F2 interrupt propagates */
@@ -6583,7 +6616,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	}
  	if (err) {
  		brcmf_err("Failed to force clock for F2: err %d\n", err);
-@@ -4108,10 +4041,10 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+@@ -4110,10 +4041,10 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
  	}
  
  	/* Enable function 2 (frame transfers) */
@@ -6597,7 +6630,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	brcmf_dbg(INFO, "enable F2: err=%d\n", err);
  
-@@ -4119,32 +4052,13 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+@@ -4121,32 +4052,13 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
  	if (!err) {
  		/* Set up the interrupt mask and enable interrupts */
  		bus->hostintmask = HOSTINTMASK;
@@ -6635,7 +6668,7 @@ index abaed2fa2def..4c28b04ea605 100644
  		goto release;
  	}
  
-@@ -4152,15 +4066,15 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+@@ -4154,15 +4066,15 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
  		brcmf_sdio_sr_init(bus);
  	} else {
  		/* Restore previous clock setting */
@@ -6654,19 +6687,19 @@ index abaed2fa2def..4c28b04ea605 100644
  		if (err != 0)
  			brcmf_err("intr register failed:%d\n", err);
  	}
-@@ -4169,60 +4083,28 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
+@@ -4171,60 +4083,28 @@ static void brcmf_sdio_firmware_callback(struct device *dev, int err,
  	if (err != 0)
  		brcmf_sdio_clkctl(bus, CLK_NONE, false);
  
 -	sdio_release_host(sdiod->func1);
-+	sdio_release_host(sdiodev->func[1]);
- 
+-
 -	/* Assign bus interface call back */
 -	sdiod->bus_if->dev = sdiod->dev;
 -	sdiod->bus_if->ops = &brcmf_sdio_bus_ops;
 -	sdiod->bus_if->chip = bus->ci->chip;
 -	sdiod->bus_if->chiprev = bus->ci->chiprev;
--
++	sdio_release_host(sdiodev->func[1]);
+ 
 -	/* Attach to the common layer, reserve hdr space */
 -	err = brcmf_attach(sdiod->dev, sdiod->settings);
 +	err = brcmf_bus_started(dev);
@@ -6720,7 +6753,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	brcmf_dbg(TRACE, "Enter\n");
  
-@@ -4241,7 +4123,7 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+@@ -4243,7 +4123,7 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
  
  	/* single-threaded workqueue */
  	wq = alloc_ordered_workqueue("brcmf_wq/%s", WQ_MEM_RECLAIM,
@@ -6729,7 +6762,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	if (!wq) {
  		brcmf_err("insufficient memory to create txworkqueue\n");
  		goto fail;
-@@ -4262,12 +4144,15 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+@@ -4264,12 +4144,15 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
  	init_waitqueue_head(&bus->dcmd_resp_wait);
  
  	/* Set up the watchdog timer */
@@ -6747,7 +6780,7 @@ index abaed2fa2def..4c28b04ea605 100644
  	if (IS_ERR(bus->watchdog_tsk)) {
  		pr_warn("brcmf_watchdog thread failed to start\n");
  		bus->watchdog_tsk = NULL;
-@@ -4276,24 +4161,50 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+@@ -4278,24 +4161,50 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
  	bus->dpc_triggered = false;
  	bus->dpc_running = false;
  
@@ -6803,7 +6836,7 @@ index abaed2fa2def..4c28b04ea605 100644
  
  	/* ...and initialize clock/power states */
  	bus->clkstate = CLK_SDONLY;
-@@ -4303,19 +4214,21 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
+@@ -4305,19 +4214,21 @@ struct brcmf_sdio *brcmf_sdio_probe(struct brcmf_sdio_dev *sdiodev)
  	/* SR state */
  	bus->sr_enabled = false;
  
@@ -6831,7 +6864,7 @@ index abaed2fa2def..4c28b04ea605 100644
  		goto fail;
  	}
  
-@@ -4350,7 +4263,7 @@ void brcmf_sdio_remove(struct brcmf_sdio *bus)
+@@ -4352,7 +4263,7 @@ void brcmf_sdio_remove(struct brcmf_sdio *bus)
  
  		if (bus->ci) {
  			if (bus->sdiodev->state != BRCMF_SDIOD_NOMEDIUM) {
@@ -6840,7 +6873,7 @@ index abaed2fa2def..4c28b04ea605 100644
  				brcmf_sdio_wd_timer(bus, false);
  				brcmf_sdio_clkctl(bus, CLK_AVAIL, false);
  				/* Leave the device in state where it is
-@@ -4360,7 +4273,7 @@ void brcmf_sdio_remove(struct brcmf_sdio *bus)
+@@ -4362,7 +4273,7 @@ void brcmf_sdio_remove(struct brcmf_sdio *bus)
  				msleep(20);
  				brcmf_chip_set_passive(bus->ci);
  				brcmf_sdio_clkctl(bus, CLK_NONE, false);
@@ -6849,7 +6882,7 @@ index abaed2fa2def..4c28b04ea605 100644
  			}
  			brcmf_chip_detach(bus->ci);
  		}
-@@ -4407,9 +4320,9 @@ int brcmf_sdio_sleep(struct brcmf_sdio *bus, bool sleep)
+@@ -4409,9 +4320,9 @@ int brcmf_sdio_sleep(struct brcmf_sdio *bus, bool sleep)
  {
  	int ret;
  

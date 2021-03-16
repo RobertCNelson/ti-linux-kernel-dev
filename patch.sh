@@ -119,7 +119,25 @@ external_git () {
 	else
 		echo "${top_of_branch}"
 	fi
+
 	#exit 2
+
+	${git} "${DIR}/patches/0001-patch-4.19.94-95.patch"
+	${git} "${DIR}/patches/0002-patch-4.19.95-96.patch"
+	${git} "${DIR}/patches/0003-patch-4.19.96-97.patch"
+	${git} "${DIR}/patches/0004-patch-4.19.97-98.patch"
+	${git} "${DIR}/patches/0005-patch-4.19.98-99.patch"
+	${git} "${DIR}/patches/0006-patch-4.19.99-100.patch"
+	${git} "${DIR}/patches/0007-patch-4.19.100-101.patch"
+	${git} "${DIR}/patches/0008-patch-4.19.101-102.patch"
+	${git} "${DIR}/patches/0009-patch-4.19.102-103.patch"
+	${git} "${DIR}/patches/0010-patch-4.19.103-104.patch"
+	${git} "${DIR}/patches/0011-patch-4.19.104-105.patch"
+	${git} "${DIR}/patches/0012-patch-4.19.105-106.patch"
+	${git} "${DIR}/patches/0013-patch-4.19.106-107.patch"
+	${git} "${DIR}/patches/0014-patch-4.19.107-108.patch"
+	${git} "${DIR}/patches/0015-patch-4.19.108-109.patch"
+	${git} "${DIR}/patches/0016-patch-4.19.109-110.patch"
 }
 
 aufs_fail () {

@@ -1,0 +1,1562 @@
+From 8824c5db31ff3edf3bc269f4a94ace4917c1bf3c Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Tue, 16 Mar 2021 14:34:16 -0500
+Subject: [PATCH 11/16] patch-4.19.104-105
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ arch/arm/mach-npcm/Kconfig                |  2 +-
+ arch/arm64/kernel/cpufeature.c            | 52 ++++++++++--
+ arch/arm64/kernel/fpsimd.c                | 20 ++++-
+ arch/arm64/kernel/process.c               |  7 ++
+ arch/arm64/kvm/hyp/switch.c               | 10 ++-
+ arch/s390/include/asm/timex.h             |  2 +-
+ arch/x86/events/amd/core.c                |  1 +
+ arch/x86/events/intel/ds.c                |  2 +
+ arch/x86/kvm/paging_tmpl.h                |  2 +-
+ arch/x86/kvm/vmx/vmx.c                    |  3 +
+ drivers/hwmon/pmbus/ltc2978.c             |  4 +-
+ drivers/infiniband/core/security.c        | 24 +++---
+ drivers/infiniband/core/uverbs_cmd.c      | 15 ++--
+ drivers/infiniband/hw/hfi1/affinity.c     |  2 +
+ drivers/infiniband/hw/hfi1/file_ops.c     | 52 +++++++-----
+ drivers/infiniband/hw/hfi1/hfi.h          |  5 +-
+ drivers/infiniband/hw/hfi1/user_exp_rcv.c |  5 +-
+ drivers/infiniband/hw/hfi1/user_sdma.c    | 17 ++--
+ drivers/infiniband/sw/rdmavt/qp.c         | 84 +++++++++++--------
+ drivers/infiniband/sw/rxe/rxe_comp.c      |  8 +-
+ drivers/input/mouse/synaptics.c           |  4 +-
+ drivers/nvme/host/core.c                  |  2 +-
+ fs/btrfs/disk-io.c                        |  1 +
+ fs/btrfs/extent_map.c                     | 11 +++
+ fs/btrfs/ref-verify.c                     |  5 ++
+ fs/btrfs/super.c                          |  2 +
+ fs/ext4/block_validity.c                  |  1 +
+ fs/ext4/dir.c                             | 14 ++--
+ fs/ext4/ext4.h                            |  5 +-
+ fs/ext4/inode.c                           | 12 +++
+ fs/ext4/mmp.c                             | 12 +--
+ fs/ext4/namei.c                           |  7 ++
+ fs/ext4/super.c                           | 32 ++++----
+ fs/jbd2/commit.c                          | 46 ++++++-----
+ fs/jbd2/transaction.c                     | 10 ++-
+ fs/nfs/nfs4proc.c                         |  2 +-
+ sound/pci/hda/patch_realtek.c             |  1 +
+ sound/usb/clock.c                         | 99 +++++++++++++++--------
+ sound/usb/clock.h                         |  4 +-
+ sound/usb/format.c                        |  3 +-
+ sound/usb/mixer.c                         | 12 ++-
+ sound/usb/quirks.c                        |  1 +
+ 42 files changed, 403 insertions(+), 200 deletions(-)
+
+diff --git a/arch/arm/mach-npcm/Kconfig b/arch/arm/mach-npcm/Kconfig
+index 684c9c9a32bd..1d17515deb4e 100644
+--- a/arch/arm/mach-npcm/Kconfig
++++ b/arch/arm/mach-npcm/Kconfig
+@@ -10,7 +10,7 @@ config ARCH_NPCM7XX
+ 	depends on ARCH_MULTI_V7
+ 	select PINCTRL_NPCM7XX
+ 	select NPCM7XX_TIMER
+-	select ARCH_REQUIRE_GPIOLIB
++	select GPIOLIB
+ 	select CACHE_L2X0
+ 	select ARM_GIC
+ 	select HAVE_ARM_TWD if SMP
+diff --git a/arch/arm64/kernel/cpufeature.c b/arch/arm64/kernel/cpufeature.c
+index 1375307fbe4d..ac3126aba036 100644
+--- a/arch/arm64/kernel/cpufeature.c
++++ b/arch/arm64/kernel/cpufeature.c
+@@ -42,9 +42,7 @@ EXPORT_SYMBOL_GPL(elf_hwcap);
+ #define COMPAT_ELF_HWCAP_DEFAULT	\
+ 				(COMPAT_HWCAP_HALF|COMPAT_HWCAP_THUMB|\
+ 				 COMPAT_HWCAP_FAST_MULT|COMPAT_HWCAP_EDSP|\
+-				 COMPAT_HWCAP_TLS|COMPAT_HWCAP_VFP|\
+-				 COMPAT_HWCAP_VFPv3|COMPAT_HWCAP_VFPv4|\
+-				 COMPAT_HWCAP_NEON|COMPAT_HWCAP_IDIV|\
++				 COMPAT_HWCAP_TLS|COMPAT_HWCAP_IDIV|\
+ 				 COMPAT_HWCAP_LPAE)
+ unsigned int compat_elf_hwcap __read_mostly = COMPAT_ELF_HWCAP_DEFAULT;
+ unsigned int compat_elf_hwcap2 __read_mostly;
+@@ -1341,17 +1339,30 @@ static const struct arm64_cpu_capabilities arm64_features[] = {
+ 	{},
+ };
+ 
+-#define HWCAP_CAP(reg, field, s, min_value, cap_type, cap)	\
+-	{							\
+-		.desc = #cap,					\
+-		.type = ARM64_CPUCAP_SYSTEM_FEATURE,		\
++
++#define HWCAP_CPUID_MATCH(reg, field, s, min_value)		\
+ 		.matches = has_cpuid_feature,			\
+ 		.sys_reg = reg,					\
+ 		.field_pos = field,				\
+ 		.sign = s,					\
+ 		.min_field_value = min_value,			\
++
++#define __HWCAP_CAP(name, cap_type, cap)			\
++		.desc = name,					\
++		.type = ARM64_CPUCAP_SYSTEM_FEATURE,		\
+ 		.hwcap_type = cap_type,				\
+ 		.hwcap = cap,					\
++
++#define HWCAP_CAP(reg, field, s, min_value, cap_type, cap)	\
++	{							\
++		__HWCAP_CAP(#cap, cap_type, cap)		\
++		HWCAP_CPUID_MATCH(reg, field, s, min_value)	\
++	}
++
++#define HWCAP_CAP_MATCH(match, cap_type, cap)			\
++	{							\
++		__HWCAP_CAP(#cap, cap_type, cap)		\
++		.matches = match,				\
+ 	}
+ 
+ static const struct arm64_cpu_capabilities arm64_elf_hwcaps[] = {
+@@ -1387,8 +1398,35 @@ static const struct arm64_cpu_capabilities arm64_elf_hwcaps[] = {
+ 	{},
+ };
+ 
++#ifdef CONFIG_COMPAT
++static bool compat_has_neon(const struct arm64_cpu_capabilities *cap, int scope)
++{
++	/*
++	 * Check that all of MVFR1_EL1.{SIMDSP, SIMDInt, SIMDLS} are available,
++	 * in line with that of arm32 as in vfp_init(). We make sure that the
++	 * check is future proof, by making sure value is non-zero.
++	 */
++	u32 mvfr1;
++
++	WARN_ON(scope == SCOPE_LOCAL_CPU && preemptible());
++	if (scope == SCOPE_SYSTEM)
++		mvfr1 = read_sanitised_ftr_reg(SYS_MVFR1_EL1);
++	else
++		mvfr1 = read_sysreg_s(SYS_MVFR1_EL1);
++
++	return cpuid_feature_extract_unsigned_field(mvfr1, MVFR1_SIMDSP_SHIFT) &&
++		cpuid_feature_extract_unsigned_field(mvfr1, MVFR1_SIMDINT_SHIFT) &&
++		cpuid_feature_extract_unsigned_field(mvfr1, MVFR1_SIMDLS_SHIFT);
++}
++#endif
++
+ static const struct arm64_cpu_capabilities compat_elf_hwcaps[] = {
+ #ifdef CONFIG_COMPAT
++	HWCAP_CAP_MATCH(compat_has_neon, CAP_COMPAT_HWCAP, COMPAT_HWCAP_NEON),
++	HWCAP_CAP(SYS_MVFR1_EL1, MVFR1_SIMDFMAC_SHIFT, FTR_UNSIGNED, 1, CAP_COMPAT_HWCAP, COMPAT_HWCAP_VFPv4),
++	/* Arm v8 mandates MVFR0.FPDP == {0, 2}. So, piggy back on this for the presence of VFP support */
++	HWCAP_CAP(SYS_MVFR0_EL1, MVFR0_FPDP_SHIFT, FTR_UNSIGNED, 2, CAP_COMPAT_HWCAP, COMPAT_HWCAP_VFP),
++	HWCAP_CAP(SYS_MVFR0_EL1, MVFR0_FPDP_SHIFT, FTR_UNSIGNED, 2, CAP_COMPAT_HWCAP, COMPAT_HWCAP_VFPv3),
+ 	HWCAP_CAP(SYS_ID_ISAR5_EL1, ID_ISAR5_AES_SHIFT, FTR_UNSIGNED, 2, CAP_COMPAT_HWCAP2, COMPAT_HWCAP2_PMULL),
+ 	HWCAP_CAP(SYS_ID_ISAR5_EL1, ID_ISAR5_AES_SHIFT, FTR_UNSIGNED, 1, CAP_COMPAT_HWCAP2, COMPAT_HWCAP2_AES),
+ 	HWCAP_CAP(SYS_ID_ISAR5_EL1, ID_ISAR5_SHA1_SHIFT, FTR_UNSIGNED, 1, CAP_COMPAT_HWCAP2, COMPAT_HWCAP2_SHA1),
+diff --git a/arch/arm64/kernel/fpsimd.c b/arch/arm64/kernel/fpsimd.c
+index 58c53bc96928..14fdbaa6ee3a 100644
+--- a/arch/arm64/kernel/fpsimd.c
++++ b/arch/arm64/kernel/fpsimd.c
+@@ -218,6 +218,7 @@ static void sve_free(struct task_struct *task)
+ static void task_fpsimd_load(void)
+ {
+ 	WARN_ON(!in_softirq() && !irqs_disabled());
++	WARN_ON(!system_supports_fpsimd());
+ 
+ 	if (system_supports_sve() && test_thread_flag(TIF_SVE))
+ 		sve_load_state(sve_pffr(&current->thread),
+@@ -238,6 +239,7 @@ void fpsimd_save(void)
+ 	struct user_fpsimd_state *st = __this_cpu_read(fpsimd_last_state.st);
+ 	/* set by fpsimd_bind_task_to_cpu() or fpsimd_bind_state_to_cpu() */
+ 
++	WARN_ON(!system_supports_fpsimd());
+ 	WARN_ON(!in_softirq() && !irqs_disabled());
+ 
+ 	if (!test_thread_flag(TIF_FOREIGN_FPSTATE)) {
+@@ -977,6 +979,7 @@ void fpsimd_bind_task_to_cpu(void)
+ 	struct fpsimd_last_state_struct *last =
+ 		this_cpu_ptr(&fpsimd_last_state);
+ 
++	WARN_ON(!system_supports_fpsimd());
+ 	last->st = &current->thread.uw.fpsimd_state;
+ 	current->thread.fpsimd_cpu = smp_processor_id();
+ 
+@@ -996,6 +999,7 @@ void fpsimd_bind_state_to_cpu(struct user_fpsimd_state *st)
+ 	struct fpsimd_last_state_struct *last =
+ 		this_cpu_ptr(&fpsimd_last_state);
+ 
++	WARN_ON(!system_supports_fpsimd());
+ 	WARN_ON(!in_softirq() && !irqs_disabled());
+ 
+ 	last->st = st;
+@@ -1008,8 +1012,19 @@ void fpsimd_bind_state_to_cpu(struct user_fpsimd_state *st)
+  */
+ void fpsimd_restore_current_state(void)
+ {
+-	if (!system_supports_fpsimd())
++	/*
++	 * For the tasks that were created before we detected the absence of
++	 * FP/SIMD, the TIF_FOREIGN_FPSTATE could be set via fpsimd_thread_switch(),
++	 * e.g, init. This could be then inherited by the children processes.
++	 * If we later detect that the system doesn't support FP/SIMD,
++	 * we must clear the flag for  all the tasks to indicate that the
++	 * FPSTATE is clean (as we can't have one) to avoid looping for ever in
++	 * do_notify_resume().
++	 */
++	if (!system_supports_fpsimd()) {
++		clear_thread_flag(TIF_FOREIGN_FPSTATE);
+ 		return;
++	}
+ 
+ 	local_bh_disable();
+ 
+@@ -1028,7 +1043,7 @@ void fpsimd_restore_current_state(void)
+  */
+ void fpsimd_update_current_state(struct user_fpsimd_state const *state)
+ {
+-	if (!system_supports_fpsimd())
++	if (WARN_ON(!system_supports_fpsimd()))
+ 		return;
+ 
+ 	local_bh_disable();
+@@ -1055,6 +1070,7 @@ void fpsimd_flush_task_state(struct task_struct *t)
+ 
+ void fpsimd_flush_cpu_state(void)
+ {
++	WARN_ON(!system_supports_fpsimd());
+ 	__this_cpu_write(fpsimd_last_state.st, NULL);
+ 	set_thread_flag(TIF_FOREIGN_FPSTATE);
+ }
+diff --git a/arch/arm64/kernel/process.c b/arch/arm64/kernel/process.c
+index d668c13218b8..d6a49bb07a5f 100644
+--- a/arch/arm64/kernel/process.c
++++ b/arch/arm64/kernel/process.c
+@@ -414,6 +414,13 @@ static void ssbs_thread_switch(struct task_struct *next)
+ 	if (unlikely(next->flags & PF_KTHREAD))
+ 		return;
+ 
++	/*
++	 * If all CPUs implement the SSBS extension, then we just need to
++	 * context-switch the PSTATE field.
++	 */
++	if (cpu_have_feature(cpu_feature(SSBS)))
++		return;
++
+ 	/* If the mitigation is enabled, then we leave SSBS clear. */
+ 	if ((arm64_get_ssbd_state() == ARM64_SSBD_FORCE_ENABLE) ||
+ 	    test_tsk_thread_flag(next, TIF_SSBD))
+diff --git a/arch/arm64/kvm/hyp/switch.c b/arch/arm64/kvm/hyp/switch.c
+index 6290a4e81d57..f3978931aaf4 100644
+--- a/arch/arm64/kvm/hyp/switch.c
++++ b/arch/arm64/kvm/hyp/switch.c
+@@ -37,7 +37,15 @@
+ /* Check whether the FP regs were dirtied while in the host-side run loop: */
+ static bool __hyp_text update_fp_enabled(struct kvm_vcpu *vcpu)
+ {
+-	if (vcpu->arch.host_thread_info->flags & _TIF_FOREIGN_FPSTATE)
++	/*
++	 * When the system doesn't support FP/SIMD, we cannot rely on
++	 * the _TIF_FOREIGN_FPSTATE flag. However, we always inject an
++	 * abort on the very first access to FP and thus we should never
++	 * see KVM_ARM64_FP_ENABLED. For added safety, make sure we always
++	 * trap the accesses.
++	 */
++	if (!system_supports_fpsimd() ||
++	    vcpu->arch.host_thread_info->flags & _TIF_FOREIGN_FPSTATE)
+ 		vcpu->arch.flags &= ~(KVM_ARM64_FP_ENABLED |
+ 				      KVM_ARM64_FP_HOST);
+ 
+diff --git a/arch/s390/include/asm/timex.h b/arch/s390/include/asm/timex.h
+index 2dc9eb4e1acc..b6a4ce9dafaf 100644
+--- a/arch/s390/include/asm/timex.h
++++ b/arch/s390/include/asm/timex.h
+@@ -155,7 +155,7 @@ static inline void get_tod_clock_ext(char *clk)
+ 
+ static inline unsigned long long get_tod_clock(void)
+ {
+-	unsigned char clk[STORE_CLOCK_EXT_SIZE];
++	char clk[STORE_CLOCK_EXT_SIZE];
+ 
+ 	get_tod_clock_ext(clk);
+ 	return *((unsigned long long *)&clk[1]);
+diff --git a/arch/x86/events/amd/core.c b/arch/x86/events/amd/core.c
+index defb536aebce..c3ec535fd36b 100644
+--- a/arch/x86/events/amd/core.c
++++ b/arch/x86/events/amd/core.c
+@@ -245,6 +245,7 @@ static const u64 amd_f17h_perfmon_event_map[PERF_COUNT_HW_MAX] =
+ 	[PERF_COUNT_HW_CPU_CYCLES]		= 0x0076,
+ 	[PERF_COUNT_HW_INSTRUCTIONS]		= 0x00c0,
+ 	[PERF_COUNT_HW_CACHE_REFERENCES]	= 0xff60,
++	[PERF_COUNT_HW_CACHE_MISSES]		= 0x0964,
+ 	[PERF_COUNT_HW_BRANCH_INSTRUCTIONS]	= 0x00c2,
+ 	[PERF_COUNT_HW_BRANCH_MISSES]		= 0x00c3,
+ 	[PERF_COUNT_HW_STALLED_CYCLES_FRONTEND]	= 0x0287,
+diff --git a/arch/x86/events/intel/ds.c b/arch/x86/events/intel/ds.c
+index e91814d1a27f..79caeba8b6f0 100644
+--- a/arch/x86/events/intel/ds.c
++++ b/arch/x86/events/intel/ds.c
+@@ -1402,6 +1402,8 @@ intel_pmu_save_and_restart_reload(struct perf_event *event, int count)
+ 	old = ((s64)(prev_raw_count << shift) >> shift);
+ 	local64_add(new - old + count * period, &event->count);
+ 
++	local64_set(&hwc->period_left, -new);
++
+ 	perf_event_update_userpage(event);
+ 
+ 	return 0;
+diff --git a/arch/x86/kvm/paging_tmpl.h b/arch/x86/kvm/paging_tmpl.h
+index 100ae4fabf17..61f10a4fd807 100644
+--- a/arch/x86/kvm/paging_tmpl.h
++++ b/arch/x86/kvm/paging_tmpl.h
+@@ -36,7 +36,7 @@
+ 	#define PT_GUEST_ACCESSED_SHIFT PT_ACCESSED_SHIFT
+ 	#define PT_HAVE_ACCESSED_DIRTY(mmu) true
+ 	#ifdef CONFIG_X86_64
+-	#define PT_MAX_FULL_LEVELS 4
++	#define PT_MAX_FULL_LEVELS PT64_ROOT_MAX_LEVEL
+ 	#define CMPXCHG cmpxchg
+ 	#else
+ 	#define CMPXCHG cmpxchg64
+diff --git a/arch/x86/kvm/vmx/vmx.c b/arch/x86/kvm/vmx/vmx.c
+index 3791ce8d269e..997926a9121c 100644
+--- a/arch/x86/kvm/vmx/vmx.c
++++ b/arch/x86/kvm/vmx/vmx.c
+@@ -2968,6 +2968,9 @@ void vmx_set_cr0(struct kvm_vcpu *vcpu, unsigned long cr0)
+ 
+ static int get_ept_level(struct kvm_vcpu *vcpu)
+ {
++	/* Nested EPT currently only supports 4-level walks. */
++	if (is_guest_mode(vcpu) && nested_cpu_has_ept(get_vmcs12(vcpu)))
++		return 4;
+ 	if (cpu_has_vmx_ept_5levels() && (cpuid_maxphyaddr(vcpu) > 48))
+ 		return 5;
+ 	return 4;
+diff --git a/drivers/hwmon/pmbus/ltc2978.c b/drivers/hwmon/pmbus/ltc2978.c
+index 58b789c28b48..94eea2ac6251 100644
+--- a/drivers/hwmon/pmbus/ltc2978.c
++++ b/drivers/hwmon/pmbus/ltc2978.c
+@@ -89,8 +89,8 @@ enum chips { ltc2974, ltc2975, ltc2977, ltc2978, ltc2980, ltc3880, ltc3882,
+ 
+ #define LTC_POLL_TIMEOUT		100	/* in milli-seconds */
+ 
+-#define LTC_NOT_BUSY			BIT(5)
+-#define LTC_NOT_PENDING			BIT(4)
++#define LTC_NOT_BUSY			BIT(6)
++#define LTC_NOT_PENDING			BIT(5)
+ 
+ /*
+  * LTC2978 clears peak data whenever the CLEAR_FAULTS command is executed, which
+diff --git a/drivers/infiniband/core/security.c b/drivers/infiniband/core/security.c
+index b79b61bd6ee4..4e2565cccb8a 100644
+--- a/drivers/infiniband/core/security.c
++++ b/drivers/infiniband/core/security.c
+@@ -336,22 +336,16 @@ static struct ib_ports_pkeys *get_new_pps(const struct ib_qp *qp,
+ 	if (!new_pps)
+ 		return NULL;
+ 
+-	if (qp_attr_mask & (IB_QP_PKEY_INDEX | IB_QP_PORT)) {
+-		if (!qp_pps) {
+-			new_pps->main.port_num = qp_attr->port_num;
+-			new_pps->main.pkey_index = qp_attr->pkey_index;
+-		} else {
+-			new_pps->main.port_num = (qp_attr_mask & IB_QP_PORT) ?
+-						  qp_attr->port_num :
+-						  qp_pps->main.port_num;
+-
+-			new_pps->main.pkey_index =
+-					(qp_attr_mask & IB_QP_PKEY_INDEX) ?
+-					 qp_attr->pkey_index :
+-					 qp_pps->main.pkey_index;
+-		}
++	if (qp_attr_mask & IB_QP_PORT)
++		new_pps->main.port_num =
++			(qp_pps) ? qp_pps->main.port_num : qp_attr->port_num;
++	if (qp_attr_mask & IB_QP_PKEY_INDEX)
++		new_pps->main.pkey_index = (qp_pps) ? qp_pps->main.pkey_index :
++						      qp_attr->pkey_index;
++	if ((qp_attr_mask & IB_QP_PKEY_INDEX) && (qp_attr_mask & IB_QP_PORT))
+ 		new_pps->main.state = IB_PORT_PKEY_VALID;
+-	} else if (qp_pps) {
++
++	if (!(qp_attr_mask & (IB_QP_PKEY_INDEX || IB_QP_PORT)) && qp_pps) {
+ 		new_pps->main.port_num = qp_pps->main.port_num;
+ 		new_pps->main.pkey_index = qp_pps->main.pkey_index;
+ 		if (qp_pps->main.state != IB_PORT_PKEY_NOT_VALID)
+diff --git a/drivers/infiniband/core/uverbs_cmd.c b/drivers/infiniband/core/uverbs_cmd.c
+index e012ca80f9d1..5e10a40fd26d 100644
+--- a/drivers/infiniband/core/uverbs_cmd.c
++++ b/drivers/infiniband/core/uverbs_cmd.c
+@@ -2914,12 +2914,6 @@ static int kern_spec_to_ib_spec_action(struct ib_uverbs_file *ufile,
+ 	return 0;
+ }
+ 
+-static size_t kern_spec_filter_sz(const struct ib_uverbs_flow_spec_hdr *spec)
+-{
+-	/* Returns user space filter size, includes padding */
+-	return (spec->size - sizeof(struct ib_uverbs_flow_spec_hdr)) / 2;
+-}
+-
+ static ssize_t spec_filter_size(const void *kern_spec_filter, u16 kern_filter_size,
+ 				u16 ib_real_filter_sz)
+ {
+@@ -3063,11 +3057,16 @@ int ib_uverbs_kern_spec_to_ib_spec_filter(enum ib_flow_spec_type type,
+ static int kern_spec_to_ib_spec_filter(struct ib_uverbs_flow_spec *kern_spec,
+ 				       union ib_flow_spec *ib_spec)
+ {
+-	ssize_t kern_filter_sz;
++	size_t kern_filter_sz;
+ 	void *kern_spec_mask;
+ 	void *kern_spec_val;
+ 
+-	kern_filter_sz = kern_spec_filter_sz(&kern_spec->hdr);
++	if (check_sub_overflow((size_t)kern_spec->hdr.size,
++			       sizeof(struct ib_uverbs_flow_spec_hdr),
++			       &kern_filter_sz))
++		return -EINVAL;
++
++	kern_filter_sz /= 2;
+ 
+ 	kern_spec_val = (void *)kern_spec +
+ 		sizeof(struct ib_uverbs_flow_spec_hdr);
+diff --git a/drivers/infiniband/hw/hfi1/affinity.c b/drivers/infiniband/hw/hfi1/affinity.c
+index bedd5fba33b0..01ed0a667928 100644
+--- a/drivers/infiniband/hw/hfi1/affinity.c
++++ b/drivers/infiniband/hw/hfi1/affinity.c
+@@ -478,6 +478,8 @@ static int _dev_comp_vect_mappings_create(struct hfi1_devdata *dd,
+ 			  rvt_get_ibdev_name(&(dd)->verbs_dev.rdi), i, cpu);
+ 	}
+ 
++	free_cpumask_var(available_cpus);
++	free_cpumask_var(non_intr_cpus);
+ 	return 0;
+ 
+ fail:
+diff --git a/drivers/infiniband/hw/hfi1/file_ops.c b/drivers/infiniband/hw/hfi1/file_ops.c
+index 34ffca618427..adeb259458de 100644
+--- a/drivers/infiniband/hw/hfi1/file_ops.c
++++ b/drivers/infiniband/hw/hfi1/file_ops.c
+@@ -200,23 +200,24 @@ static int hfi1_file_open(struct inode *inode, struct file *fp)
+ 
+ 	fd = kzalloc(sizeof(*fd), GFP_KERNEL);
+ 
+-	if (fd) {
+-		fd->rec_cpu_num = -1; /* no cpu affinity by default */
+-		fd->mm = current->mm;
+-		mmgrab(fd->mm);
+-		fd->dd = dd;
+-		kobject_get(&fd->dd->kobj);
+-		fp->private_data = fd;
+-	} else {
+-		fp->private_data = NULL;
+-
+-		if (atomic_dec_and_test(&dd->user_refcount))
+-			complete(&dd->user_comp);
+-
+-		return -ENOMEM;
+-	}
+-
++	if (!fd || init_srcu_struct(&fd->pq_srcu))
++		goto nomem;
++	spin_lock_init(&fd->pq_rcu_lock);
++	spin_lock_init(&fd->tid_lock);
++	spin_lock_init(&fd->invalid_lock);
++	fd->rec_cpu_num = -1; /* no cpu affinity by default */
++	fd->mm = current->mm;
++	mmgrab(fd->mm);
++	fd->dd = dd;
++	kobject_get(&fd->dd->kobj);
++	fp->private_data = fd;
+ 	return 0;
++nomem:
++	kfree(fd);
++	fp->private_data = NULL;
++	if (atomic_dec_and_test(&dd->user_refcount))
++		complete(&dd->user_comp);
++	return -ENOMEM;
+ }
+ 
+ static long hfi1_file_ioctl(struct file *fp, unsigned int cmd,
+@@ -301,21 +302,30 @@ static long hfi1_file_ioctl(struct file *fp, unsigned int cmd,
+ static ssize_t hfi1_write_iter(struct kiocb *kiocb, struct iov_iter *from)
+ {
+ 	struct hfi1_filedata *fd = kiocb->ki_filp->private_data;
+-	struct hfi1_user_sdma_pkt_q *pq = fd->pq;
++	struct hfi1_user_sdma_pkt_q *pq;
+ 	struct hfi1_user_sdma_comp_q *cq = fd->cq;
+ 	int done = 0, reqs = 0;
+ 	unsigned long dim = from->nr_segs;
++	int idx;
+ 
+-	if (!cq || !pq)
++	idx = srcu_read_lock(&fd->pq_srcu);
++	pq = srcu_dereference(fd->pq, &fd->pq_srcu);
++	if (!cq || !pq) {
++		srcu_read_unlock(&fd->pq_srcu, idx);
+ 		return -EIO;
++	}
+ 
+-	if (!iter_is_iovec(from) || !dim)
++	if (!iter_is_iovec(from) || !dim) {
++		srcu_read_unlock(&fd->pq_srcu, idx);
+ 		return -EINVAL;
++	}
+ 
+ 	trace_hfi1_sdma_request(fd->dd, fd->uctxt->ctxt, fd->subctxt, dim);
+ 
+-	if (atomic_read(&pq->n_reqs) == pq->n_max_reqs)
++	if (atomic_read(&pq->n_reqs) == pq->n_max_reqs) {
++		srcu_read_unlock(&fd->pq_srcu, idx);
+ 		return -ENOSPC;
++	}
+ 
+ 	while (dim) {
+ 		int ret;
+@@ -333,6 +343,7 @@ static ssize_t hfi1_write_iter(struct kiocb *kiocb, struct iov_iter *from)
+ 		reqs++;
+ 	}
+ 
++	srcu_read_unlock(&fd->pq_srcu, idx);
+ 	return reqs;
+ }
+ 
+@@ -706,6 +717,7 @@ static int hfi1_file_close(struct inode *inode, struct file *fp)
+ 	if (atomic_dec_and_test(&dd->user_refcount))
+ 		complete(&dd->user_comp);
+ 
++	cleanup_srcu_struct(&fdata->pq_srcu);
+ 	kfree(fdata);
+ 	return 0;
+ }
+diff --git a/drivers/infiniband/hw/hfi1/hfi.h b/drivers/infiniband/hw/hfi1/hfi.h
+index 232fc4b59a98..ab981874c71c 100644
+--- a/drivers/infiniband/hw/hfi1/hfi.h
++++ b/drivers/infiniband/hw/hfi1/hfi.h
+@@ -1376,10 +1376,13 @@ struct mmu_rb_handler;
+ 
+ /* Private data for file operations */
+ struct hfi1_filedata {
++	struct srcu_struct pq_srcu;
+ 	struct hfi1_devdata *dd;
+ 	struct hfi1_ctxtdata *uctxt;
+ 	struct hfi1_user_sdma_comp_q *cq;
+-	struct hfi1_user_sdma_pkt_q *pq;
++	/* update side lock for SRCU */
++	spinlock_t pq_rcu_lock;
++	struct hfi1_user_sdma_pkt_q __rcu *pq;
+ 	u16 subctxt;
+ 	/* for cpu affinity; -1 if none */
+ 	int rec_cpu_num;
+diff --git a/drivers/infiniband/hw/hfi1/user_exp_rcv.c b/drivers/infiniband/hw/hfi1/user_exp_rcv.c
+index 4e986ca4dd35..4e417ed08b09 100644
+--- a/drivers/infiniband/hw/hfi1/user_exp_rcv.c
++++ b/drivers/infiniband/hw/hfi1/user_exp_rcv.c
+@@ -90,9 +90,6 @@ int hfi1_user_exp_rcv_init(struct hfi1_filedata *fd,
+ 	struct hfi1_devdata *dd = uctxt->dd;
+ 	int ret = 0;
+ 
+-	spin_lock_init(&fd->tid_lock);
+-	spin_lock_init(&fd->invalid_lock);
+-
+ 	fd->entry_to_rb = kcalloc(uctxt->expected_count,
+ 				  sizeof(struct rb_node *),
+ 				  GFP_KERNEL);
+@@ -165,10 +162,12 @@ void hfi1_user_exp_rcv_free(struct hfi1_filedata *fd)
+ 	if (fd->handler) {
+ 		hfi1_mmu_rb_unregister(fd->handler);
+ 	} else {
++		mutex_lock(&uctxt->exp_mutex);
+ 		if (!EXP_TID_SET_EMPTY(uctxt->tid_full_list))
+ 			unlock_exp_tids(uctxt, &uctxt->tid_full_list, fd);
+ 		if (!EXP_TID_SET_EMPTY(uctxt->tid_used_list))
+ 			unlock_exp_tids(uctxt, &uctxt->tid_used_list, fd);
++		mutex_unlock(&uctxt->exp_mutex);
+ 	}
+ 
+ 	kfree(fd->invalid_tids);
+diff --git a/drivers/infiniband/hw/hfi1/user_sdma.c b/drivers/infiniband/hw/hfi1/user_sdma.c
+index 684a298e1503..a3b08a9ef5ff 100644
+--- a/drivers/infiniband/hw/hfi1/user_sdma.c
++++ b/drivers/infiniband/hw/hfi1/user_sdma.c
+@@ -179,7 +179,6 @@ int hfi1_user_sdma_alloc_queues(struct hfi1_ctxtdata *uctxt,
+ 	pq = kzalloc(sizeof(*pq), GFP_KERNEL);
+ 	if (!pq)
+ 		return -ENOMEM;
+-
+ 	pq->dd = dd;
+ 	pq->ctxt = uctxt->ctxt;
+ 	pq->subctxt = fd->subctxt;
+@@ -236,7 +235,7 @@ int hfi1_user_sdma_alloc_queues(struct hfi1_ctxtdata *uctxt,
+ 		goto pq_mmu_fail;
+ 	}
+ 
+-	fd->pq = pq;
++	rcu_assign_pointer(fd->pq, pq);
+ 	fd->cq = cq;
+ 
+ 	return 0;
+@@ -264,8 +263,14 @@ int hfi1_user_sdma_free_queues(struct hfi1_filedata *fd,
+ 
+ 	trace_hfi1_sdma_user_free_queues(uctxt->dd, uctxt->ctxt, fd->subctxt);
+ 
+-	pq = fd->pq;
++	spin_lock(&fd->pq_rcu_lock);
++	pq = srcu_dereference_check(fd->pq, &fd->pq_srcu,
++				    lockdep_is_held(&fd->pq_rcu_lock));
+ 	if (pq) {
++		rcu_assign_pointer(fd->pq, NULL);
++		spin_unlock(&fd->pq_rcu_lock);
++		synchronize_srcu(&fd->pq_srcu);
++		/* at this point there can be no more new requests */
+ 		if (pq->handler)
+ 			hfi1_mmu_rb_unregister(pq->handler);
+ 		iowait_sdma_drain(&pq->busy);
+@@ -277,7 +282,8 @@ int hfi1_user_sdma_free_queues(struct hfi1_filedata *fd,
+ 		kfree(pq->req_in_use);
+ 		kmem_cache_destroy(pq->txreq_cache);
+ 		kfree(pq);
+-		fd->pq = NULL;
++	} else {
++		spin_unlock(&fd->pq_rcu_lock);
+ 	}
+ 	if (fd->cq) {
+ 		vfree(fd->cq->comps);
+@@ -321,7 +327,8 @@ int hfi1_user_sdma_process_request(struct hfi1_filedata *fd,
+ {
+ 	int ret = 0, i;
+ 	struct hfi1_ctxtdata *uctxt = fd->uctxt;
+-	struct hfi1_user_sdma_pkt_q *pq = fd->pq;
++	struct hfi1_user_sdma_pkt_q *pq =
++		srcu_dereference(fd->pq, &fd->pq_srcu);
+ 	struct hfi1_user_sdma_comp_q *cq = fd->cq;
+ 	struct hfi1_devdata *dd = pq->dd;
+ 	unsigned long idx = 0;
+diff --git a/drivers/infiniband/sw/rdmavt/qp.c b/drivers/infiniband/sw/rdmavt/qp.c
+index 7d03680afd91..fbc316775669 100644
+--- a/drivers/infiniband/sw/rdmavt/qp.c
++++ b/drivers/infiniband/sw/rdmavt/qp.c
+@@ -58,6 +58,8 @@
+ #include "trace.h"
+ 
+ static void rvt_rc_timeout(struct timer_list *t);
++static void rvt_reset_qp(struct rvt_dev_info *rdi, struct rvt_qp *qp,
++			 enum ib_qp_type type);
+ 
+ /*
+  * Convert the AETH RNR timeout code into the number of microseconds.
+@@ -268,40 +270,41 @@ int rvt_driver_qp_init(struct rvt_dev_info *rdi)
+ }
+ 
+ /**
+- * free_all_qps - check for QPs still in use
++ * rvt_free_qp_cb - callback function to reset a qp
++ * @qp: the qp to reset
++ * @v: a 64-bit value
++ *
++ * This function resets the qp and removes it from the
++ * qp hash table.
++ */
++static void rvt_free_qp_cb(struct rvt_qp *qp, u64 v)
++{
++	unsigned int *qp_inuse = (unsigned int *)v;
++	struct rvt_dev_info *rdi = ib_to_rvt(qp->ibqp.device);
++
++	/* Reset the qp and remove it from the qp hash list */
++	rvt_reset_qp(rdi, qp, qp->ibqp.qp_type);
++
++	/* Increment the qp_inuse count */
++	(*qp_inuse)++;
++}
++
++/**
++ * rvt_free_all_qps - check for QPs still in use
+  * @rdi: rvt device info structure
+  *
+  * There should not be any QPs still in use.
+  * Free memory for table.
++ * Return the number of QPs still in use.
+  */
+ static unsigned rvt_free_all_qps(struct rvt_dev_info *rdi)
+ {
+-	unsigned long flags;
+-	struct rvt_qp *qp;
+-	unsigned n, qp_inuse = 0;
+-	spinlock_t *ql; /* work around too long line below */
+-
+-	if (rdi->driver_f.free_all_qps)
+-		qp_inuse = rdi->driver_f.free_all_qps(rdi);
++	unsigned int qp_inuse = 0;
+ 
+ 	qp_inuse += rvt_mcast_tree_empty(rdi);
+ 
+-	if (!rdi->qp_dev)
+-		return qp_inuse;
++	rvt_qp_iter(rdi, (u64)&qp_inuse, rvt_free_qp_cb);
+ 
+-	ql = &rdi->qp_dev->qpt_lock;
+-	spin_lock_irqsave(ql, flags);
+-	for (n = 0; n < rdi->qp_dev->qp_table_size; n++) {
+-		qp = rcu_dereference_protected(rdi->qp_dev->qp_table[n],
+-					       lockdep_is_held(ql));
+-		RCU_INIT_POINTER(rdi->qp_dev->qp_table[n], NULL);
+-
+-		for (; qp; qp = rcu_dereference_protected(qp->next,
+-							  lockdep_is_held(ql)))
+-			qp_inuse++;
+-	}
+-	spin_unlock_irqrestore(ql, flags);
+-	synchronize_rcu();
+ 	return qp_inuse;
+ }
+ 
+@@ -684,14 +687,14 @@ static void rvt_init_qp(struct rvt_dev_info *rdi, struct rvt_qp *qp,
+ }
+ 
+ /**
+- * rvt_reset_qp - initialize the QP state to the reset state
++ * _rvt_reset_qp - initialize the QP state to the reset state
+  * @qp: the QP to reset
+  * @type: the QP type
+  *
+  * r_lock, s_hlock, and s_lock are required to be held by the caller
+  */
+-static void rvt_reset_qp(struct rvt_dev_info *rdi, struct rvt_qp *qp,
+-			 enum ib_qp_type type)
++static void _rvt_reset_qp(struct rvt_dev_info *rdi, struct rvt_qp *qp,
++			  enum ib_qp_type type)
+ 	__must_hold(&qp->s_lock)
+ 	__must_hold(&qp->s_hlock)
+ 	__must_hold(&qp->r_lock)
+@@ -737,6 +740,27 @@ static void rvt_reset_qp(struct rvt_dev_info *rdi, struct rvt_qp *qp,
+ 	lockdep_assert_held(&qp->s_lock);
+ }
+ 
++/**
++ * rvt_reset_qp - initialize the QP state to the reset state
++ * @rdi: the device info
++ * @qp: the QP to reset
++ * @type: the QP type
++ *
++ * This is the wrapper function to acquire the r_lock, s_hlock, and s_lock
++ * before calling _rvt_reset_qp().
++ */
++static void rvt_reset_qp(struct rvt_dev_info *rdi, struct rvt_qp *qp,
++			 enum ib_qp_type type)
++{
++	spin_lock_irq(&qp->r_lock);
++	spin_lock(&qp->s_hlock);
++	spin_lock(&qp->s_lock);
++	_rvt_reset_qp(rdi, qp, type);
++	spin_unlock(&qp->s_lock);
++	spin_unlock(&qp->s_hlock);
++	spin_unlock_irq(&qp->r_lock);
++}
++
+ /** rvt_free_qpn - Free a qpn from the bit map
+  * @qpt: QP table
+  * @qpn: queue pair number to free
+@@ -1285,7 +1309,7 @@ int rvt_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
+ 	switch (new_state) {
+ 	case IB_QPS_RESET:
+ 		if (qp->state != IB_QPS_RESET)
+-			rvt_reset_qp(rdi, qp, ibqp->qp_type);
++			_rvt_reset_qp(rdi, qp, ibqp->qp_type);
+ 		break;
+ 
+ 	case IB_QPS_RTR:
+@@ -1434,13 +1458,7 @@ int rvt_destroy_qp(struct ib_qp *ibqp)
+ 	struct rvt_qp *qp = ibqp_to_rvtqp(ibqp);
+ 	struct rvt_dev_info *rdi = ib_to_rvt(ibqp->device);
+ 
+-	spin_lock_irq(&qp->r_lock);
+-	spin_lock(&qp->s_hlock);
+-	spin_lock(&qp->s_lock);
+ 	rvt_reset_qp(rdi, qp, ibqp->qp_type);
+-	spin_unlock(&qp->s_lock);
+-	spin_unlock(&qp->s_hlock);
+-	spin_unlock_irq(&qp->r_lock);
+ 
+ 	wait_event(qp->wait, !atomic_read(&qp->refcount));
+ 	/* qpn is now available for use again */
+diff --git a/drivers/infiniband/sw/rxe/rxe_comp.c b/drivers/infiniband/sw/rxe/rxe_comp.c
+index ea089cb091ad..dc06e9844378 100644
+--- a/drivers/infiniband/sw/rxe/rxe_comp.c
++++ b/drivers/infiniband/sw/rxe/rxe_comp.c
+@@ -329,7 +329,7 @@ static inline enum comp_state check_ack(struct rxe_qp *qp,
+ 					qp->comp.psn = pkt->psn;
+ 					if (qp->req.wait_psn) {
+ 						qp->req.wait_psn = 0;
+-						rxe_run_task(&qp->req.task, 1);
++						rxe_run_task(&qp->req.task, 0);
+ 					}
+ 				}
+ 				return COMPST_ERROR_RETRY;
+@@ -457,7 +457,7 @@ static void do_complete(struct rxe_qp *qp, struct rxe_send_wqe *wqe)
+ 	 */
+ 	if (qp->req.wait_fence) {
+ 		qp->req.wait_fence = 0;
+-		rxe_run_task(&qp->req.task, 1);
++		rxe_run_task(&qp->req.task, 0);
+ 	}
+ }
+ 
+@@ -473,7 +473,7 @@ static inline enum comp_state complete_ack(struct rxe_qp *qp,
+ 		if (qp->req.need_rd_atomic) {
+ 			qp->comp.timeout_retry = 0;
+ 			qp->req.need_rd_atomic = 0;
+-			rxe_run_task(&qp->req.task, 1);
++			rxe_run_task(&qp->req.task, 0);
+ 		}
+ 	}
+ 
+@@ -719,7 +719,7 @@ int rxe_completer(void *arg)
+ 							RXE_CNT_COMP_RETRY);
+ 					qp->req.need_retry = 1;
+ 					qp->comp.started_retry = 1;
+-					rxe_run_task(&qp->req.task, 1);
++					rxe_run_task(&qp->req.task, 0);
+ 				}
+ 
+ 				if (pkt) {
+diff --git a/drivers/input/mouse/synaptics.c b/drivers/input/mouse/synaptics.c
+index e8d1134943c4..f47e3fca403d 100644
+--- a/drivers/input/mouse/synaptics.c
++++ b/drivers/input/mouse/synaptics.c
+@@ -149,7 +149,6 @@ static const char * const topbuttonpad_pnp_ids[] = {
+ 	"LEN0042", /* Yoga */
+ 	"LEN0045",
+ 	"LEN0047",
+-	"LEN0049",
+ 	"LEN2000", /* S540 */
+ 	"LEN2001", /* Edge E431 */
+ 	"LEN2002", /* Edge E531 */
+@@ -169,9 +168,11 @@ static const char * const smbus_pnp_ids[] = {
+ 	/* all of the topbuttonpad_pnp_ids are valid, we just add some extras */
+ 	"LEN0048", /* X1 Carbon 3 */
+ 	"LEN0046", /* X250 */
++	"LEN0049", /* Yoga 11e */
+ 	"LEN004a", /* W541 */
+ 	"LEN005b", /* P50 */
+ 	"LEN005e", /* T560 */
++	"LEN006c", /* T470s */
+ 	"LEN0071", /* T480 */
+ 	"LEN0072", /* X1 Carbon Gen 5 (2017) - Elan/ALPS trackpoint */
+ 	"LEN0073", /* X1 Carbon G5 (Elantech) */
+@@ -182,6 +183,7 @@ static const char * const smbus_pnp_ids[] = {
+ 	"LEN0097", /* X280 -> ALPS trackpoint */
+ 	"LEN009b", /* T580 */
+ 	"LEN200f", /* T450s */
++	"LEN2044", /* L470  */
+ 	"LEN2054", /* E480 */
+ 	"LEN2055", /* E580 */
+ 	"SYN3052", /* HP EliteBook 840 G4 */
+diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
+index b7bd89b3b2f9..f41fd15b7b7c 100644
+--- a/drivers/nvme/host/core.c
++++ b/drivers/nvme/host/core.c
+@@ -3449,7 +3449,7 @@ static void nvme_get_fw_slot_info(struct nvme_ctrl *ctrl)
+ 	if (!log)
+ 		return;
+ 
+-	if (nvme_get_log(ctrl, NVME_NSID_ALL, 0, NVME_LOG_FW_SLOT, log,
++	if (nvme_get_log(ctrl, NVME_NSID_ALL, NVME_LOG_FW_SLOT, 0, log,
+ 			sizeof(*log), 0))
+ 		dev_warn(ctrl->device, "Get FW SLOT INFO log error\n");
+ 	kfree(log);
+diff --git a/fs/btrfs/disk-io.c b/fs/btrfs/disk-io.c
+index 9e467e8a8cb5..ea45112a98be 100644
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -3117,6 +3117,7 @@ int open_ctree(struct super_block *sb,
+ 	/* do not make disk changes in broken FS or nologreplay is given */
+ 	if (btrfs_super_log_root(disk_super) != 0 &&
+ 	    !btrfs_test_opt(fs_info, NOLOGREPLAY)) {
++		btrfs_info(fs_info, "start tree-log replay");
+ 		ret = btrfs_replay_log(fs_info, fs_devices);
+ 		if (ret) {
+ 			err = ret;
+diff --git a/fs/btrfs/extent_map.c b/fs/btrfs/extent_map.c
+index 6648d55e5339..813425df16f7 100644
+--- a/fs/btrfs/extent_map.c
++++ b/fs/btrfs/extent_map.c
+@@ -228,6 +228,17 @@ static void try_merge_map(struct extent_map_tree *tree, struct extent_map *em)
+ 	struct extent_map *merge = NULL;
+ 	struct rb_node *rb;
+ 
++	/*
++	 * We can't modify an extent map that is in the tree and that is being
++	 * used by another task, as it can cause that other task to see it in
++	 * inconsistent state during the merging. We always have 1 reference for
++	 * the tree and 1 for this task (which is unpinning the extent map or
++	 * clearing the logging flag), so anything > 2 means it's being used by
++	 * other tasks too.
++	 */
++	if (refcount_read(&em->refs) > 2)
++		return;
++
+ 	if (em->start != 0) {
+ 		rb = rb_prev(&em->rb_node);
+ 		if (rb)
+diff --git a/fs/btrfs/ref-verify.c b/fs/btrfs/ref-verify.c
+index cd2a5864e103..dbc685ca017f 100644
+--- a/fs/btrfs/ref-verify.c
++++ b/fs/btrfs/ref-verify.c
+@@ -747,6 +747,7 @@ int btrfs_ref_tree_mod(struct btrfs_root *root, u64 bytenr, u64 num_bytes,
+ 		 */
+ 		be = add_block_entry(root->fs_info, bytenr, num_bytes, ref_root);
+ 		if (IS_ERR(be)) {
++			kfree(ref);
+ 			kfree(ra);
+ 			ret = PTR_ERR(be);
+ 			goto out;
+@@ -760,6 +761,8 @@ int btrfs_ref_tree_mod(struct btrfs_root *root, u64 bytenr, u64 num_bytes,
+ 			"re-allocated a block that still has references to it!");
+ 			dump_block_entry(fs_info, be);
+ 			dump_ref_action(fs_info, ra);
++			kfree(ref);
++			kfree(ra);
+ 			goto out_unlock;
+ 		}
+ 
+@@ -822,6 +825,7 @@ int btrfs_ref_tree_mod(struct btrfs_root *root, u64 bytenr, u64 num_bytes,
+ "dropping a ref for a existing root that doesn't have a ref on the block");
+ 				dump_block_entry(fs_info, be);
+ 				dump_ref_action(fs_info, ra);
++				kfree(ref);
+ 				kfree(ra);
+ 				goto out_unlock;
+ 			}
+@@ -837,6 +841,7 @@ int btrfs_ref_tree_mod(struct btrfs_root *root, u64 bytenr, u64 num_bytes,
+ "attempting to add another ref for an existing ref on a tree block");
+ 			dump_block_entry(fs_info, be);
+ 			dump_ref_action(fs_info, ra);
++			kfree(ref);
+ 			kfree(ra);
+ 			goto out_unlock;
+ 		}
+diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
+index db4002ecbaca..6a5b16a119ed 100644
+--- a/fs/btrfs/super.c
++++ b/fs/btrfs/super.c
+@@ -1857,6 +1857,8 @@ static int btrfs_remount(struct super_block *sb, int *flags, char *data)
+ 		}
+ 
+ 		if (btrfs_super_log_root(fs_info->super_copy) != 0) {
++			btrfs_warn(fs_info,
++		"mount required to replay tree-log, cannot remount read-write");
+ 			ret = -EINVAL;
+ 			goto restore;
+ 		}
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 7edc8172c53a..d203cc935ff8 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -203,6 +203,7 @@ static int ext4_protect_reserved_inode(struct super_block *sb,
+ 		return PTR_ERR(inode);
+ 	num = (inode->i_size + sb->s_blocksize - 1) >> sb->s_blocksize_bits;
+ 	while (i < num) {
++		cond_resched();
+ 		map.m_lblk = i;
+ 		map.m_len = num - i;
+ 		n = ext4_map_blocks(NULL, inode, &map, 0);
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index d947c5e439cf..ae520a726339 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -126,12 +126,14 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+ 		if (err != ERR_BAD_DX_DIR) {
+ 			return err;
+ 		}
+-		/*
+-		 * We don't set the inode dirty flag since it's not
+-		 * critical that it get flushed back to the disk.
+-		 */
+-		ext4_clear_inode_flag(file_inode(file),
+-				      EXT4_INODE_INDEX);
++		/* Can we just clear INDEX flag to ignore htree information? */
++		if (!ext4_has_metadata_csum(sb)) {
++			/*
++			 * We don't set the inode dirty flag since it's not
++			 * critical that it gets flushed back to the disk.
++			 */
++			ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
++		}
+ 	}
+ 
+ 	if (ext4_has_inline_data(inode)) {
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f8456a423c4e..5c0e06645b1e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2375,8 +2375,11 @@ void ext4_insert_dentry(struct inode *inode,
+ 			struct ext4_filename *fname);
+ static inline void ext4_update_dx_flag(struct inode *inode)
+ {
+-	if (!ext4_has_feature_dir_index(inode->i_sb))
++	if (!ext4_has_feature_dir_index(inode->i_sb)) {
++		/* ext4_iget() should have caught this... */
++		WARN_ON_ONCE(ext4_has_feature_metadata_csum(inode->i_sb));
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
++	}
+ }
+ static const unsigned char ext4_filetype_table[] = {
+ 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 950e3dcff7b0..8e535bb34d5f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4975,6 +4975,18 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 		ret = -EFSCORRUPTED;
+ 		goto bad_inode;
+ 	}
++	/*
++	 * If dir_index is not enabled but there's dir with INDEX flag set,
++	 * we'd normally treat htree data as empty space. But with metadata
++	 * checksumming that corrupts checksums so forbid that.
++	 */
++	if (!ext4_has_feature_dir_index(sb) && ext4_has_metadata_csum(sb) &&
++	    ext4_test_inode_flag(inode, EXT4_INODE_INDEX)) {
++		ext4_error_inode(inode, function, line, 0,
++			 "iget: Dir with htree data on filesystem without dir_index feature.");
++		ret = -EFSCORRUPTED;
++		goto bad_inode;
++	}
+ 	ei->i_disksize = inode->i_size;
+ #ifdef CONFIG_QUOTA
+ 	ei->i_reserved_quota = 0;
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 2305b4374fd3..9d00e0dd2ba9 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -120,10 +120,10 @@ void __dump_mmp_msg(struct super_block *sb, struct mmp_struct *mmp,
+ {
+ 	__ext4_warning(sb, function, line, "%s", msg);
+ 	__ext4_warning(sb, function, line,
+-		       "MMP failure info: last update time: %llu, last update "
+-		       "node: %s, last update device: %s",
+-		       (long long unsigned int) le64_to_cpu(mmp->mmp_time),
+-		       mmp->mmp_nodename, mmp->mmp_bdevname);
++		       "MMP failure info: last update time: %llu, last update node: %.*s, last update device: %.*s",
++		       (unsigned long long)le64_to_cpu(mmp->mmp_time),
++		       (int)sizeof(mmp->mmp_nodename), mmp->mmp_nodename,
++		       (int)sizeof(mmp->mmp_bdevname), mmp->mmp_bdevname);
+ }
+ 
+ /*
+@@ -154,6 +154,7 @@ static int kmmpd(void *data)
+ 	mmp_check_interval = max(EXT4_MMP_CHECK_MULT * mmp_update_interval,
+ 				 EXT4_MMP_MIN_CHECK_INTERVAL);
+ 	mmp->mmp_check_interval = cpu_to_le16(mmp_check_interval);
++	BUILD_BUG_ON(sizeof(mmp->mmp_bdevname) < BDEVNAME_SIZE);
+ 	bdevname(bh->b_bdev, mmp->mmp_bdevname);
+ 
+ 	memcpy(mmp->mmp_nodename, init_utsname()->nodename,
+@@ -375,7 +376,8 @@ int ext4_multi_mount_protect(struct super_block *sb,
+ 	/*
+ 	 * Start a kernel thread to update the MMP block periodically.
+ 	 */
+-	EXT4_SB(sb)->s_mmp_tsk = kthread_run(kmmpd, mmpd_data, "kmmpd-%s",
++	EXT4_SB(sb)->s_mmp_tsk = kthread_run(kmmpd, mmpd_data, "kmmpd-%.*s",
++					     (int)sizeof(mmp->mmp_bdevname),
+ 					     bdevname(bh->b_bdev,
+ 						      mmp->mmp_bdevname));
+ 	if (IS_ERR(EXT4_SB(sb)->s_mmp_tsk)) {
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 43dcb91d63f4..4608d0d3b7f9 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2085,6 +2085,13 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 		retval = ext4_dx_add_entry(handle, &fname, dir, inode);
+ 		if (!retval || (retval != ERR_BAD_DX_DIR))
+ 			goto out;
++		/* Can we just ignore htree data? */
++		if (ext4_has_metadata_csum(sb)) {
++			EXT4_ERROR_INODE(dir,
++				"Directory has corrupted htree index.");
++			retval = -EFSCORRUPTED;
++			goto out;
++		}
+ 		ext4_clear_inode_flag(dir, EXT4_INODE_INDEX);
+ 		dx_fallback++;
+ 		ext4_mark_inode_dirty(handle, dir);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 32d8bdf683bb..e080e90178a0 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2923,17 +2923,11 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+ 		return 0;
+ 	}
+ 
+-#ifndef CONFIG_QUOTA
+-	if (ext4_has_feature_quota(sb) && !readonly) {
++#if !defined(CONFIG_QUOTA) || !defined(CONFIG_QFMT_V2)
++	if (!readonly && (ext4_has_feature_quota(sb) ||
++			  ext4_has_feature_project(sb))) {
+ 		ext4_msg(sb, KERN_ERR,
+-			 "Filesystem with quota feature cannot be mounted RDWR "
+-			 "without CONFIG_QUOTA");
+-		return 0;
+-	}
+-	if (ext4_has_feature_project(sb) && !readonly) {
+-		ext4_msg(sb, KERN_ERR,
+-			 "Filesystem with project quota feature cannot be mounted RDWR "
+-			 "without CONFIG_QUOTA");
++			 "The kernel was not built with CONFIG_QUOTA and CONFIG_QFMT_V2");
+ 		return 0;
+ 	}
+ #endif  /* CONFIG_QUOTA */
+@@ -3727,6 +3721,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	 */
+ 	sbi->s_li_wait_mult = EXT4_DEF_LI_WAIT_MULT;
+ 
++	blocksize = BLOCK_SIZE << le32_to_cpu(es->s_log_block_size);
++	if (blocksize < EXT4_MIN_BLOCK_SIZE ||
++	    blocksize > EXT4_MAX_BLOCK_SIZE) {
++		ext4_msg(sb, KERN_ERR,
++		       "Unsupported filesystem blocksize %d (%d log_block_size)",
++			 blocksize, le32_to_cpu(es->s_log_block_size));
++		goto failed_mount;
++	}
++
+ 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV) {
+ 		sbi->s_inode_size = EXT4_GOOD_OLD_INODE_SIZE;
+ 		sbi->s_first_ino = EXT4_GOOD_OLD_FIRST_INO;
+@@ -3744,6 +3747,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			ext4_msg(sb, KERN_ERR,
+ 			       "unsupported inode size: %d",
+ 			       sbi->s_inode_size);
++			ext4_msg(sb, KERN_ERR, "blocksize: %d", blocksize);
+ 			goto failed_mount;
+ 		}
+ 		/*
+@@ -3907,14 +3911,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (!ext4_feature_set_ok(sb, (sb_rdonly(sb))))
+ 		goto failed_mount;
+ 
+-	blocksize = BLOCK_SIZE << le32_to_cpu(es->s_log_block_size);
+-	if (blocksize < EXT4_MIN_BLOCK_SIZE ||
+-	    blocksize > EXT4_MAX_BLOCK_SIZE) {
+-		ext4_msg(sb, KERN_ERR,
+-		       "Unsupported filesystem blocksize %d (%d log_block_size)",
+-			 blocksize, le32_to_cpu(es->s_log_block_size));
+-		goto failed_mount;
+-	}
+ 	if (le32_to_cpu(es->s_log_block_size) >
+ 	    (EXT4_MAX_BLOCK_LOG_SIZE - EXT4_MIN_BLOCK_LOG_SIZE)) {
+ 		ext4_msg(sb, KERN_ERR,
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 020bd7a0d8e0..c321fa06081c 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -971,29 +971,33 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		 * it. */
+ 
+ 		/*
+-		* A buffer which has been freed while still being journaled by
+-		* a previous transaction.
+-		*/
+-		if (buffer_freed(bh)) {
++		 * A buffer which has been freed while still being journaled
++		 * by a previous transaction, refile the buffer to BJ_Forget of
++		 * the running transaction. If the just committed transaction
++		 * contains "add to orphan" operation, we can completely
++		 * invalidate the buffer now. We are rather through in that
++		 * since the buffer may be still accessible when blocksize <
++		 * pagesize and it is attached to the last partial page.
++		 */
++		if (buffer_freed(bh) && !jh->b_next_transaction) {
++			struct address_space *mapping;
++
++			clear_buffer_freed(bh);
++			clear_buffer_jbddirty(bh);
++
+ 			/*
+-			 * If the running transaction is the one containing
+-			 * "add to orphan" operation (b_next_transaction !=
+-			 * NULL), we have to wait for that transaction to
+-			 * commit before we can really get rid of the buffer.
+-			 * So just clear b_modified to not confuse transaction
+-			 * credit accounting and refile the buffer to
+-			 * BJ_Forget of the running transaction. If the just
+-			 * committed transaction contains "add to orphan"
+-			 * operation, we can completely invalidate the buffer
+-			 * now. We are rather through in that since the
+-			 * buffer may be still accessible when blocksize <
+-			 * pagesize and it is attached to the last partial
+-			 * page.
++			 * Block device buffers need to stay mapped all the
++			 * time, so it is enough to clear buffer_jbddirty and
++			 * buffer_freed bits. For the file mapping buffers (i.e.
++			 * journalled data) we need to unmap buffer and clear
++			 * more bits. We also need to be careful about the check
++			 * because the data page mapping can get cleared under
++			 * out hands, which alse need not to clear more bits
++			 * because the page and buffers will be freed and can
++			 * never be reused once we are done with them.
+ 			 */
+-			jh->b_modified = 0;
+-			if (!jh->b_next_transaction) {
+-				clear_buffer_freed(bh);
+-				clear_buffer_jbddirty(bh);
++			mapping = READ_ONCE(bh->b_page->mapping);
++			if (mapping && !sb_is_blkdev_sb(mapping->host->i_sb)) {
+ 				clear_buffer_mapped(bh);
+ 				clear_buffer_new(bh);
+ 				clear_buffer_req(bh);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 911ff18249b7..97ffe12a2262 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2228,14 +2228,16 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
+ 			return -EBUSY;
+ 		}
+ 		/*
+-		 * OK, buffer won't be reachable after truncate. We just set
+-		 * j_next_transaction to the running transaction (if there is
+-		 * one) and mark buffer as freed so that commit code knows it
+-		 * should clear dirty bits when it is done with the buffer.
++		 * OK, buffer won't be reachable after truncate. We just clear
++		 * b_modified to not confuse transaction credit accounting, and
++		 * set j_next_transaction to the running transaction (if there
++		 * is one) and mark buffer as freed so that commit code knows
++		 * it should clear dirty bits when it is done with the buffer.
+ 		 */
+ 		set_buffer_freed(bh);
+ 		if (journal->j_running_transaction && buffer_jbddirty(bh))
+ 			jh->b_next_transaction = journal->j_running_transaction;
++		jh->b_modified = 0;
+ 		jbd2_journal_put_journal_head(jh);
+ 		spin_unlock(&journal->j_list_lock);
+ 		jbd_unlock_bh_state(bh);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index fad795041d32..668b648064b7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5117,7 +5117,7 @@ static void nfs4_proc_write_setup(struct nfs_pgio_header *hdr,
+ 	hdr->timestamp   = jiffies;
+ 
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_WRITE];
+-	nfs4_init_sequence(&hdr->args.seq_args, &hdr->res.seq_res, 1, 0);
++	nfs4_init_sequence(&hdr->args.seq_args, &hdr->res.seq_res, 0, 0);
+ 	nfs4_state_protect_write(server->nfs_client, clnt, msg, hdr);
+ }
+ 
+diff --git a/sound/pci/hda/patch_realtek.c b/sound/pci/hda/patch_realtek.c
+index ae735bcb9a2c..a8a47e1596dd 100644
+--- a/sound/pci/hda/patch_realtek.c
++++ b/sound/pci/hda/patch_realtek.c
+@@ -2442,6 +2442,7 @@ static const struct snd_pci_quirk alc882_fixup_tbl[] = {
+ 	SND_PCI_QUIRK(0x1071, 0x8258, "Evesham Voyaeger", ALC882_FIXUP_EAPD),
+ 	SND_PCI_QUIRK(0x1458, 0xa002, "Gigabyte EP45-DS3/Z87X-UD3H", ALC889_FIXUP_FRONT_HP_NO_PRESENCE),
+ 	SND_PCI_QUIRK(0x1458, 0xa0b8, "Gigabyte AZ370-Gaming", ALC1220_FIXUP_GB_DUAL_CODECS),
++	SND_PCI_QUIRK(0x1462, 0x1276, "MSI-GL73", ALC1220_FIXUP_CLEVO_P950),
+ 	SND_PCI_QUIRK(0x1462, 0x7350, "MSI-7350", ALC889_FIXUP_CD),
+ 	SND_PCI_QUIRK(0x1462, 0xda57, "MSI Z270-Gaming", ALC1220_FIXUP_GB_DUAL_CODECS),
+ 	SND_PCI_QUIRK_VENDOR(0x1462, "MSI", ALC882_FIXUP_GPIO3),
+diff --git a/sound/usb/clock.c b/sound/usb/clock.c
+index e31349865f20..bfe5540030b8 100644
+--- a/sound/usb/clock.c
++++ b/sound/usb/clock.c
+@@ -165,8 +165,34 @@ static int uac_clock_selector_set_val(struct snd_usb_audio *chip, int selector_i
+ 	return ret;
+ }
+ 
++/*
++ * Assume the clock is valid if clock source supports only one single sample
++ * rate, the terminal is connected directly to it (there is no clock selector)
++ * and clock type is internal. This is to deal with some Denon DJ controllers
++ * that always reports that clock is invalid.
++ */
++static bool uac_clock_source_is_valid_quirk(struct snd_usb_audio *chip,
++					    struct audioformat *fmt,
++					    int source_id)
++{
++	if (fmt->protocol == UAC_VERSION_2) {
++		struct uac_clock_source_descriptor *cs_desc =
++			snd_usb_find_clock_source(chip->ctrl_intf, source_id);
++
++		if (!cs_desc)
++			return false;
++
++		return (fmt->nr_rates == 1 &&
++			(fmt->clock & 0xff) == cs_desc->bClockID &&
++			(cs_desc->bmAttributes & 0x3) !=
++				UAC_CLOCK_SOURCE_TYPE_EXT);
++	}
++
++	return false;
++}
++
+ static bool uac_clock_source_is_valid(struct snd_usb_audio *chip,
+-				      int protocol,
++				      struct audioformat *fmt,
+ 				      int source_id)
+ {
+ 	int err;
+@@ -174,26 +200,26 @@ static bool uac_clock_source_is_valid(struct snd_usb_audio *chip,
+ 	struct usb_device *dev = chip->dev;
+ 	u32 bmControls;
+ 
+-	if (protocol == UAC_VERSION_3) {
++	if (fmt->protocol == UAC_VERSION_3) {
+ 		struct uac3_clock_source_descriptor *cs_desc =
+ 			snd_usb_find_clock_source_v3(chip->ctrl_intf, source_id);
+ 
+ 		if (!cs_desc)
+-			return 0;
++			return false;
+ 		bmControls = le32_to_cpu(cs_desc->bmControls);
+ 	} else { /* UAC_VERSION_1/2 */
+ 		struct uac_clock_source_descriptor *cs_desc =
+ 			snd_usb_find_clock_source(chip->ctrl_intf, source_id);
+ 
+ 		if (!cs_desc)
+-			return 0;
++			return false;
+ 		bmControls = cs_desc->bmControls;
+ 	}
+ 
+ 	/* If a clock source can't tell us whether it's valid, we assume it is */
+ 	if (!uac_v2v3_control_is_readable(bmControls,
+ 				      UAC2_CS_CONTROL_CLOCK_VALID))
+-		return 1;
++		return true;
+ 
+ 	err = snd_usb_ctl_msg(dev, usb_rcvctrlpipe(dev, 0), UAC2_CS_CUR,
+ 			      USB_TYPE_CLASS | USB_RECIP_INTERFACE | USB_DIR_IN,
+@@ -205,13 +231,17 @@ static bool uac_clock_source_is_valid(struct snd_usb_audio *chip,
+ 		dev_warn(&dev->dev,
+ 			 "%s(): cannot get clock validity for id %d\n",
+ 			   __func__, source_id);
+-		return 0;
++		return false;
+ 	}
+ 
+-	return !!data;
++	if (data)
++		return true;
++	else
++		return uac_clock_source_is_valid_quirk(chip, fmt, source_id);
+ }
+ 
+-static int __uac_clock_find_source(struct snd_usb_audio *chip, int entity_id,
++static int __uac_clock_find_source(struct snd_usb_audio *chip,
++				   struct audioformat *fmt, int entity_id,
+ 				   unsigned long *visited, bool validate)
+ {
+ 	struct uac_clock_source_descriptor *source;
+@@ -231,7 +261,7 @@ static int __uac_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+ 	source = snd_usb_find_clock_source(chip->ctrl_intf, entity_id);
+ 	if (source) {
+ 		entity_id = source->bClockID;
+-		if (validate && !uac_clock_source_is_valid(chip, UAC_VERSION_2,
++		if (validate && !uac_clock_source_is_valid(chip, fmt,
+ 								entity_id)) {
+ 			usb_audio_err(chip,
+ 				"clock source %d is not valid, cannot use\n",
+@@ -262,8 +292,9 @@ static int __uac_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+ 		}
+ 
+ 		cur = ret;
+-		ret = __uac_clock_find_source(chip, selector->baCSourceID[ret - 1],
+-					       visited, validate);
++		ret = __uac_clock_find_source(chip, fmt,
++					      selector->baCSourceID[ret - 1],
++					      visited, validate);
+ 		if (!validate || ret > 0 || !chip->autoclock)
+ 			return ret;
+ 
+@@ -274,8 +305,9 @@ static int __uac_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+ 			if (i == cur)
+ 				continue;
+ 
+-			ret = __uac_clock_find_source(chip, selector->baCSourceID[i - 1],
+-				visited, true);
++			ret = __uac_clock_find_source(chip, fmt,
++						      selector->baCSourceID[i - 1],
++						      visited, true);
+ 			if (ret < 0)
+ 				continue;
+ 
+@@ -295,14 +327,16 @@ static int __uac_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+ 	/* FIXME: multipliers only act as pass-thru element for now */
+ 	multiplier = snd_usb_find_clock_multiplier(chip->ctrl_intf, entity_id);
+ 	if (multiplier)
+-		return __uac_clock_find_source(chip, multiplier->bCSourceID,
+-						visited, validate);
++		return __uac_clock_find_source(chip, fmt,
++					       multiplier->bCSourceID,
++					       visited, validate);
+ 
+ 	return -EINVAL;
+ }
+ 
+-static int __uac3_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+-				   unsigned long *visited, bool validate)
++static int __uac3_clock_find_source(struct snd_usb_audio *chip,
++				    struct audioformat *fmt, int entity_id,
++				    unsigned long *visited, bool validate)
+ {
+ 	struct uac3_clock_source_descriptor *source;
+ 	struct uac3_clock_selector_descriptor *selector;
+@@ -321,7 +355,7 @@ static int __uac3_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+ 	source = snd_usb_find_clock_source_v3(chip->ctrl_intf, entity_id);
+ 	if (source) {
+ 		entity_id = source->bClockID;
+-		if (validate && !uac_clock_source_is_valid(chip, UAC_VERSION_3,
++		if (validate && !uac_clock_source_is_valid(chip, fmt,
+ 								entity_id)) {
+ 			usb_audio_err(chip,
+ 				"clock source %d is not valid, cannot use\n",
+@@ -352,7 +386,8 @@ static int __uac3_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+ 		}
+ 
+ 		cur = ret;
+-		ret = __uac3_clock_find_source(chip, selector->baCSourceID[ret - 1],
++		ret = __uac3_clock_find_source(chip, fmt,
++					       selector->baCSourceID[ret - 1],
+ 					       visited, validate);
+ 		if (!validate || ret > 0 || !chip->autoclock)
+ 			return ret;
+@@ -364,8 +399,9 @@ static int __uac3_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+ 			if (i == cur)
+ 				continue;
+ 
+-			ret = __uac3_clock_find_source(chip, selector->baCSourceID[i - 1],
+-				visited, true);
++			ret = __uac3_clock_find_source(chip, fmt,
++						       selector->baCSourceID[i - 1],
++						       visited, true);
+ 			if (ret < 0)
+ 				continue;
+ 
+@@ -386,7 +422,8 @@ static int __uac3_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+ 	multiplier = snd_usb_find_clock_multiplier_v3(chip->ctrl_intf,
+ 						      entity_id);
+ 	if (multiplier)
+-		return __uac3_clock_find_source(chip, multiplier->bCSourceID,
++		return __uac3_clock_find_source(chip, fmt,
++						multiplier->bCSourceID,
+ 						visited, validate);
+ 
+ 	return -EINVAL;
+@@ -403,18 +440,18 @@ static int __uac3_clock_find_source(struct snd_usb_audio *chip, int entity_id,
+  *
+  * Returns the clock source UnitID (>=0) on success, or an error.
+  */
+-int snd_usb_clock_find_source(struct snd_usb_audio *chip, int protocol,
+-			      int entity_id, bool validate)
++int snd_usb_clock_find_source(struct snd_usb_audio *chip,
++			      struct audioformat *fmt, bool validate)
+ {
+ 	DECLARE_BITMAP(visited, 256);
+ 	memset(visited, 0, sizeof(visited));
+ 
+-	switch (protocol) {
++	switch (fmt->protocol) {
+ 	case UAC_VERSION_2:
+-		return __uac_clock_find_source(chip, entity_id, visited,
++		return __uac_clock_find_source(chip, fmt, fmt->clock, visited,
+ 					       validate);
+ 	case UAC_VERSION_3:
+-		return __uac3_clock_find_source(chip, entity_id, visited,
++		return __uac3_clock_find_source(chip, fmt, fmt->clock, visited,
+ 					       validate);
+ 	default:
+ 		return -EINVAL;
+@@ -515,8 +552,7 @@ static int set_sample_rate_v2v3(struct snd_usb_audio *chip, int iface,
+ 	 * automatic clock selection if the current clock is not
+ 	 * valid.
+ 	 */
+-	clock = snd_usb_clock_find_source(chip, fmt->protocol,
+-					  fmt->clock, true);
++	clock = snd_usb_clock_find_source(chip, fmt, true);
+ 	if (clock < 0) {
+ 		/* We did not find a valid clock, but that might be
+ 		 * because the current sample rate does not match an
+@@ -524,8 +560,7 @@ static int set_sample_rate_v2v3(struct snd_usb_audio *chip, int iface,
+ 		 * and we will do another validation after setting the
+ 		 * rate.
+ 		 */
+-		clock = snd_usb_clock_find_source(chip, fmt->protocol,
+-						  fmt->clock, false);
++		clock = snd_usb_clock_find_source(chip, fmt, false);
+ 		if (clock < 0)
+ 			return clock;
+ 	}
+@@ -591,7 +626,7 @@ static int set_sample_rate_v2v3(struct snd_usb_audio *chip, int iface,
+ 
+ validation:
+ 	/* validate clock after rate change */
+-	if (!uac_clock_source_is_valid(chip, fmt->protocol, clock))
++	if (!uac_clock_source_is_valid(chip, fmt, clock))
+ 		return -ENXIO;
+ 	return 0;
+ }
+diff --git a/sound/usb/clock.h b/sound/usb/clock.h
+index 076e31b79ee0..68df0fbe09d0 100644
+--- a/sound/usb/clock.h
++++ b/sound/usb/clock.h
+@@ -6,7 +6,7 @@ int snd_usb_init_sample_rate(struct snd_usb_audio *chip, int iface,
+ 			     struct usb_host_interface *alts,
+ 			     struct audioformat *fmt, int rate);
+ 
+-int snd_usb_clock_find_source(struct snd_usb_audio *chip, int protocol,
+-			     int entity_id, bool validate);
++int snd_usb_clock_find_source(struct snd_usb_audio *chip,
++			      struct audioformat *fmt, bool validate);
+ 
+ #endif /* __USBAUDIO_CLOCK_H */
+diff --git a/sound/usb/format.c b/sound/usb/format.c
+index fd13ac11b136..9d27429ed403 100644
+--- a/sound/usb/format.c
++++ b/sound/usb/format.c
+@@ -306,8 +306,7 @@ static int parse_audio_format_rates_v2v3(struct snd_usb_audio *chip,
+ 	struct usb_device *dev = chip->dev;
+ 	unsigned char tmp[2], *data;
+ 	int nr_triplets, data_size, ret = 0;
+-	int clock = snd_usb_clock_find_source(chip, fp->protocol,
+-					      fp->clock, false);
++	int clock = snd_usb_clock_find_source(chip, fp, false);
+ 
+ 	if (clock < 0) {
+ 		dev_err(&dev->dev,
+diff --git a/sound/usb/mixer.c b/sound/usb/mixer.c
+index 6ac6a0980124..f2e173b9691d 100644
+--- a/sound/usb/mixer.c
++++ b/sound/usb/mixer.c
+@@ -912,6 +912,15 @@ static int parse_term_proc_unit(struct mixer_build *state,
+ 	return 0;
+ }
+ 
++static int parse_term_effect_unit(struct mixer_build *state,
++				  struct usb_audio_term *term,
++				  void *p1, int id)
++{
++	term->type = UAC3_EFFECT_UNIT << 16; /* virtual type */
++	term->id = id;
++	return 0;
++}
++
+ static int parse_term_uac2_clock_source(struct mixer_build *state,
+ 					struct usb_audio_term *term,
+ 					void *p1, int id)
+@@ -996,8 +1005,7 @@ static int __check_input_term(struct mixer_build *state, int id,
+ 						    UAC3_PROCESSING_UNIT);
+ 		case PTYPE(UAC_VERSION_2, UAC2_EFFECT_UNIT):
+ 		case PTYPE(UAC_VERSION_3, UAC3_EFFECT_UNIT):
+-			return parse_term_proc_unit(state, term, p1, id,
+-						    UAC3_EFFECT_UNIT);
++			return parse_term_effect_unit(state, term, p1, id);
+ 		case PTYPE(UAC_VERSION_1, UAC1_EXTENSION_UNIT):
+ 		case PTYPE(UAC_VERSION_2, UAC2_EXTENSION_UNIT_V2):
+ 		case PTYPE(UAC_VERSION_3, UAC3_EXTENSION_UNIT):
+diff --git a/sound/usb/quirks.c b/sound/usb/quirks.c
+index 49f6f6129857..5bbfd7577b33 100644
+--- a/sound/usb/quirks.c
++++ b/sound/usb/quirks.c
+@@ -1182,6 +1182,7 @@ bool snd_usb_get_sample_rate_quirk(struct snd_usb_audio *chip)
+ 	case USB_ID(0x1395, 0x740a): /* Sennheiser DECT */
+ 	case USB_ID(0x1901, 0x0191): /* GE B850V3 CP2114 audio interface */
+ 	case USB_ID(0x21B4, 0x0081): /* AudioQuest DragonFly */
++	case USB_ID(0x2912, 0x30c8): /* Audioengine D1 */
+ 		return true;
+ 	}
+ 
+-- 
+2.30.2
+
