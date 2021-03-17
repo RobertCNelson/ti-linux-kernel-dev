@@ -119,25 +119,7 @@ external_git () {
 	else
 		echo "${top_of_branch}"
 	fi
-
 	#exit 2
-
-	${git} "${DIR}/patches/0001-patch-4.19.94-95.patch"
-	${git} "${DIR}/patches/0002-patch-4.19.95-96.patch"
-	${git} "${DIR}/patches/0003-patch-4.19.96-97.patch"
-	${git} "${DIR}/patches/0004-patch-4.19.97-98.patch"
-	${git} "${DIR}/patches/0005-patch-4.19.98-99.patch"
-	${git} "${DIR}/patches/0006-patch-4.19.99-100.patch"
-	${git} "${DIR}/patches/0007-patch-4.19.100-101.patch"
-	${git} "${DIR}/patches/0008-patch-4.19.101-102.patch"
-	${git} "${DIR}/patches/0009-patch-4.19.102-103.patch"
-	${git} "${DIR}/patches/0010-patch-4.19.103-104.patch"
-	${git} "${DIR}/patches/0011-patch-4.19.104-105.patch"
-	${git} "${DIR}/patches/0012-patch-4.19.105-106.patch"
-	${git} "${DIR}/patches/0013-patch-4.19.106-107.patch"
-	${git} "${DIR}/patches/0014-patch-4.19.107-108.patch"
-	${git} "${DIR}/patches/0015-patch-4.19.108-109.patch"
-	${git} "${DIR}/patches/0016-patch-4.19.109-110.patch"
 }
 
 aufs_fail () {
@@ -146,10 +128,10 @@ aufs_fail () {
 }
 
 aufs () {
-	aufs_prefix="aufs4-"
+	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=4.19.63+
+		KERNEL_REL=5.4.3
 		wget https://raw.githubusercontent.com/sfjro/${aufs_prefix}standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
 		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
 		rm -rf ${aufs_prefix}kbuild.patch
@@ -190,7 +172,7 @@ aufs () {
 			cd -
 		fi
 		cd ./KERNEL/
-		KERNEL_REL=4.19
+		KERNEL_REL=5.4
 
 		cp -v ../${aufs_prefix}standalone/Documentation/ABI/testing/*aufs ./Documentation/ABI/testing/
 		mkdir -p ./Documentation/filesystems/aufs/
@@ -268,6 +250,50 @@ can_isotp () {
 	dir 'can_isotp'
 }
 
+wpanusb () {
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./wpanusb ] ; then
+			${git_bin} clone https://github.com/statropy/wpanusb --depth=1
+			cd ./wpanusb
+				wpanusb_hash=$(git rev-parse HEAD)
+			cd -
+		else
+			rm -rf ./wpanusb || true
+			${git_bin} clone https://github.com/statropy/wpanusb --depth=1
+			cd ./wpanusb
+				wpanusb_hash=$(git rev-parse HEAD)
+			cd -
+		fi
+
+		cd ./KERNEL/
+
+		cp -v ../wpanusb/wpanusb.h drivers/net/ieee802154/
+		cp -v ../wpanusb/wpanusb.c drivers/net/ieee802154/
+
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: wpanusb: https://github.com/statropy/wpanusb' -m "https://github.com/statropy/wpanusb/commit/${wpanusb_hash}" -s
+		${git_bin} format-patch -1 -o ../patches/wpanusb/
+		echo "WPANUSB: https://github.com/statropy/wpanusb/commit/${wpanusb_hash}" > ../patches/git/WPANUSB
+
+		rm -rf ../wpanusb/ || true
+
+		${git_bin} reset --hard HEAD~1
+
+		start_cleanup
+
+		${git} "${DIR}/patches/wpanusb/0001-merge-wpanusb-https-github.com-statropy-wpanusb.patch"
+
+		wdir="wpanusb"
+		number=1
+		cleanup
+
+		exit 2
+	fi
+	dir 'wpanusb'
+}
+
 rt_cleanup () {
 	echo "rt: needs fixup"
 	exit 2
@@ -276,7 +302,6 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v4.19.x
 	#${git_bin} revert --no-edit xyz
 
 	#regenerate="enable"
@@ -327,6 +352,12 @@ wireguard () {
 		../WireGuard/contrib/kernel-tree/create-patch.sh | patch -p1 || wireguard_fail
 
 		${git_bin} add .
+
+		#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=v5.4.34&id=f8c60f7a00516820589c4c9da5614e4b7f4d0b2f
+		sed -i -e 's:skb_reset_tc:skb_reset_redirect:g' ./net/wireguard/queueing.h
+		sed -i -e 's:skb_reset_tc:skb_reset_redirect:g' ./net/wireguard/compat/compat.h
+		sed -i -e 's:5, 5, 0):5, 4, 0):g' ./net/wireguard/compat/compat-asm.h
+
 		${git_bin} commit -a -m 'merge: WireGuard' -m "https://git.zx2c4.com/WireGuard/commit/${wireguard_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/WireGuard/
 		echo "WIREGUARD: https://git.zx2c4.com/WireGuard/commit/${wireguard_hash}" > ../patches/git/WIREGUARD
@@ -400,7 +431,7 @@ dtb_makefile_append () {
 }
 
 beagleboard_dtbs () {
-	branch="v4.19.x-ti-overlays"
+	branch="v5.4.x-ti-overlays"
 	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
@@ -422,32 +453,15 @@ beagleboard_dtbs () {
 
 		mkdir -p arch/arm/boot/dts/overlays/
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
-		if [ -f ./arch/arm/boot/dts/overlays/README.MD ] ; then
-			rm -rf ./arch/arm/boot/dts/overlays/README.MD
-		fi
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
-
-		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-bbb-exp-c.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-bbb-exp-r.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-audio.dtb" ; dtb_makefile_append
 
 		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
-
-		device="am5729-beagleboneai-roboticscape.dtb" ; dtb_makefile_append_am5
-
-		device="am335x-boneblack-roboticscape.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
-
-		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
@@ -479,18 +493,18 @@ local_patch () {
 external_git
 aufs
 can_isotp
+wpanusb
 #rt
-#wireguard
+wireguard
 ti_pm_firmware
 beagleboard_dtbs
 #local_patch
 
 ipipe () {
-	kernel_base="v4.19.110"
-	xenomai_branch="ipipe-core-4.19.110-arm-07"
+	kernel_base="v5.4.93"
+	xenomai_branch="ipipe-core-5.4.93-arm-0"
+	#https://source.denx.de/Xenomai/ipipe-arm/-/tags?utf8=%E2%9C%93&search=ipipe-core-5.4
 	echo "dir: ipipe"
-
-	#${git_bin} revert --no-edit a8aac659b9652430ccf898dd61bc6f996e3aef9d
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -531,7 +545,6 @@ ipipe () {
 
 		start_cleanup
 
-		#${git} "${DIR}/patches/ipipe/0001-xenomai-pre-patchset.patch"
 		${git} "${DIR}/patches/ipipe/0001-xenomai-ipipe-patchset.patch"
 
 		wdir="ipipe"
@@ -539,7 +552,6 @@ ipipe () {
 		cleanup
 	fi
 
-	#${git} "${DIR}/patches/ipipe/0001-xenomai-pre-patchset.patch"
 	${git} "${DIR}/patches/ipipe/0001-xenomai-ipipe-patchset.patch"
 
 	echo "dir: xenomai - prepare_kernel"
@@ -597,17 +609,47 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.0.21"
+	backport_tag="v5.10.24"
+
+	subsystem="greybus"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/greybus/* ./drivers/greybus/
+		cp -rv ~/linux-src/drivers/staging/greybus/* ./drivers/staging/greybus/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="1657f11c7ca109b6f7e7bec4e241bf6cbbe2d4b0"
+
+	subsystem="exfat"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/staging/exfat/* ./drivers/staging/exfat/
+		sed -i -e 's:CONFIG_EXFAT_FS:CONFIG_STAGING_EXFAT_FS:g' ./drivers/staging/Makefile
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.5.19"
 
 	subsystem="typec"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		rm -rf ./drivers/usb/typec/
-		mkdir -p ./drivers/usb/typec/
 		cp -rv ~/linux-src/drivers/usb/typec/* ./drivers/usb/typec/
-		cp -v ~/linux-src/include/linux/usb/typec*.h ./include/linux/usb/
+		cp -v ~/linux-src/include/linux/usb/typec.h ./include/linux/usb/typec.h
 
 		post_backports
 		exit 2
@@ -615,58 +657,21 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.3.18"
+	backport_tag="v5.4.18"
 
-	subsystem="stmpe"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/iio/adc/stmpe-adc.c ./drivers/iio/adc/
-		cp -v ~/linux-src/drivers/mfd/stmpe.c ./drivers/mfd/
-		cp -v ~/linux-src/include/linux/mfd/stmpe.h ./include/linux/mfd/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	${git} "${DIR}/patches/backports/stmpe/0002-stmpe-wire-up-adc-Kconfig-Makefile.patch"
-
-	backport_tag="v5.0.21"
-
-	subsystem="vl53l0x"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/iio/proximity/vl53l0x-i2c.c ./drivers/iio/proximity/vl53l0x-i2c.c
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
-
-	backport_tag="v4.14.77"
 	subsystem="brcm80211"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
 		cp -rv ~/linux-src/drivers/net/wireless/broadcom/brcm80211/* ./drivers/net/wireless/broadcom/brcm80211/
+		#cp -v ~/linux-src/include/linux/mmc/sdio_ids.h ./include/linux/mmc/sdio_ids.h
+		#cp -v ~/linux-src/include/linux/firmware.h ./include/linux/firmware.h
 
 		post_backports
 		exit 2
 	else
 		patch_backports
-		${git} "${DIR}/patches/backports/brcm80211/0002-drivers-net-brcm80211-use-setup_timer-helper.patch"
-		${git} "${DIR}/patches/backports/brcm80211/0003-brcmfmac-use-setup_timer-helper.patch"
-		${git} "${DIR}/patches/backports/brcm80211/0004-treewide-setup_timer-timer_setup.patch"
-		${git} "${DIR}/patches/backports/brcm80211/0005-Revert-compiler.h-Remove-ACCESS_ONCE.patch"
 	fi
 
 	#regenerate="enable"
@@ -694,45 +699,22 @@ reverts () {
 
 drivers () {
 	dir 'drivers/ar1021_i2c'
-	dir 'drivers/btrfs'
-	dir 'drivers/pwm'
+	dir 'drivers/rproc'
 	dir 'drivers/sound'
 	dir 'drivers/spi'
-	dir 'drivers/ssd1306'
 	dir 'drivers/tps65217'
-	dir 'drivers/opp'
-	dir 'drivers/wiznet'
-	dir 'drivers/ctag'
 
 	dir 'drivers/ti/overlays'
 	dir 'drivers/ti/cpsw'
-	dir 'drivers/ti/etnaviv'
-	dir 'drivers/ti/eqep'
-	dir 'drivers/ti/rpmsg'
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/gpio'
-
-	dir 'drivers/uio_pruss_shmem'
-	dir 'drivers/greybus'
 	dir 'RPi'
-	dir 'gsoc'
-	dir 'fixes'
 }
 
 soc () {
-#pruss:
-	#dir 'drivers/ti/uio_pruss'
-
-	${git} "${DIR}/patches/drivers/ti/uio_pruss/0001-uio-pruss-cleanups-and-pruss-v2-pru-icss-support.patch"
-	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0002-ARM-DRA7-hwmod_data-Add-PRU-ICSS-data-for-AM57xx-var.patch"
-	${git} "${DIR}/patches/drivers/ti/uio_pruss/0003-ARM-omap2-support-deasserting-reset-from-dts.patch"
-	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0004-ARM-dts-dra7-am335x-add-outline-definitions-for-prus.patch"
-	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0005-ARM-dts-dra7-am335x-dtsi-files-for-enabling-uio-prus.patch"
-	#${git} "${DIR}/patches/drivers/ti/uio_pruss/0006-ARM-dts-beagle-x15-enable-uio-pruss-by-default.patch"
-
-	dir 'pru_rproc_gnu_binutils'
 	dir 'bootup_hacks'
+	dir 'jadonk'
 }
 
 ###
@@ -744,7 +726,7 @@ soc
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.2.21"
+		backport_tag="v5.10.24"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"

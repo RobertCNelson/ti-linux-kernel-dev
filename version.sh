@@ -7,9 +7,9 @@ config="omap2plus_defconfig"
 build_prefix="-ti-xenomai-r"
 branch_prefix="ti-linux-xenomai-"
 branch_postfix=".y"
-bborg_branch="4.19-xenomai"
+bborg_branch="5.4-xenomai"
 
-#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v4.19-rc1
+#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v5.4-rc1
 #arm
 KERNEL_ARCH=arm
 DEBARCH=armhf
@@ -45,11 +45,11 @@ toolchain="gcc_arm_gnueabihf_8"
 #toolchain="gcc_10_riscv64"
 
 #Kernel
-KERNEL_REL=4.19
-KERNEL_TAG=${KERNEL_REL}.94
-kernel_rt=".94-rt39"
+KERNEL_REL=5.4
+KERNEL_TAG=${KERNEL_REL}.93
+kernel_rt=".93-rt51"
 #Kernel Build
-BUILD=${build_prefix}60
+BUILD=${build_prefix}23.2
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -60,9 +60,9 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="5a23bc00e08d26bb83952953d909c95b42fab70c"
-        ti_git_pre="5a23bc00e08d26bb83952953d909c95b42fab70c"
-       ti_git_post="5a23bc00e08d26bb83952953d909c95b42fab70c"
+ti_git_old_release="60de748aca87c99a32f726a6abf1b6472f297ae3"
+        ti_git_pre="60de748aca87c99a32f726a6abf1b6472f297ae3"
+       ti_git_post="b26f403d01870360392f2fe778304d3a8cba0bef"
 #
 
 #https://source.denx.de/Xenomai/xenomai.git
