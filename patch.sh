@@ -553,8 +553,6 @@ ipipe () {
 	# and apply it
 	${git_bin} apply "${OUTPATCH}"
 
-	patch -p1 < ../patches/ipipe/0001-xenomai-fixes.patch
-
 	${git_bin} add .
 	${git_bin} commit -a -m 'xenomai patchset'
 
