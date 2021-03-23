@@ -49,7 +49,7 @@ KERNEL_REL=5.4
 KERNEL_TAG=${KERNEL_REL}.93
 kernel_rt=".93-rt51"
 #Kernel Build
-BUILD=${build_prefix}24
+BUILD=${build_prefix}24.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -60,7 +60,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="60de748aca87c99a32f726a6abf1b6472f297ae3"
-        ti_git_pre="60de748aca87c99a32f726a6abf1b6472f297ae3"
-       ti_git_post="b26f403d01870360392f2fe778304d3a8cba0bef"
+ti_git_old_release="b26f403d01870360392f2fe778304d3a8cba0bef"
+        ti_git_pre="b26f403d01870360392f2fe778304d3a8cba0bef"
+       ti_git_post="ca222ae72ea37d74141ed53deaa0a07263ef34e8"
 #
