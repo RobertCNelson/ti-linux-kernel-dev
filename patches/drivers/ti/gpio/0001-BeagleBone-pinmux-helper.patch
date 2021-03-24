@@ -39,12 +39,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 drivers/misc/cape/beaglebone/bone-pinmux-helper.c
 
 diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index f9263426af03..7f0fa364b86c 100644
+index 5d4de5cd6759..6aa72cd9c521 100644
 --- a/drivers/gpio/Kconfig
 +++ b/drivers/gpio/Kconfig
-@@ -69,6 +69,20 @@ config GPIO_SYSFS
- 	  ioctl() operations instead. The character device is always
- 	  available.
+@@ -94,6 +94,20 @@ config GPIO_CDEV_V1
+ 
+ 	  If unsure, say Y.
  
 +config GPIO_OF_HELPER
 +	bool "GPIO OF helper device (EXPERIMENTAL)"
@@ -64,17 +64,17 @@ index f9263426af03..7f0fa364b86c 100644
  	depends on HAS_IOMEM # Only for IOMEM drivers
  	tristate
 diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
-index d2fd19c15bae..6638fc2464a9 100644
+index 09dada80ac34..649544f69e4c 100644
 --- a/drivers/gpio/Makefile
 +++ b/drivers/gpio/Makefile
-@@ -10,6 +10,7 @@ obj-$(CONFIG_GPIOLIB)		+= gpiolib-devprop.o
- obj-$(CONFIG_OF_GPIO)		+= gpiolib-of.o
+@@ -10,6 +10,7 @@ obj-$(CONFIG_OF_GPIO)		+= gpiolib-of.o
+ obj-$(CONFIG_GPIO_CDEV)		+= gpiolib-cdev.o
  obj-$(CONFIG_GPIO_SYSFS)	+= gpiolib-sysfs.o
  obj-$(CONFIG_GPIO_ACPI)		+= gpiolib-acpi.o
 +obj-$(CONFIG_GPIO_OF_HELPER)	+= gpio-of-helper.o
  
  # Device drivers. Generally keep list sorted alphabetically
- obj-$(CONFIG_GPIO_GENERIC)	+= gpio-generic.o
+ obj-$(CONFIG_GPIO_REGMAP)	+= gpio-regmap.o
 diff --git a/drivers/gpio/gpio-of-helper.c b/drivers/gpio/gpio-of-helper.c
 new file mode 100644
 index 000000000000..83f362f7da5f
@@ -517,10 +517,10 @@ index 000000000000..83f362f7da5f
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:gpio-of-helper");
 diff --git a/drivers/gpio/gpiolib-sysfs.c b/drivers/gpio/gpiolib-sysfs.c
-index fbf6b1a0a4fa..ec7aa6f3c56e 100644
+index 728f6c687182..0a297d8672b4 100644
 --- a/drivers/gpio/gpiolib-sysfs.c
 +++ b/drivers/gpio/gpiolib-sysfs.c
-@@ -37,10 +37,10 @@ static DEFINE_MUTEX(sysfs_lock);
+@@ -38,10 +38,10 @@ static DEFINE_MUTEX(sysfs_lock);
  /*
   * /sys/class/gpio/gpioN... only for GPIOs that are exported
   *   /direction
@@ -532,7 +532,7 @@ index fbf6b1a0a4fa..ec7aa6f3c56e 100644
   *   /value
   *      * always readable, subject to hardware behavior
   *      * may be writable, as zero/nonzero
-@@ -53,6 +53,8 @@ static DEFINE_MUTEX(sysfs_lock);
+@@ -54,6 +54,8 @@ static DEFINE_MUTEX(sysfs_lock);
   *      * is read/write as zero/nonzero
   *      * also affects existing and subsequent "falling" and "rising"
   *        /edge configuration
@@ -541,7 +541,7 @@ index fbf6b1a0a4fa..ec7aa6f3c56e 100644
   */
  
  static ssize_t direction_show(struct device *dev,
-@@ -83,7 +85,9 @@ static ssize_t direction_store(struct device *dev,
+@@ -84,7 +86,9 @@ static ssize_t direction_store(struct device *dev,
  
  	mutex_lock(&data->mutex);
  
@@ -552,7 +552,7 @@ index fbf6b1a0a4fa..ec7aa6f3c56e 100644
  		status = gpiod_direction_output_raw(desc, 1);
  	else if (sysfs_streq(buf, "out") || sysfs_streq(buf, "low"))
  		status = gpiod_direction_output_raw(desc, 0);
-@@ -362,6 +366,23 @@ static ssize_t active_low_store(struct device *dev,
+@@ -363,6 +367,23 @@ static ssize_t active_low_store(struct device *dev,
  }
  static DEVICE_ATTR_RW(active_low);
  
@@ -576,7 +576,7 @@ index fbf6b1a0a4fa..ec7aa6f3c56e 100644
  static umode_t gpio_is_visible(struct kobject *kobj, struct attribute *attr,
  			       int n)
  {
-@@ -373,12 +394,15 @@ static umode_t gpio_is_visible(struct kobject *kobj, struct attribute *attr,
+@@ -374,12 +395,15 @@ static umode_t gpio_is_visible(struct kobject *kobj, struct attribute *attr,
  
  	if (attr == &dev_attr_direction.attr) {
  		if (!show_direction)
@@ -593,7 +593,7 @@ index fbf6b1a0a4fa..ec7aa6f3c56e 100644
  	}
  
  	return mode;
-@@ -389,6 +413,7 @@ static struct attribute *gpio_attrs[] = {
+@@ -390,6 +414,7 @@ static struct attribute *gpio_attrs[] = {
  	&dev_attr_edge.attr,
  	&dev_attr_value.attr,
  	&dev_attr_active_low.attr,
@@ -601,7 +601,7 @@ index fbf6b1a0a4fa..ec7aa6f3c56e 100644
  	NULL,
  };
  
-@@ -402,6 +427,10 @@ static const struct attribute_group *gpio_groups[] = {
+@@ -403,6 +428,10 @@ static const struct attribute_group *gpio_groups[] = {
  	NULL
  };
  
@@ -613,29 +613,29 @@ index fbf6b1a0a4fa..ec7aa6f3c56e 100644
   * /sys/class/gpio/gpiochipN/
   *   /base ... matching gpio_chip.base (N)
 diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
-index 364948f95e91..951c949a31ff 100644
+index fafa8b0d8099..80336950468b 100644
 --- a/drivers/misc/Kconfig
 +++ b/drivers/misc/Kconfig
-@@ -488,6 +488,7 @@ source "drivers/misc/mei/Kconfig"
+@@ -475,6 +475,7 @@ source "drivers/misc/altera-stapl/Kconfig"
+ source "drivers/misc/mei/Kconfig"
  source "drivers/misc/vmw_vmci/Kconfig"
- source "drivers/misc/mic/Kconfig"
  source "drivers/misc/genwqe/Kconfig"
 +source "drivers/misc/cape/Kconfig"
  source "drivers/misc/echo/Kconfig"
  source "drivers/misc/cxl/Kconfig"
  source "drivers/misc/ocxl/Kconfig"
 diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
-index 00940aed435f..48fe4d684684 100644
+index d23231e73330..32d6f5759076 100644
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
-@@ -49,6 +49,7 @@ obj-$(CONFIG_SRAM_EXEC)		+= sram-exec.o
- obj-$(CONFIG_SRAM_DMA_HEAP)	+= sram-dma-heap.o
- obj-y				+= mic/
+@@ -47,6 +47,7 @@ obj-$(CONFIG_LATTICE_ECP3_CONFIG)	+= lattice-ecp3-config.o
+ obj-$(CONFIG_SRAM)		+= sram.o
+ obj-$(CONFIG_SRAM_EXEC)		+= sram-exec.o
  obj-$(CONFIG_GENWQE)		+= genwqe/
 +obj-y				+= cape/
  obj-$(CONFIG_ECHO)		+= echo/
- obj-$(CONFIG_VEXPRESS_SYSCFG)	+= vexpress-syscfg.o
  obj-$(CONFIG_CXL_BASE)		+= cxl/
+ obj-$(CONFIG_PCI_ENDPOINT_TEST)	+= pci_endpoint_test.o
 diff --git a/drivers/misc/cape/Kconfig b/drivers/misc/cape/Kconfig
 new file mode 100644
 index 000000000000..a2ef85e0415c
@@ -934,5 +934,5 @@ index 000000000000..d81363a77b10
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:bone-pinmux-helper");
 -- 
-2.26.1
+2.28.0
 
