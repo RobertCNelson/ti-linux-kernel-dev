@@ -523,7 +523,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.4.105"
+	backport_tag="v5.4.109"
 
 	subsystem="wiznet"
 	#regenerate="enable"
@@ -577,7 +577,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
-	backport_tag="v4.19.180"
+	backport_tag="v4.19.184"
 
 	subsystem="greybus"
 	#regenerate="enable"
