@@ -210,9 +210,10 @@ git_kernel () {
 
 git_xenomai () {
 	XENO_GIT="${DIR}/ignore/xenomai"
+	xenomai_branch="stable/v3.0.x"
 
 	echo "-----------------------------"
-	echo "scripts/git: Xenomai 3 repository"
+	echo "scripts/git: Xenomai ${xenomai_branch} repository"
 
 	if [ "x${xenomai_checkout}" = "x" ] ; then
 		echo "error: set kernel_tag in system.sh"
@@ -223,8 +224,8 @@ git_xenomai () {
 			rm -rf "${DIR}/ignore/xenomai/" || true
 		fi
 		mkdir -p "${DIR}/ignore/xenomai/" || true
-		echo "git: [git clone -b stable/v3.0.x ${xenomai}]"
-		${git_bin} clone --depth=50 -b stable/v3.0.x ${xenomai} "${DIR}/ignore/xenomai/"
+		echo "git: [git clone -b ${xenomai_branch} ${xenomai}]"
+		${git_bin} clone --depth=50 -b ${xenomai_branch} ${xenomai} "${DIR}/ignore/xenomai/"
 		touch "${DIR}/ignore/xenomai/.ignore-${xenomai_checkout}"
 	fi
 	echo "-----------------------------"
@@ -330,7 +331,7 @@ torvalds_linux="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.g
 unsecure_torvalds_linux="git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
 linux_stable="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
 unsecure_linux_stable="git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"
-xenomai="https://gitlab.denx.de/Xenomai/xenomai.git"
+xenomai="https://source.denx.de/Xenomai/xenomai.git"
 
 if [ ! -f "${DIR}/.yakbuild" ] ; then
 	git_kernel

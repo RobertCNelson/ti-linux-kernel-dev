@@ -500,7 +500,7 @@ ipipe () {
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		#https://gitlab.denx.de/Xenomai/ipipe-arm
+		#https://source.denx.de/Xenomai/ipipe-arm
 		${git_bin} checkout v${KERNEL_TAG}${BUILD} -f
 		test_for_branch=$(${git_bin} branch --list "${xenomai_branch}")
 		if [ "x${test_for_branch}" != "x" ] ; then
@@ -511,8 +511,8 @@ ipipe () {
 
 		cp -v drivers/pci/dwc/pcie-designware-host.c ../patches/ipipe/drivers_pci_dwc_pcie-designware-host.c
 
-		echo "${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}"
-		${git_bin} pull --no-edit https://gitlab.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}
+		echo "${git_bin} pull --no-edit https://source.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}"
+		${git_bin} pull --no-edit https://source.denx.de/Xenomai/ipipe-arm.git ${xenomai_branch}
 
 		#0001-gpio-omap-ipipe-enable-interrupt-pipelining.patch
 		${git_bin} revert --no-edit 952b7cf69c4ca921d37a5b32e8ab5d9256aa88cc -s
@@ -618,7 +618,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.4.105"
+	backport_tag="v5.4.109"
 
 	subsystem="wiznet"
 	#regenerate="enable"
@@ -672,7 +672,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
-	backport_tag="v4.19.180"
+	backport_tag="v4.19.184"
 
 	subsystem="greybus"
 	#regenerate="enable"
