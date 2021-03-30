@@ -69,3 +69,4 @@ ti_git_old_release="b02daa74d9bd58b07b7d43168d4dca9595c0bab3"
 #https://source.denx.de/Xenomai/xenomai/-/commits/stable/v3.0.x/
 #xenomai_checkout="4f491468e78b1016126bd378c7dbb41bcf5c2429"
 #
+
