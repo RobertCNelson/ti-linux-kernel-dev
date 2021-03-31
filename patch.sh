@@ -329,19 +329,19 @@ wireguard () {
 }
 
 ti_pm_firmware () {
-	#http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y-next
+	#https://git.ti.com/gitweb?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 
 		cd ../
 		if [ ! -d ./ti-amx3-cm3-pm-firmware ] ; then
-			${git_bin} clone -b ti-v4.1.y-next git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git --depth=1
+			${git_bin} clone -b ti-v4.1.y git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git --depth=1
 			cd ./ti-amx3-cm3-pm-firmware
 				ti_amx3_cm3_hash=$(git rev-parse HEAD)
 			cd -
 		else
 			rm -rf ./ti-amx3-cm3-pm-firmware || true
-			${git_bin} clone -b ti-v4.1.y-next git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git --depth=1
+			${git_bin} clone -b ti-v4.1.y git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git --depth=1
 			cd ./ti-amx3-cm3-pm-firmware
 				ti_amx3_cm3_hash=$(git rev-parse HEAD)
 			cd -
@@ -500,6 +500,21 @@ patch_backports (){
 }
 
 backports () {
+	backport_tag="v5.4.109"
+
+	subsystem="wiznet"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/ethernet/wiznet/* ./drivers/net/ethernet/wiznet/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
 	backport_tag="v5.0.21"
 
 	subsystem="typec"
@@ -577,7 +592,6 @@ backports () {
 }
 
 reverts () {
-	echo "dir: reverts"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		start_cleanup
@@ -586,7 +600,7 @@ reverts () {
 	## notes
 	##git revert --no-edit xyz -s
 
-	#${git} "${DIR}/patches/reverts/0001-Revert-xyz.patch"
+	#dir 'reverts'
 
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wdir="reverts"
@@ -596,6 +610,8 @@ reverts () {
 }
 
 drivers () {
+	#exit 2
+	dir 'RPi'
 	dir 'drivers/ar1021_i2c'
 	dir 'drivers/btrfs'
 	dir 'drivers/pwm'
@@ -604,10 +620,8 @@ drivers () {
 	dir 'drivers/ssd1306'
 	dir 'drivers/tps65217'
 	dir 'drivers/opp'
-	dir 'drivers/wiznet'
 	dir 'drivers/ctag'
 
-	dir 'drivers/ti/overlays'
 	dir 'drivers/ti/cpsw'
 	dir 'drivers/ti/etnaviv'
 	dir 'drivers/ti/eqep'
@@ -618,7 +632,6 @@ drivers () {
 
 	dir 'drivers/uio_pruss_shmem'
 	dir 'drivers/greybus'
-	dir 'RPi'
 	dir 'gsoc'
 	dir 'fixes'
 }
