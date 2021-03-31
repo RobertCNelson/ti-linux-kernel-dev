@@ -4,10 +4,10 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="-ti-r"
-branch_prefix="ti-linux-"
+build_prefix="-ti-rt-r"
+branch_prefix="ti-linux-rt-"
 branch_postfix=".y"
-bborg_branch="5.10"
+bborg_branch="5.10-rt"
 
 #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v5.10-rc1
 #arm

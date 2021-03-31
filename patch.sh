@@ -393,9 +393,9 @@ local_patch () {
 }
 
 external_git
-aufs
+#aufs
 wpanusb
-#rt
+rt
 ti_pm_firmware
 beagleboard_dtbs
 #local_patch
