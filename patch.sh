@@ -127,6 +127,7 @@ aufs_fail () {
 }
 
 aufs () {
+	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -393,7 +394,7 @@ local_patch () {
 }
 
 external_git
-#aufs
+aufs
 wpanusb
 rt
 ti_pm_firmware
@@ -434,7 +435,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.12-rc5"
+	backport_tag="v5.12-rc8"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -450,7 +451,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.12-rc5"
+	backport_tag="v5.12-rc8"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -464,6 +465,23 @@ backports () {
 	else
 		patch_backports
 	fi
+
+	backport_tag="v5.12-rc8"
+
+	subsystem="spidev"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/spi/spidev.c ./drivers/spi/spidev.c
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	${git} "${DIR}/patches/backports/spidev/0002-spidev-Add-Micron-SPI-NOR-Authenta-device-compatible.patch"
 }
 
 reverts () {
