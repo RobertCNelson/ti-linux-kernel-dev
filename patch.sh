@@ -127,6 +127,7 @@ aufs_fail () {
 }
 
 aufs () {
+	#https://github.com/sfjro/aufs4-standalone/tree/aufs4.19.63+
 	aufs_prefix="aufs4-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -257,7 +258,6 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v4.19.x
 	#${git_bin} revert --no-edit xyz
 
 	#regenerate="enable"
@@ -486,6 +486,7 @@ post_backports () {
 		cd -
 	fi
 
+	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
 	${git_bin} add .
 	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
@@ -500,14 +501,14 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.4.109"
+	backport_tag="v5.4.114"
 
 	subsystem="wiznet"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/drivers/net/ethernet/wiznet/* ./drivers/net/ethernet/wiznet/
+		cp -v ~/linux-src/drivers/net/ethernet/wiznet/* ./drivers/net/ethernet/wiznet/
 
 		post_backports
 		exit 2
