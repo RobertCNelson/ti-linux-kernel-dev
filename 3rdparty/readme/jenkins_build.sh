@@ -1,35 +1,19 @@
 #!/bin/bash
 
-#gcc:
+#git clone -b 5.10 https://github.com/beagleboard/linux --depth=10
+#cd ./linux
 
-#
-#https://releases.linaro.org/components/toolchain/binaries/7.1-2017.05/arm-linux-gnueabihf/gcc-linaro-7.1.1-2017.05-x86_64_arm-linux-gnueabihf.tar.xz
-#https://releases.linaro.org/components/toolchain/binaries/7.1-2017.08/arm-linux-gnueabihf/gcc-linaro-7.1.1-2017.08-x86_64_arm-linux-gnueabihf.tar.xz
-#https://releases.linaro.org/components/toolchain/binaries/7.2-2017.11/arm-linux-gnueabihf/gcc-linaro-7.2.1-2017.11-x86_64_arm-linux-gnueabihf.tar.xz
-#https://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/arm-linux-gnueabihf/gcc-linaro-7.3.1-2018.05-x86_64_arm-linux-gnueabihf.tar.xz
-#https://releases.linaro.org/components/toolchain/binaries/7.4-2019.02/arm-linux-gnueabihf/gcc-linaro-7.4.1-2019.02-x86_64_arm-linux-gnueabihf.tar.xz
-#https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/arm-linux-gnueabihf/gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf.tar.xz
-#
-
-gcc_html_path="https://releases.linaro.org/components/toolchain/binaries/7.5-2019.12/arm-linux-gnueabihf/"
-gcc_filename_prefix="gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf"
-gcc_banner="arm-linux-gnueabihf-gcc (Linaro GCC 7.5-2019.12) 7.5.0"
-gcc_copyright="2017"
-datestamp="2019.12-gcc-arm-linux-gnueabihf"
-
-#
-
-if [ ! -d ${gcc_filename_prefix}/ ] ; then
+if [ ! -d ./gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf/ ] ; then
 	rm -rf ./gcc-* || true
 	#wget -c ${site}/${version}/${filename}
-	wget -c http://gfnd.rcn-ee.org/farm/jenkins-dl/${gcc_filename_prefix}.tar.xz
-	tar xf ${gcc_filename_prefix}.tar.xz
+	wget -c http://192.168.3.125/jenkins/gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf.tar.xz
+	tar xf gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf.tar.xz
 fi
 
-export CC=`pwd`/${gcc_filename_prefix}/bin/arm-linux-gnueabihf-
+export CC=`pwd`/gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
 
-make ARCH=arm clean
-make ARCH=arm bb.org_defconfig
+make ARCH=arm CROSS_COMPILE=${CC} clean
+make ARCH=arm CROSS_COMPILE=${CC} bb.org_defconfig
 
 echo "[make ARCH=arm -j4 CROSS_COMPILE=\"${binary}\" zImage]"
 make ARCH=arm -j4 CROSS_COMPILE="ccache ${CC}" zImage
@@ -59,4 +43,5 @@ else
 	fi
 fi
 
-make ARCH=arm clean
+make ARCH=arm CROSS_COMPILE=${CC} clean
+rm -rf ./gcc-* || true

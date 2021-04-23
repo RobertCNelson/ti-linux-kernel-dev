@@ -120,6 +120,8 @@ external_git () {
 		echo "${top_of_branch}"
 	fi
 	#exit 2
+
+	${git} "${DIR}/patches/0001-patch-5.4.106-107.patch"
 }
 
 aufs_fail () {
@@ -128,6 +130,7 @@ aufs_fail () {
 }
 
 aufs () {
+	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.4.3
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -501,8 +504,8 @@ beagleboard_dtbs
 #local_patch
 
 ipipe () {
-	kernel_base="v5.4.93"
-	xenomai_branch="ipipe-core-5.4.93-arm-0"
+	kernel_base="v5.4.107"
+	xenomai_branch="ipipe-core-5.4.107-arm-1"
 	#https://source.denx.de/Xenomai/ipipe-arm/-/tags?utf8=%E2%9C%93&search=ipipe-core-5.4
 	echo "dir: ipipe"
 
@@ -595,6 +598,7 @@ post_backports () {
 		cd -
 	fi
 
+	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
 	${git_bin} add .
 	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
@@ -609,7 +613,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.25"
+	backport_tag="v5.12-rc8"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -618,6 +622,21 @@ backports () {
 
 		cp -rv ~/linux-src/drivers/greybus/* ./drivers/greybus/
 		cp -rv ~/linux-src/drivers/staging/greybus/* ./drivers/staging/greybus/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.12-rc8"
+
+	subsystem="wlcore"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/wireless/ti/* ./drivers/net/wireless/ti/
 
 		post_backports
 		exit 2
@@ -726,7 +745,7 @@ soc
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.25"
+		backport_tag="v5.10.32"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
