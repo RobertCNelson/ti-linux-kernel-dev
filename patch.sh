@@ -566,23 +566,6 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.12-rc8"
-
-	subsystem="spidev"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/spi/spidev.c ./drivers/spi/spidev.c
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	${git} "${DIR}/patches/backports/spidev/0002-spidev-Add-Micron-SPI-NOR-Authenta-device-compatible.patch"
-
 	backport_tag="1657f11c7ca109b6f7e7bec4e241bf6cbbe2d4b0"
 
 	subsystem="exfat"
