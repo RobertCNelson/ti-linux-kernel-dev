@@ -1,31 +1,19 @@
 #!/bin/bash
 
-#gcc:
+#git clone -b 5.10 https://github.com/beagleboard/linux --depth=10
+#cd ./linux
 
-#
-#https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2018.08/gcc-arm-8.2-2018.08-x86_64-arm-linux-gnueabihf.tar.xz
-#https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2018.11/gcc-arm-8.2-2018.11-x86_64-arm-linux-gnueabihf.tar.xz
-#https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2019.01/gcc-arm-8.2-2019.01-x86_64-arm-linux-gnueabihf.tar.xz
-#https://developer.arm.com/-/media/Files/downloads/gnu-a/8.3-2019.03/binrel/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.x
-#
-
-gcc_html_path="https://developer.arm.com/-/media/Files/downloads/gnu-a/8.3-2019.03/binrel/"
-gcc_filename_prefix="gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf"
-gcc_banner="arm-linux-gnueabihf-gcc (GNU Toolchain for the A-profile Architecture 8.3-2019.03 (arm-rel-8.36)) 8.3.0"
-gcc_copyright="2018"
-datestamp="2019.03-gcc-arm-linux-gnueabihf"
-
-if [ ! -d ${gcc_filename_prefix}/ ] ; then
+if [ ! -d ./gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf/ ] ; then
 	rm -rf ./gcc-* || true
 	#wget -c ${site}/${version}/${filename}
-	wget -c http://192.168.3.125/jenkins/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.x
-	tar xf ${gcc_filename_prefix}.tar.xz
+	wget -c http://192.168.3.125/jenkins/gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf.tar.xz
+	tar xf gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf.tar.xz
 fi
 
-export CC=`pwd`/${gcc_filename_prefix}/bin/arm-linux-gnueabihf-
+export CC=`pwd`/gcc-linaro-7.5.0-2019.12-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
 
-make ARCH=arm clean
-make ARCH=arm bb.org_defconfig
+make ARCH=arm CROSS_COMPILE=${CC} clean
+make ARCH=arm CROSS_COMPILE=${CC} bb.org_defconfig
 
 echo "[make ARCH=arm -j4 CROSS_COMPILE=\"${binary}\" zImage]"
 make ARCH=arm -j4 CROSS_COMPILE="ccache ${CC}" zImage
@@ -55,4 +43,5 @@ else
 	fi
 fi
 
-make ARCH=arm clean
+make ARCH=arm CROSS_COMPILE=${CC} clean
+rm -rf ./gcc-* || true
