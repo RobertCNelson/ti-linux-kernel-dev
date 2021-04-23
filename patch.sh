@@ -127,6 +127,7 @@ aufs_fail () {
 }
 
 aufs () {
+	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.4.3
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -519,6 +520,7 @@ post_backports () {
 		cd -
 	fi
 
+	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
 	${git_bin} add .
 	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
@@ -533,7 +535,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.11.11"
+	backport_tag="v5.12-rc8"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -548,6 +550,38 @@ backports () {
 	else
 		patch_backports
 	fi
+
+	backport_tag="v5.12-rc8"
+
+	subsystem="wlcore"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/wireless/ti/* ./drivers/net/wireless/ti/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.12-rc8"
+
+	subsystem="spidev"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/spi/spidev.c ./drivers/spi/spidev.c
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	${git} "${DIR}/patches/backports/spidev/0002-spidev-Add-Micron-SPI-NOR-Authenta-device-compatible.patch"
 
 	backport_tag="1657f11c7ca109b6f7e7bec4e241bf6cbbe2d4b0"
 
@@ -650,7 +684,7 @@ soc
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.27"
+		backport_tag="v5.10.32"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
