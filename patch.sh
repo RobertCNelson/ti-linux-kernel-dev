@@ -128,6 +128,7 @@ aufs_fail () {
 }
 
 aufs () {
+	#https://github.com/sfjro/aufs4-standalone/tree/aufs4.14.73+
 	aufs_prefix="aufs4-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -258,7 +259,6 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	#v4.14.x
 	#${git_bin} revert --no-edit xyz
 
 	#revert this from ti's branch...
@@ -509,6 +509,7 @@ post_backports () {
 		cd -
 	fi
 
+	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
 	${git_bin} add .
 	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
@@ -523,7 +524,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.4.109"
+	backport_tag="v5.4.118"
 
 	subsystem="wiznet"
 	#regenerate="enable"
@@ -577,7 +578,7 @@ backports () {
 
 	${git} "${DIR}/patches/backports/vl53l0x/0002-wire-up-VL53L0X_I2C.patch"
 
-	backport_tag="v4.19.184"
+	backport_tag="v4.19.190"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -782,9 +783,18 @@ readme () {
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
 		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
 		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
+
+		mkdir -p "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
+		cp -v "${DIR}/3rdparty/readme/bug_report.md" "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
+		cp -v "${DIR}/3rdparty/readme/FUNDING.yml" "${DIR}/KERNEL/.github/"
+
 		git add -f README.md
 		git add -f jenkins_build.sh
 		git add -f Jenkinsfile
+
+		git add -f .github/ISSUE_TEMPLATE/bug_report.md
+		git add -f .github/FUNDING.yml
+
 		git commit -a -m 'enable: Jenkins: http://gfnd.rcn-ee.org:8080' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
