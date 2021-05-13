@@ -29,7 +29,7 @@ DEBARCH=armhf
 toolchain="gcc_linaro_gnueabihf_7"
 #toolchain="gcc_arm_gnueabihf_8"
 #toolchain="gcc_arm_gnueabihf_9"
-#toolchain="gcc_arm_gnueabihf_10"
+#toolchain="gcc_10_arm"
 #arm64
 #KERNEL_ARCH=arm64
 #DEBARCH=arm64
@@ -38,10 +38,12 @@ toolchain="gcc_linaro_gnueabihf_7"
 #toolchain="gcc_linaro_aarch64_gnu_7"
 #toolchain="gcc_arm_aarch64_gnu_8"
 #toolchain="gcc_arm_aarch64_gnu_9"
-#toolchain="gcc_arm_aarch64_gnu_10"
+#toolchain="gcc_10_aarch64"
 #riscv64
 #KERNEL_ARCH=riscv
 #DEBARCH=riscv64
+#toolchain="gcc_8_riscv64"
+#toolchain="gcc_9_riscv64"
 #toolchain="gcc_10_riscv64"
 
 #Kernel
@@ -49,7 +51,7 @@ KERNEL_REL=4.14
 KERNEL_TAG=${KERNEL_REL}.108
 kernel_rt=".106-rt56"
 #Kernel Build
-BUILD=${build_prefix}140
+BUILD=${build_prefix}140.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -69,4 +71,3 @@ ti_git_old_release="b02daa74d9bd58b07b7d43168d4dca9595c0bab3"
 #https://source.denx.de/Xenomai/xenomai/-/commits/stable/v3.0.x/
 #xenomai_checkout="4f491468e78b1016126bd378c7dbb41bcf5c2429"
 #
-
