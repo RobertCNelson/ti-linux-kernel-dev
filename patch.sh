@@ -321,10 +321,6 @@ ti_pm_firmware () {
 	dir 'drivers/ti/firmware'
 }
 
-dtb_makefile_append_omap4 () {
-	sed -i -e 's:omap4-panda.dtb \\:omap4-panda.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
-}
-
 dtb_makefile_append_am5 () {
 	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
@@ -421,6 +417,7 @@ post_backports () {
 		cd -
 	fi
 
+	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
 	${git_bin} add .
 	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
@@ -435,7 +432,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.12-rc8"
+	backport_tag="v5.12.4"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -451,7 +448,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.12-rc8"
+	backport_tag="v5.12.4"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -466,7 +463,25 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.12-rc8"
+	backport_tag="v5.10.37"
+
+	subsystem="iio"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/include/linux/iio/* ./include/linux/iio/
+		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
+		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
+		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.13-rc1"
 
 	subsystem="spidev"
 	#regenerate="enable"
@@ -480,8 +495,6 @@ backports () {
 	else
 		patch_backports
 	fi
-
-	${git} "${DIR}/patches/backports/spidev/0002-spidev-Add-Micron-SPI-NOR-Authenta-device-compatible.patch"
 }
 
 reverts () {
@@ -503,6 +516,7 @@ reverts () {
 }
 
 drivers () {
+	#https://github.com/raspberrypi/linux/branches
 	#exit 2
 	dir 'RPi'
 	dir 'drivers/ar1021_i2c'
