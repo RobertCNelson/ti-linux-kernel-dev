@@ -764,10 +764,21 @@ backports () {
 		patch -p1 < ../patches/cypress/brcmfmac/0128-revert-brcmfmac-set-state-of-hanger-slot-to-FREE-whe.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0129-brcmfmac-Fix-warning-when-hitting-FW-crash-with-flow.patch
 
+		#v5.4.18-2021_0114
+		patch -p1 < ../patches/cypress/brcmfmac/0130-brcmfmac-correctly-remove-all-p2p-vif.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0131-brcmfmac-use-firmware_request_nowarn-for-the-board-s.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0132-brcmfmac-fix-firmware-trap-while-dumping-obss-stats.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0133-brcmfmac-add-creating-station-interface-support.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0134-brcmfmac-support-station-interface-creation-version-.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0135-brcmfmac-To-fix-crash-when-platform-does-not-contain.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0136-brcmfmac-Remove-the-call-to-dtim_assoc-IOVAR.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0137-brcmfmac-fix-CERT-P2P-5.1.10-failure.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0138-brcmfmac-Fix-for-when-connect-request-is-not-success.patch
+
 		#exit 2
 
 		${git_bin} add .
-		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.4.18-2020_0925" -s
+		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.4.18-2021_0114" -s
 		${git_bin} format-patch -1 -o ../patches/cypress/
 
 		exit 2
