@@ -734,7 +734,7 @@ backports () {
 		#exit 2
 
 		${git_bin} add .
-		${git_bin} commit -a -m "cypress-fmac-v5.4.18-2020_0402" -s
+		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.4.18-2020_0402" -s
 		${git_bin} format-patch -1 -o ../patches/cypress/
 
 		exit 2
