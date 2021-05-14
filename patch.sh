@@ -486,6 +486,7 @@ beagleboard_dtbs
 #local_patch
 
 ipipe () {
+	#https://source.denx.de/Xenomai/ipipe-arm/-/tags?utf8=%E2%9C%93&search=ipipe-core-4.19
 	kernel_base="v4.19.110"
 	xenomai_branch="ipipe-core-4.19.110-arm-07"
 	echo "dir: ipipe"
@@ -598,7 +599,22 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.4.114"
+	backport_tag="v4.19.190"
+
+	subsystem="wlcore"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/wireless/ti/* ./drivers/net/wireless/ti/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.4.119"
 
 	subsystem="wiznet"
 	#regenerate="enable"
