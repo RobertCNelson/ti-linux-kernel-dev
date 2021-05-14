@@ -421,6 +421,7 @@ post_backports () {
 		cd -
 	fi
 
+	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
 	${git_bin} add .
 	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
@@ -503,6 +504,7 @@ reverts () {
 }
 
 drivers () {
+	#https://github.com/raspberrypi/linux/branches
 	#exit 2
 	dir 'RPi'
 	dir 'drivers/ar1021_i2c'
