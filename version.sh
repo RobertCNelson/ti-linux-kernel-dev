@@ -29,7 +29,7 @@ DEBARCH=armhf
 #toolchain="gcc_linaro_gnueabihf_7"
 toolchain="gcc_arm_gnueabihf_8"
 #toolchain="gcc_arm_gnueabihf_9"
-#toolchain="gcc_arm_gnueabihf_10"
+#toolchain="gcc_10_arm"
 #arm64
 #KERNEL_ARCH=arm64
 #DEBARCH=arm64
@@ -38,10 +38,12 @@ toolchain="gcc_arm_gnueabihf_8"
 #toolchain="gcc_linaro_aarch64_gnu_7"
 #toolchain="gcc_arm_aarch64_gnu_8"
 #toolchain="gcc_arm_aarch64_gnu_9"
-#toolchain="gcc_arm_aarch64_gnu_10"
+#toolchain="gcc_10_aarch64"
 #riscv64
 #KERNEL_ARCH=riscv
 #DEBARCH=riscv64
+#toolchain="gcc_8_riscv64"
+#toolchain="gcc_9_riscv64"
 #toolchain="gcc_10_riscv64"
 
 #Kernel
@@ -49,7 +51,7 @@ KERNEL_REL=5.4
 KERNEL_TAG=${KERNEL_REL}.106
 kernel_rt=".106-rt54"
 #Kernel Build
-BUILD=${build_prefix}27
+BUILD=${build_prefix}27.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -67,5 +69,5 @@ ti_git_old_release="023faefa70274929bff92dc41167b007f7523792"
 
 #https://source.denx.de/Xenomai/xenomai.git
 #https://source.denx.de/Xenomai/xenomai/-/commits/stable/v3.1.x/
-xenomai_checkout="cdc938bc199a86097d936caf600fa13af029a434"
+xenomai_checkout="d3b4ad5bba021859a2dd44d2864b7ed656328428"
 #
