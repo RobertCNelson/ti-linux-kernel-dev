@@ -1,0 +1,124 @@
+From 9af032adbe15108ae552e580031d3963f4281cdd Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Fri, 14 May 2021 11:15:16 -0500
+Subject: [PATCH] backports: wlcore: from: linux.git
+
+Reference: v4.19.190
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/net/wireless/ti/wl1251/event.c  |  2 +-
+ drivers/net/wireless/ti/wl12xx/main.c   |  3 ---
+ drivers/net/wireless/ti/wlcore/main.c   | 19 ++++---------------
+ drivers/net/wireless/ti/wlcore/tx.c     |  1 +
+ drivers/net/wireless/ti/wlcore/wlcore.h |  3 ---
+ 5 files changed, 6 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/wl1251/event.c b/drivers/net/wireless/ti/wl1251/event.c
+index f5acd24d0e2b..988abb49771f 100644
+--- a/drivers/net/wireless/ti/wl1251/event.c
++++ b/drivers/net/wireless/ti/wl1251/event.c
+@@ -84,7 +84,7 @@ static int wl1251_event_ps_report(struct wl1251 *wl,
+ 		break;
+ 	}
+ 
+-	return 0;
++	return ret;
+ }
+ 
+ static void wl1251_event_mbox_dump(struct event_mailbox *mbox)
+diff --git a/drivers/net/wireless/ti/wl12xx/main.c b/drivers/net/wireless/ti/wl12xx/main.c
+index 4a4f797bb10f..e10fff42751e 100644
+--- a/drivers/net/wireless/ti/wl12xx/main.c
++++ b/drivers/net/wireless/ti/wl12xx/main.c
+@@ -649,7 +649,6 @@ static int wl12xx_identify_chip(struct wl1271 *wl)
+ 		wl->quirks |= WLCORE_QUIRK_LEGACY_NVS |
+ 			      WLCORE_QUIRK_DUAL_PROBE_TMPL |
+ 			      WLCORE_QUIRK_TKIP_HEADER_SPACE |
+-			      WLCORE_QUIRK_START_STA_FAILS |
+ 			      WLCORE_QUIRK_AP_ZERO_SESSION_ID;
+ 		wl->sr_fw_name = WL127X_FW_NAME_SINGLE;
+ 		wl->mr_fw_name = WL127X_FW_NAME_MULTI;
+@@ -673,7 +672,6 @@ static int wl12xx_identify_chip(struct wl1271 *wl)
+ 		wl->quirks |= WLCORE_QUIRK_LEGACY_NVS |
+ 			      WLCORE_QUIRK_DUAL_PROBE_TMPL |
+ 			      WLCORE_QUIRK_TKIP_HEADER_SPACE |
+-			      WLCORE_QUIRK_START_STA_FAILS |
+ 			      WLCORE_QUIRK_AP_ZERO_SESSION_ID;
+ 		wl->plt_fw_name = WL127X_PLT_FW_NAME;
+ 		wl->sr_fw_name = WL127X_FW_NAME_SINGLE;
+@@ -702,7 +700,6 @@ static int wl12xx_identify_chip(struct wl1271 *wl)
+ 		wl->quirks |= WLCORE_QUIRK_TX_BLOCKSIZE_ALIGN |
+ 			      WLCORE_QUIRK_DUAL_PROBE_TMPL |
+ 			      WLCORE_QUIRK_TKIP_HEADER_SPACE |
+-			      WLCORE_QUIRK_START_STA_FAILS |
+ 			      WLCORE_QUIRK_AP_ZERO_SESSION_ID;
+ 
+ 		wlcore_set_min_fw_ver(wl, WL128X_CHIP_VER,
+diff --git a/drivers/net/wireless/ti/wlcore/main.c b/drivers/net/wireless/ti/wlcore/main.c
+index 2ca5658bbc2a..e24ffdff5bdc 100644
+--- a/drivers/net/wireless/ti/wlcore/main.c
++++ b/drivers/net/wireless/ti/wlcore/main.c
+@@ -2875,21 +2875,8 @@ static int wlcore_join(struct wl1271 *wl, struct wl12xx_vif *wlvif)
+ 
+ 	if (is_ibss)
+ 		ret = wl12xx_cmd_role_start_ibss(wl, wlvif);
+-	else {
+-		if (wl->quirks & WLCORE_QUIRK_START_STA_FAILS) {
+-			/*
+-			 * TODO: this is an ugly workaround for wl12xx fw
+-			 * bug - we are not able to tx/rx after the first
+-			 * start_sta, so make dummy start+stop calls,
+-			 * and then call start_sta again.
+-			 * this should be fixed in the fw.
+-			 */
+-			wl12xx_cmd_role_start_sta(wl, wlvif);
+-			wl12xx_cmd_role_stop_sta(wl, wlvif);
+-		}
+-
++	else
+ 		ret = wl12xx_cmd_role_start_sta(wl, wlvif);
+-	}
+ 
+ 	return ret;
+ }
+@@ -3671,8 +3658,10 @@ void wlcore_regdomain_config(struct wl1271 *wl)
+ 		goto out;
+ 
+ 	ret = pm_runtime_get_sync(wl->dev);
+-	if (ret < 0)
++	if (ret < 0) {
++		pm_runtime_put_autosuspend(wl->dev);
+ 		goto out;
++	}
+ 
+ 	ret = wlcore_cmd_regdomain_config_locked(wl);
+ 	if (ret < 0) {
+diff --git a/drivers/net/wireless/ti/wlcore/tx.c b/drivers/net/wireless/ti/wlcore/tx.c
+index b6e19c2d66b0..250bcbf4ea2f 100644
+--- a/drivers/net/wireless/ti/wlcore/tx.c
++++ b/drivers/net/wireless/ti/wlcore/tx.c
+@@ -877,6 +877,7 @@ void wl1271_tx_work(struct work_struct *work)
+ 
+ 	ret = wlcore_tx_work_locked(wl);
+ 	if (ret < 0) {
++		pm_runtime_put_noidle(wl->dev);
+ 		wl12xx_queue_recovery_work(wl);
+ 		goto out;
+ 	}
+diff --git a/drivers/net/wireless/ti/wlcore/wlcore.h b/drivers/net/wireless/ti/wlcore/wlcore.h
+index d4b1f66ef457..af7cf70b3832 100644
+--- a/drivers/net/wireless/ti/wlcore/wlcore.h
++++ b/drivers/net/wireless/ti/wlcore/wlcore.h
+@@ -559,9 +559,6 @@ wlcore_set_min_fw_ver(struct wl1271 *wl, unsigned int chip,
+ /* Each RX/TX transaction requires an end-of-transaction transfer */
+ #define WLCORE_QUIRK_END_OF_TRANSACTION		BIT(0)
+ 
+-/* the first start_role(sta) sometimes doesn't work on wl12xx */
+-#define WLCORE_QUIRK_START_STA_FAILS		BIT(1)
+-
+ /* wl127x and SPI don't support SDIO block size alignment */
+ #define WLCORE_QUIRK_TX_BLOCKSIZE_ALIGN		BIT(2)
+ 
+-- 
+2.30.2
+

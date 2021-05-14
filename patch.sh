@@ -501,7 +501,22 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.4.114"
+	backport_tag="v4.19.190"
+
+	subsystem="wlcore"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/wireless/ti/* ./drivers/net/wireless/ti/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.4.119"
 
 	subsystem="wiznet"
 	#regenerate="enable"
