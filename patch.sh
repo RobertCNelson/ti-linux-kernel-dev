@@ -629,6 +629,7 @@ backports () {
 
 		post_backports
 
+		#v5.4.18-2020_0402
 		patch -p1 < ../patches/cypress/brcmfmac/0001-brcmfmac-set-F2-blocksize-and-watermark-for-4373.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0002-non-upstream-add-sg-parameters-dts-parsing.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0003-brcmfmac-set-apsta-to-0-when-AP-starts-on-primary-in.patch
@@ -731,10 +732,24 @@ backports () {
 		patch -p1 < ../patches/cypress/brcmfmac/0100-brcmfmac-add-a-variable-for-packet-forwarding-condit.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0101-non-upstream-don-t-change-arp-nd-offload-in-multicas.patch
 
+		#v5.4.18-2020_0625
+		patch -p1 < ../patches/cypress/brcmfmac/0102-non-upstream-revert-don-t-change-arp-nd-offload-in-m.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0103-brcmfmac-don-t-allow-arp-nd-offload-to-be-enabled-if.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0104-brcmfmac-fix-permanent-MAC-address-in-wiphy-is-all-z.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0105-non-upstream-ignore-FW-BADARG-error-when-removing-no.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0106-Revert-brcmfmac-validate-ifp-pointer-in-brcmf_txfina.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0107-Revert-brcmfmac-clean-up-iface-mac-descriptor-before.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0108-brcmfmac-Support-DPP-feature.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0109-brcmfmac-move-firmware-path-to-cypress-folder.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0110-brcmfmac-add-support-for-sof-time-stammping-for-tx-p.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0111-Revert-brcmfmac-add-support-for-CYW89359-SDIO-chipse.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0112-brcmfmac-initialize-the-requested-dwell-time.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0113-non-upstream-free-eventmask_msg-after-updating-event.patch
+
 		#exit 2
 
 		${git_bin} add .
-		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.4.18-2020_0402" -s
+		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.4.18-2020_0625" -s
 		${git_bin} format-patch -1 -o ../patches/cypress/
 
 		exit 2
