@@ -1,0 +1,133 @@
+From aa3f671876e986253ce1627878c0d4950c1622ab Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Fri, 14 May 2021 13:52:39 -0500
+Subject: [PATCH] backports: iio: from: linux.git
+
+Reference: v5.10.37
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/iio/accel/adis16201.c              |  2 +-
+ drivers/iio/adc/Kconfig                    |  2 +-
+ drivers/iio/adc/ad7476.c                   | 18 ++++--------------
+ drivers/iio/imu/inv_mpu6050/inv_mpu_core.c | 20 ++++++++++++++------
+ 4 files changed, 20 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/iio/accel/adis16201.c b/drivers/iio/accel/adis16201.c
+index f955cccb3e77..84bbdfd2f2ba 100644
+--- a/drivers/iio/accel/adis16201.c
++++ b/drivers/iio/accel/adis16201.c
+@@ -215,7 +215,7 @@ static const struct iio_chan_spec adis16201_channels[] = {
+ 	ADIS_AUX_ADC_CHAN(ADIS16201_AUX_ADC_REG, ADIS16201_SCAN_AUX_ADC, 0, 12),
+ 	ADIS_INCLI_CHAN(X, ADIS16201_XINCL_OUT_REG, ADIS16201_SCAN_INCLI_X,
+ 			BIT(IIO_CHAN_INFO_CALIBBIAS), 0, 14),
+-	ADIS_INCLI_CHAN(X, ADIS16201_YINCL_OUT_REG, ADIS16201_SCAN_INCLI_Y,
++	ADIS_INCLI_CHAN(Y, ADIS16201_YINCL_OUT_REG, ADIS16201_SCAN_INCLI_Y,
+ 			BIT(IIO_CHAN_INFO_CALIBBIAS), 0, 14),
+ 	IIO_CHAN_SOFT_TIMESTAMP(7)
+ };
+diff --git a/drivers/iio/adc/Kconfig b/drivers/iio/adc/Kconfig
+index 86fda6182543..e39b679126a2 100644
+--- a/drivers/iio/adc/Kconfig
++++ b/drivers/iio/adc/Kconfig
+@@ -249,7 +249,7 @@ config AD799X
+ config AD9467
+ 	tristate "Analog Devices AD9467 High Speed ADC driver"
+ 	depends on SPI
+-	select ADI_AXI_ADC
++	depends on ADI_AXI_ADC
+ 	help
+ 	  Say yes here to build support for Analog Devices:
+ 	  * AD9467 16-Bit, 200 MSPS/250 MSPS Analog-to-Digital Converter
+diff --git a/drivers/iio/adc/ad7476.c b/drivers/iio/adc/ad7476.c
+index 66c55ae67791..bf5572670244 100644
+--- a/drivers/iio/adc/ad7476.c
++++ b/drivers/iio/adc/ad7476.c
+@@ -316,25 +316,15 @@ static int ad7476_probe(struct spi_device *spi)
+ 	spi_message_init(&st->msg);
+ 	spi_message_add_tail(&st->xfer, &st->msg);
+ 
+-	ret = iio_triggered_buffer_setup(indio_dev, NULL,
+-			&ad7476_trigger_handler, NULL);
++	ret = devm_iio_triggered_buffer_setup(&spi->dev, indio_dev, NULL,
++					      &ad7476_trigger_handler, NULL);
+ 	if (ret)
+-		goto error_disable_reg;
++		return ret;
+ 
+ 	if (st->chip_info->reset)
+ 		st->chip_info->reset(st);
+ 
+-	ret = iio_device_register(indio_dev);
+-	if (ret)
+-		goto error_ring_unregister;
+-	return 0;
+-
+-error_ring_unregister:
+-	iio_triggered_buffer_cleanup(indio_dev);
+-error_disable_reg:
+-	regulator_disable(st->reg);
+-
+-	return ret;
++	return devm_iio_device_register(&spi->dev, indio_dev);
+ }
+ 
+ static const struct spi_device_id ad7476_id[] = {
+diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
+index 18a1898e3e34..ae391ec4a727 100644
+--- a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
++++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
+@@ -723,12 +723,16 @@ inv_mpu6050_read_raw(struct iio_dev *indio_dev,
+ 	}
+ }
+ 
+-static int inv_mpu6050_write_gyro_scale(struct inv_mpu6050_state *st, int val)
++static int inv_mpu6050_write_gyro_scale(struct inv_mpu6050_state *st, int val,
++					int val2)
+ {
+ 	int result, i;
+ 
++	if (val != 0)
++		return -EINVAL;
++
+ 	for (i = 0; i < ARRAY_SIZE(gyro_scale_6050); ++i) {
+-		if (gyro_scale_6050[i] == val) {
++		if (gyro_scale_6050[i] == val2) {
+ 			result = inv_mpu6050_set_gyro_fsr(st, i);
+ 			if (result)
+ 				return result;
+@@ -759,13 +763,17 @@ static int inv_write_raw_get_fmt(struct iio_dev *indio_dev,
+ 	return -EINVAL;
+ }
+ 
+-static int inv_mpu6050_write_accel_scale(struct inv_mpu6050_state *st, int val)
++static int inv_mpu6050_write_accel_scale(struct inv_mpu6050_state *st, int val,
++					 int val2)
+ {
+ 	int result, i;
+ 	u8 d;
+ 
++	if (val != 0)
++		return -EINVAL;
++
+ 	for (i = 0; i < ARRAY_SIZE(accel_scale); ++i) {
+-		if (accel_scale[i] == val) {
++		if (accel_scale[i] == val2) {
+ 			d = (i << INV_MPU6050_ACCL_CONFIG_FSR_SHIFT);
+ 			result = regmap_write(st->map, st->reg->accl_config, d);
+ 			if (result)
+@@ -806,10 +814,10 @@ static int inv_mpu6050_write_raw(struct iio_dev *indio_dev,
+ 	case IIO_CHAN_INFO_SCALE:
+ 		switch (chan->type) {
+ 		case IIO_ANGL_VEL:
+-			result = inv_mpu6050_write_gyro_scale(st, val2);
++			result = inv_mpu6050_write_gyro_scale(st, val, val2);
+ 			break;
+ 		case IIO_ACCEL:
+-			result = inv_mpu6050_write_accel_scale(st, val2);
++			result = inv_mpu6050_write_accel_scale(st, val, val2);
+ 			break;
+ 		default:
+ 			result = -EINVAL;
+-- 
+2.30.2
+

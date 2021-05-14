@@ -45,10 +45,10 @@ toolchain="gcc_10_arm"
 
 #Kernel
 KERNEL_REL=5.10
-KERNEL_TAG=${KERNEL_REL}.21
-kernel_rt=".21-rt34"
+KERNEL_TAG=${KERNEL_REL}.30
+kernel_rt=".30-rt38"
 #Kernel Build
-BUILD=${build_prefix}2
+BUILD=${build_prefix}2.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -59,12 +59,12 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="b96c5ec19ce88fcaf637e79aae081ec6ebd9ae51"
-        ti_git_pre="b96c5ec19ce88fcaf637e79aae081ec6ebd9ae51"
-       ti_git_post="b53d877300ae60870b85823c6bfabb3aa643933b"
+ti_git_old_release="b53d877300ae60870b85823c6bfabb3aa643933b"
+        ti_git_pre="b53d877300ae60870b85823c6bfabb3aa643933b"
+       ti_git_post="d85aee3e19aa7403bd157d2ae30917e736096a7f"
 #
 
 #https://source.denx.de/Xenomai/xenomai.git
 #https://source.denx.de/Xenomai/xenomai/-/commits/stable/v3.1.x/
-#xenomai_checkout="cdc938bc199a86097d936caf600fa13af029a434"
+#xenomai_checkout="d3b4ad5bba021859a2dd44d2864b7ed656328428"
 #
