@@ -535,7 +535,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.12-rc8"
+	backport_tag="v5.12.4"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -551,7 +551,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.12-rc8"
+	backport_tag="v5.12.4"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -559,6 +559,24 @@ backports () {
 		pre_backports
 
 		cp -rv ~/linux-src/drivers/net/wireless/ti/* ./drivers/net/wireless/ti/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.4.119"
+
+	subsystem="iio"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/include/linux/iio/* ./include/linux/iio/
+		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
+		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
+		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
 
 		post_backports
 		exit 2
@@ -638,6 +656,7 @@ reverts () {
 }
 
 drivers () {
+	#https://github.com/raspberrypi/linux/branches
 	#exit 2
 	dir 'RPi'
 	dir 'drivers/ar1021_i2c'
@@ -667,7 +686,7 @@ soc
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.32"
+		backport_tag="v5.10.37"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
