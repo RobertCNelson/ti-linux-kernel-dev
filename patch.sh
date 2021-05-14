@@ -746,10 +746,28 @@ backports () {
 		patch -p1 < ../patches/cypress/brcmfmac/0112-brcmfmac-initialize-the-requested-dwell-time.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0113-non-upstream-free-eventmask_msg-after-updating-event.patch
 
+		#v5.4.18-2020_0925
+		patch -p1 < ../patches/cypress/brcmfmac/0114-brcmfmac-fix-invalid-address-access-when-enabling-SC.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0115-brcmfmac-calling-brcmf_free-when-removing-SDIO-devic.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0116-brcmfmac-add-a-timer-to-read-console-periodically-in.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0117-brcmfmac-return-error-when-getting-invalid-max_flowr.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0118-brcmfmac-Fix-to-add-skb-free-for-TIM-update-info-whe.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0119-brcmfmac-Fix-to-add-brcmf_clear_assoc_ies-when-rmmod.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0120-brcmfmac-dump-dongle-memory-when-attaching-failed.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0121-brcmfmac-update-address-mode-via-test-tool-for-AP-mo.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0122-brcmfmac-load-54591-firmware-for-chip-ID-0x4355.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0123-brcmfmac-reserve-tx-credit-only-when-txctl-is-ready-.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0124-brcmfmac-Fix-interoperating-DPP-and-other-encryption.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0125-brcmfmac-fix-SDIO-bus-errors-during-high-temp-tests.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0126-brcmfmac-Add-dump_survey-cfg80211-ops-for-HostApd-Au.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0127-brcmfmac-Fix-warning-message-after-dongle-setup-fail.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0128-revert-brcmfmac-set-state-of-hanger-slot-to-FREE-whe.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0129-brcmfmac-Fix-warning-when-hitting-FW-crash-with-flow.patch
+
 		#exit 2
 
 		${git_bin} add .
-		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.4.18-2020_0625" -s
+		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.4.18-2020_0925" -s
 		${git_bin} format-patch -1 -o ../patches/cypress/
 
 		exit 2
