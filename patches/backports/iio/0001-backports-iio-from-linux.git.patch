@@ -1,17 +1,42 @@
-From aa3f671876e986253ce1627878c0d4950c1622ab Mon Sep 17 00:00:00 2001
+From bd185eda15d254f7fc929b49e73c5747c0a4e0eb Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 14 May 2021 13:52:39 -0500
+Date: Fri, 21 May 2021 12:20:41 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.37
+Reference: v5.10.38
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/accel/adis16201.c              |  2 +-
- drivers/iio/adc/Kconfig                    |  2 +-
- drivers/iio/adc/ad7476.c                   | 18 ++++--------------
- drivers/iio/imu/inv_mpu6050/inv_mpu_core.c | 20 ++++++++++++++------
- 4 files changed, 20 insertions(+), 22 deletions(-)
+ drivers/iio/accel/Kconfig                     |  1 -
+ drivers/iio/accel/adis16201.c                 |  2 +-
+ drivers/iio/adc/Kconfig                       |  2 +-
+ drivers/iio/adc/ad7476.c                      | 18 ++++-------------
+ drivers/iio/common/hid-sensors/Kconfig        |  1 +
+ drivers/iio/gyro/Kconfig                      |  1 -
+ drivers/iio/gyro/mpu3050-core.c               | 13 ++++++++++--
+ drivers/iio/humidity/Kconfig                  |  1 -
+ drivers/iio/imu/inv_mpu6050/inv_mpu_core.c    | 20 +++++++++++++------
+ drivers/iio/light/Kconfig                     |  2 --
+ drivers/iio/light/gp2ap002.c                  |  5 +++--
+ drivers/iio/light/tsl2583.c                   |  8 ++++++++
+ drivers/iio/magnetometer/Kconfig              |  1 -
+ drivers/iio/orientation/Kconfig               |  2 --
+ drivers/iio/pressure/Kconfig                  |  1 -
+ .../iio/proximity/pulsedlight-lidar-lite-v2.c |  1 +
+ drivers/iio/temperature/Kconfig               |  1 -
+ 17 files changed, 44 insertions(+), 36 deletions(-)
 
+diff --git a/drivers/iio/accel/Kconfig b/drivers/iio/accel/Kconfig
+index 2e0c62c39155..8acf277b8b25 100644
+--- a/drivers/iio/accel/Kconfig
++++ b/drivers/iio/accel/Kconfig
+@@ -211,7 +211,6 @@ config DMARD10
+ config HID_SENSOR_ACCEL_3D
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	tristate "HID Accelerometers 3D"
 diff --git a/drivers/iio/accel/adis16201.c b/drivers/iio/accel/adis16201.c
 index f955cccb3e77..84bbdfd2f2ba 100644
 --- a/drivers/iio/accel/adis16201.c
@@ -72,6 +97,73 @@ index 66c55ae67791..bf5572670244 100644
  }
  
  static const struct spi_device_id ad7476_id[] = {
+diff --git a/drivers/iio/common/hid-sensors/Kconfig b/drivers/iio/common/hid-sensors/Kconfig
+index 24d492567336..2a3dd3b907be 100644
+--- a/drivers/iio/common/hid-sensors/Kconfig
++++ b/drivers/iio/common/hid-sensors/Kconfig
+@@ -19,6 +19,7 @@ config HID_SENSOR_IIO_TRIGGER
+ 	tristate "Common module (trigger) for all HID Sensor IIO drivers"
+ 	depends on HID_SENSOR_HUB && HID_SENSOR_IIO_COMMON && IIO_BUFFER
+ 	select IIO_TRIGGER
++	select IIO_TRIGGERED_BUFFER
+ 	help
+ 	  Say yes here to build trigger support for HID sensors.
+ 	  Triggers will be send if all requested attributes were read.
+diff --git a/drivers/iio/gyro/Kconfig b/drivers/iio/gyro/Kconfig
+index 5824f2edf975..20b5ac7ab66a 100644
+--- a/drivers/iio/gyro/Kconfig
++++ b/drivers/iio/gyro/Kconfig
+@@ -111,7 +111,6 @@ config FXAS21002C_SPI
+ config HID_SENSOR_GYRO_3D
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	tristate "HID Gyroscope 3D"
+diff --git a/drivers/iio/gyro/mpu3050-core.c b/drivers/iio/gyro/mpu3050-core.c
+index 8ea6c2aa6263..39e1c4306c47 100644
+--- a/drivers/iio/gyro/mpu3050-core.c
++++ b/drivers/iio/gyro/mpu3050-core.c
+@@ -271,7 +271,16 @@ static int mpu3050_read_raw(struct iio_dev *indio_dev,
+ 	case IIO_CHAN_INFO_OFFSET:
+ 		switch (chan->type) {
+ 		case IIO_TEMP:
+-			/* The temperature scaling is (x+23000)/280 Celsius */
++			/*
++			 * The temperature scaling is (x+23000)/280 Celsius
++			 * for the "best fit straight line" temperature range
++			 * of -30C..85C.  The 23000 includes room temperature
++			 * offset of +35C, 280 is the precision scale and x is
++			 * the 16-bit signed integer reported by hardware.
++			 *
++			 * Temperature value itself represents temperature of
++			 * the sensor die.
++			 */
+ 			*val = 23000;
+ 			return IIO_VAL_INT;
+ 		default:
+@@ -328,7 +337,7 @@ static int mpu3050_read_raw(struct iio_dev *indio_dev,
+ 				goto out_read_raw_unlock;
+ 			}
+ 
+-			*val = be16_to_cpu(raw_val);
++			*val = (s16)be16_to_cpu(raw_val);
+ 			ret = IIO_VAL_INT;
+ 
+ 			goto out_read_raw_unlock;
+diff --git a/drivers/iio/humidity/Kconfig b/drivers/iio/humidity/Kconfig
+index 6549fcf6db69..2de5494e7c22 100644
+--- a/drivers/iio/humidity/Kconfig
++++ b/drivers/iio/humidity/Kconfig
+@@ -52,7 +52,6 @@ config HID_SENSOR_HUMIDITY
+ 	tristate "HID Environmental humidity sensor"
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	help
 diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
 index 18a1898e3e34..ae391ec4a727 100644
 --- a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
@@ -128,6 +220,137 @@ index 18a1898e3e34..ae391ec4a727 100644
  			break;
  		default:
  			result = -EINVAL;
+diff --git a/drivers/iio/light/Kconfig b/drivers/iio/light/Kconfig
+index 33ad4dd0b5c7..917f9becf9c7 100644
+--- a/drivers/iio/light/Kconfig
++++ b/drivers/iio/light/Kconfig
+@@ -256,7 +256,6 @@ config ISL29125
+ config HID_SENSOR_ALS
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	tristate "HID ALS"
+@@ -270,7 +269,6 @@ config HID_SENSOR_ALS
+ config HID_SENSOR_PROX
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	tristate "HID PROX"
+diff --git a/drivers/iio/light/gp2ap002.c b/drivers/iio/light/gp2ap002.c
+index 7ba7aa59437c..040d8429a6e0 100644
+--- a/drivers/iio/light/gp2ap002.c
++++ b/drivers/iio/light/gp2ap002.c
+@@ -583,7 +583,7 @@ static int gp2ap002_probe(struct i2c_client *client,
+ 					"gp2ap002", indio_dev);
+ 	if (ret) {
+ 		dev_err(dev, "unable to request IRQ\n");
+-		goto out_disable_vio;
++		goto out_put_pm;
+ 	}
+ 	gp2ap002->irq = client->irq;
+ 
+@@ -613,8 +613,9 @@ static int gp2ap002_probe(struct i2c_client *client,
+ 
+ 	return 0;
+ 
+-out_disable_pm:
++out_put_pm:
+ 	pm_runtime_put_noidle(dev);
++out_disable_pm:
+ 	pm_runtime_disable(dev);
+ out_disable_vio:
+ 	regulator_disable(gp2ap002->vio);
+diff --git a/drivers/iio/light/tsl2583.c b/drivers/iio/light/tsl2583.c
+index 9e5490b7473b..40b7dd266b31 100644
+--- a/drivers/iio/light/tsl2583.c
++++ b/drivers/iio/light/tsl2583.c
+@@ -341,6 +341,14 @@ static int tsl2583_als_calibrate(struct iio_dev *indio_dev)
+ 		return lux_val;
+ 	}
+ 
++	/* Avoid division by zero of lux_value later on */
++	if (lux_val == 0) {
++		dev_err(&chip->client->dev,
++			"%s: lux_val of 0 will produce out of range trim_value\n",
++			__func__);
++		return -ENODATA;
++	}
++
+ 	gain_trim_val = (unsigned int)(((chip->als_settings.als_cal_target)
+ 			* chip->als_settings.als_gain_trim) / lux_val);
+ 	if ((gain_trim_val < 250) || (gain_trim_val > 4000)) {
+diff --git a/drivers/iio/magnetometer/Kconfig b/drivers/iio/magnetometer/Kconfig
+index 1697a8c03506..7e9489a35571 100644
+--- a/drivers/iio/magnetometer/Kconfig
++++ b/drivers/iio/magnetometer/Kconfig
+@@ -95,7 +95,6 @@ config MAG3110
+ config HID_SENSOR_MAGNETOMETER_3D
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	tristate "HID Magenetometer 3D"
+diff --git a/drivers/iio/orientation/Kconfig b/drivers/iio/orientation/Kconfig
+index a505583cc2fd..396cbbb867f4 100644
+--- a/drivers/iio/orientation/Kconfig
++++ b/drivers/iio/orientation/Kconfig
+@@ -9,7 +9,6 @@ menu "Inclinometer sensors"
+ config HID_SENSOR_INCLINOMETER_3D
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	tristate "HID Inclinometer 3D"
+@@ -20,7 +19,6 @@ config HID_SENSOR_INCLINOMETER_3D
+ config HID_SENSOR_DEVICE_ROTATION
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	tristate "HID Device Rotation"
+diff --git a/drivers/iio/pressure/Kconfig b/drivers/iio/pressure/Kconfig
+index 689b978db4f9..fc0d3cfca418 100644
+--- a/drivers/iio/pressure/Kconfig
++++ b/drivers/iio/pressure/Kconfig
+@@ -79,7 +79,6 @@ config DPS310
+ config HID_SENSOR_PRESS
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	tristate "HID PRESS"
+diff --git a/drivers/iio/proximity/pulsedlight-lidar-lite-v2.c b/drivers/iio/proximity/pulsedlight-lidar-lite-v2.c
+index c685f10b5ae4..cc206bfa09c7 100644
+--- a/drivers/iio/proximity/pulsedlight-lidar-lite-v2.c
++++ b/drivers/iio/proximity/pulsedlight-lidar-lite-v2.c
+@@ -160,6 +160,7 @@ static int lidar_get_measurement(struct lidar_data *data, u16 *reg)
+ 	ret = lidar_write_control(data, LIDAR_REG_CONTROL_ACQUIRE);
+ 	if (ret < 0) {
+ 		dev_err(&client->dev, "cannot send start measurement command");
++		pm_runtime_put_noidle(&client->dev);
+ 		return ret;
+ 	}
+ 
+diff --git a/drivers/iio/temperature/Kconfig b/drivers/iio/temperature/Kconfig
+index f1f2a1499c9e..4df60082c1fa 100644
+--- a/drivers/iio/temperature/Kconfig
++++ b/drivers/iio/temperature/Kconfig
+@@ -45,7 +45,6 @@ config HID_SENSOR_TEMP
+ 	tristate "HID Environmental temperature sensor"
+ 	depends on HID_SENSOR_HUB
+ 	select IIO_BUFFER
+-	select IIO_TRIGGERED_BUFFER
+ 	select HID_SENSOR_IIO_COMMON
+ 	select HID_SENSOR_IIO_TRIGGER
+ 	help
 -- 
 2.30.2
 

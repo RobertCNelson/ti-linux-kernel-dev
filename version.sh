@@ -17,15 +17,12 @@ DEBARCH=armhf
 #toolchain="gcc_linaro_eabi_5"
 #toolchain="gcc_linaro_eabi_6"
 #toolchain="gcc_linaro_eabi_7"
-#toolchain="gcc_arm_eabi_8"
-#toolchain="gcc_arm_eabi_9"
-#toolchain="gcc_arm_eabi_10"
 #toolchain="gcc_linaro_gnueabihf_4_9"
 #toolchain="gcc_linaro_gnueabihf_5"
 #toolchain="gcc_linaro_gnueabihf_6"
 #toolchain="gcc_linaro_gnueabihf_7"
-#toolchain="gcc_arm_gnueabihf_8"
-#toolchain="gcc_arm_gnueabihf_9"
+#toolchain="gcc_8_arm"
+#toolchain="gcc_9_arm"
 toolchain="gcc_10_arm"
 #arm64
 #KERNEL_ARCH=arm64
@@ -48,7 +45,7 @@ KERNEL_REL=5.10
 KERNEL_TAG=${KERNEL_REL}.30
 kernel_rt=".30-rt38"
 #Kernel Build
-BUILD=${build_prefix}3
+BUILD=${build_prefix}3.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -59,9 +56,9 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="b53d877300ae60870b85823c6bfabb3aa643933b"
-        ti_git_pre="b53d877300ae60870b85823c6bfabb3aa643933b"
-       ti_git_post="d85aee3e19aa7403bd157d2ae30917e736096a7f"
+ti_git_old_release="d85aee3e19aa7403bd157d2ae30917e736096a7f"
+        ti_git_pre="d85aee3e19aa7403bd157d2ae30917e736096a7f"
+       ti_git_post="09aa446bffae21ef1846e900777ce8e1ecb80151"
 #
 
 #https://source.denx.de/Xenomai/xenomai.git
