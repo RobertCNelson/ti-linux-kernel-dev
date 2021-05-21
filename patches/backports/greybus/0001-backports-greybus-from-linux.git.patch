@@ -1,0 +1,277 @@
+From ccf8a9556fdca9c5e44fa5a190f04a7201543ace Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Fri, 21 May 2021 13:27:18 -0500
+Subject: [PATCH] backports: greybus: from: linux.git
+
+Reference: v4.19.190
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/staging/greybus/audio_codec.c         |  2 ++
+ drivers/staging/greybus/audio_manager.c       |  2 +-
+ drivers/staging/greybus/audio_topology.c      | 29 ++++++++++---------
+ drivers/staging/greybus/light.c               | 15 +++++-----
+ drivers/staging/greybus/sdio.c                | 10 +++++--
+ drivers/staging/greybus/tools/loopback_test.c | 21 +++++++-------
+ drivers/staging/greybus/uart.c                |  4 +--
+ 7 files changed, 46 insertions(+), 37 deletions(-)
+
+diff --git a/drivers/staging/greybus/audio_codec.c b/drivers/staging/greybus/audio_codec.c
+index 35acd55ca5ab..6cbf69a57dfd 100644
+--- a/drivers/staging/greybus/audio_codec.c
++++ b/drivers/staging/greybus/audio_codec.c
+@@ -489,6 +489,7 @@ static int gbcodec_hw_params(struct snd_pcm_substream *substream,
+ 	if (ret) {
+ 		dev_err_ratelimited(dai->dev, "%d: Error during set_config\n",
+ 				    ret);
++		gb_pm_runtime_put_noidle(bundle);
+ 		mutex_unlock(&codec->lock);
+ 		return ret;
+ 	}
+@@ -565,6 +566,7 @@ static int gbcodec_prepare(struct snd_pcm_substream *substream,
+ 		break;
+ 	}
+ 	if (ret) {
++		gb_pm_runtime_put_noidle(bundle);
+ 		mutex_unlock(&codec->lock);
+ 		dev_err_ratelimited(dai->dev, "set_data_size failed:%d\n",
+ 				    ret);
+diff --git a/drivers/staging/greybus/audio_manager.c b/drivers/staging/greybus/audio_manager.c
+index d44b070d8862..0f5c68edf2c1 100644
+--- a/drivers/staging/greybus/audio_manager.c
++++ b/drivers/staging/greybus/audio_manager.c
+@@ -89,8 +89,8 @@ void gb_audio_manager_remove_all(void)
+ 
+ 	list_for_each_entry_safe(module, next, &modules_list, list) {
+ 		list_del(&module->list);
+-		kobject_put(&module->kobj);
+ 		ida_simple_remove(&module_id, module->id);
++		kobject_put(&module->kobj);
+ 	}
+ 
+ 	is_empty = list_empty(&modules_list);
+diff --git a/drivers/staging/greybus/audio_topology.c b/drivers/staging/greybus/audio_topology.c
+index b71078339e86..860247d71818 100644
+--- a/drivers/staging/greybus/audio_topology.c
++++ b/drivers/staging/greybus/audio_topology.c
+@@ -460,6 +460,15 @@ static int gbcodec_mixer_dapm_ctl_put(struct snd_kcontrol *kcontrol,
+ 	val = ucontrol->value.integer.value[0] & mask;
+ 	connect = !!val;
+ 
++	ret = gb_pm_runtime_get_sync(bundle);
++	if (ret)
++		return ret;
++
++	ret = gb_audio_gb_get_control(module->mgmt_connection, data->ctl_id,
++				      GB_AUDIO_INVALID_INDEX, &gbvalue);
++	if (ret)
++		goto exit;
++
+ 	/* update ucontrol */
+ 	if (gbvalue.value.integer_value[0] != val) {
+ 		for (wi = 0; wi < wlist->num_widgets; wi++) {
+@@ -473,25 +482,17 @@ static int gbcodec_mixer_dapm_ctl_put(struct snd_kcontrol *kcontrol,
+ 		gbvalue.value.integer_value[0] =
+ 			cpu_to_le32(ucontrol->value.integer.value[0]);
+ 
+-		ret = gb_pm_runtime_get_sync(bundle);
+-		if (ret)
+-			return ret;
+-
+ 		ret = gb_audio_gb_set_control(module->mgmt_connection,
+ 					      data->ctl_id,
+ 					      GB_AUDIO_INVALID_INDEX, &gbvalue);
+-
+-		gb_pm_runtime_put_autosuspend(bundle);
+-
+-		if (ret) {
+-			dev_err_ratelimited(codec->dev,
+-					    "%d:Error in %s for %s\n", ret,
+-					    __func__, kcontrol->id.name);
+-			return ret;
+-		}
+ 	}
+ 
+-	return 0;
++exit:
++	gb_pm_runtime_put_autosuspend(bundle);
++	if (ret)
++		dev_err_ratelimited(codec_dev, "%d:Error in %s for %s\n", ret,
++				    __func__, kcontrol->id.name);
++	return ret;
+ }
+ 
+ #define SOC_DAPM_MIXER_GB(xname, kcount, data) \
+diff --git a/drivers/staging/greybus/light.c b/drivers/staging/greybus/light.c
+index 010ae1e9c7fb..db06cd544af5 100644
+--- a/drivers/staging/greybus/light.c
++++ b/drivers/staging/greybus/light.c
+@@ -1028,7 +1028,8 @@ static int gb_lights_light_config(struct gb_lights *glights, u8 id)
+ 
+ 	light->channels_count = conf.channel_count;
+ 	light->name = kstrndup(conf.name, NAMES_MAX, GFP_KERNEL);
+-
++	if (!light->name)
++		return -ENOMEM;
+ 	light->channels = kcalloc(light->channels_count,
+ 				  sizeof(struct gb_channel), GFP_KERNEL);
+ 	if (!light->channels)
+@@ -1098,21 +1099,21 @@ static void gb_lights_channel_release(struct gb_channel *channel)
+ static void gb_lights_light_release(struct gb_light *light)
+ {
+ 	int i;
+-	int count;
+ 
+ 	light->ready = false;
+ 
+-	count = light->channels_count;
+-
+ 	if (light->has_flash)
+ 		gb_lights_light_v4l2_unregister(light);
++	light->has_flash = false;
+ 
+-	for (i = 0; i < count; i++) {
++	for (i = 0; i < light->channels_count; i++)
+ 		gb_lights_channel_release(&light->channels[i]);
+-		light->channels_count--;
+-	}
++	light->channels_count = 0;
++
+ 	kfree(light->channels);
++	light->channels = NULL;
+ 	kfree(light->name);
++	light->name = NULL;
+ }
+ 
+ static void gb_lights_release(struct gb_lights *glights)
+diff --git a/drivers/staging/greybus/sdio.c b/drivers/staging/greybus/sdio.c
+index 38e85033fc4b..afb2e5e5111a 100644
+--- a/drivers/staging/greybus/sdio.c
++++ b/drivers/staging/greybus/sdio.c
+@@ -411,6 +411,7 @@ static int gb_sdio_command(struct gb_sdio_host *host, struct mmc_command *cmd)
+ 	struct gb_sdio_command_request request = {0};
+ 	struct gb_sdio_command_response response;
+ 	struct mmc_data *data = host->mrq->data;
++	unsigned int timeout_ms;
+ 	u8 cmd_flags;
+ 	u8 cmd_type;
+ 	int i;
+@@ -469,9 +470,12 @@ static int gb_sdio_command(struct gb_sdio_host *host, struct mmc_command *cmd)
+ 		request.data_blksz = cpu_to_le16(data->blksz);
+ 	}
+ 
+-	ret = gb_operation_sync(host->connection, GB_SDIO_TYPE_COMMAND,
+-				&request, sizeof(request), &response,
+-				sizeof(response));
++	timeout_ms = cmd->busy_timeout ? cmd->busy_timeout :
++		GB_OPERATION_TIMEOUT_DEFAULT;
++
++	ret = gb_operation_sync_timeout(host->connection, GB_SDIO_TYPE_COMMAND,
++					&request, sizeof(request), &response,
++					sizeof(response), timeout_ms);
+ 	if (ret < 0)
+ 		goto out;
+ 
+diff --git a/drivers/staging/greybus/tools/loopback_test.c b/drivers/staging/greybus/tools/loopback_test.c
+index b82e2befe935..1452df84e2b7 100644
+--- a/drivers/staging/greybus/tools/loopback_test.c
++++ b/drivers/staging/greybus/tools/loopback_test.c
+@@ -21,6 +21,7 @@
+ #include <signal.h>
+ 
+ #define MAX_NUM_DEVICES 10
++#define MAX_SYSFS_PREFIX 0x80
+ #define MAX_SYSFS_PATH	0x200
+ #define CSV_MAX_LINE	0x1000
+ #define SYSFS_MAX_INT	0x20
+@@ -69,7 +70,7 @@ struct loopback_results {
+ };
+ 
+ struct loopback_device {
+-	char name[MAX_SYSFS_PATH];
++	char name[MAX_STR_LEN];
+ 	char sysfs_entry[MAX_SYSFS_PATH];
+ 	char debugfs_entry[MAX_SYSFS_PATH];
+ 	struct loopback_results results;
+@@ -95,8 +96,8 @@ struct loopback_test {
+ 	int stop_all;
+ 	int poll_count;
+ 	char test_name[MAX_STR_LEN];
+-	char sysfs_prefix[MAX_SYSFS_PATH];
+-	char debugfs_prefix[MAX_SYSFS_PATH];
++	char sysfs_prefix[MAX_SYSFS_PREFIX];
++	char debugfs_prefix[MAX_SYSFS_PREFIX];
+ 	struct timespec poll_timeout;
+ 	struct loopback_device devices[MAX_NUM_DEVICES];
+ 	struct loopback_results aggregate_results;
+@@ -645,7 +646,7 @@ int find_loopback_devices(struct loopback_test *t)
+ static int open_poll_files(struct loopback_test *t)
+ {
+ 	struct loopback_device *dev;
+-	char buf[MAX_STR_LEN];
++	char buf[MAX_SYSFS_PATH + MAX_STR_LEN];
+ 	char dummy;
+ 	int fds_idx = 0;
+ 	int i;
+@@ -663,7 +664,7 @@ static int open_poll_files(struct loopback_test *t)
+ 			goto err;
+ 		}
+ 		read(t->fds[fds_idx].fd, &dummy, 1);
+-		t->fds[fds_idx].events = EPOLLERR|EPOLLPRI;
++		t->fds[fds_idx].events = POLLERR | POLLPRI;
+ 		t->fds[fds_idx].revents = 0;
+ 		fds_idx++;
+ 	}
+@@ -756,7 +757,7 @@ static int wait_for_complete(struct loopback_test *t)
+ 		}
+ 
+ 		for (i = 0; i < t->poll_count; i++) {
+-			if (t->fds[i].revents & EPOLLPRI) {
++			if (t->fds[i].revents & POLLPRI) {
+ 				/* Dummy read to clear the event */
+ 				read(t->fds[i].fd, &dummy, 1);
+ 				number_of_events++;
+@@ -915,10 +916,10 @@ int main(int argc, char *argv[])
+ 			t.iteration_max = atoi(optarg);
+ 			break;
+ 		case 'S':
+-			snprintf(t.sysfs_prefix, MAX_SYSFS_PATH, "%s", optarg);
++			snprintf(t.sysfs_prefix, MAX_SYSFS_PREFIX, "%s", optarg);
+ 			break;
+ 		case 'D':
+-			snprintf(t.debugfs_prefix, MAX_SYSFS_PATH, "%s", optarg);
++			snprintf(t.debugfs_prefix, MAX_SYSFS_PREFIX, "%s", optarg);
+ 			break;
+ 		case 'm':
+ 			t.mask = atol(optarg);
+@@ -969,10 +970,10 @@ int main(int argc, char *argv[])
+ 	}
+ 
+ 	if (!strcmp(t.sysfs_prefix, ""))
+-		snprintf(t.sysfs_prefix, MAX_SYSFS_PATH, "%s", sysfs_prefix);
++		snprintf(t.sysfs_prefix, MAX_SYSFS_PREFIX, "%s", sysfs_prefix);
+ 
+ 	if (!strcmp(t.debugfs_prefix, ""))
+-		snprintf(t.debugfs_prefix, MAX_SYSFS_PATH, "%s", debugfs_prefix);
++		snprintf(t.debugfs_prefix, MAX_SYSFS_PREFIX, "%s", debugfs_prefix);
+ 
+ 	ret = find_loopback_devices(&t);
+ 	if (ret)
+diff --git a/drivers/staging/greybus/uart.c b/drivers/staging/greybus/uart.c
+index 8a006323c3c1..f36d470aed24 100644
+--- a/drivers/staging/greybus/uart.c
++++ b/drivers/staging/greybus/uart.c
+@@ -537,9 +537,9 @@ static void gb_tty_set_termios(struct tty_struct *tty,
+ 	}
+ 
+ 	if (C_CRTSCTS(tty) && C_BAUD(tty) != B0)
+-		newline.flow_control |= GB_SERIAL_AUTO_RTSCTS_EN;
++		newline.flow_control = GB_SERIAL_AUTO_RTSCTS_EN;
+ 	else
+-		newline.flow_control &= ~GB_SERIAL_AUTO_RTSCTS_EN;
++		newline.flow_control = 0;
+ 
+ 	if (memcmp(&gb_tty->line_coding, &newline, sizeof(newline))) {
+ 		memcpy(&gb_tty->line_coding, &newline, sizeof(newline));
+-- 
+2.30.2
+
