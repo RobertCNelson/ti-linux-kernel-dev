@@ -277,6 +277,51 @@ rt () {
 	dir 'rt'
 }
 
+wireless_regdb () {
+	#https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+
+		cd ../
+		if [ ! -d ./wireless-regdb ] ; then
+			${git_bin} clone git://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git --depth=1
+			cd ./wireless-regdb
+				wireless_regdb_hash=$(git rev-parse HEAD)
+			cd -
+		else
+			rm -rf ./wireless-regdb || true
+			${git_bin} clone git://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git --depth=1
+			cd ./wireless-regdb
+				wireless_regdb_hash=$(git rev-parse HEAD)
+			cd -
+		fi
+		cd ./KERNEL/
+
+		mkdir -p ./firmware/ || true
+		cp -v ../wireless-regdb/regulatory.db ./firmware/
+		cp -v ../wireless-regdb/regulatory.db.p7s ./firmware/
+		${git_bin} add -f ./firmware/regulatory.*
+		${git_bin} commit -a -m 'Add wireless-regdb regulatory database file' -m "https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/commit/?id=${wireless_regdb_hash}" -s
+
+		${git_bin} format-patch -1 -o ../patches/wireless_regdb/
+		echo "WIRELESS_REGDB: https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/commit/?id=${wireless_regdb_hash}" > ../patches/git/WIRELESS_REGDB
+
+		rm -rf ../wireless-regdb/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/wireless_regdb/0001-Add-wireless-regdb-regulatory-database-file.patch"
+
+		wdir="wireless_regdb"
+		number=1
+		cleanup
+	fi
+
+	dir 'wireless_regdb'
+}
+
 ti_pm_firmware () {
 	#https://git.ti.com/gitweb?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y
 	#regenerate="enable"
@@ -393,6 +438,7 @@ external_git
 aufs
 wpanusb
 rt
+wireless_regdb
 ti_pm_firmware
 beagleboard_dtbs
 #local_patch
@@ -432,7 +478,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.12.4"
+	backport_tag="v5.12.5"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -448,7 +494,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.12.4"
+	backport_tag="v5.12.5"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -463,7 +509,22 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.37"
+	backport_tag="v5.13-rc2"
+
+	subsystem="spidev"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/spi/spidev.c ./drivers/spi/spidev.c
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.10.38"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -474,21 +535,6 @@ backports () {
 		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
 		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
 		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	backport_tag="v5.13-rc1"
-
-	subsystem="spidev"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/spi/spidev.c ./drivers/spi/spidev.c
 
 		post_backports
 		exit 2
@@ -545,7 +591,7 @@ soc
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.11.11"
+		backport_tag="v5.10.38"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
