@@ -467,8 +467,6 @@ beagleboard_dtbs () {
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
 
-		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
-
 		device="am335x-sancloud-bbe.dtb" ; dtb_makefile_append
 		device="am335x-olimex-som.dtb" ; dtb_makefile_append
 
@@ -486,9 +484,9 @@ beagleboard_dtbs () {
 		device="am335x-boneblack-wireless-roboticscape.dtb" ; dtb_makefile_append
 
 		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
-
 		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
@@ -665,7 +663,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.19.190"
+	backport_tag="v4.19.192"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -681,7 +679,7 @@ backports () {
 		${git} "${DIR}/patches/backports/greybus/0002-greybus-drivers-staging-greybus-module.c-no-struct_s.patch"
 	fi
 
-	backport_tag="v4.14.232"
+	backport_tag="v4.14.234"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -696,7 +694,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.14.232"
+	backport_tag="v4.14.234"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -714,7 +712,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.4.120"
+	backport_tag="v5.4.122"
 
 	subsystem="wiznet"
 	#regenerate="enable"
