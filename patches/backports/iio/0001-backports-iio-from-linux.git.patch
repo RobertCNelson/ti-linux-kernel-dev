@@ -1,9 +1,9 @@
-From c1bf1e0c211af2a58341a346d2936d32645f087e Mon Sep 17 00:00:00 2001
+From 8adda5ed9c54266bfa0def7abe083b47e80a212d Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 21 May 2021 14:06:10 -0500
+Date: Thu, 27 May 2021 14:07:27 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v4.14.232
+Reference: v4.14.234
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/bmc150-accel-core.c         |  17 +-
@@ -51,7 +51,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/dac/vf610_dac.c                   |   1 +
  drivers/iio/gyro/bmg160_core.c                |   6 +-
  drivers/iio/gyro/itg3200_buffer.c             |  15 +-
- drivers/iio/gyro/mpu3050-core.c               |  10 +-
+ drivers/iio/gyro/mpu3050-core.c               |  23 ++-
  drivers/iio/health/afe4403.c                  |  13 +-
  drivers/iio/health/afe4404.c                  |   8 +-
  drivers/iio/humidity/hdc100x.c                |  12 +-
@@ -71,6 +71,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/light/opt3001.c                   |   6 +-
  drivers/iio/light/rpr0521.c                   |  17 +-
  drivers/iio/light/si1145.c                    |  19 +-
+ drivers/iio/light/tsl2583.c                   |   8 +
  drivers/iio/light/vcnl4000.c                  |   6 +-
  drivers/iio/magnetometer/ak8974.c             |  31 ++--
  drivers/iio/magnetometer/ak8975.c             |  16 +-
@@ -81,6 +82,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/pressure/mpl3115.c                |   9 +-
  drivers/iio/pressure/ms5611_core.c            |  11 +-
  drivers/iio/pressure/zpa2326.c                |   4 +-
+ .../iio/proximity/pulsedlight-lidar-lite-v2.c |   1 +
  drivers/iio/proximity/srf04.c                 |  29 ++--
  .../iio/temperature/hid-sensor-temperature.c  |  14 +-
  drivers/iio/trigger/stm32-timer-trigger.c     |  11 +-
@@ -91,7 +93,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/iio/meter/ade7854.c           |   2 +-
  drivers/staging/iio/resolver/ad2s1210.c       |  17 +-
  include/linux/iio/adc/ad_sigma_delta.h        |   1 +
- 85 files changed, 951 insertions(+), 431 deletions(-)
+ 87 files changed, 971 insertions(+), 433 deletions(-)
 
 diff --git a/drivers/iio/accel/bmc150-accel-core.c b/drivers/iio/accel/bmc150-accel-core.c
 index 807299dd45eb..0d40c32b56ce 100644
@@ -2155,7 +2157,7 @@ index eef50e91f17c..e04483254b28 100644
  	iio_trigger_notify_done(indio_dev->trig);
  
 diff --git a/drivers/iio/gyro/mpu3050-core.c b/drivers/iio/gyro/mpu3050-core.c
-index e0d241a9aa30..3db843206db3 100644
+index e0d241a9aa30..1096226a0612 100644
 --- a/drivers/iio/gyro/mpu3050-core.c
 +++ b/drivers/iio/gyro/mpu3050-core.c
 @@ -29,7 +29,8 @@
@@ -2168,7 +2170,34 @@ index e0d241a9aa30..3db843206db3 100644
  
  /*
   * Register map: anything suffixed *_H is a big-endian high byte and always
-@@ -548,6 +549,8 @@ static irqreturn_t mpu3050_trigger_handler(int irq, void *p)
+@@ -269,7 +270,16 @@ static int mpu3050_read_raw(struct iio_dev *indio_dev,
+ 	case IIO_CHAN_INFO_OFFSET:
+ 		switch (chan->type) {
+ 		case IIO_TEMP:
+-			/* The temperature scaling is (x+23000)/280 Celsius */
++			/*
++			 * The temperature scaling is (x+23000)/280 Celsius
++			 * for the "best fit straight line" temperature range
++			 * of -30C..85C.  The 23000 includes room temperature
++			 * offset of +35C, 280 is the precision scale and x is
++			 * the 16-bit signed integer reported by hardware.
++			 *
++			 * Temperature value itself represents temperature of
++			 * the sensor die.
++			 */
+ 			*val = 23000;
+ 			return IIO_VAL_INT;
+ 		default:
+@@ -326,7 +336,7 @@ static int mpu3050_read_raw(struct iio_dev *indio_dev,
+ 				goto out_read_raw_unlock;
+ 			}
+ 
+-			*val = be16_to_cpu(raw_val);
++			*val = (s16)be16_to_cpu(raw_val);
+ 			ret = IIO_VAL_INT;
+ 
+ 			goto out_read_raw_unlock;
+@@ -548,6 +558,8 @@ static irqreturn_t mpu3050_trigger_handler(int irq, void *p)
  					       MPU3050_FIFO_R,
  					       &fifo_values[offset],
  					       toread);
@@ -2177,7 +2206,7 @@ index e0d241a9aa30..3db843206db3 100644
  
  			dev_dbg(mpu3050->dev,
  				"%04x %04x %04x %04x %04x\n",
-@@ -1178,8 +1181,9 @@ int mpu3050_common_probe(struct device *dev,
+@@ -1178,8 +1190,9 @@ int mpu3050_common_probe(struct device *dev,
  		goto err_power_down;
  	}
  
@@ -2893,6 +2922,25 @@ index 096034c126a4..c292d9816118 100644
  		iio_get_time_ns(indio_dev));
  
  done:
+diff --git a/drivers/iio/light/tsl2583.c b/drivers/iio/light/tsl2583.c
+index fb711ed4862e..87ed9adec7e1 100644
+--- a/drivers/iio/light/tsl2583.c
++++ b/drivers/iio/light/tsl2583.c
+@@ -350,6 +350,14 @@ static int tsl2583_als_calibrate(struct iio_dev *indio_dev)
+ 		return lux_val;
+ 	}
+ 
++	/* Avoid division by zero of lux_value later on */
++	if (lux_val == 0) {
++		dev_err(&chip->client->dev,
++			"%s: lux_val of 0 will produce out of range trim_value\n",
++			__func__);
++		return -ENODATA;
++	}
++
+ 	gain_trim_val = (unsigned int)(((chip->als_settings.als_cal_target)
+ 			* chip->als_settings.als_gain_trim) / lux_val);
+ 	if ((gain_trim_val < 250) || (gain_trim_val > 4000)) {
 diff --git a/drivers/iio/light/vcnl4000.c b/drivers/iio/light/vcnl4000.c
 index 360b6e98137a..5a3a532937ba 100644
 --- a/drivers/iio/light/vcnl4000.c
@@ -3257,6 +3305,18 @@ index 91431454eb85..7ffc4a6d80cd 100644
  
  	if (err > 0) {
  		/*
+diff --git a/drivers/iio/proximity/pulsedlight-lidar-lite-v2.c b/drivers/iio/proximity/pulsedlight-lidar-lite-v2.c
+index 36c1ddc251aa..c033db701bb5 100644
+--- a/drivers/iio/proximity/pulsedlight-lidar-lite-v2.c
++++ b/drivers/iio/proximity/pulsedlight-lidar-lite-v2.c
+@@ -166,6 +166,7 @@ static int lidar_get_measurement(struct lidar_data *data, u16 *reg)
+ 	ret = lidar_write_control(data, LIDAR_REG_CONTROL_ACQUIRE);
+ 	if (ret < 0) {
+ 		dev_err(&client->dev, "cannot send start measurement command");
++		pm_runtime_put_noidle(&client->dev);
+ 		return ret;
+ 	}
+ 
 diff --git a/drivers/iio/proximity/srf04.c b/drivers/iio/proximity/srf04.c
 index e37667f933b3..8a6ab9691832 100644
 --- a/drivers/iio/proximity/srf04.c
