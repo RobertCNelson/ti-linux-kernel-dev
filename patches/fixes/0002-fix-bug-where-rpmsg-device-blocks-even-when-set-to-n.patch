@@ -1,0 +1,31 @@
+From 116446fe9c3d27cccacfdf203c31d8ae9b024687 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Thu, 27 May 2021 14:24:52 -0500
+Subject: [PATCH 2/2] fix bug where rpmsg device blocks even when set to
+ non-blocking
+
+https://forum.beagleboard.org/t/remoteproc-write-to-pru-over-rpmsg-device-blocks-even-when-non-blocking/29874
+---
+ drivers/rpmsg/rpmsg_pru.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/rpmsg/rpmsg_pru.c b/drivers/rpmsg/rpmsg_pru.c
+index 85f0c726c2e9..91e20b7af72c 100644
+--- a/drivers/rpmsg/rpmsg_pru.c
++++ b/drivers/rpmsg/rpmsg_pru.c
+@@ -147,7 +147,11 @@ static ssize_t rpmsg_pru_write(struct file *filp, const char __user *buf,
+ 		return -EFAULT;
+ 	}
+ 
+-	ret = rpmsg_send(prudev->rpdev->ept, (void *)rpmsg_pru_buf, count);
++	if (filp->f_flags & O_NONBLOCK)
++		ret = rpmsg_trysend(prudev->rpdev->ept, (void *)rpmsg_pru_buf, count);
++	else
++		ret = rpmsg_send(prudev->rpdev->ept, (void *)rpmsg_pru_buf, count);
++
+ 	if (ret)
+ 		dev_err(prudev->dev, "rpmsg_send failed: %d\n", ret);
+ 
+-- 
+2.30.2
+
