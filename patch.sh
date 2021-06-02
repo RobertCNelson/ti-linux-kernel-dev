@@ -395,8 +395,6 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
-#		device="am335x-abbbi.dtb" ; dtb_makefile_append
-
 #		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
 #		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 #		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
@@ -474,7 +472,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.12.7"
+	backport_tag="v5.12.8"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -490,7 +488,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.12.7"
+	backport_tag="v5.12.8"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -505,7 +503,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.13-rc3"
+	backport_tag="v5.13-rc4"
 
 	subsystem="spidev"
 	#regenerate="enable"
@@ -520,7 +518,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.40"
+	backport_tag="v5.10.41"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -572,6 +570,7 @@ drivers () {
 	dir 'drivers/ti/gpio'
 	dir 'drivers/greybus'
 	dir 'drivers/fb_ssd1306'
+	dir 'drivers/usb'
 }
 
 soc () {
@@ -587,7 +586,7 @@ soc
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.40"
+		backport_tag="v5.10.41"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
