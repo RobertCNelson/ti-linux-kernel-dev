@@ -395,11 +395,14 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
+		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
+
+		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
+
 #		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
-#		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 #		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
 #		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
-#		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
@@ -472,7 +475,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.12.8"
+	backport_tag="v5.12.9"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -488,7 +491,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.12.8"
+	backport_tag="v5.12.9"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -503,7 +506,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.13-rc4"
+	backport_tag="v5.13-rc5"
 
 	subsystem="spidev"
 	#regenerate="enable"
@@ -518,7 +521,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.41"
+	backport_tag="v5.10.42"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -586,7 +589,7 @@ soc
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.41"
+		backport_tag="v5.10.42"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"

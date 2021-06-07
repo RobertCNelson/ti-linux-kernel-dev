@@ -18,6 +18,7 @@ DEBARCH=armhf
 #toolchain="gcc_8_arm"
 #toolchain="gcc_9_arm"
 toolchain="gcc_10_arm"
+#toolchain="gcc_11_arm"
 #arm64
 #KERNEL_ARCH=arm64
 #DEBARCH=arm64
@@ -26,6 +27,7 @@ toolchain="gcc_10_arm"
 #toolchain="gcc_8_aarch64"
 #toolchain="gcc_9_aarch64"
 #toolchain="gcc_10_aarch64"
+#toolchain="gcc_11_aarch64"
 #riscv64
 #KERNEL_ARCH=riscv
 #DEBARCH=riscv64
@@ -33,13 +35,14 @@ toolchain="gcc_10_arm"
 #toolchain="gcc_8_riscv64"
 #toolchain="gcc_9_riscv64"
 #toolchain="gcc_10_riscv64"
+#toolchain="gcc_11_riscv64"
 
 #Kernel
 KERNEL_REL=5.10
 KERNEL_TAG=${KERNEL_REL}.35
 kernel_rt=".35-rt39"
 #Kernel Build
-BUILD=${build_prefix}6
+BUILD=${build_prefix}6.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -50,9 +53,9 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="72d727fe733f2610e937a063bcebedce329948ec"
-        ti_git_pre="72d727fe733f2610e937a063bcebedce329948ec"
-       ti_git_post="aff37a0ce2ca958599fcc7303a68e357f1f2c796"
+ti_git_old_release="aff37a0ce2ca958599fcc7303a68e357f1f2c796"
+        ti_git_pre="aff37a0ce2ca958599fcc7303a68e357f1f2c796"
+       ti_git_post="ae876c7c91df646ab198331e676f250f06cfdeb5"
 #
 
 #https://source.denx.de/Xenomai/xenomai.git
