@@ -730,6 +730,7 @@ drivers () {
 	dir 'drivers/greybus'
 	dir 'gsoc'
 	dir 'fixes'
+	dir 'bluetooth'
 }
 
 soc () {
