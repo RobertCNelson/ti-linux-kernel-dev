@@ -47,86 +47,18 @@ mmc_write_rootfs () {
 	echo "info: [${KERNEL_UTS}] now installed..."
 }
 
-mmc_write_boot_pre () {
-	echo "Installing ${KERNEL_UTS} to ${partition}"
-
-	if [ -f "${location}/vmlinuz-${KERNEL_UTS}_bak" ] ; then
-		sudo rm -f "${location}/vmlinuz-${KERNEL_UTS}_bak" || true
-	fi
-
-	if [ -f "${location}/vmlinuz-${KERNEL_UTS}" ] ; then
-		sudo mv "${location}/vmlinuz-${KERNEL_UTS}" "${location}/vmlinuz-${KERNEL_UTS}_bak"
-	fi
-
-	sudo cp -v "${DIR}/deploy/${KERNEL_UTS}.zImage" "${location}/vmlinuz-${KERNEL_UTS}"
-
-	if [ -f "${location}/initrd.img-${KERNEL_UTS}" ] ; then
-		sudo rm -rf "${location}/initrd.img-${KERNEL_UTS}" || true
-	fi
-
-	if [ -f "${DIR}/deploy/${KERNEL_UTS}-dtbs.tar.gz" ] ; then
-		if [ -d "${location}/dtbs/${KERNEL_UTS}_bak/" ] ; then
-			sudo rm -rf "${location}/dtbs/${KERNEL_UTS}_bak/" || true
-		fi
-
-		if [ -d "${location}/dtbs/${KERNEL_UTS}/" ] ; then
-			sudo mv "${location}/dtbs/${KERNEL_UTS}/" "${location}/dtbs/${KERNEL_UTS}_bak/" || true
-		fi
-
-		sudo mkdir -p "${location}/dtbs/${KERNEL_UTS}/"
-
-		echo "Installing ${KERNEL_UTS}-dtbs.tar.gz to ${partition}"
-		sudo tar xf "${DIR}/deploy/${KERNEL_UTS}-dtbs.tar.gz" -C "${location}/dtbs/${KERNEL_UTS}/"
-		sync
-	fi
-}
-
-mmc_write_boot_uname () {
-	mmc_write_boot_pre
-
-	unset older_kernel
-	older_kernel=$(sudo grep uname_r "${location}/uEnv.txt" | grep -v '#' | awk -F"=" '{print $2}' || true)
-
-	if [ ! "x${older_kernel}" = "x" ] ; then
-		if [ ! "x${older_kernel}" = "x${KERNEL_UTS}" ] ; then
-			sudo sed -i -e 's:uname_r='${older_kernel}':uname_r='${KERNEL_UTS}':g' "${location}/uEnv.txt"
-			sudo sed -i -e 's:cmdline=init:#cmdline=init:g' "${location}/uEnv.txt"
-		fi
-		echo "info: /boot/uEnv.txt: $(sudo grep uname_r ${location}/uEnv.txt)"
-	fi
-}
-
-mmc_write_boot_extlinux () {
-	mmc_write_boot_pre
-
-	unset older_kernel
-	older_kernel=$(sudo grep /boot/vmlinuz- "${location}/extlinux/extlinux.conf" | awk -F"/boot/vmlinuz-" '{print $2}' || true)
-
-	if [ ! "x${older_kernel}" = "x" ] ; then
-		if [ ! "x${older_kernel}" = "x${KERNEL_UTS}" ] ; then
-			sudo sed -i -e 's:'${older_kernel}':'${KERNEL_UTS}':g' "${location}/extlinux/extlinux.conf"
-		fi
-		echo "info: /boot/extlinux/extlinux.conf: $(sudo grep /boot/vmlinuz- ${location}/extlinux/extlinux.conf)"
-	fi
-}
-
 mmc_write_boot () {
-	if [ ! -f "${location}/zImage" ] ; then
-		echo "Error: no current ${location}/zImage, this might not boot..."
-	fi
-
 	echo "Installing ${KERNEL_UTS} to ${partition}"
 
-	if [ -f "${location}/zImage_bak" ] ; then
-		sudo rm -f "${location}/zImage_bak" || true
+	if [ -f "${location}/Image_bak" ] ; then
+		sudo rm -f "${location}/Image_bak" || true
 	fi
 
-	if [ -f "${location}/zImage" ] ; then
-		sudo mv "${location}/zImage" "${location}/zImage_bak"
+	if [ -f "${location}/Image" ] ; then
+		sudo mv "${location}/Image" "${location}/Image_bak"
 	fi
 
-	#Assuming boot via zImage on first partition...
-	sudo cp -v "${DIR}/deploy/${KERNEL_UTS}.zImage" "${location}/zImage"
+	sudo cp -v "${DIR}/deploy/${KERNEL_UTS}.Image" "${location}/Image"
 
 	if [ -f "${DIR}/deploy/${KERNEL_UTS}-dtbs.tar.gz" ] ; then
 
@@ -139,56 +71,18 @@ mmc_write_boot () {
 		echo "Installing ${KERNEL_UTS}-dtbs.tar.gz to ${partition}"
 		sudo tar ${UNTAR} "${DIR}/deploy/${KERNEL_UTS}-dtbs.tar.gz" -C "${location}/dtbs/"
 		sync
+		sudo rm -rf "${location}"/*.dtb
+		sudo cp -v "${location}"/dtbs/ti/*.dtb "${location}"/
 	fi
 }
 
 mmc_partition_discover () {
 	boot_written="false"
-	if [ -f "${DIR}/deploy/disk/uEnv.txt" ] ; then
-		echo "found: /uEnv.txt"
-		location="${DIR}/deploy/disk"
+	if [ -f "${DIR}/deploy/disk/boot/SOC.sh" ] ; then
+		echo "found: /SOC.sh"
+		location="${DIR}/deploy/disk/boot"
 		mmc_write_boot
 		boot_written="true"
-	fi
-
-	if [ "x${boot_written}" = "xfalse" ] ; then
-		if [ -f "${DIR}/deploy/disk/boot/uEnv.txt" ] ; then
-			echo "found: /boot/uEnv.txt"
-			location="${DIR}/deploy/disk/boot"
-			test_uname=$(sudo grep uname_r "${DIR}/deploy/disk/boot/uEnv.txt" | awk -F"=" '{print $2}' || true)
-			if [ ! "x${test_uname}" = "x" ] ; then
-				echo "info: ${test_uname} was installed"
-				mmc_write_boot_uname
-			else
-				mmc_write_boot
-			fi
-			boot_written="true"
-		fi
-	fi
-
-	if [ "x${boot_written}" = "xfalse" ] ; then
-		if [ -f "${DIR}/deploy/disk/boot/extlinux/extlinux.conf" ] ; then
-			echo "found: /boot/extlinux/extlinux.conf"
-			location="${DIR}/deploy/disk/boot"
-			test_uname=$(sudo grep /boot/vmlinuz- "${DIR}/deploy/disk/boot/extlinux/extlinux.conf" | awk -F"/boot/vmlinuz-" '{print $2}' || true)
-			if [ ! "x${test_uname}" = "x" ] ; then
-				echo "info: ${test_uname} was installed"
-				mmc_write_boot_extlinux
-			else
-				mmc_write_boot
-			fi
-			boot_written="true"
-		fi
-	fi
-
-	if [ "x${boot_written}" = "xfalse" ] ; then
-		#Atmel: mmc 0:1: zImage /dtbs/*
-		if [ -f "${DIR}/deploy/disk/BOOT.BIN" ] ; then
-			echo "found: Atmel: /BOOT.BIN"
-			location="${DIR}/deploy/disk"
-			mmc_write_boot
-			boot_written="true"
-		fi
 	fi
 
 	if [ -f "${DIR}/deploy/disk/etc/fstab" ] ; then
@@ -302,7 +196,7 @@ check_mmc () {
 if [ -f "${DIR}/system.sh" ] ; then
 	. "${DIR}/system.sh"
 
-	if [ -f "${DIR}/KERNEL/arch/arm/boot/zImage" ] ; then
+	if [ -f "${DIR}/KERNEL/arch/arm64/boot/Image" ] ; then
 		KERNEL_UTS=$(cat "${DIR}/KERNEL/include/generated/utsrelease.h" | awk '{print $3}' | sed 's/\"//g' )
 		if [ "x${MMC}" = "x" ] ; then
 			echo "-----------------------------"
@@ -317,7 +211,7 @@ if [ -f "${DIR}/system.sh" ] ; then
 			sync
 		fi
 	else
-		echo "ERROR: arch/arm/boot/zImage not found, Please run build_kernel.sh before running this script..."
+		echo "ERROR: arch/arm64/boot/Image not found, Please run build_kernel.sh before running this script..."
 	fi
 else
 	echo "Missing system.sh, please copy system.sh.sample to system.sh and edit as needed"
