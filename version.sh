@@ -7,9 +7,9 @@ config="defconfig"
 build_prefix="-ti-arm64-r"
 branch_prefix="ti-linux-arm64-"
 branch_postfix=".y"
-bborg_branch="5.4-arm64"
+bborg_branch="5.10-arm64"
 
-#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v5.4-rc1
+#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v5.10-rc1
 #arm
 #KERNEL_ARCH=arm
 #DEBARCH=armhf
@@ -24,9 +24,9 @@ KERNEL_ARCH=arm64
 DEBARCH=arm64
 #toolchain="gcc_6_aarch64"
 #toolchain="gcc_7_aarch64"
-toolchain="gcc_8_aarch64"
+#toolchain="gcc_8_aarch64"
 #toolchain="gcc_9_aarch64"
-#toolchain="gcc_10_aarch64"
+toolchain="gcc_10_aarch64"
 #toolchain="gcc_11_aarch64"
 #riscv64
 #KERNEL_ARCH=riscv
@@ -38,8 +38,8 @@ toolchain="gcc_8_aarch64"
 #toolchain="gcc_11_riscv64"
 
 #Kernel
-KERNEL_REL=5.4
-KERNEL_TAG=${KERNEL_REL}.106
+KERNEL_REL=5.10
+KERNEL_TAG=${KERNEL_REL}.41
 kernel_rt=".X-rtY"
 #Kernel Build
 BUILD=${build_prefix}0
@@ -53,9 +53,9 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="023faefa70274929bff92dc41167b007f7523792"
-        ti_git_pre="023faefa70274929bff92dc41167b007f7523792"
-       ti_git_post="023faefa70274929bff92dc41167b007f7523792"
+ti_git_old_release="4c2eade9f722838b0e457650368cba1c6c7483c2"
+        ti_git_pre="4c2eade9f722838b0e457650368cba1c6c7483c2"
+       ti_git_post="4c2eade9f722838b0e457650368cba1c6c7483c2"
 #
 
 #https://source.denx.de/Xenomai/xenomai.git
