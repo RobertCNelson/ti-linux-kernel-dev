@@ -1,7 +1,7 @@
 #!/bin/bash
 
-abi="5.10.0-6"
-kernel="5.10.28-1"
+abi="5.10.0-8"
+kernel="5.10.46-2"
 
 debian_site="http://ftp.de.debian.org/debian/pool/main/l/linux"
 incoming_site="http://incoming.debian.org/debian-buildd/pool/main/l/linux"
@@ -20,14 +20,9 @@ dl_deb () {
 	fi
 }
 
-dpkg_arch="armhf"
-image="armmp"
-unsigned=""
-dl_deb
-
-dpkg_arch="armhf"
-image="armmp-lpae"
-unsigned=""
+dpkg_arch="arm64"
+image="arm64"
+unsigned="-unsigned"
 dl_deb
 
 rm -rf ./dl/ || true
