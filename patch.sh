@@ -366,6 +366,12 @@ ti_pm_firmware () {
 	dir 'drivers/ti/firmware'
 }
 
+cleanup_dts_builds () {
+	rm -rf arch/arm/boot/dts/.*cmd || true
+	rm -rf arch/arm/boot/dts/.*tmp || true
+	rm -rf arch/arm/boot/dts/*dtb || true
+}
+
 dtb_makefile_append () {
 	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
@@ -391,6 +397,9 @@ beagleboard_dtbs () {
 		fi
 		cd ./KERNEL/
 
+		cleanup_dts_builds
+		rm -rf arch/arm/boot/dts/overlays/ || true
+
 		mkdir -p arch/arm/boot/dts/overlays/
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
@@ -407,7 +416,7 @@ beagleboard_dtbs () {
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
-		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $branch" -m "${https_repo}/tree/${branch}" -m "${https_repo}/commit/${git_hash}" -s
+		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "${https_repo}/tree/${branch}" -m "${https_repo}/commit/${git_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
 		echo "BBDTBS: ${https_repo}/commit/${git_hash}" > ../patches/git/BBDTBS
 
@@ -417,7 +426,7 @@ beagleboard_dtbs () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-DTBS-$branch.patch"
+		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
 
 		wdir="soc/ti/beagleboard_dtbs"
 		number=1
@@ -476,7 +485,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.12.11"
+	backport_tag="v5.12.19"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -492,7 +501,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.12.11"
+	backport_tag="v5.12.19"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -507,7 +516,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.13-rc6"
+	backport_tag="v5.13.5"
 
 	subsystem="spidev"
 	#regenerate="enable"
@@ -522,7 +531,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.44"
+	backport_tag="v5.10.53"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -591,7 +600,7 @@ soc
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.44"
+		backport_tag="v5.10.53"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
