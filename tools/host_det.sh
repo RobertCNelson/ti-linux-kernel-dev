@@ -310,7 +310,6 @@ debian_regs () {
 			;;
 		debbie)
 			#LMDE 4
-			#http://packages.linuxmint.com/index.php
 			deb_distro="buster"
 			;;
 		debian)
@@ -411,11 +410,6 @@ debian_regs () {
 			;;
 		ulyssa)
 			#20.1
-			#http://packages.linuxmint.com/index.php
-			deb_distro="focal"
-			;;
-		uma)
-			#20.2
 			#http://packages.linuxmint.com/index.php
 			deb_distro="focal"
 			;;
@@ -536,7 +530,7 @@ debian_regs () {
 	fi
 
 	if [ "${deb_pkgs}" ] ; then
-		echo "Debian/Ubuntu/Mint: missing dependencies, please install these packages via:"
+		echo "Debian/Ubuntu/Mint: missing dependencies, please install:"
 		echo "-----------------------------"
 		echo "sudo apt-get update"
 		echo "sudo apt-get install ${deb_pkgs}"
