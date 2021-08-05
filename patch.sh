@@ -549,6 +549,22 @@ backports () {
 	else
 		patch_backports
 	fi
+
+	backport_tag="v5.10.56"
+
+	subsystem="cpsw"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		rm -rf ./drivers/net/ethernet/ti/*
+		cp -rv ~/linux-src/drivers/net/ethernet/ti/* ./drivers/net/ethernet/ti/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 }
 
 reverts () {
