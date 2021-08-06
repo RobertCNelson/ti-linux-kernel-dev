@@ -44,6 +44,20 @@ patch_kernel () {
 copy_defconfig () {
 	cd "${DIR}/KERNEL" || exit
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
+
+	#./ti_config_fragments/defconfig_builder.sh -l
+	./ti_config_fragments/defconfig_builder.sh -t ti_sdk_arm64_release
+	./ti_config_fragments/defconfig_builder.sh -t ti_sdk_arm64_rt_release
+
+	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
+	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" ti_sdk_arm64_release_defconfig
+	cp -v .config "${DIR}/patches/ti_sdk_arm64_release_defconfig"
+
+	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
+	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" ti_sdk_arm64_rt_release_defconfig
+	cp -v .config "${DIR}/patches/ti_sdk_arm64_rt_release_defconfig"
+
+	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
 	if [ ! -f "${DIR}/.yakbuild" ] ; then
 		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" "${config}"
 		cp -v .config "${DIR}/patches/ref_${config}"
