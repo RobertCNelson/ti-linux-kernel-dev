@@ -741,6 +741,7 @@ drivers () {
 	dir 'gsoc'
 	dir 'fixes'
 	dir 'bluetooth'
+	dir 'drivers/red'
 }
 
 soc () {
