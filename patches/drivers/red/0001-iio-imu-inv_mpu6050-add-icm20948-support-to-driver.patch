@@ -1,0 +1,437 @@
+From 09e458b0beb1ba1d329cb1992272d7430fe29407 Mon Sep 17 00:00:00 2001
+From: Matt Ranostay <matt.ranostay@konsulko.com>
+Date: Tue, 24 Aug 2021 00:31:44 +0300
+Subject: [PATCH 2/4] iio: imu: inv_mpu6050: add icm20948 support to driver
+
+Needs rework to upstreamble
+
+Signed-off-by: Matt Ranostay <matt.ranostay@konsulko.com>
+---
+ drivers/iio/imu/inv_mpu6050/inv_mpu_core.c | 110 ++++++++++++++++++---
+ drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c  |  41 +++++++-
+ drivers/iio/imu/inv_mpu6050/inv_mpu_iio.h  |  69 +++++++++----
+ drivers/iio/imu/inv_mpu6050/inv_mpu_ring.c |  18 +++-
+ 4 files changed, 198 insertions(+), 40 deletions(-)
+
+diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
+index 6b560d99f385..84bb38a77651 100644
+--- a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
++++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
+@@ -37,6 +37,29 @@ static const int gyro_scale_6050[] = {133090, 266181, 532362, 1064724};
+  */
+ static const int accel_scale[] = {598, 1196, 2392, 4785};
+ 
++static const struct inv_mpu6050_reg_map reg_set_icm20948 = {
++	.sample_rate_div	= INV_ICM20948_REG_SAMPLE_RATE_DIV,
++	.lpf                    = INV_ICM20948_REG_GYRO_CONFIG,
++	.accel_lpf              = INV_ICM20948_REG_ACCEL_CONFIG,
++	.user_ctrl              = INV_ICM20948_REG_USER_CTRL,
++	.fifo_en                = INV_ICM20948_REG_FIFO_EN,
++	.gyro_config            = INV_ICM20948_REG_GYRO_CONFIG,
++	.accl_config            = INV_ICM20948_REG_ACCEL_CONFIG,
++	.fifo_count_h           = INV_ICM20948_REG_FIFO_COUNT_H,
++	.fifo_r_w               = INV_ICM20948_REG_FIFO_R_W,
++	.raw_gyro               = INV_ICM20948_REG_RAW_GYRO,
++	.raw_accl               = INV_ICM20948_REG_RAW_ACCEL,
++	.temperature            = INV_ICM20948_REG_TEMPERATURE,
++	.int_enable             = INV_ICM20948_REG_INT_ENABLE,
++	.int_status             = INV_ICM20948_REG_INT_STATUS,
++	.pwr_mgmt_1             = INV_ICM20948_REG_PWR_MGMT_1,
++	.pwr_mgmt_2             = INV_ICM20948_REG_PWR_MGMT_2,
++	.int_pin_cfg            = INV_ICM20948_REG_INT_PIN_CFG,
++	.accl_offset            = INV_ICM20948_REG_ACCEL_OFFSET,
++	.gyro_offset            = INV_ICM20948_REG_GYRO_OFFSET,
++	.i2c_if                 = 0,
++};
++
+ static const struct inv_mpu6050_reg_map reg_set_icm20602 = {
+ 	.sample_rate_div	= INV_MPU6050_REG_SAMPLE_RATE_DIV,
+ 	.lpf                    = INV_MPU6050_REG_CONFIG,
+@@ -108,8 +131,8 @@ static const struct inv_mpu6050_chip_config chip_config_6050 = {
+ 	.fsr = INV_MPU6050_FSR_2000DPS,
+ 	.lpf = INV_MPU6050_FILTER_20HZ,
+ 	.divider = INV_MPU6050_FIFO_RATE_TO_DIVIDER(INV_MPU6050_INIT_FIFO_RATE),
+-	.gyro_fifo_enable = false,
+-	.accl_fifo_enable = false,
++	.gyro_fifo_enable = true,
++	.accl_fifo_enable = true,
+ 	.accl_fs = INV_MPU6050_FS_02G,
+ 	.user_ctrl = 0,
+ };
+@@ -188,6 +211,14 @@ static const struct inv_mpu6050_hw hw_info[] = {
+ 		.fifo_size = 1008,
+ 		.temp = {INV_ICM20608_TEMP_OFFSET, INV_ICM20608_TEMP_SCALE},
+ 	},
++	{
++		.whoami = 0,
++		.name = "ICM20948",
++		.reg = &reg_set_icm20948,
++		.config = &chip_config_6050,
++		.fifo_size = 4 * 1024,
++		.temp = {INV_ICM20948_TEMP_OFFSET, INV_MPU6500_TEMP_SCALE},
++	}
+ };
+ 
+ int inv_mpu6050_switch_engine(struct inv_mpu6050_state *st, bool en, u32 mask)
+@@ -286,7 +317,13 @@ static int inv_mpu6050_set_lpf_regs(struct inv_mpu6050_state *st,
+ {
+ 	int result;
+ 
+-	result = regmap_write(st->map, st->reg->lpf, val);
++	switch (st->chip_type) {
++	case INV_ICM20948:
++		result = regmap_update_bits(st->map, st->reg->lpf, 0x7 << 3, val << 3);
++		break;
++	default:
++		result = regmap_write(st->map, st->reg->lpf, val);
++	}
+ 	if (result)
+ 		return result;
+ 
+@@ -297,6 +334,9 @@ static int inv_mpu6050_set_lpf_regs(struct inv_mpu6050_state *st,
+ 		/* old chips, nothing to do */
+ 		result = 0;
+ 		break;
++	case INV_ICM20948:
++		result = regmap_update_bits(st->map, st->reg->accel_lpf, 0x7 << 3, val << 3);
++		break;
+ 	default:
+ 		/* set accel lpf */
+ 		result = regmap_write(st->map, st->reg->accel_lpf, val);
+@@ -324,8 +364,16 @@ static int inv_mpu6050_init_config(struct iio_dev *indio_dev)
+ 	result = inv_mpu6050_set_power_itg(st, true);
+ 	if (result)
+ 		return result;
+-	d = (INV_MPU6050_FSR_2000DPS << INV_MPU6050_GYRO_CONFIG_FSR_SHIFT);
+-	result = regmap_write(st->map, st->reg->gyro_config, d);
++
++	switch (st->chip_type) {
++	case INV_ICM20948:
++		d = (INV_MPU6050_FSR_2000DPS << 1);
++		result = regmap_update_bits(st->map, st->reg->gyro_config, 0xf, d | 1);
++		break;
++	default:
++		d = (INV_MPU6050_FSR_2000DPS << INV_MPU6050_GYRO_CONFIG_FSR_SHIFT);
++		result = regmap_write(st->map, st->reg->gyro_config, d);
++	}
+ 	if (result)
+ 		goto error_power_off;
+ 
+@@ -338,8 +386,21 @@ static int inv_mpu6050_init_config(struct iio_dev *indio_dev)
+ 	if (result)
+ 		goto error_power_off;
+ 
+-	d = (INV_MPU6050_FS_02G << INV_MPU6050_ACCL_CONFIG_FSR_SHIFT);
+-	result = regmap_write(st->map, st->reg->accl_config, d);
++	if (st->chip_type == INV_ICM20948) {
++		result = regmap_write(st->map, INV_ICM20948_REG_ACCEL_SAMPLE_RATE_DIV2, d);
++		if (result)
++			goto error_power_off;
++	}
++
++	switch (st->chip_type) {
++	case INV_ICM20948:
++		d = (INV_MPU6050_FS_02G << 1);
++		result = regmap_update_bits(st->map, st->reg->accl_config, 0x7 << 1, d);
++		break;
++	default:
++		d = (INV_MPU6050_FS_02G << INV_MPU6050_ACCL_CONFIG_FSR_SHIFT);
++		result = regmap_write(st->map, st->reg->accl_config, d);
++	}
+ 	if (result)
+ 		goto error_power_off;
+ 
+@@ -531,8 +592,15 @@ static int inv_mpu6050_write_gyro_scale(struct inv_mpu6050_state *st, int val)
+ 
+ 	for (i = 0; i < ARRAY_SIZE(gyro_scale_6050); ++i) {
+ 		if (gyro_scale_6050[i] == val) {
+-			d = (i << INV_MPU6050_GYRO_CONFIG_FSR_SHIFT);
+-			result = regmap_write(st->map, st->reg->gyro_config, d);
++			switch (st->chip_type) {
++			case INV_ICM20948:
++				d = (INV_MPU6050_FSR_2000DPS << 1);
++				result = regmap_update_bits(st->map, st->reg->gyro_config, 0x7 << 1, d);
++				break;
++			default:
++				d = (i << INV_MPU6050_GYRO_CONFIG_FSR_SHIFT);
++				result = regmap_write(st->map, st->reg->gyro_config, d);
++			}
+ 			if (result)
+ 				return result;
+ 
+@@ -569,8 +637,15 @@ static int inv_mpu6050_write_accel_scale(struct inv_mpu6050_state *st, int val)
+ 
+ 	for (i = 0; i < ARRAY_SIZE(accel_scale); ++i) {
+ 		if (accel_scale[i] == val) {
+-			d = (i << INV_MPU6050_ACCL_CONFIG_FSR_SHIFT);
+-			result = regmap_write(st->map, st->reg->accl_config, d);
++			switch (st->chip_type) {
++			case INV_ICM20948:
++				d = (i << 1);
++				result = regmap_update_bits(st->map, st->reg->accl_config, 0xf, d | 1);
++				break;
++			default:
++				d = (i << INV_MPU6050_ACCL_CONFIG_FSR_SHIFT);
++				result = regmap_write(st->map, st->reg->accl_config, d);
++			}
+ 			if (result)
+ 				return result;
+ 
+@@ -721,6 +796,12 @@ inv_mpu6050_fifo_rate_store(struct device *dev, struct device_attribute *attr,
+ 	result = regmap_write(st->map, st->reg->sample_rate_div, d);
+ 	if (result)
+ 		goto fifo_rate_fail_power_off;
++
++	if (st->chip_type == INV_ICM20948) {
++		result = regmap_write(st->map, INV_ICM20948_REG_ACCEL_SAMPLE_RATE_DIV2, d);
++		if (result)
++			goto fifo_rate_fail_power_off;
++	}
+ 	st->chip_config.divider = d;
+ 
+ 	result = inv_mpu6050_set_lpf(st, fifo_rate);
+@@ -976,15 +1057,16 @@ static const struct iio_info mpu_info = {
+  */
+ static int inv_check_and_setup_chip(struct inv_mpu6050_state *st)
+ {
+-	int result;
+-	unsigned int regval;
++	int result = 0;
++	unsigned int regval = 0;
+ 	int i;
+ 
+ 	st->hw  = &hw_info[st->chip_type];
+ 	st->reg = hw_info[st->chip_type].reg;
+ 
+ 	/* check chip self-identification */
+-	result = regmap_read(st->map, INV_MPU6050_REG_WHOAMI, &regval);
++	if (st->hw->whoami)
++		result = regmap_read(st->map, INV_MPU6050_REG_WHOAMI, &regval);
+ 	if (result)
+ 		return result;
+ 	if (regval != st->hw->whoami) {
+diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c
+index e46eb4ddea21..5bb69a3d31c5 100644
+--- a/drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c
++++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_i2c.c
+@@ -20,11 +20,35 @@
+ #include <linux/of_device.h>
+ #include "inv_mpu_iio.h"
+ 
++#define INV_ICM20948_REG_BANK_SEL	0x7F
++#define INV_ICM20948_BANK_SEL_MASK	GENMASK(5,4)
++
++static const struct regmap_range_cfg inv_icm20948_regmap_ranges[] = {
++	{
++		.name = "user banks",
++		.range_min = 0x0000,
++		.range_max = 0x4FFF,
++		.selector_reg = INV_ICM20948_REG_BANK_SEL,
++		.selector_mask = INV_ICM20948_BANK_SEL_MASK,
++		.selector_shift = 4,
++		.window_start = 0,
++		.window_len = 0x1000,
++	},
++};
++
+ static const struct regmap_config inv_mpu_regmap_config = {
+ 	.reg_bits = 8,
+ 	.val_bits = 8,
+ };
+ 
++static const struct regmap_config inv_icm20948_regmap_config = {
++	.reg_bits = 8,
++	.val_bits = 8,
++	.max_register = 0x4FFF,
++	.ranges = inv_icm20948_regmap_ranges,
++	.num_ranges = ARRAY_SIZE(inv_icm20948_regmap_ranges),
++};
++
+ static int inv_mpu6050_select_bypass(struct i2c_mux_core *muxc, u32 chan_id)
+ {
+ 	struct iio_dev *indio_dev = i2c_mux_priv(muxc);
+@@ -88,7 +112,7 @@ static int inv_mpu_probe(struct i2c_client *client,
+ {
+ 	struct inv_mpu6050_state *st;
+ 	int result;
+-	enum inv_devices chip_type;
++	enum inv_devices chip_type = 0;
+ 	struct regmap *regmap;
+ 	const char *name;
+ 
+@@ -112,7 +136,14 @@ static int inv_mpu_probe(struct i2c_client *client,
+ 		return -ENOSYS;
+ 	}
+ 
+-	regmap = devm_regmap_init_i2c(client, &inv_mpu_regmap_config);
++	switch (chip_type) {
++	case INV_ICM20948:
++		regmap = devm_regmap_init_i2c(client, &inv_icm20948_regmap_config);
++		break;
++	default:
++		regmap = devm_regmap_init_i2c(client, &inv_mpu_regmap_config);
++	}
++
+ 	if (IS_ERR(regmap)) {
+ 		dev_err(&client->dev, "Failed to register i2c regmap %d\n",
+ 			(int)PTR_ERR(regmap));
+@@ -128,6 +159,7 @@ static int inv_mpu_probe(struct i2c_client *client,
+ 	switch (st->chip_type) {
+ 	case INV_ICM20608:
+ 	case INV_ICM20602:
++	//case INV_ICM20948:
+ 		/* no i2c auxiliary bus on the chip */
+ 		break;
+ 	default:
+@@ -181,6 +213,7 @@ static const struct i2c_device_id inv_mpu_id[] = {
+ 	{"mpu9255", INV_MPU9255},
+ 	{"icm20608", INV_ICM20608},
+ 	{"icm20602", INV_ICM20602},
++	{"icm20948", INV_ICM20948},
+ 	{}
+ };
+ 
+@@ -219,6 +252,10 @@ static const struct of_device_id inv_of_match[] = {
+ 		.compatible = "invensense,icm20602",
+ 		.data = (void *)INV_ICM20602
+ 	},
++	{
++		.compatible = "invensense,icm20948",
++		.data = (void *)INV_ICM20948
++	},
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, inv_of_match);
+diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_iio.h b/drivers/iio/imu/inv_mpu6050/inv_mpu_iio.h
+index 220eba58cfbb..5f4c62739e2d 100644
+--- a/drivers/iio/imu/inv_mpu6050/inv_mpu_iio.h
++++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_iio.h
+@@ -47,26 +47,26 @@
+  *  @i2c_if:		Controls the i2c interface
+  */
+ struct inv_mpu6050_reg_map {
+-	u8 sample_rate_div;
+-	u8 lpf;
+-	u8 accel_lpf;
+-	u8 user_ctrl;
+-	u8 fifo_en;
+-	u8 gyro_config;
+-	u8 accl_config;
+-	u8 fifo_count_h;
+-	u8 fifo_r_w;
+-	u8 raw_gyro;
+-	u8 raw_accl;
+-	u8 temperature;
+-	u8 int_enable;
+-	u8 int_status;
+-	u8 pwr_mgmt_1;
+-	u8 pwr_mgmt_2;
+-	u8 int_pin_cfg;
+-	u8 accl_offset;
+-	u8 gyro_offset;
+-	u8 i2c_if;
++	u16 sample_rate_div;
++	u16 lpf;
++	u16 accel_lpf;
++	u16 user_ctrl;
++	u16 fifo_en;
++	u16 gyro_config;
++	u16 accl_config;
++	u16 fifo_count_h;
++	u16 fifo_r_w;
++	u16 raw_gyro;
++	u16 raw_accl;
++	u16 temperature;
++	u16 int_enable;
++	u16 int_status;
++	u16 pwr_mgmt_1;
++	u16 pwr_mgmt_2;
++	u16 int_pin_cfg;
++	u16 accl_offset;
++	u16 gyro_offset;
++	u16 i2c_if;
+ };
+ 
+ /*device enum */
+@@ -80,6 +80,7 @@ enum inv_devices {
+ 	INV_MPU9255,
+ 	INV_ICM20608,
+ 	INV_ICM20602,
++	INV_ICM20948,
+ 	INV_NUM_PARTS
+ };
+ 
+@@ -243,6 +244,8 @@ struct inv_mpu6050_state {
+ #define INV_ICM20608_TEMP_OFFSET	     8170
+ #define INV_ICM20608_TEMP_SCALE		     3059976
+ 
++#define INV_ICM20948_TEMP_OFFSET	     6863
++
+ /* 6 + 6 round up and plus 8 */
+ #define INV_MPU6050_OUTPUT_DATA_SIZE         24
+ 
+@@ -284,6 +287,32 @@ struct inv_mpu6050_state {
+ #define INV_ICM20608_WHOAMI_VALUE		0xAF
+ #define INV_ICM20602_WHOAMI_VALUE		0x12
+ 
++
++#define INV_ICM20948_REG_SAMPLE_RATE_DIV	0x2000
++#define INV_ICM20948_REG_ACCEL_SAMPLE_RATE_DIV2	0x2011
++#define INV_ICM20948_REG_CONFIG				0x2001
++#define INV_ICM20948_REG_ACCEL_CONFIG_2		0x2015
++#define INV_ICM20948_REG_USER_CTRL			0x0003
++
++#define INV_ICM20948_REG_FIFO_EN			0x0067
++#define INV_ICM20948_BIT_ACCEL_OUT          0x0010
++#define INV_ICM20948_BITS_GYRO_OUT          0x000e
++
++#define INV_ICM20948_REG_GYRO_CONFIG		0x2001
++#define INV_ICM20948_REG_ACCEL_CONFIG	  	0x2014
++#define INV_ICM20948_REG_FIFO_COUNT_H		0x0070
++#define INV_ICM20948_REG_FIFO_R_W			0x0072
++#define INV_ICM20948_REG_RAW_GYRO			0x0033
++#define INV_ICM20948_REG_RAW_ACCEL			0x002d
++#define INV_ICM20948_REG_TEMPERATURE		0x0039
++#define INV_ICM20948_REG_INT_ENABLE			0x0011
++#define INV_ICM20948_REG_INT_STATUS			0x001a
++#define INV_ICM20948_REG_PWR_MGMT_1			0x0006
++#define INV_ICM20948_REG_PWR_MGMT_2			0x0007
++#define INV_ICM20948_REG_INT_PIN_CFG		0x000f
++#define INV_ICM20948_REG_ACCEL_OFFSET		0x1014
++#define INV_ICM20948_REG_GYRO_OFFSET		0x2003
++
+ /* scan element definition for generic MPU6xxx devices */
+ enum inv_mpu6050_scan {
+ 	INV_MPU6050_SCAN_ACCL_X,
+diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_ring.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_ring.c
+index 0e54f2d54bd7..5a5a18e50f01 100644
+--- a/drivers/iio/imu/inv_mpu6050/inv_mpu_ring.c
++++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_ring.c
+@@ -145,10 +145,20 @@ int inv_reset_fifo(struct iio_dev *indio_dev)
+ 		goto reset_fifo_fail;
+ 	/* enable sensor output to FIFO */
+ 	d = 0;
+-	if (st->chip_config.gyro_fifo_enable)
+-		d |= INV_MPU6050_BITS_GYRO_OUT;
+-	if (st->chip_config.accl_fifo_enable)
+-		d |= INV_MPU6050_BIT_ACCEL_OUT;
++
++	switch (st->chip_type) {
++	case INV_ICM20948:
++		if (st->chip_config.gyro_fifo_enable)
++			d |= INV_ICM20948_BITS_GYRO_OUT;
++		if (st->chip_config.accl_fifo_enable)
++			d |= INV_ICM20948_BIT_ACCEL_OUT;
++		break;
++	default:
++		if (st->chip_config.gyro_fifo_enable)
++			d |= INV_MPU6050_BITS_GYRO_OUT;
++		if (st->chip_config.accl_fifo_enable)
++			d |= INV_MPU6050_BIT_ACCEL_OUT;
++	};
+ 	result = regmap_write(st->map, st->reg->fifo_en, d);
+ 	if (result)
+ 		goto reset_fifo_fail;
+-- 
+2.30.2
+
