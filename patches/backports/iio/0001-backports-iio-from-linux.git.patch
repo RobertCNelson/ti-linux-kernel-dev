@@ -1,9 +1,9 @@
-From ebe61944374578cddd9bf122bbf5c5580922d8a5 Mon Sep 17 00:00:00 2001
+From 78c1cec4498669eb2df0d22407d057ee174d29ce Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 16 Aug 2021 17:17:08 -0500
+Date: Tue, 24 Aug 2021 21:18:07 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.59
+Reference: v5.10.60
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/bma180.c                    | 19 +++++++---
@@ -21,7 +21,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/at91-sama5d2_adc.c            |  3 +-
  drivers/iio/adc/hx711.c                       |  4 +--
  drivers/iio/adc/mxs-lradc-adc.c               |  3 +-
+ drivers/iio/adc/palmas_gpadc.c                |  4 +--
  drivers/iio/adc/ti-ads1015.c                  | 12 ++++---
+ drivers/iio/adc/ti-ads7950.c                  |  1 -
  drivers/iio/adc/ti-ads8688.c                  |  3 +-
  drivers/iio/adc/vf610_adc.c                   | 10 ++++--
  drivers/iio/chemical/atlas-sensor.c           |  4 +--
@@ -30,6 +32,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/gyro/bmg160_core.c                | 10 ++++--
  drivers/iio/gyro/fxas21002c_core.c            | 13 ++-----
  drivers/iio/humidity/am2315.c                 | 16 +++++----
+ drivers/iio/humidity/hdc100x.c                |  6 ++--
+ drivers/iio/imu/adis.c                        |  3 +-
  drivers/iio/imu/adis16400.c                   |  3 --
  drivers/iio/imu/adis16475.c                   |  2 +-
  drivers/iio/imu/adis_buffer.c                 |  3 --
@@ -50,7 +54,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/proximity/srf08.c                 | 14 ++++----
  drivers/staging/iio/cdc/ad7746.c              |  1 -
  .../linux/iio/common/cros_ec_sensors_core.h   |  2 +-
- 44 files changed, 252 insertions(+), 164 deletions(-)
+ 48 files changed, 259 insertions(+), 171 deletions(-)
 
 diff --git a/drivers/iio/accel/bma180.c b/drivers/iio/accel/bma180.c
 index 6b74c2b04c15..da56488182d0 100644
@@ -625,6 +629,21 @@ index 30e29f44ebd2..c480cb489c1a 100644
  	struct iio_trigger	*trig;
  	struct completion	completion;
  	spinlock_t		lock;
+diff --git a/drivers/iio/adc/palmas_gpadc.c b/drivers/iio/adc/palmas_gpadc.c
+index 889b88768b63..f4756671cddb 100644
+--- a/drivers/iio/adc/palmas_gpadc.c
++++ b/drivers/iio/adc/palmas_gpadc.c
+@@ -654,8 +654,8 @@ static int palmas_adc_wakeup_configure(struct palmas_gpadc *adc)
+ 
+ 	adc_period = adc->auto_conversion_period;
+ 	for (i = 0; i < 16; ++i) {
+-		if (((1000 * (1 << i)) / 32) < adc_period)
+-			continue;
++		if (((1000 * (1 << i)) / 32) >= adc_period)
++			break;
+ 	}
+ 	if (i > 0)
+ 		i--;
 diff --git a/drivers/iio/adc/ti-ads1015.c b/drivers/iio/adc/ti-ads1015.c
 index 9fef39bcf997..5b828428be77 100644
 --- a/drivers/iio/adc/ti-ads1015.c
@@ -659,6 +678,18 @@ index 9fef39bcf997..5b828428be77 100644
  					   iio_get_time_ns(indio_dev));
  
  err:
+diff --git a/drivers/iio/adc/ti-ads7950.c b/drivers/iio/adc/ti-ads7950.c
+index 2383eacada87..a2b83f0bd526 100644
+--- a/drivers/iio/adc/ti-ads7950.c
++++ b/drivers/iio/adc/ti-ads7950.c
+@@ -568,7 +568,6 @@ static int ti_ads7950_probe(struct spi_device *spi)
+ 	st->ring_xfer.tx_buf = &st->tx_buf[0];
+ 	st->ring_xfer.rx_buf = &st->rx_buf[0];
+ 	/* len will be set later */
+-	st->ring_xfer.cs_change = true;
+ 
+ 	spi_message_add_tail(&st->ring_xfer, &st->ring_msg);
+ 
 diff --git a/drivers/iio/adc/ti-ads8688.c b/drivers/iio/adc/ti-ads8688.c
 index 16bcb37eebb7..79c803537dc4 100644
 --- a/drivers/iio/adc/ti-ads8688.c
@@ -900,6 +931,55 @@ index 02ad1767c845..3398fa413ec5 100644
  					   pf->timestamp);
  err:
  	iio_trigger_notify_done(indio_dev->trig);
+diff --git a/drivers/iio/humidity/hdc100x.c b/drivers/iio/humidity/hdc100x.c
+index 2a957f19048e..9e0fce917ce4 100644
+--- a/drivers/iio/humidity/hdc100x.c
++++ b/drivers/iio/humidity/hdc100x.c
+@@ -25,6 +25,8 @@
+ #include <linux/iio/trigger_consumer.h>
+ #include <linux/iio/triggered_buffer.h>
+ 
++#include <linux/time.h>
++
+ #define HDC100X_REG_TEMP			0x00
+ #define HDC100X_REG_HUMIDITY			0x01
+ 
+@@ -166,7 +168,7 @@ static int hdc100x_get_measurement(struct hdc100x_data *data,
+ 				   struct iio_chan_spec const *chan)
+ {
+ 	struct i2c_client *client = data->client;
+-	int delay = data->adc_int_us[chan->address];
++	int delay = data->adc_int_us[chan->address] + 1*USEC_PER_MSEC;
+ 	int ret;
+ 	__be16 val;
+ 
+@@ -316,7 +318,7 @@ static irqreturn_t hdc100x_trigger_handler(int irq, void *p)
+ 	struct iio_dev *indio_dev = pf->indio_dev;
+ 	struct hdc100x_data *data = iio_priv(indio_dev);
+ 	struct i2c_client *client = data->client;
+-	int delay = data->adc_int_us[0] + data->adc_int_us[1];
++	int delay = data->adc_int_us[0] + data->adc_int_us[1] + 2*USEC_PER_MSEC;
+ 	int ret;
+ 
+ 	/* dual read starts at temp register */
+diff --git a/drivers/iio/imu/adis.c b/drivers/iio/imu/adis.c
+index 319b64b2fd88..f8b7837d8b8f 100644
+--- a/drivers/iio/imu/adis.c
++++ b/drivers/iio/imu/adis.c
+@@ -415,12 +415,11 @@ int __adis_initial_startup(struct adis *adis)
+ 	int ret;
+ 
+ 	/* check if the device has rst pin low */
+-	gpio = devm_gpiod_get_optional(&adis->spi->dev, "reset", GPIOD_ASIS);
++	gpio = devm_gpiod_get_optional(&adis->spi->dev, "reset", GPIOD_OUT_HIGH);
+ 	if (IS_ERR(gpio))
+ 		return PTR_ERR(gpio);
+ 
+ 	if (gpio) {
+-		gpiod_set_value_cansleep(gpio, 1);
+ 		msleep(10);
+ 		/* bring device out of reset */
+ 		gpiod_set_value_cansleep(gpio, 0);
 diff --git a/drivers/iio/imu/adis16400.c b/drivers/iio/imu/adis16400.c
 index 785a4ce606d8..4aff16466da0 100644
 --- a/drivers/iio/imu/adis16400.c
