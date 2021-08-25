@@ -1,18 +1,39 @@
-From 5c2a17c4c25f24851d4586a0ea9102748f8eda01 Mon Sep 17 00:00:00 2001
+From 83a472fcf1db223103a48080f5ac0c9bd59ec7a6 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 21 May 2021 13:28:46 -0500
+Date: Wed, 25 Aug 2021 14:00:08 -0500
 Subject: [PATCH] backports: wlcore: from: linux.git
 
-Reference: v4.19.190
+Reference: v4.19.204
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
+ drivers/net/wireless/ti/wl1251/cmd.c    |  9 ++++++---
  drivers/net/wireless/ti/wl1251/event.c  |  2 +-
- drivers/net/wireless/ti/wl12xx/main.c   |  3 ---
+ drivers/net/wireless/ti/wl12xx/main.c   | 10 +++++++---
  drivers/net/wireless/ti/wlcore/main.c   | 19 ++++---------------
  drivers/net/wireless/ti/wlcore/tx.c     |  1 +
  drivers/net/wireless/ti/wlcore/wlcore.h |  3 ---
- 5 files changed, 6 insertions(+), 22 deletions(-)
+ 6 files changed, 19 insertions(+), 25 deletions(-)
 
+diff --git a/drivers/net/wireless/ti/wl1251/cmd.c b/drivers/net/wireless/ti/wl1251/cmd.c
+index 9547aea01b0f..ea0215246c5c 100644
+--- a/drivers/net/wireless/ti/wl1251/cmd.c
++++ b/drivers/net/wireless/ti/wl1251/cmd.c
+@@ -466,9 +466,12 @@ int wl1251_cmd_scan(struct wl1251 *wl, u8 *ssid, size_t ssid_len,
+ 		cmd->channels[i].channel = channels[i]->hw_value;
+ 	}
+ 
+-	cmd->params.ssid_len = ssid_len;
+-	if (ssid)
+-		memcpy(cmd->params.ssid, ssid, ssid_len);
++	if (ssid) {
++		int len = clamp_val(ssid_len, 0, IEEE80211_MAX_SSID_LEN);
++
++		cmd->params.ssid_len = len;
++		memcpy(cmd->params.ssid, ssid, len);
++	}
+ 
+ 	ret = wl1251_cmd_send(wl, CMD_SCAN, cmd, sizeof(*cmd));
+ 	if (ret < 0) {
 diff --git a/drivers/net/wireless/ti/wl1251/event.c b/drivers/net/wireless/ti/wl1251/event.c
 index f5acd24d0e2b..988abb49771f 100644
 --- a/drivers/net/wireless/ti/wl1251/event.c
@@ -27,7 +48,7 @@ index f5acd24d0e2b..988abb49771f 100644
  
  static void wl1251_event_mbox_dump(struct event_mailbox *mbox)
 diff --git a/drivers/net/wireless/ti/wl12xx/main.c b/drivers/net/wireless/ti/wl12xx/main.c
-index 4a4f797bb10f..e10fff42751e 100644
+index 4a4f797bb10f..b88c413f96ac 100644
 --- a/drivers/net/wireless/ti/wl12xx/main.c
 +++ b/drivers/net/wireless/ti/wl12xx/main.c
 @@ -649,7 +649,6 @@ static int wl12xx_identify_chip(struct wl1271 *wl)
@@ -54,6 +75,20 @@ index 4a4f797bb10f..e10fff42751e 100644
  			      WLCORE_QUIRK_AP_ZERO_SESSION_ID;
  
  		wlcore_set_min_fw_ver(wl, WL128X_CHIP_VER,
+@@ -1520,6 +1517,13 @@ static int wl12xx_get_fuse_mac(struct wl1271 *wl)
+ 	u32 mac1, mac2;
+ 	int ret;
+ 
++	/* Device may be in ELP from the bootloader or kexec */
++	ret = wlcore_write32(wl, WL12XX_WELP_ARM_COMMAND, WELP_ARM_COMMAND_VAL);
++	if (ret < 0)
++		goto out;
++
++	usleep_range(500000, 700000);
++
+ 	ret = wlcore_set_partition(wl, &wl->ptable[PART_DRPW]);
+ 	if (ret < 0)
+ 		goto out;
 diff --git a/drivers/net/wireless/ti/wlcore/main.c b/drivers/net/wireless/ti/wlcore/main.c
 index 2ca5658bbc2a..e24ffdff5bdc 100644
 --- a/drivers/net/wireless/ti/wlcore/main.c
