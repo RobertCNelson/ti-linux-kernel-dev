@@ -417,6 +417,12 @@ ti_pm_firmware () {
 	dir 'drivers/ti/firmware'
 }
 
+cleanup_dts_builds () {
+	rm -rf arch/arm/boot/dts/.*cmd || true
+	rm -rf arch/arm/boot/dts/.*tmp || true
+	rm -rf arch/arm/boot/dts/*dtb || true
+}
+
 dtb_makefile_append_am5 () {
 	sed -i -e 's:am57xx-beagle-x15.dtb \\:am57xx-beagle-x15.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
@@ -446,6 +452,9 @@ beagleboard_dtbs () {
 		fi
 		cd ./KERNEL/
 
+		cleanup_dts_builds
+		rm -rf arch/arm/boot/dts/overlays/ || true
+
 		mkdir -p arch/arm/boot/dts/overlays/
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
 		if [ -f ./arch/arm/boot/dts/overlays/README.MD ] ; then
@@ -454,6 +463,7 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
+		device="am335x-osd3358-sm-red-01.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
@@ -477,7 +487,7 @@ beagleboard_dtbs () {
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
-		${git_bin} commit -a -m "Add BeagleBoard.org DTBS: $branch" -m "${https_repo}/tree/${branch}" -m "${https_repo}/commit/${git_hash}" -s
+		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "${https_repo}/tree/${branch}" -m "${https_repo}/commit/${git_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
 		echo "BBDTBS: ${https_repo}/commit/${git_hash}" > ../patches/git/BBDTBS
 
@@ -487,7 +497,7 @@ beagleboard_dtbs () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-DTBS-$branch.patch"
+		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
 
 		wdir="soc/ti/beagleboard_dtbs"
 		number=1
@@ -547,7 +557,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.19.190"
+	backport_tag="v4.19.204"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -562,7 +572,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.190"
+	backport_tag="v4.19.204"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -577,7 +587,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.190"
+	backport_tag="v4.19.204"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -595,7 +605,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.4.120"
+	backport_tag="v5.4.142"
 
 	subsystem="wiznet"
 	#regenerate="enable"
@@ -730,6 +740,7 @@ drivers () {
 	dir 'drivers/greybus'
 	dir 'gsoc'
 	dir 'fixes'
+	dir 'bluetooth'
 }
 
 soc () {
