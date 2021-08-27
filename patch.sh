@@ -148,50 +148,6 @@ rt () {
 	dir 'rt'
 }
 
-ti_img_rouge () {
-	#https://git.ti.com/cgit/graphics/ti-img-rogue-driver/log/?h=1.13-5776728/linux-k5.10
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-
-		cd ../
-		if [ ! -d ./ti-img-rogue-driver ] ; then
-			${git_bin} clone -b 1.13-5776728/linux-k5.10 git://git.ti.com/graphics/ti-img-rogue-driver.git --depth=1
-			cd ./ti-img-rogue-driver
-				ti_img_rouge_hash=$(git rev-parse HEAD)
-				./copy-to-kernel.sh ./copy-to-kernel-tc/ ../KERNEL
-			cd -
-		else
-			rm -rf ./ti-img-rogue-driver || true
-			${git_bin} clone -b 1.13-5776728/linux-k5.10 git://git.ti.com/graphics/ti-img-rogue-driver.git --depth=1
-			cd ./ti-img-rogue-driver
-				ti_img_rouge_hash=$(git rev-parse HEAD)
-				./copy-to-kernel.sh ./copy-to-kernel-tc/ ../KERNEL
-			cd -
-		fi
-		cd ./KERNEL/
-
-		${git_bin} add -f drivers/gpu/drm/img-rogue/
-		${git_bin} commit -a -m 'Add TI Imagination Rogue' -m "https://git.ti.com/cgit/graphics/ti-img-rogue-driver/commit/?h=1.13-5776728/linux-k5.10&id=${ti_img_rouge_hash}" -s
-
-		${git_bin} format-patch -1 -o ../patches/ti-img-rogue/
-		echo "TI_IMG_ROGUE: https://git.ti.com/cgit/graphics/ti-img-rogue-driver/commit/?h=1.13-5776728/linux-k5.10&id=${ti_img_rouge_hash}" > ../patches/git/TI_IMG_ROGUE
-
-		rm -rf ../ti-img-rogue-driver/ || true
-
-		${git_bin} reset --hard HEAD^
-
-		start_cleanup
-
-		${git} "${DIR}/patches/ti-img-rogue/0001-Add-TI-Imagination-Rogue.patch"
-
-		wdir="ti-img-rogue"
-		number=1
-		cleanup
-	fi
-
-	dir 'ti-img-rogue'
-}
-
 wireless_regdb () {
 	#https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/
 	#regenerate="enable"
@@ -243,7 +199,6 @@ local_patch () {
 }
 
 external_git
-ti_img_rouge
 #rt
 wireless_regdb
 #local_patch
