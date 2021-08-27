@@ -517,7 +517,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.13.12"
+	backport_tag="v5.13.13"
 
 	subsystem="spidev"
 	#regenerate="enable"
@@ -532,7 +532,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.60"
+	backport_tag="v5.10.61"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -550,7 +550,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.60"
+	backport_tag="v5.10.61"
 
 	subsystem="cpsw"
 	#regenerate="enable"
@@ -600,8 +600,6 @@ drivers () {
 	dir 'drivers/ti/gpio'
 	dir 'drivers/greybus'
 	dir 'drivers/fb_ssd1306'
-	dir 'drivers/usb'
-	dir 'drivers/bluetooth'
 }
 
 soc () {
@@ -617,7 +615,7 @@ soc
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.60"
+		backport_tag="v5.10.61"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
