@@ -193,6 +193,67 @@ wireless_regdb () {
 	dir 'wireless_regdb'
 }
 
+cleanup_dts_builds () {
+	rm -rf arch/arm64/boot/dts/ti/.*cmd || true
+	rm -rf arch/arm64/boot/dts/ti/.*tmp || true
+	rm -rf arch/arm64/boot/dts/ti/*dtb || true
+	rm -rf arch/arm64/boot/dts/ti/*dtbo || true
+}
+
+dtb_makefile_append () {
+	echo "dtb-\$(CONFIG_ARCH_K3) += $device" >> arch/arm64/boot/dts/ti/Makefile
+}
+
+beagleboard_dtbs () {
+	branch="v5.10.x-ti-arm64"
+	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	work_dir="BeagleBoard-DeviceTrees"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./${work_dir} ] ; then
+			${git_bin} clone -b ${branch} ${https_repo} --depth=1
+			cd ./${work_dir}
+				git_hash=$(git rev-parse HEAD)
+			cd -
+		else
+			rm -rf ./${work_dir} || true
+			${git_bin} clone -b ${branch} ${https_repo} --depth=1
+			cd ./${work_dir}
+				git_hash=$(git rev-parse HEAD)
+			cd -
+		fi
+		cd ./KERNEL/
+
+		cleanup_dts_builds
+
+		cp -vr ../${work_dir}/src/arm64/* arch/arm64/boot/dts/ti/
+		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
+
+		device="k3-j721e-beagleboneai.dtb" ; dtb_makefile_append
+
+		${git_bin} add -f arch/arm64/boot/dts/ti/
+		${git_bin} add -f include/dt-bindings/
+		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "${https_repo}/tree/${branch}" -m "${https_repo}/commit/${git_hash}" -s
+		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
+		echo "BBDTBS: ${https_repo}/commit/${git_hash}" > ../patches/git/BBDTBS
+
+		rm -rf ../${work_dir}/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
+
+		wdir="soc/ti/beagleboard_dtbs"
+		number=1
+		cleanup
+	fi
+
+	dir 'soc/ti/beagleboard_dtbs'
+}
+
 local_patch () {
 	echo "dir: dir"
 	${git} "${DIR}/patches/dir/0001-patch.patch"
@@ -201,6 +262,7 @@ local_patch () {
 external_git
 #rt
 wireless_regdb
+beagleboard_dtbs
 #local_patch
 
 pre_backports () {
