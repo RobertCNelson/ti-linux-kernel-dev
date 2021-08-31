@@ -264,6 +264,7 @@ external_git
 wireless_regdb
 beagleboard_dtbs
 #local_patch
+dir 'fixes'
 
 pre_backports () {
 	echo "dir: backports/${subsystem}"
