@@ -463,7 +463,7 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
 		device="am335x-abbbi.dtb" ; dtb_makefile_append
-		device="am335x-osd3358-sm-red-01.dtb" ; dtb_makefile_append
+		device="am335x-osd3358-sm-red-v4.dtb" ; dtb_makefile_append
 
 		device="am335x-boneblack-wl1835mod.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-bbbmini.dtb" ; dtb_makefile_append
@@ -557,7 +557,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.19.204"
+	backport_tag="v4.19.205"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -572,7 +572,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.204"
+	backport_tag="v4.19.205"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -587,7 +587,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.204"
+	backport_tag="v4.19.205"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -605,7 +605,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.4.142"
+	backport_tag="v5.4.143"
 
 	subsystem="wiznet"
 	#regenerate="enable"
