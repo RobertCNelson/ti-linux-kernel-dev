@@ -1,9 +1,9 @@
-From 480138a57601276e939324cd4e3cba4c66c4351e Mon Sep 17 00:00:00 2001
+From 347540f06dd44b8195095880f51b05270a799371 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 25 Aug 2021 14:01:22 -0500
+Date: Mon, 30 Aug 2021 20:27:47 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v4.19.204
+Reference: v4.19.205
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/adis16201.c                 |  2 +-
@@ -27,6 +27,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/max1118.c                     | 10 +-
  drivers/iio/adc/mcp3422.c                     | 16 ++--
  drivers/iio/adc/mxs-lradc-adc.c               |  3 +-
+ drivers/iio/adc/palmas_gpadc.c                |  4 +-
  drivers/iio/adc/qcom-spmi-vadc.c              |  2 +-
  drivers/iio/adc/rockchip_saradc.c             |  2 +-
  drivers/iio/adc/stm32-adc.c                   | 51 ++++++++--
@@ -54,7 +55,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/health/afe4403.c                  | 13 ++-
  drivers/iio/health/afe4404.c                  |  8 +-
  drivers/iio/humidity/am2315.c                 | 16 ++--
- drivers/iio/humidity/hdc100x.c                | 10 +-
+ drivers/iio/humidity/hdc100x.c                | 16 +++-
  drivers/iio/humidity/hid-sensor-humidity.c    | 12 ++-
  drivers/iio/humidity/hts221.h                 |  7 +-
  drivers/iio/humidity/hts221_buffer.c          |  9 +-
@@ -96,7 +97,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/iio/cdc/ad7746.c              |  1 -
  drivers/staging/iio/resolver/ad2s1210.c       | 17 +++-
  include/linux/iio/iio.h                       |  2 +-
- 90 files changed, 927 insertions(+), 368 deletions(-)
+ 91 files changed, 933 insertions(+), 372 deletions(-)
 
 diff --git a/drivers/iio/accel/adis16201.c b/drivers/iio/accel/adis16201.c
 index 4c1d482ea73a..94a80f8fdd10 100644
@@ -971,6 +972,21 @@ index c627513d9f0f..fc8b70d8d64c 100644
  	struct iio_trigger	*trig;
  	struct completion	completion;
  	spinlock_t		lock;
+diff --git a/drivers/iio/adc/palmas_gpadc.c b/drivers/iio/adc/palmas_gpadc.c
+index 69b9affeef1e..7dcd4213d38a 100644
+--- a/drivers/iio/adc/palmas_gpadc.c
++++ b/drivers/iio/adc/palmas_gpadc.c
+@@ -659,8 +659,8 @@ static int palmas_adc_wakeup_configure(struct palmas_gpadc *adc)
+ 
+ 	adc_period = adc->auto_conversion_period;
+ 	for (i = 0; i < 16; ++i) {
+-		if (((1000 * (1 << i)) / 32) < adc_period)
+-			continue;
++		if (((1000 * (1 << i)) / 32) >= adc_period)
++			break;
+ 	}
+ 	if (i > 0)
+ 		i--;
 diff --git a/drivers/iio/adc/qcom-spmi-vadc.c b/drivers/iio/adc/qcom-spmi-vadc.c
 index 3680e0d47412..2640155b2644 100644
 --- a/drivers/iio/adc/qcom-spmi-vadc.c
@@ -2109,10 +2125,19 @@ index 7d8669dc6547..b09bd0b39c9c 100644
  err:
  	iio_trigger_notify_done(indio_dev->trig);
 diff --git a/drivers/iio/humidity/hdc100x.c b/drivers/iio/humidity/hdc100x.c
-index ff6666ac5d68..0fcaa2c0b2f4 100644
+index ff6666ac5d68..51ad5a9ed085 100644
 --- a/drivers/iio/humidity/hdc100x.c
 +++ b/drivers/iio/humidity/hdc100x.c
-@@ -38,6 +38,11 @@ struct hdc100x_data {
+@@ -24,6 +24,8 @@
+ #include <linux/iio/trigger_consumer.h>
+ #include <linux/iio/triggered_buffer.h>
+ 
++#include <linux/time.h>
++
+ #define HDC100X_REG_TEMP			0x00
+ #define HDC100X_REG_HUMIDITY			0x01
+ 
+@@ -38,6 +40,11 @@ struct hdc100x_data {
  
  	/* integration time of the sensor */
  	int adc_int_us[2];
@@ -2124,15 +2149,27 @@ index ff6666ac5d68..0fcaa2c0b2f4 100644
  };
  
  /* integration time in us */
-@@ -319,7 +324,6 @@ static irqreturn_t hdc100x_trigger_handler(int irq, void *p)
+@@ -160,7 +167,7 @@ static int hdc100x_get_measurement(struct hdc100x_data *data,
+ 				   struct iio_chan_spec const *chan)
+ {
  	struct i2c_client *client = data->client;
- 	int delay = data->adc_int_us[0] + data->adc_int_us[1];
+-	int delay = data->adc_int_us[chan->address];
++	int delay = data->adc_int_us[chan->address] + 1*USEC_PER_MSEC;
+ 	int ret;
+ 	__be16 val;
+ 
+@@ -317,9 +324,8 @@ static irqreturn_t hdc100x_trigger_handler(int irq, void *p)
+ 	struct iio_dev *indio_dev = pf->indio_dev;
+ 	struct hdc100x_data *data = iio_priv(indio_dev);
+ 	struct i2c_client *client = data->client;
+-	int delay = data->adc_int_us[0] + data->adc_int_us[1];
++	int delay = data->adc_int_us[0] + data->adc_int_us[1] + 2*USEC_PER_MSEC;
  	int ret;
 -	s16 buf[8];  /* 2x s16 + padding + 8 byte timestamp */
  
  	/* dual read starts at temp register */
  	mutex_lock(&data->lock);
-@@ -330,13 +334,13 @@ static irqreturn_t hdc100x_trigger_handler(int irq, void *p)
+@@ -330,13 +336,13 @@ static irqreturn_t hdc100x_trigger_handler(int irq, void *p)
  	}
  	usleep_range(delay, delay + 1000);
  
