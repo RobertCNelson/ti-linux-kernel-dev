@@ -418,6 +418,7 @@ ti_pm_firmware () {
 }
 
 cleanup_dts_builds () {
+	rm -rf arch/arm/boot/dts/modules.order || true
 	rm -rf arch/arm/boot/dts/.*cmd || true
 	rm -rf arch/arm/boot/dts/.*tmp || true
 	rm -rf arch/arm/boot/dts/*dtb || true
