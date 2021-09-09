@@ -367,6 +367,7 @@ ti_pm_firmware () {
 }
 
 cleanup_dts_builds () {
+	rm -rf arch/arm/boot/dts/modules.order || true
 	rm -rf arch/arm/boot/dts/.*cmd || true
 	rm -rf arch/arm/boot/dts/.*tmp || true
 	rm -rf arch/arm/boot/dts/*dtb || true
@@ -517,7 +518,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.13.13"
+	backport_tag="v5.13.14"
 
 	subsystem="spidev"
 	#regenerate="enable"
@@ -532,7 +533,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.61"
+	backport_tag="v5.10.63"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -550,7 +551,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.61"
+	backport_tag="v5.10.63"
 
 	subsystem="cpsw"
 	#regenerate="enable"
@@ -575,6 +576,9 @@ reverts () {
 
 	## notes
 	##git revert --no-edit xyz -s
+	#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/kernel/kthread.c?h=linux-5.7.y&id=26c7295be0c5e6da3fa45970e9748be983175b1b
+	#git revert --no-edit 26c7295be0c5e6da3fa45970e9748be983175b1b -s
+	#exit 2
 
 	dir 'reverts'
 
@@ -608,14 +612,14 @@ soc () {
 
 ###
 backports
-#reverts
+reverts
 drivers
 soc
 
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.61"
+		backport_tag="v5.10.63"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
