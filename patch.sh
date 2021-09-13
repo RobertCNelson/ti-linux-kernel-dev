@@ -194,6 +194,7 @@ wireless_regdb () {
 }
 
 cleanup_dts_builds () {
+	rm -rf arch/arm64/boot/dts/ti/modules.order || true
 	rm -rf arch/arm64/boot/dts/ti/.*cmd || true
 	rm -rf arch/arm64/boot/dts/ti/.*tmp || true
 	rm -rf arch/arm64/boot/dts/ti/*dtb || true
@@ -300,10 +301,17 @@ patch_backports (){
 	${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-linux.git.patch"
 }
 
+drivers () {
+	dir 'drivers/spi'
+}
+
+###
+drivers
+
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.14-rc7"
+		backport_tag="v5.14.3"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
