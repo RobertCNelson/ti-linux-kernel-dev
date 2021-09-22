@@ -1,16 +1,18 @@
-From 54f47e3e69e4743b35bfe25e9d3b515371f9e983 Mon Sep 17 00:00:00 2001
+From e6f914e894f1d676012a30fffb7f8ebe5b13f66b Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 16 Sep 2021 11:26:42 -0500
+Date: Wed, 22 Sep 2021 11:50:17 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.66
+Reference: v5.10.68
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/adc/palmas_gpadc.c | 4 ++--
- drivers/iio/adc/ti-ads7950.c   | 1 -
- drivers/iio/humidity/hdc100x.c | 6 ++++--
- drivers/iio/imu/adis.c         | 3 +--
- 4 files changed, 7 insertions(+), 7 deletions(-)
+ drivers/iio/adc/palmas_gpadc.c    |  4 ++--
+ drivers/iio/adc/ti-ads7950.c      |  1 -
+ drivers/iio/dac/ad5624r_spi.c     | 18 +++++++++++++++++-
+ drivers/iio/humidity/hdc100x.c    |  6 ++++--
+ drivers/iio/imu/adis.c            |  3 +--
+ drivers/iio/temperature/ltc2983.c | 30 ++++++++++++++----------------
+ 6 files changed, 38 insertions(+), 24 deletions(-)
 
 diff --git a/drivers/iio/adc/palmas_gpadc.c b/drivers/iio/adc/palmas_gpadc.c
 index 889b88768b63..f4756671cddb 100644
@@ -39,6 +41,42 @@ index 2383eacada87..a2b83f0bd526 100644
  
  	spi_message_add_tail(&st->ring_xfer, &st->ring_msg);
  
+diff --git a/drivers/iio/dac/ad5624r_spi.c b/drivers/iio/dac/ad5624r_spi.c
+index 2b2b8edfd258..ab4997bfd6d4 100644
+--- a/drivers/iio/dac/ad5624r_spi.c
++++ b/drivers/iio/dac/ad5624r_spi.c
+@@ -229,7 +229,7 @@ static int ad5624r_probe(struct spi_device *spi)
+ 	if (!indio_dev)
+ 		return -ENOMEM;
+ 	st = iio_priv(indio_dev);
+-	st->reg = devm_regulator_get(&spi->dev, "vcc");
++	st->reg = devm_regulator_get_optional(&spi->dev, "vref");
+ 	if (!IS_ERR(st->reg)) {
+ 		ret = regulator_enable(st->reg);
+ 		if (ret)
+@@ -240,6 +240,22 @@ static int ad5624r_probe(struct spi_device *spi)
+ 			goto error_disable_reg;
+ 
+ 		voltage_uv = ret;
++	} else {
++		if (PTR_ERR(st->reg) != -ENODEV)
++			return PTR_ERR(st->reg);
++		/* Backwards compatibility. This naming is not correct */
++		st->reg = devm_regulator_get_optional(&spi->dev, "vcc");
++		if (!IS_ERR(st->reg)) {
++			ret = regulator_enable(st->reg);
++			if (ret)
++				return ret;
++
++			ret = regulator_get_voltage(st->reg);
++			if (ret < 0)
++				goto error_disable_reg;
++
++			voltage_uv = ret;
++		}
+ 	}
+ 
+ 	spi_set_drvdata(spi, indio_dev);
 diff --git a/drivers/iio/humidity/hdc100x.c b/drivers/iio/humidity/hdc100x.c
 index 2a957f19048e..9e0fce917ce4 100644
 --- a/drivers/iio/humidity/hdc100x.c
@@ -88,6 +126,71 @@ index 319b64b2fd88..f8b7837d8b8f 100644
  		msleep(10);
  		/* bring device out of reset */
  		gpiod_set_value_cansleep(gpio, 0);
+diff --git a/drivers/iio/temperature/ltc2983.c b/drivers/iio/temperature/ltc2983.c
+index 3b5ba26d7d86..3b4a0e60e605 100644
+--- a/drivers/iio/temperature/ltc2983.c
++++ b/drivers/iio/temperature/ltc2983.c
+@@ -89,6 +89,8 @@
+ 
+ #define	LTC2983_STATUS_START_MASK	BIT(7)
+ #define	LTC2983_STATUS_START(x)		FIELD_PREP(LTC2983_STATUS_START_MASK, x)
++#define	LTC2983_STATUS_UP_MASK		GENMASK(7, 6)
++#define	LTC2983_STATUS_UP(reg)		FIELD_GET(LTC2983_STATUS_UP_MASK, reg)
+ 
+ #define	LTC2983_STATUS_CHAN_SEL_MASK	GENMASK(4, 0)
+ #define	LTC2983_STATUS_CHAN_SEL(x) \
+@@ -1362,17 +1364,16 @@ static int ltc2983_parse_dt(struct ltc2983_data *st)
+ 
+ static int ltc2983_setup(struct ltc2983_data *st, bool assign_iio)
+ {
+-	u32 iio_chan_t = 0, iio_chan_v = 0, chan, iio_idx = 0;
++	u32 iio_chan_t = 0, iio_chan_v = 0, chan, iio_idx = 0, status;
+ 	int ret;
+-	unsigned long time;
+-
+-	/* make sure the device is up */
+-	time = wait_for_completion_timeout(&st->completion,
+-					    msecs_to_jiffies(250));
+ 
+-	if (!time) {
++	/* make sure the device is up: start bit (7) is 0 and done bit (6) is 1 */
++	ret = regmap_read_poll_timeout(st->regmap, LTC2983_STATUS_REG, status,
++				       LTC2983_STATUS_UP(status) == 1, 25000,
++				       25000 * 10);
++	if (ret) {
+ 		dev_err(&st->spi->dev, "Device startup timed out\n");
+-		return -ETIMEDOUT;
++		return ret;
+ 	}
+ 
+ 	st->iio_chan = devm_kzalloc(&st->spi->dev,
+@@ -1492,10 +1493,11 @@ static int ltc2983_probe(struct spi_device *spi)
+ 	ret = ltc2983_parse_dt(st);
+ 	if (ret)
+ 		return ret;
+-	/*
+-	 * let's request the irq now so it is used to sync the device
+-	 * startup in ltc2983_setup()
+-	 */
++
++	ret = ltc2983_setup(st, true);
++	if (ret)
++		return ret;
++
+ 	ret = devm_request_irq(&spi->dev, spi->irq, ltc2983_irq_handler,
+ 			       IRQF_TRIGGER_RISING, name, st);
+ 	if (ret) {
+@@ -1503,10 +1505,6 @@ static int ltc2983_probe(struct spi_device *spi)
+ 		return ret;
+ 	}
+ 
+-	ret = ltc2983_setup(st, true);
+-	if (ret)
+-		return ret;
+-
+ 	indio_dev->name = name;
+ 	indio_dev->num_channels = st->iio_channels;
+ 	indio_dev->channels = st->iio_chan;
 -- 
 2.30.2
 
