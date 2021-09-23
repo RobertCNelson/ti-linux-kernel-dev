@@ -231,7 +231,7 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/src/arm64/* arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
-		device="k3-j721e-beagleboneai.dtb" ; dtb_makefile_append
+		device="k3-j721e-beagleboneai64.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm64/boot/dts/ti/
 		${git_bin} add -f include/dt-bindings/
@@ -311,7 +311,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.14.6"
+		backport_tag="v5.14.7"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
