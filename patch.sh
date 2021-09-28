@@ -588,6 +588,7 @@ drivers () {
 	dir 'drivers/ti/gpio'
 	dir 'drivers/greybus'
 	dir 'drivers/fb_ssd1306'
+	dir 'drivers/hackaday'
 }
 
 soc () {
