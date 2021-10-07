@@ -140,4 +140,14 @@ config="CONFIG_USB_CONFIGFS_F_HID" ; config_enable
 config="CONFIG_USB_CONFIGFS_F_UVC" ; config_enable
 config="CONFIG_USB_CONFIGFS_F_PRINTER" ; config_enable
 
+# Extras
+config="CONFIG_VIDEO_OV5647" ; config_module
+config="CONFIG_LED_TRIGGER_PHY" ; config_module
+config="CONFIG_USB_LEDS_TRIGGER_USBPORT" ; config_module
+config="CONFIG_LEDS_TRIGGER_TRANSIENT" ; config_module
+config="CONFIG_LEDS_TRIGGER_CAMERA" ; config_module
+config="CONFIG_LEDS_TRIGGER_NETDEV" ; config_module
+config="CONFIG_LEDS_TRIGGER_PATTERN" ; config_module
+config="CONFIG_LEDS_TRIGGER_AUDIO" ; config_module
+
 cd ${DIR}/
