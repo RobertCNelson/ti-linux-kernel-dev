@@ -121,6 +121,50 @@ external_git () {
 	#exit 2
 }
 
+wpanusb () {
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./wpanusb ] ; then
+			${git_bin} clone https://github.com/statropy/wpanusb --depth=1
+			cd ./wpanusb
+				wpanusb_hash=$(git rev-parse HEAD)
+			cd -
+		else
+			rm -rf ./wpanusb || true
+			${git_bin} clone https://github.com/statropy/wpanusb --depth=1
+			cd ./wpanusb
+				wpanusb_hash=$(git rev-parse HEAD)
+			cd -
+		fi
+
+		cd ./KERNEL/
+
+		cp -v ../wpanusb/wpanusb.h drivers/net/ieee802154/
+		cp -v ../wpanusb/wpanusb.c drivers/net/ieee802154/
+
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: wpanusb: https://github.com/statropy/wpanusb' -m "https://github.com/statropy/wpanusb/commit/${wpanusb_hash}" -s
+		${git_bin} format-patch -1 -o ../patches/wpanusb/
+		echo "WPANUSB: https://github.com/statropy/wpanusb/commit/${wpanusb_hash}" > ../patches/git/WPANUSB
+
+		rm -rf ../wpanusb/ || true
+
+		${git_bin} reset --hard HEAD~1
+
+		start_cleanup
+
+		${git} "${DIR}/patches/wpanusb/0001-merge-wpanusb-https-github.com-statropy-wpanusb.patch"
+
+		wdir="wpanusb"
+		number=1
+		cleanup
+
+		exit 2
+	fi
+	dir 'wpanusb'
+}
+
 rt_cleanup () {
 	echo "rt: needs fixup"
 	exit 2
@@ -261,6 +305,7 @@ local_patch () {
 }
 
 external_git
+wpanusb
 #rt
 wireless_regdb
 beagleboard_dtbs
