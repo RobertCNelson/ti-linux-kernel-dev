@@ -346,11 +346,49 @@ patch_backports (){
 	${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-linux.git.patch"
 }
 
+backports () {
+
+	backport_tag="v5.10.73"
+
+	subsystem="iio"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/include/linux/iio/* ./include/linux/iio/
+		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
+		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
+		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.14.12"
+
+	subsystem="pinmux"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/pinctrl/pinmux.c ./drivers/pinctrl/
+		cp -v ~/linux-src/drivers/pinctrl/pinmux.h ./drivers/pinctrl/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+}
+
 drivers () {
 	dir 'drivers/spi'
 }
 
 ###
+backports
 drivers
 
 packaging () {
