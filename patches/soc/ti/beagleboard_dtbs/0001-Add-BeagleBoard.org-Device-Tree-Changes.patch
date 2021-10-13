@@ -1,37 +1,41 @@
-From 0765e3cc482ab14b89f071849bd3f0a601b90ff5 Mon Sep 17 00:00:00 2001
+From 20f0b677fe7f5219e0775a4c6a5616922c755577 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 7 Oct 2021 08:58:05 -0500
+Date: Wed, 13 Oct 2021 11:40:35 -0500
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/v5.10.x-ti-arm64
 
-https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/281cdf97bfc578ea8a96231613ab63721fc7bfe9
+https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/c7d854f34548a7d5aec9cf716daa878c83b8d99f
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm64/boot/dts/ti/Makefile               |    1 +
- .../boot/dts/ti/k3-j721e-beagleboneai64.dts   | 1133 +++++++++++++++++
+ .../boot/dts/ti/k3-j721e-beagleboneai64.dts   | 1511 +++++++++++++++++
  .../dts/ti/k3-j721e-common-proc-board.dts     |    4 +-
  arch/arm64/boot/dts/ti/k3-j721e-eaik.dts      |    2 +
  arch/arm64/boot/dts/ti/k3-j721e-main.dtsi     |   73 +-
  .../dts/ti/k3-j721e-proc-board-tps65917.dts   |    5 +
- 6 files changed, 1216 insertions(+), 2 deletions(-)
+ include/dt-bindings/board/am572x-bone-pins.h  |  179 ++
+ .../dt-bindings/board/k3-j721e-bone-pins.h    |  193 +++
+ 8 files changed, 1966 insertions(+), 2 deletions(-)
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
+ create mode 100644 include/dt-bindings/board/am572x-bone-pins.h
+ create mode 100644 include/dt-bindings/board/k3-j721e-bone-pins.h
 
 diff --git a/arch/arm64/boot/dts/ti/Makefile b/arch/arm64/boot/dts/ti/Makefile
-index 3081ecc9f014..b2f87fd64da2 100644
+index 090e40305c2b..2ea5400fd45e 100644
 --- a/arch/arm64/boot/dts/ti/Makefile
 +++ b/arch/arm64/boot/dts/ti/Makefile
-@@ -32,3 +32,4 @@ dtb-$(CONFIG_ARCH_K3) += k3-am642-evm.dtb
- dtb-$(CONFIG_ARCH_K3) += k3-am642-evm-icssg1-dualemac.dtbo
+@@ -33,3 +33,4 @@ dtb-$(CONFIG_ARCH_K3) += k3-am642-evm-icssg1-dualemac.dtbo
+ dtb-$(CONFIG_ARCH_K3) += k3-am642-evm-icssg1-dualemac-mii.dtbo
  
  dtb-$(CONFIG_ARCH_K3) += k3-am642-sk.dtb
 +dtb-$(CONFIG_ARCH_K3) += k3-j721e-beagleboneai64.dtb
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts b/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
 new file mode 100644
-index 000000000000..d4c64b276a54
+index 000000000000..09f9ae553d94
 --- /dev/null
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
-@@ -0,0 +1,1133 @@
+@@ -0,0 +1,1511 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (C) 2019 Texas Instruments Incorporated - https://www.ti.com/
@@ -43,10 +47,11 @@ index 000000000000..d4c64b276a54
 +#include <dt-bindings/gpio/gpio.h>
 +#include <dt-bindings/input/input.h>
 +#include <dt-bindings/net/ti-dp83867.h>
++#include <dt-bindings/board/k3-j721e-bone-pins.h>
 +
 +/ {
 +
-+	model = "BeagleBoard.org BeagleBone AI64";
++	model = "BeagleBoard.org BeagleBone AI-64";
 +	compatible = "beagle,j721e-beagleboneai64", "ti,j721e";
 +
 +	chosen {
@@ -89,8 +94,7 @@ index 000000000000..d4c64b276a54
 +
 +		usr_led2: usr_led2 {
 +			label = "beaglebone:green:usr2";
-+			//linux,default-trigger = "cpu";
-+			linux,default-trigger = "panic-indicator";
++			linux,default-trigger = "cpu";
 +			gpios = <&main_gpio0 97 GPIO_ACTIVE_HIGH>;
 +		};
 +
@@ -339,6 +343,321 @@ index 000000000000..d4c64b276a54
 +			J721E_IOPAD(0x1b0, PIN_INPUT_PULLDOWN, 7) /* (W24) RGMII6_RD1.GPIO0_107 */
 +		>;
 +	};
++
++/* macro: BONE_PIN( <pin>, <mode_name>, <register_value_macro>, <pin_name_in_mode>) */
++#define BONE_PIN(XX,ZZ,QQ) \
++	XX##_##ZZ##_pin: pinmux_##XX##_##ZZ##_pin { pinctrl-single,pins = < QQ >; };
++
++	/* Full P8/P9 header mode definitions */
++	/* P8_01 - GND */
++	/* P8_02 - GND */
++	BONE_PIN(P8_03, default,   P8_03(PIN_INPUT, 7))
++	BONE_PIN(P8_03, pruout,    P8_03(PIN_OUTPUT, 0))
++	BONE_PIN(P8_03, pruin,     P8_03(PIN_INPUT, 1))
++	BONE_PIN(P8_03, can,       P8_03(PIN_OUTPUT, 6))
++	BONE_PIN(P8_03, gpio,      P8_03(PIN_OUTPUT, 7))
++	BONE_PIN(P8_03, gpio_pu,   P8_03(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_03, gpio_pd,   P8_03(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_04, default,   P8_04(PIN_INPUT, 7))
++	BONE_PIN(P8_04, pruout,    P8_04(PIN_OUTPUT, 0))
++	BONE_PIN(P8_04, pruin,     P8_04(PIN_INPUT, 1))
++	BONE_PIN(P8_04, gpio,      P8_04(PIN_OUTPUT, 7))
++	BONE_PIN(P8_04, gpio_pu,   P8_04(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_04, gpio_pd,   P8_04(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_05, default,   P8_05(PIN_INPUT, 7))
++	BONE_PIN(P8_05, pruout,    P8_05(PIN_OUTPUT, 0))
++	BONE_PIN(P8_05, pruin,     P8_05(PIN_INPUT, 1))
++	BONE_PIN(P8_05, gpio,      P8_05(PIN_OUTPUT, 7))
++	BONE_PIN(P8_05, gpio_pu,   P8_05(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_05, gpio_pd,   P8_05(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_06, default,   P8_06(PIN_INPUT, 7))
++	BONE_PIN(P8_06, pruout,    P8_06(PIN_OUTPUT, 0))
++	BONE_PIN(P8_06, pruin,     P8_06(PIN_INPUT, 1))
++	BONE_PIN(P8_06, gpio,      P8_06(PIN_OUTPUT, 7))
++	BONE_PIN(P8_06, gpio_pu,   P8_06(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_06, gpio_pd,   P8_06(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_07, default,   P8_07(PIN_INPUT, 7))
++	BONE_PIN(P8_07, pruout,    P8_07(PIN_OUTPUT, 0))
++	BONE_PIN(P8_07, pruin,     P8_07(PIN_INPUT, 1))
++	BONE_PIN(P8_07, gpio,      P8_07(PIN_OUTPUT, 7))
++	BONE_PIN(P8_07, gpio_pu,   P8_07(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_07, gpio_pd,   P8_07(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_08, default,   P8_08(PIN_INPUT, 7))
++	BONE_PIN(P8_08, pruout,    P8_08(PIN_OUTPUT, 0))
++	BONE_PIN(P8_08, pruin,     P8_08(PIN_INPUT, 1))
++	BONE_PIN(P8_08, gpio,      P8_08(PIN_OUTPUT, 7))
++	BONE_PIN(P8_08, gpio_pu,   P8_08(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_08, gpio_pd,   P8_08(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_09, default,   P8_09(PIN_INPUT, 7))
++	BONE_PIN(P8_09, pruout,    P8_09(PIN_OUTPUT, 0))
++	BONE_PIN(P8_09, pruin,     P8_09(PIN_INPUT, 1))
++	BONE_PIN(P8_06, gpio,      P8_09(PIN_OUTPUT, 7))
++	BONE_PIN(P8_09, gpio_pu,   P8_09(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_09, gpio_pd,   P8_09(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_10, default,   P8_10(PIN_INPUT, 7))
++	BONE_PIN(P8_10, pruout,    P8_10(PIN_OUTPUT, 0))
++	BONE_PIN(P8_10, pruin,     P8_10(PIN_INPUT, 1))
++	BONE_PIN(P8_10, gpio,      P8_10(PIN_OUTPUT, 7))
++	BONE_PIN(P8_10, gpio_pu,   P8_10(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_10, gpio_pd,   P8_10(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_11, default,   P8_11(PIN_INPUT, 7))
++	BONE_PIN(P8_11, pruout,    P8_11(PIN_OUTPUT, 0))
++	BONE_PIN(P8_11, pruin,     P8_11(PIN_INPUT, 1))
++	BONE_PIN(P8_11, gpio,      P8_11(PIN_OUTPUT, 7))
++	BONE_PIN(P8_11, gpio_pu,   P8_11(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_11, gpio_pd,   P8_11(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_12, default,   P8_12(PIN_INPUT, 7))
++	BONE_PIN(P8_12, pruout,    P8_12(PIN_OUTPUT, 0))
++	BONE_PIN(P8_12, pruin,     P8_12(PIN_INPUT, 1))
++	BONE_PIN(P8_12, gpio,      P8_12(PIN_OUTPUT, 7))
++	BONE_PIN(P8_12, gpio_pu,   P8_12(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_12, gpio_pd,   P8_12(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_13, default,   P8_13(PIN_INPUT, 7))
++	//BONE_PIN(P8_13, i2c,       P8_13(PIN_OUTPUT_PULLUP, 2))
++	BONE_PIN(P8_13, pwm,       P8_13(PIN_OUTPUT, 6))
++	BONE_PIN(P8_13, gpio,      P8_13(PIN_OUTPUT, 7))
++	BONE_PIN(P8_13, gpio_pu,   P8_13(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_13, gpio_pd,   P8_13(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_14, default,   P8_14(PIN_INPUT, 7))
++	BONE_PIN(P8_14, pruout,    P8_14(PIN_OUTPUT, 0))
++	BONE_PIN(P8_14, pruin,     P8_14(PIN_INPUT, 1))
++	BONE_PIN(P8_14, gpio,      P8_14(PIN_OUTPUT, 7))
++	BONE_PIN(P8_14, gpio_pu,   P8_14(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_14, gpio_pd,   P8_14(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_15, default,   P8_15(PIN_INPUT, 7))
++	BONE_PIN(P8_15, pruout,    P8_15(PIN_OUTPUT, 0))
++	BONE_PIN(P8_15, pruin,     P8_15(PIN_INPUT, 1))
++	BONE_PIN(P8_15, gpio,      P8_15(PIN_OUTPUT, 7))
++	BONE_PIN(P8_15, gpio_pu,   P8_15(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_15, gpio_pd,   P8_15(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_16, default,   P8_16(PIN_INPUT, 7))
++	BONE_PIN(P8_16, pruout,    P8_16(PIN_OUTPUT, 0))
++	BONE_PIN(P8_16, pruin,     P8_16(PIN_INPUT, 1))
++	BONE_PIN(P8_16, gpio,      P8_16(PIN_OUTPUT, 7))
++	BONE_PIN(P8_16, gpio_pu,   P8_16(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_16, gpio_pd,   P8_16(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_17, default,   P8_17(PIN_INPUT, 7))
++	BONE_PIN(P8_17, pruout,    P8_17(PIN_OUTPUT, 0))
++	BONE_PIN(P8_17, pruin,     P8_17(PIN_INPUT, 1))
++	BONE_PIN(P8_17, gpio,      P8_17(PIN_OUTPUT, 7))
++	BONE_PIN(P8_17, gpio_pu,   P8_17(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_17, gpio_pd,   P8_17(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_18, default,   P8_18(PIN_INPUT, 7))
++	BONE_PIN(P8_18, pruout,    P8_18(PIN_OUTPUT, 0))
++	BONE_PIN(P8_18, pruin,     P8_18(PIN_INPUT, 1))
++	BONE_PIN(P8_18, gpio,      P8_18(PIN_OUTPUT, 7))
++	BONE_PIN(P8_18, gpio_pu,   P8_18(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_18, gpio_pd,   P8_18(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_19, default,   P8_19(PIN_INPUT, 7))
++	BONE_PIN(P8_19, pwm,       P8_19(PIN_OUTPUT, 6))
++	BONE_PIN(P8_19, gpio,      P8_19(PIN_OUTPUT, 7))
++	BONE_PIN(P8_19, gpio_pu,   P8_19(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_19, gpio_pd,   P8_19(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_20, default,   P8_20(PIN_INPUT, 7))
++	BONE_PIN(P8_20, pruout,    P8_20(PIN_OUTPUT, 0))
++	BONE_PIN(P8_20, pruin,     P8_20(PIN_INPUT, 1))
++	BONE_PIN(P8_20, gpio,      P8_20(PIN_OUTPUT, 7))
++	BONE_PIN(P8_20, gpio_pu,   P8_20(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_20, gpio_pd,   P8_20(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_21, default,   P8_21(PIN_INPUT, 7))
++	BONE_PIN(P8_21, pruout,    P8_21(PIN_OUTPUT, 0))
++	BONE_PIN(P8_21, pruin,     P8_21(PIN_INPUT, 1))
++	BONE_PIN(P8_21, gpio,      P8_21(PIN_OUTPUT, 7))
++	BONE_PIN(P8_21, gpio_pu,   P8_21(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_21, gpio_pd,   P8_21(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_22, default,   P8_22(PIN_INPUT, 7))
++	BONE_PIN(P8_22, pruout,    P8_22(PIN_OUTPUT, 0))
++	BONE_PIN(P8_22, pruin,     P8_22(PIN_INPUT, 1))
++	BONE_PIN(P8_22, gpio,      P8_22(PIN_OUTPUT, 7))
++	BONE_PIN(P8_22, gpio_pu,   P8_22(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_22, gpio_pd,   P8_22(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_23, default,   P8_23(PIN_INPUT, 7))
++	BONE_PIN(P8_23, pruout,    P8_23(PIN_OUTPUT, 0))
++	BONE_PIN(P8_23, pruin,     P8_23(PIN_INPUT, 1))
++	BONE_PIN(P8_23, gpio,      P8_23(PIN_OUTPUT, 7))
++	BONE_PIN(P8_23, gpio_pu,   P8_23(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_23, gpio_pd,   P8_23(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_24, default,   P8_24(PIN_INPUT, 7))
++	BONE_PIN(P8_24, pruout,    P8_24(PIN_OUTPUT, 0))
++	BONE_PIN(P8_24, pruin,     P8_24(PIN_INPUT, 1))
++	BONE_PIN(P8_24, gpio,      P8_24(PIN_OUTPUT, 7))
++	BONE_PIN(P8_24, gpio_pu,   P8_24(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_24, gpio_pd,   P8_24(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_25, default,   P8_25(PIN_INPUT, 7))
++	BONE_PIN(P8_25, pruout,    P8_25(PIN_OUTPUT, 0))
++	BONE_PIN(P8_25, pruin,     P8_25(PIN_INPUT, 1))
++	BONE_PIN(P8_25, gpio,      P8_25(PIN_OUTPUT, 7))
++	BONE_PIN(P8_25, gpio_pu,   P8_25(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_25, gpio_pd,   P8_25(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_26, default,   P8_26(PIN_INPUT, 7))
++	BONE_PIN(P8_26, pruout,    P8_26(PIN_OUTPUT, 0))
++	BONE_PIN(P8_26, pruin,     P8_26(PIN_INPUT, 1))
++	BONE_PIN(P8_26, gpio,      P8_26(PIN_OUTPUT, 7))
++	BONE_PIN(P8_26, gpio_pu,   P8_26(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_26, gpio_pd,   P8_26(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_27, default,   P8_27(PIN_INPUT, 7))
++	BONE_PIN(P8_27, pruout,    P8_27(PIN_OUTPUT, 0))
++	BONE_PIN(P8_27, pruin,     P8_27(PIN_INPUT, 1))
++	BONE_PIN(P8_27, gpio,      P8_27(PIN_OUTPUT, 7))
++	BONE_PIN(P8_27, gpio_pu,   P8_27(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_27, gpio_pd,   P8_27(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_28, default,   P8_28(PIN_INPUT, 7))
++	BONE_PIN(P8_28, pruout,    P8_28(PIN_OUTPUT, 0))
++	BONE_PIN(P8_28, pruin,     P8_28(PIN_INPUT, 1))
++	BONE_PIN(P8_28, gpio,      P8_28(PIN_OUTPUT, 7))
++	BONE_PIN(P8_28, gpio_pu,   P8_28(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_28, gpio_pd,   P8_28(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_29, default,   P8_29(PIN_INPUT, 7))
++	BONE_PIN(P8_29, pruout,    P8_29(PIN_OUTPUT, 0))
++	BONE_PIN(P8_29, pruin,     P8_29(PIN_INPUT, 1))
++	BONE_PIN(P8_29, gpio,      P8_29(PIN_OUTPUT, 7))
++	BONE_PIN(P8_29, gpio_pu,   P8_29(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_29, gpio_pd,   P8_29(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_30, default,   P8_30(PIN_INPUT, 7))
++	BONE_PIN(P8_30, pruout,    P8_30(PIN_OUTPUT, 0))
++	BONE_PIN(P8_30, pruin,     P8_30(PIN_INPUT, 1))
++	BONE_PIN(P8_30, gpio,      P8_30(PIN_OUTPUT, 7))
++	BONE_PIN(P8_30, gpio_pu,   P8_30(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_30, gpio_pd,   P8_30(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_31, default,   P8_31A(PIN_INPUT, 7) P8_31B(PIN_INPUT, 7))
++	BONE_PIN(P8_31, pruout,    P8_31A(PIN_OUTPUT, 0) P8_31B(PIN_INPUT, 7))
++	BONE_PIN(P8_31, pruin,     P8_31A(PIN_INPUT, 1) P8_31B(PIN_INPUT, 7))
++	BONE_PIN(P8_31, gpio,      P8_31A(PIN_OUTPUT, 7) P8_31B(PIN_INPUT, 7))
++	BONE_PIN(P8_31, gpio_pu,   P8_31A(PIN_OUTPUT_PULLUP, 7) P8_31B(PIN_INPUT, 7))
++	BONE_PIN(P8_31, gpio_pd,   P8_31A(PIN_OUTPUT_PULLDOWN, 7) P8_31B(PIN_INPUT, 7))
++
++	BONE_PIN(P8_32, default,   P8_32A(PIN_INPUT, 7) P8_32B(PIN_INPUT, 7))
++	BONE_PIN(P8_32, pruout,    P8_32A(PIN_OUTPUT, 0) P8_32B(PIN_INPUT, 7))
++	BONE_PIN(P8_32, pruin,     P8_32A(PIN_INPUT, 1) P8_32B(PIN_INPUT, 7))
++	BONE_PIN(P8_32, gpio,      P8_32A(PIN_OUTPUT, 7) P8_32B(PIN_INPUT, 7))
++	BONE_PIN(P8_32, gpio_pu,   P8_32A(PIN_OUTPUT_PULLUP, 7) P8_32B(PIN_INPUT, 7))
++	BONE_PIN(P8_32, gpio_pd,   P8_32A(PIN_OUTPUT_PULLDOWN, 7) P8_32B(PIN_INPUT, 7))
++
++	BONE_PIN(P8_33, default,   P8_33A(PIN_INPUT, 7) P8_33B(PIN_INPUT, 7))
++	BONE_PIN(P8_33, pruout,    P8_33A(PIN_OUTPUT, 0) P8_33B(PIN_INPUT, 7))
++	BONE_PIN(P8_33, pruin,     P8_33A(PIN_INPUT, 1) P8_33B(PIN_INPUT, 7))
++	BONE_PIN(P8_33, gpio,      P8_33A(PIN_OUTPUT, 7) P8_33B(PIN_INPUT, 7))
++	BONE_PIN(P8_33, gpio_pu,   P8_33A(PIN_OUTPUT_PULLUP, 7) P8_33B(PIN_INPUT, 7))
++	BONE_PIN(P8_33, gpio_pd,   P8_33A(PIN_OUTPUT_PULLDOWN, 7) P8_33B(PIN_INPUT, 7))
++
++	BONE_PIN(P8_34, default,   P8_34(PIN_INPUT, 7))
++	BONE_PIN(P8_34, pruout,    P8_34(PIN_OUTPUT, 0))
++	BONE_PIN(P8_34, pruin,     P8_34(PIN_INPUT, 1))
++	BONE_PIN(P8_34, gpio,      P8_34(PIN_OUTPUT, 7))
++	BONE_PIN(P8_34, gpio_pu,   P8_34(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_34, gpio_pd,   P8_34(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_35, default,   P8_35A(PIN_INPUT, 7) P8_35B(PIN_INPUT, 7))
++	BONE_PIN(P8_35, pruout,    P8_35A(PIN_OUTPUT, 0) P8_35B(PIN_INPUT, 7))
++	BONE_PIN(P8_35, pruin,     P8_35A(PIN_INPUT, 1) P8_35B(PIN_INPUT, 7))
++	BONE_PIN(P8_35, gpio,      P8_35A(PIN_OUTPUT, 7) P8_35B(PIN_INPUT, 7))
++	BONE_PIN(P8_35, gpio_pu,   P8_35A(PIN_OUTPUT_PULLUP, 7) P8_35B(PIN_INPUT, 7))
++	BONE_PIN(P8_35, gpio_pd,   P8_35A(PIN_OUTPUT_PULLDOWN, 7) P8_35B(PIN_INPUT, 7))
++
++	BONE_PIN(P8_36, default,   P8_36(PIN_INPUT, 7))
++	BONE_PIN(P8_36, pruout,    P8_36(PIN_OUTPUT, 0))
++	BONE_PIN(P8_36, pruin,     P8_36(PIN_INPUT, 1))
++	BONE_PIN(P8_36, gpio,      P8_36(PIN_OUTPUT, 7))
++	BONE_PIN(P8_36, gpio_pu,   P8_36(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_36, gpio_pd,   P8_36(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_37, default,   P8_37A(PIN_INPUT, 7) P8_37B(PIN_INPUT, 7))
++	BONE_PIN(P8_37, pruout,    P8_37A(PIN_OUTPUT, 0) P8_37B(PIN_INPUT, 7))
++	BONE_PIN(P8_37, pruin,     P8_37A(PIN_INPUT, 1) P8_37B(PIN_INPUT, 7))
++	BONE_PIN(P8_37, gpio,      P8_37A(PIN_OUTPUT, 7) P8_37B(PIN_INPUT, 7))
++	BONE_PIN(P8_37, gpio_pu,   P8_37A(PIN_OUTPUT_PULLUP, 7) P8_37B(PIN_INPUT, 7))
++	BONE_PIN(P8_37, gpio_pd,   P8_37A(PIN_OUTPUT_PULLDOWN, 7) P8_37B(PIN_INPUT, 7))
++
++	BONE_PIN(P8_38, default,   P8_38A(PIN_INPUT, 7) P8_38B(PIN_INPUT, 7))
++	BONE_PIN(P8_38, pruout,    P8_38A(PIN_OUTPUT, 0) P8_38B(PIN_INPUT, 7))
++	BONE_PIN(P8_38, pruin,     P8_38A(PIN_INPUT, 1) P8_38B(PIN_INPUT, 7))
++	BONE_PIN(P8_38, gpio,      P8_38A(PIN_OUTPUT, 7) P8_38B(PIN_INPUT, 7))
++	BONE_PIN(P8_38, gpio_pu,   P8_38A(PIN_OUTPUT_PULLUP, 7) P8_38B(PIN_INPUT, 7))
++	BONE_PIN(P8_38, gpio_pd,   P8_38A(PIN_OUTPUT_PULLDOWN, 7) P8_38B(PIN_INPUT, 7))
++
++	BONE_PIN(P8_39, default,   P8_39(PIN_INPUT, 7))
++	BONE_PIN(P8_39, pruout,    P8_39(PIN_OUTPUT, 0))
++	BONE_PIN(P8_39, pruin,     P8_39(PIN_INPUT, 1))
++	BONE_PIN(P8_39, gpio,      P8_39(PIN_OUTPUT, 7))
++	BONE_PIN(P8_39, gpio_pu,   P8_39(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_39, gpio_pd,   P8_39(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_40, default,   P8_40(PIN_INPUT, 7))
++	BONE_PIN(P8_40, pruout,    P8_40(PIN_OUTPUT, 0))
++	BONE_PIN(P8_40, pruin,     P8_40(PIN_INPUT, 1))
++	BONE_PIN(P8_40, gpio,      P8_40(PIN_OUTPUT, 7))
++	BONE_PIN(P8_40, gpio_pu,   P8_40(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_40, gpio_pd,   P8_40(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_41, default,   P8_41(PIN_INPUT, 7))
++	BONE_PIN(P8_41, pruout,    P8_41(PIN_OUTPUT, 0))
++	BONE_PIN(P8_41, pruin,     P8_41(PIN_INPUT, 1))
++	BONE_PIN(P8_41, gpio,      P8_41(PIN_OUTPUT, 7))
++	BONE_PIN(P8_41, gpio_pu,   P8_41(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_41, gpio_pd,   P8_41(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_42, default,   P8_42(PIN_INPUT, 7))
++	BONE_PIN(P8_42, pruout,    P8_42(PIN_OUTPUT, 0))
++	BONE_PIN(P8_42, pruin,     P8_42(PIN_INPUT, 1))
++	BONE_PIN(P8_42, gpio,      P8_42(PIN_OUTPUT, 7))
++	BONE_PIN(P8_42, gpio_pu,   P8_42(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_42, gpio_pd,   P8_42(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_43, default,   P8_43(PIN_INPUT, 7))
++	BONE_PIN(P8_43, pruout,    P8_43(PIN_OUTPUT, 0))
++	BONE_PIN(P8_43, pruin,     P8_43(PIN_INPUT, 1))
++	BONE_PIN(P8_43, gpio,      P8_43(PIN_OUTPUT, 7))
++	BONE_PIN(P8_43, gpio_pu,   P8_43(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_43, gpio_pd,   P8_43(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_44, default,   P8_44(PIN_INPUT, 7))
++	BONE_PIN(P8_44, pruout,    P8_44(PIN_OUTPUT, 0))
++	BONE_PIN(P8_44, pruin,     P8_44(PIN_INPUT, 1))
++	BONE_PIN(P8_44, gpio,      P8_44(PIN_OUTPUT, 7))
++	BONE_PIN(P8_44, gpio_pu,   P8_44(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_44, gpio_pd,   P8_44(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_45, default,   P8_45(PIN_INPUT, 7))
++	BONE_PIN(P8_45, pruout,    P8_45(PIN_OUTPUT, 0))
++	BONE_PIN(P8_45, pruin,     P8_45(PIN_INPUT, 1))
++	BONE_PIN(P8_45, gpio,      P8_45(PIN_OUTPUT, 7))
++	BONE_PIN(P8_45, gpio_pu,   P8_45(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_45, gpio_pd,   P8_45(PIN_OUTPUT_PULLDOWN, 7))
++
++	BONE_PIN(P8_46, default,   P8_46(PIN_INPUT, 7))
++	BONE_PIN(P8_46, pruout,    P8_46(PIN_OUTPUT, 0))
++	BONE_PIN(P8_46, pruin,     P8_46(PIN_INPUT, 1))
++	BONE_PIN(P8_46, gpio,      P8_46(PIN_OUTPUT, 7))
++	BONE_PIN(P8_46, gpio_pu,   P8_46(PIN_OUTPUT_PULLUP, 7))
++	BONE_PIN(P8_46, gpio_pd,   P8_46(PIN_OUTPUT_PULLDOWN, 7))
 +
 +	main_p8_pins_default: main-p8-pins-default {
 +		pinctrl-single,pins = <
@@ -630,9 +949,72 @@ index 000000000000..d4c64b276a54
 +
 +&main_gpio0 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&main_p8_pins_default &main_p9_pins_default
-+		&ehrpwm0_pins_default &ehrpwm1_pins_default &ehrpwm2_pins_default
-+		&ehrpwm4_pins_default &ehrpwm5_pins_default>;
++	pinctrl-0 = <
++		&P8_03_pruout_pin
++		&P8_04_pruout_pin
++		&P8_05_pruout_pin
++		&P8_06_pruout_pin
++		&P8_07_pruout_pin
++		&P8_08_pruout_pin
++		&P8_09_pruout_pin
++		&P8_10_pruout_pin
++		&P8_11_pruout_pin
++		&P8_12_pruout_pin
++		&P8_13_pwm_pin
++		&P8_14_pruout_pin
++		&P8_15_pruout_pin
++		&P8_16_pruout_pin
++		&P8_17_pruout_pin
++		&P8_18_pruout_pin
++		&P8_19_pwm_pin
++		&P8_20_pruout_pin
++		&P8_21_pruout_pin
++		&P8_22_pruout_pin
++		&P8_23_pruout_pin
++		&P8_24_pruout_pin
++		&P8_25_pruout_pin
++		&P8_26_pruout_pin
++		&P8_27_pruout_pin
++		&P8_28_pruout_pin
++		&P8_29_pruout_pin
++		&P8_30_pruout_pin
++		&P8_31_pruout_pin
++		&P8_32_pruout_pin
++		&P8_33_pruout_pin
++		&P8_34_pruout_pin
++		&P8_35_pruout_pin
++		&P8_36_pruout_pin
++		&P8_37_pruout_pin
++		&P8_38_pruout_pin
++		&P8_39_pruout_pin
++		&P8_40_pruout_pin
++		&P8_41_pruout_pin
++		&P8_42_pruout_pin
++		&P8_43_pruout_pin
++		&P8_44_pruout_pin
++		&P8_45_pruout_pin
++		&P8_46_pruout_pin
++/*
++		&P9_09_pruout_pin
++		&P9_10_pruout_pin
++		&P9_11_pruout_pin
++		&P9_12_pruout_pin
++		&P9_13_pruout_pin
++		&P9_14_pwm_pin
++		&P9_15_pruout_pin
++		&P9_16_pwm_pin
++		&P9_17_pruout_pin
++		&P9_18_pruout_pin
++		&P9_19_pruout_pin
++		&P9_20_pruout_pin
++		&P9_21_pwm_pin
++		&P9_22_pwm_pin
++		&P9_23_pruout_pin
++		&P9_24_pruout_pin
++		&P9_25_gpio_pin
++*/
++		&main_p9_pins_default
++	>;
 +};
 +
 +&main_gpio2 {
@@ -1302,6 +1684,390 @@ index 486b77066dac..97410d63ea55 100644
  &wkup_i2c0 {
  	pinctrl-names = "default";
  	pinctrl-0 = <&wkup_i2c0_pins_default>;
+diff --git a/include/dt-bindings/board/am572x-bone-pins.h b/include/dt-bindings/board/am572x-bone-pins.h
+new file mode 100644
+index 000000000000..89f0704909a1
+--- /dev/null
++++ b/include/dt-bindings/board/am572x-bone-pins.h
+@@ -0,0 +1,179 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2020 Deepak Khatri <deepaklorkhatri7@gmail.com>
++ * See Cape Interface Spec page for more info on Bone Buses
++ * https://elinux.org/Beagleboard:BeagleBone_cape_interface_spec
++ */
++
++#ifndef _DT_BINDINGS_BOARD_AM572X_BONE_PINS_H
++#define _DT_BINDINGS_BOARD_AM572X_BONE_PINS_H
++
++#define bb_device 1
++#define board_soc AM572X
++
++#define gpio_P8_03 &gpio1 24
++#define gpio_P8_04 &gpio1 25
++#define gpio_P8_05 &gpio7 1
++#define gpio_P8_06 &gpio7 2
++#define gpio_P8_07 &gpio6 5
++#define gpio_P8_08 &gpio6 6
++#define gpio_P8_09 &gpio6 18
++#define gpio_P8_10 &gpio6 4
++#define gpio_P8_11 &gpio3 11
++#define gpio_P8_12 &gpio3 10
++#define gpio_P8_13 &gpio4 11
++#define gpio_P8_14 &gpio4 13
++#define gpio_P8_15 &gpio4 3
++#define gpio_P8_16 &gpio4 29
++#define gpio_P8_17 &gpio8 18
++#define gpio_P8_18 &gpio4 9
++#define gpio_P8_19 &gpio4 10
++#define gpio_P8_20 &gpio6 30
++#define gpio_P8_21 &gpio6 29
++#define gpio_P8_22 &gpio1 23
++#define gpio_P8_23 &gpio1 22
++#define gpio_P8_24 &gpio7 0
++#define gpio_P8_25 &gpio6 31
++#define gpio_P8_26 &gpio4 28
++#define gpio_P8_27 &gpio4 23
++#define gpio_P8_28 &gpio4 19
++#define gpio_P8_29 &gpio4 22
++#define gpio_P8_30 &gpio4 20
++#define gpio_P8_31 &gpio8 14
++#define gpio_P8_32 &gpio8 15
++#define gpio_P8_33 &gpio8 13
++#define gpio_P8_34 &gpio8 11
++#define gpio_P8_35 &gpio8 12
++#define gpio_P8_36 &gpio8 10
++#define gpio_P8_37 &gpio8 8
++#define gpio_P8_38 &gpio8 9
++#define gpio_P8_39 &gpio8 6
++#define gpio_P8_40 &gpio8 7
++#define gpio_P8_41 &gpio8 4
++#define gpio_P8_42 &gpio8 5
++#define gpio_P8_43 &gpio8 2
++#define gpio_P8_44 &gpio8 3
++#define gpio_P8_45 &gpio8 0
++#define gpio_P8_46 &gpio8 1
++#define gpio_P9_11 &gpio8 17
++#define gpio_P9_12 &gpio5 0
++#define gpio_P9_13 &gpio6 12
++#define gpio_P9_14 &gpio4 25
++#define gpio_P9_15 &gpio3 12
++#define gpio_P9_16 &gpio4 26
++#define gpio_P9_17 &gpio7 17
++#define gpio_P9_18 &gpio7 16
++#define gpio_P9_19 &gpio7 3
++#define gpio_P9_20 &gpio7 4
++#define gpio_P9_21 &gpio3 3
++#define gpio_P9_22 &gpio6 19
++#define gpio_P9_23 &gpio7 11
++#define gpio_P9_24 &gpio6 15
++#define gpio_P9_25 &gpio6 17
++#define gpio_P9_26 &gpio6 14
++#define gpio_P9_27 &gpio4 15
++#define gpio_P9_28 &gpio4 17
++#define gpio_P9_29 &gpio5 11
++#define gpio_P9_30 &gpio5 12
++#define gpio_P9_31 &gpio5 10
++#define gpio_P9_41 &gpio6 20
++#define gpio_P9_42 &gpio4 18
++
++#define P8_03(mode) DRA7XX_CORE_IOPAD(0x379C, mode)  /* AB8: mmc3_dat6 */
++#define P8_04(mode) DRA7XX_CORE_IOPAD(0x37A0, mode)  /* AB5: mmc3_dat7 */
++#define P8_05(mode) DRA7XX_CORE_IOPAD(0x378C, mode)  /* AC9: mmc3_dat2 */
++#define P8_06(mode) DRA7XX_CORE_IOPAD(0x3790, mode)  /* AC3: mmc3_dat3 */
++#define P8_07(mode) DRA7XX_CORE_IOPAD(0x36EC, mode)  /* G14: mcasp1_axr14 */
++#define P8_08(mode) DRA7XX_CORE_IOPAD(0x36F0, mode)  /* F14: mcasp1_axr15 */
++#define P8_09(mode) DRA7XX_CORE_IOPAD(0x3698, mode)  /* E17: xref_clk1 */
++#define P8_10(mode) DRA7XX_CORE_IOPAD(0x36E8, mode)  /* A13: mcasp1_axr13 */
++#define P8_11(mode) DRA7XX_CORE_IOPAD(0x3510, mode)  /* AH4: vin1a_d7 */
++#define P8_12(mode) DRA7XX_CORE_IOPAD(0x350C, mode)  /* AG6: vin1a_d6 */
++#define P8_13(mode) DRA7XX_CORE_IOPAD(0x3590, mode)  /* D3: vin2a_d10 */
++#define P8_14(mode) DRA7XX_CORE_IOPAD(0x3598, mode)  /* D5: vin2a_d12 */
++#define P8_15A(mode) DRA7XX_CORE_IOPAD(0x3570, mode) /* D1: vin2a_d2 */
++#define P8_15B(mode) DRA7XX_CORE_IOPAD(0x35B4, mode) /* A3: vin2a_d19 */
++#define P8_16(mode) DRA7XX_CORE_IOPAD(0x35BC, mode)  /* B4: vin2a_d21 */
++#define P8_17(mode) DRA7XX_CORE_IOPAD(0x3624, mode)  /* A7: vout1_d18 */
++#define P8_18(mode) DRA7XX_CORE_IOPAD(0x3588, mode)  /* F5: vin2a_d8 */
++#define P8_19(mode) DRA7XX_CORE_IOPAD(0x358C, mode)  /* E6: vin2a_d9 */
++#define P8_20(mode) DRA7XX_CORE_IOPAD(0x3780, mode)  /* AC4: mmc3_cmd */
++#define P8_21(mode) DRA7XX_CORE_IOPAD(0x377C, mode)  /* AD4: mmc3_clk */
++#define P8_22(mode) DRA7XX_CORE_IOPAD(0x3798, mode)  /* AD6: mmc3_dat5 */
++#define P8_23(mode) DRA7XX_CORE_IOPAD(0x3794, mode)  /* AC8: mmc3_dat4 */
++#define P8_24(mode) DRA7XX_CORE_IOPAD(0x3788, mode)  /* AC6: mmc3_dat1 */
++#define P8_25(mode) DRA7XX_CORE_IOPAD(0x3784, mode)  /* AC7: mmc3_dat0 */
++#define P8_26(mode) DRA7XX_CORE_IOPAD(0x35B8, mode)  /* B3: vin2a_d20 */
++#define P8_27A(mode) DRA7XX_CORE_IOPAD(0x35D8, mode) /* E11: vout1_vsync */
++#define P8_27B(mode) DRA7XX_CORE_IOPAD(0x3628, mode) /* A8: vout1_d19 */
++#define P8_28A(mode) DRA7XX_CORE_IOPAD(0x35C8, mode) /* D11: vout1_clk */
++#define P8_28B(mode) DRA7XX_CORE_IOPAD(0x362C, mode) /* C9: vout1_d20 */
++#define P8_29A(mode) DRA7XX_CORE_IOPAD(0x35D4, mode) /* C11: vout1_hsync */
++#define P8_29B(mode) DRA7XX_CORE_IOPAD(0x3630, mode) /* A9: vout1_d21 */
++#define P8_30A(mode) DRA7XX_CORE_IOPAD(0x35CC, mode) /* B10: vout1_de */
++#define P8_30B(mode) DRA7XX_CORE_IOPAD(0x3634, mode) /* B9: vout1_d22 */
++#define P8_31A(mode) DRA7XX_CORE_IOPAD(0x3614, mode) /* C8: vout1_d14 */
++#define P8_31B(mode) DRA7XX_CORE_IOPAD(0x373C, mode) /* G16: mcasp4_axr0 */
++#define P8_32A(mode) DRA7XX_CORE_IOPAD(0x3618, mode) /* C7: vout1_d15 */
++#define P8_32B(mode) DRA7XX_CORE_IOPAD(0x3740, mode) /* D17: mcasp4_axr1 */
++#define P8_33A(mode) DRA7XX_CORE_IOPAD(0x3610, mode) /* C6: vout1_d13 */
++#define P8_33B(mode) DRA7XX_CORE_IOPAD(0x34E8, mode) /* AF9: vin1a_fld0 */
++#define P8_34A(mode) DRA7XX_CORE_IOPAD(0x3608, mode) /* D8: vout1_d11 */
++#define P8_34B(mode) DRA7XX_CORE_IOPAD(0x3564, mode) /* G6: vin2a_vsync0 */
++#define P8_35A(mode) DRA7XX_CORE_IOPAD(0x360C, mode) /* A5: vout1_d12 */
++#define P8_35B(mode) DRA7XX_CORE_IOPAD(0x34E4, mode) /* AD9: vin1a_de0 */
++#define P8_36A(mode) DRA7XX_CORE_IOPAD(0x3604, mode) /* D7: vout1_d10 */
++#define P8_36B(mode) DRA7XX_CORE_IOPAD(0x3568, mode) /* F2: vin2a_d0 */
++#define P8_37A(mode) DRA7XX_CORE_IOPAD(0x35FC, mode) /* E8: vout1_d8 */
++#define P8_37B(mode) DRA7XX_CORE_IOPAD(0x3738, mode) /* A21: mcasp4_fsx */
++#define P8_38A(mode) DRA7XX_CORE_IOPAD(0x3600, mode) /* D9: vout1_d9 */
++#define P8_38B(mode) DRA7XX_CORE_IOPAD(0x3734, mode) /* C18: mcasp4_aclkx */
++#define P8_39(mode) DRA7XX_CORE_IOPAD(0x35F4, mode)  /* F8: vout1_d6 */
++#define P8_40(mode) DRA7XX_CORE_IOPAD(0x35F8, mode)  /* E7: vout1_d7 */
++#define P8_41(mode) DRA7XX_CORE_IOPAD(0x35EC, mode)  /* E9: vout1_d4 */
++#define P8_42(mode) DRA7XX_CORE_IOPAD(0x35F0, mode)  /* F9: vout1_d5 */
++#define P8_43(mode) DRA7XX_CORE_IOPAD(0x35E4, mode)  /* F10: vout1_d2 */
++#define P8_44(mode) DRA7XX_CORE_IOPAD(0x35E8, mode)  /* G11: vout1_d3 */
++#define P8_45A(mode) DRA7XX_CORE_IOPAD(0x35DC, mode) /* F11: vout1_d0 */
++#define P8_45B(mode) DRA7XX_CORE_IOPAD(0x361C, mode) /* B7: vout1_d16 */
++#define P8_46A(mode) DRA7XX_CORE_IOPAD(0x35E0, mode) /* G10: vout1_d1 */
++#define P8_46B(mode) DRA7XX_CORE_IOPAD(0x3638, mode) /* A10: vout1_d23 */
++#define P9_11A(mode) DRA7XX_CORE_IOPAD(0x372C, mode) /* B19: mcasp3_axr0 */
++#define P9_11B(mode) DRA7XX_CORE_IOPAD(0x3620, mode) /* B8: vout1_d17 */
++#define P9_12(mode) DRA7XX_CORE_IOPAD(0x36AC, mode)  /* B14: mcasp1_aclkr */
++#define P9_13A(mode) DRA7XX_CORE_IOPAD(0x3730, mode)  /* C17: mcasp3_axr1 */
++#define P9_13B(mode) DRA7XX_CORE_IOPAD(0x3680, mode)  /* AB10: usb1_drvvbus */
++#define P9_14(mode) DRA7XX_CORE_IOPAD(0x35AC, mode)  /* D6: vin2a_d17 */
++#define P9_15(mode) DRA7XX_CORE_IOPAD(0x3514, mode)  /* AG4: vin1a_d8 */
++#define P9_16(mode) DRA7XX_CORE_IOPAD(0x35B0, mode)  /* C5: vin2a_d18 */
++#define P9_17A(mode) DRA7XX_CORE_IOPAD(0x37CC, mode) /* B24: spi2_cs0 */
++#define P9_17B(mode) DRA7XX_CORE_IOPAD(0x36B8, mode) /* F12: mcasp1_axr1 */
++#define P9_18A(mode) DRA7XX_CORE_IOPAD(0x37C8, mode) /* G17: spi2_d0 */
++#define P9_18B(mode) DRA7XX_CORE_IOPAD(0x36B4, mode) /* G12: mcasp1_axr0 */
++#define P9_19A(mode) DRA7XX_CORE_IOPAD(0x3440, mode) /* R6: gpmc_a0.i2c4_scl */
++#define P9_19B(mode) DRA7XX_CORE_IOPAD(0x357C, mode) /* F4: vin2a_d5.pr1_pru1_gpi2 */
++#define P9_20A(mode) DRA7XX_CORE_IOPAD(0x3444, mode) /* T9: gpmc_a1.i2c4_sda */
++#define P9_20B(mode) DRA7XX_CORE_IOPAD(0x3578, mode) /* D2: vin2a_d4.pr1_pru1_gpi1 */
++#define P9_21A(mode) DRA7XX_CORE_IOPAD(0x34F0, mode) /* AF8: vin1a_vsync0 */
++#define P9_21B(mode) DRA7XX_CORE_IOPAD(0x37C4, mode) /* B22: spi2_d1 */
++#define P9_22A(mode) DRA7XX_CORE_IOPAD(0x369C, mode) /* B26: xref_clk2 */
++#define P9_22B(mode) DRA7XX_CORE_IOPAD(0x37C0, mode) /* A26: spi2_sclk */
++#define P9_23(mode) DRA7XX_CORE_IOPAD(0x37B4, mode)  /* A22: spi1_cs1 */
++#define P9_24(mode) DRA7XX_CORE_IOPAD(0x368C, mode)  /* F20: gpio6_15 */
++#define P9_25(mode) DRA7XX_CORE_IOPAD(0x3694, mode)  /* D18: xref_clk0 */
++#define P9_26A(mode) DRA7XX_CORE_IOPAD(0x3688, mode) /* E21: gpio6_14 */
++#define P9_26B(mode) DRA7XX_CORE_IOPAD(0x3544, mode) /* AE2: vin1a_d20 */
++#define P9_27A(mode) DRA7XX_CORE_IOPAD(0x35A0, mode) /* C3: vin2a_d14 */
++#define P9_27B(mode) DRA7XX_CORE_IOPAD(0x36B0, mode) /* J14: mcasp1_fsr */
++#define P9_28(mode) DRA7XX_CORE_IOPAD(0x36E0, mode)  /* A12: mcasp1_axr11 */
++#define P9_29A(mode) DRA7XX_CORE_IOPAD(0x36D8, mode) /* A11: mcasp1_axr9 */
++#define P9_29B(mode) DRA7XX_CORE_IOPAD(0x36A8, mode) /* D14: mcasp1_fsx */
++#define P9_30(mode) DRA7XX_CORE_IOPAD(0x36DC, mode)  /* B13: mcasp1_axr10 */
++#define P9_31A(mode) DRA7XX_CORE_IOPAD(0x36D4, mode) /* B12: mcasp1_axr8 */
++#define P9_31B(mode) DRA7XX_CORE_IOPAD(0x36A4, mode) /* C14: mcasp1_aclkx */
++#define P9_41A(mode) DRA7XX_CORE_IOPAD(0x36A0, mode) /* C23: xref_clk3 */
++#define P9_41B(mode) DRA7XX_CORE_IOPAD(0x3580, mode) /* C1: vin2a_d6 */
++#define P9_42A(mode) DRA7XX_CORE_IOPAD(0x36E4, mode) /* E14: mcasp1_axr12 */
++#define P9_42B(mode) DRA7XX_CORE_IOPAD(0x359C, mode) /* C2: vin2a_d13 */
++
++#endif
+diff --git a/include/dt-bindings/board/k3-j721e-bone-pins.h b/include/dt-bindings/board/k3-j721e-bone-pins.h
+new file mode 100644
+index 000000000000..fb055a82d96a
+--- /dev/null
++++ b/include/dt-bindings/board/k3-j721e-bone-pins.h
+@@ -0,0 +1,193 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2020 Deepak Khatri <deepaklorkhatri7@gmail.com>
++ * Copyright (C) 2021 Jason Kridner <jkridner@beagleboard.org>
++ * See Cape Interface Spec page for more info on Bone Buses
++ * https://elinux.org/Beagleboard:BeagleBone_cape_interface_spec
++ */
++
++#ifndef _DT_BINDINGS_BOARD_TDA4VM_BONE_PINS_H
++#define _DT_BINDINGS_BOARD_TDA4VM_BONE_PINS_H
++
++#define bb_device 1
++#define board_soc TDA4VM
++
++#define gpio_P8_03 &main_gpio0 20
++#define gpio_P8_04 &main_gpio0 48
++#define gpio_P8_05 &main_gpio0 33
++#define gpio_P8_06 &main_gpio0 34
++#define gpio_P8_07 &main_gpio0 15
++#define gpio_P8_08 &main_gpio0 14
++#define gpio_P8_09 &main_gpio0 17
++#define gpio_P8_10 &main_gpio0 16
++#define gpio_P8_11 &main_gpio0 60
++#define gpio_P8_12 &main_gpio0 59
++#define gpio_P8_13 &main_gpio0 89
++#define gpio_P8_14 &main_gpio0 75
++#define gpio_P8_15 &main_gpio0 61
++#define gpio_P8_16 &main_gpio0 62
++#define gpio_P8_17 &main_gpio0 3
++#define gpio_P8_18 &main_gpio0 4
++#define gpio_P8_19 &main_gpio0 88
++#define gpio_P8_20 &main_gpio0 76
++#define gpio_P8_21 &main_gpio0 30
++#define gpio_P8_22 &main_gpio0 5
++#define gpio_P8_23 &main_gpio0 31
++#define gpio_P8_24 &main_gpio0 6
++#define gpio_P8_25 &main_gpio0 35
++#define gpio_P8_26 &main_gpio0 51
++#define gpio_P8_27 &main_gpio0 71
++#define gpio_P8_28 &main_gpio0 72
++#define gpio_P8_29 &main_gpio0 73
++#define gpio_P8_30 &main_gpio0 74
++#define gpio_P8_31 &main_gpio0 32
++#define gpio_P8_32 &main_gpio0 26
++#define gpio_P8_33 &main_gpio0 25
++#define gpio_P8_34 &main_gpio0 7
++#define gpio_P8_35 &main_gpio0 24
++#define gpio_P8_36 &main_gpio0 8
++#define gpio_P8_37 &main_gpio0 106
++#define gpio_P8_38 &main_gpio0 105
++#define gpio_P8_39 &main_gpio0 69
++#define gpio_P8_40 &main_gpio0 70
++#define gpio_P8_41 &main_gpio0 67
++#define gpio_P8_42 &main_gpio0 68
++#define gpio_P8_43 &main_gpio0 65
++#define gpio_P8_44 &main_gpio0 66
++#define gpio_P8_45 &main_gpio0 79
++#define gpio_P8_46 &main_gpio0 80
++#define gpio_P9_11 &main_gpio0 1
++#define gpio_P9_12 &main_gpio0 45
++#define gpio_P9_13 &main_gpio0 2
++#define gpio_P9_14 &main_gpio0 93
++#define gpio_P9_15 &main_gpio0 47
++#define gpio_P9_16 &main_gpio0 94
++#define gpio_P9_17 &main_gpio0 28
++#define gpio_P9_18 &main_gpio0 40
++#define gpio_P9_19 &main_gpio1 1
++#define gpio_P9_20 &main_gpio1 2
++#define gpio_P9_21 &main_gpio0 39
++#define gpio_P9_22 &main_gpio0 38
++#define gpio_P9_23 &main_gpio0 10
++#define gpio_P9_24 &main_gpio0 13
++#define gpio_P9_25 &main_gpio0 127
++#define gpio_P9_26 &main_gpio0 12
++#define gpio_P9_27 &main_gpio0 46
++#define gpio_P9_28 &main_gpio1 11
++#define gpio_P9_29 &main_gpio0 53
++#define gpio_P9_30 &main_gpio0 44
++#define gpio_P9_31 &main_gpio0 52
++#define gpio_P9_33 &main_gpio0 50
++#define gpio_P9_35 &main_gpio0 55
++#define gpio_P9_36 &main_gpio0 56
++#define gpio_P9_37 &main_gpio0 57
++#define gpio_P9_38 &main_gpio0 58
++#define gpio_P9_39 &main_gpio0 54
++#define gpio_P9_40 &main_gpio0 81
++#define gpio_P9_41 &main_gpio1 0
++#define gpio_P9_42 &main_gpio0 123
++
++#define P8_03(mode, mux)  J721E_IOPAD(0x054, mode, mux)       /* AH21 */
++#define P8_04(mode, mux)  J721E_IOPAD(0x0C4, mode, mux)       /* AC29 - BOOTMODE2 */
++#define P8_05(mode, mux)  J721E_IOPAD(0x088, mode, mux)       /* AH25 */
++#define P8_06(mode, mux)  J721E_IOPAD(0x08C, mode, mux)       /* AG25 */
++#define P8_07(mode, mux)  J721E_IOPAD(0x03C, mode, mux)       /* AD24 */
++#define P8_08(mode, mux)  J721E_IOPAD(0x038, mode, mux)       /* AG24 */
++#define P8_09(mode, mux)  J721E_IOPAD(0x044, mode, mux)       /* AE24 */
++#define P8_10(mode, mux)  J721E_IOPAD(0x040, mode, mux)       /* AC24 */
++#define P8_11(mode, mux)  J721E_IOPAD(0x0F4, mode, mux)       /* AB24 - BOOTMODE7 */
++#define P8_12(mode, mux)  J721E_IOPAD(0x0F0, mode, mux)       /* AH28 */
++#define P8_13(mode, mux)  J721E_IOPAD(0x168, mode, mux)       /* V27 */
++#define P8_14(mode, mux)  J721E_IOPAD(0x130, mode, mux)       /* AF27 */
++#define P8_15(mode, mux)  J721E_IOPAD(0x0F8, mode, mux)       /* AB29 */
++#define P8_16(mode, mux)  J721E_IOPAD(0x0FC, mode, mux)       /* AB28 */
++#define P8_17(mode, mux)  J721E_IOPAD(0x00C, mode, mux)       /* AF22 */
++#define P8_18(mode, mux)  J721E_IOPAD(0x010, mode, mux)       /* AJ23 */
++#define P8_19(mode, mux)  J721E_IOPAD(0x164, mode, mux)       /* V29 */
++#define P8_20(mode, mux)  J721E_IOPAD(0x134, mode, mux)       /* AF26 */
++#define P8_21(mode, mux)  J721E_IOPAD(0x07C, mode, mux)       /* AF21 */
++#define P8_22(mode, mux)  J721E_IOPAD(0x014, mode, mux)       /* AH23 */
++#define P8_23(mode, mux)  J721E_IOPAD(0x080, mode, mux)       /* AB23 */
++#define P8_24(mode, mux)  J721E_IOPAD(0x018, mode, mux)       /* AD20 - BOOTMODE0 */
++#define P8_25(mode, mux)  J721E_IOPAD(0x090, mode, mux)       /* AH26 */
++#define P8_26(mode, mux)  J721E_IOPAD(0x0D0, mode, mux)       /* AC27 */
++#define P8_27(mode, mux)  J721E_IOPAD(0x120, mode, mux)       /* AA28 */
++#define P8_28(mode, mux)  J721E_IOPAD(0x124, mode, mux)       /* Y24 */
++#define P8_29(mode, mux)  J721E_IOPAD(0x128, mode, mux)       /* AA25 */
++#define P8_30(mode, mux)  J721E_IOPAD(0x12C, mode, mux)       /* AG26 */
++#define P8_31A(mode, mux) J721E_IOPAD(0x084, mode, mux)       /* AJ25 */
++#define P8_31B(mode, mux) J721E_IOPAD(0x100, mode, mux)       /* AE29 */
++#define P8_32A(mode, mux) J721E_IOPAD(0x06C, mode, mux)       /* AG21 */
++#define P8_32B(mode, mux) J721E_IOPAD(0x104, mode, mux)       /* AD28 */
++#define P8_33A(mode, mux) J721E_IOPAD(0x068, mode, mux)       /* AH24 */
++#define P8_33B(mode, mux) J721E_IOPAD(0x1C0, mode, mux)       /* AA2 */
++#define P8_34(mode, mux)  J721E_IOPAD(0x01C, mode, mux)       /* AD22 */
++#define P8_35A(mode, mux) J721E_IOPAD(0x064, mode, mux)       /* AD23 */
++#define P8_35B(mode, mux) J721E_IOPAD(0x1D4, mode, mux)       /* Y3 */
++#define P8_36(mode, mux)  J721E_IOPAD(0x020, mode, mux)       /* AE20 */
++#define P8_37A(mode, mux) J721E_IOPAD(0x02C, mode, mux)       /* AD21 */
++#define P8_37B(mode, mux) J721E_IOPAD(0x1AC, mode, mux)       /* Y27 */
++#define P8_38A(mode, mux) J721E_IOPAD(0x024, mode, mux)       /* AJ20 */
++#define P8_38B(mode, mux) J721E_IOPAD(0x1A8, mode, mux)       /* Y29 */
++#define P8_39(mode, mux)  J721E_IOPAD(0x118, mode, mux)       /* AC26 */
++#define P8_40(mode, mux)  J721E_IOPAD(0x11C, mode, mux)       /* AA24 */
++#define P8_41(mode, mux)  J721E_IOPAD(0x110, mode, mux)       /* AD29 */
++#define P8_42(mode, mux)  J721E_IOPAD(0x114, mode, mux)       /* AB27 - BOOTMODE6 */
++#define P8_43(mode, mux)  J721E_IOPAD(0x108, mode, mux)       /* AD27 */
++#define P8_44(mode, mux)  J721E_IOPAD(0x10C, mode, mux)       /* AC25 */
++#define P8_45(mode, mux)  J721E_IOPAD(0x140, mode, mux)       /* AG29 */
++#define P8_46(mode, mux)  J721E_IOPAD(0x144, mode, mux)       /* Y25 - BOOTMODE3 */
++#define P9_11(mode, mux)  J721E_IOPAD(0x004, mode, mux)       /* AC23 */
++#define P9_12(mode, mux)  J721E_IOPAD(0x0B8, mode, mux)       /* AE27 */
++#define P9_13(mode, mux)  J721E_IOPAD(0x008, mode, mux)       /* AG22 */
++#define P9_14(mode, mux)  J721E_IOPAD(0x178, mode, mux)       /* U27 */
++#define P9_15(mode, mux)  J721E_IOPAD(0x0C0, mode, mux)       /* AD25 */
++#define P9_16(mode, mux)  J721E_IOPAD(0x17C, mode, mux)       /* U24 */
++#define P9_17A(mode, mux) J721E_IOPAD(0x074, mode, mux)       /* AC21 */
++#define P9_17B(mode, mux) J721E_IOPAD(0x1D0, mode, mux)       /* AA3 */
++#define P9_18A(mode, mux) J721E_IOPAD(0x0A4, mode, mux)       /* AH22 */
++#define P9_18B(mode, mux) J721E_IOPAD(0x1E4, mode, mux)       /* Y2 */
++#define P9_19A(mode, mux) J721E_IOPAD(0x208, mode, mux)       /* W5 */
++#define P9_19B(mode, mux) J721E_IOPAD(0x13C, mode, mux)       /* AF29 */
++#define P9_20A(mode, mux) J721E_IOPAD(0x20C, mode, mux)       /* W6 */
++#define P9_20B(mode, mux) J721E_IOPAD(0x138, mode, mux)       /* AE25 */
++#define P9_21A(mode, mux) J721E_IOPAD(0x0A0, mode, mux)       /* AJ22 */
++#define P9_21B(mode, mux) J721E_IOPAD(0x16C, mode, mux)       /* U28 */
++#define P9_22A(mode, mux) J721E_IOPAD(0x09C, mode, mux)       /* AC22 */
++#define P9_22B(mode, mux) J721E_IOPAD(0x170, mode, mux)       /* U29 */
++#define P9_23(mode, mux)  J721E_IOPAD(0x02B, mode, mux)       /* AG20 */
++#define P9_24A(mode, mux) J721E_IOPAD(0x1E0, mode, mux)       /* Y5 */
++#define P9_24B(mode, mux) J721E_IOPAD(0x034, mode, mux)       /* AJ24 */
++#define P9_25A(mode, mux) J721E_IOPAD(0x200, mode, mux)       /* AC4 */
++#define P9_25B(mode, mux) J721E_IOPAD(0x1A4, mode, mux)       /* W26 */
++#define P9_26A(mode, mux) J721E_IOPAD(0x1DC, mode, mux)       /* Y1 */
++#define P9_26B(mode, mux) J721E_IOPAD(0x030, mode, mux)       /* AF24 */
++#define P9_27A(mode, mux) J721E_IOPAD(0x0BC, mode, mux)       /* AD26 */
++#define P9_27B(mode, mux) J721E_IOPAD(0x1F4, mode, mux)       /* AB1 */
++#define P9_28A(mode, mux) J721E_IOPAD(0x230, mode, mux)       /* U2 */
++#define P9_28B(mode, mux) J721E_IOPAD(0x0B0, mode, mux)       /* AF28 */
++#define P9_29A(mode, mux) J721E_IOPAD(0x23C, mode, mux)       /* V5 */
++#define P9_29B(mode, mux) J721E_IOPAD(0x0D8, mode, mux)       /* AB25 */
++#define P9_30A(mode, mux) J721E_IOPAD(0x238, mode, mux)       /* V6 */
++#define P9_30B(mode, mux) J721E_IOPAD(0x0B4, mode, mux)       /* AE28 */
++#define P9_31A(mode, mux) J721E_IOPAD(0x234, mode, mux)       /* U3 */
++#define P9_31B(mode, mux) J721E_IOPAD(0x0D4, mode, mux)       /* AB26 */
++#define P9_33A(mode, mux) J721E_WKUP_IOPAD(0x140, mode, mux)  /* K24 */
++#define P9_33B(mode, mux) J721E_IOPAD(0x0CC, mode, mux)       /* AC28 */
++#define P9_35A(mode, mux) J721E_WKUP_IOPAD(0x148, mode, mux)  /* K29 */
++#define P9_35B(mode, mux) J721E_IOPAD(0x0E0, mode, mux)       /* AH27 */
++#define P9_36A(mode, mux) J721E_WKUP_IOPAD(0x144, mode, mux)  /* K27 */
++#define P9_36B(mode, mux) J721E_IOPAD(0x0E4, mode, mux)       /* AH29 */
++#define P9_37A(mode, mux) J721E_WKUP_IOPAD(0x138, mode, mux)  /* K28 */
++#define P9_37B(mode, mux) J721E_IOPAD(0x0E8, mode, mux)       /* AG28 */
++#define P9_38A(mode, mux) J721E_WKUP_IOPAD(0x13C, mode, mux)  /* L28 */
++#define P9_38B(mode, mux) J721E_IOPAD(0x0EC, mode, mux)       /* AG27 */
++#define P9_39A(mode, mux) J721E_WKUP_IOPAD(0x130, mode, mux)  /* K25 */
++#define P9_39B(mode, mux) J721E_IOPAD(0x0DC, mode, mux)       /* AJ28 */
++#define P9_40A(mode, mux) J721E_WKUP_IOPAD(0x134, mode, mux)  /* K26 */
++#define P9_40B(mode, mux) J721E_IOPAD(0x148, mode, mux)       /* AA26 */
++#define P9_41(mode, mux)  J721E_IOPAD(0x204, mode, mux)       /* AD5 */
++#define P9_42A(mode, mux) J721E_IOPAD(0x1F0, mode, mux)       /* AC2 */
++#define P9_42B(mode, mux) J721E_IOPAD(0x048, mode, mux)       /* AJ21 */
++
++#endif
 -- 
 2.30.2
 
