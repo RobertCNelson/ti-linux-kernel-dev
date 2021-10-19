@@ -237,6 +237,10 @@ wireless_regdb () {
 	dir 'wireless_regdb'
 }
 
+next_dtbs () {
+	dir 'drivers/k3_j72xx_bandgap'
+}
+
 cleanup_dts_builds () {
 	rm -rf arch/arm64/boot/dts/ti/modules.order || true
 	rm -rf arch/arm64/boot/dts/ti/.*cmd || true
@@ -308,6 +312,7 @@ external_git
 wpanusb
 #rt
 wireless_regdb
+next_dtbs
 beagleboard_dtbs
 #local_patch
 dir 'fixes'
@@ -348,7 +353,7 @@ patch_backports (){
 
 backports () {
 
-	backport_tag="v5.10.73"
+	backport_tag="v5.10.74"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -366,7 +371,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.14.12"
+	backport_tag="v5.14.13"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -394,7 +399,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.14.12"
+		backport_tag="v5.14.13"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
