@@ -285,7 +285,7 @@ ksmbd () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/ksmbd/0001-merge-wpanusb-https-github.com-cifsd-team-ksmbd.patch"
+		${git} "${DIR}/patches/ksmbd/0001-merge-ksmbd-https-github.com-cifsd-team-ksmbd.patch"
 
 		wdir="ksmbd"
 		number=1
@@ -456,11 +456,13 @@ beagleboard_dtbs () {
 
 		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe-lite-uboot.dtb" ; dtb_makefile_append
 
 		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
 		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
+		device="am335x-sancloud-bbe-lite-uboot-univ.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
@@ -580,7 +582,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.70"
+	backport_tag="v5.10.75"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -591,6 +593,22 @@ backports () {
 		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
 		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
 		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.14.14"
+
+	subsystem="pinmux"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/pinctrl/pinmux.c ./drivers/pinctrl/
+		cp -v ~/linux-src/drivers/pinctrl/pinmux.h ./drivers/pinctrl/
 
 		post_backports
 		exit 2
@@ -636,10 +654,16 @@ drivers () {
 	dir 'drivers/greybus'
 	dir 'drivers/fb_ssd1306'
 	dir 'drivers/hackaday'
+
+	${git} "${DIR}/patches/drivers/brcmfmac/0002-non-upstream-add-sg-parameters-dts-parsing.patch"
 }
 
 soc () {
 	dir 'bootup_hacks'
+}
+
+fixes () {
+	dir 'fixes/gcc'
 }
 
 ###
@@ -647,11 +671,12 @@ backports
 reverts
 drivers
 soc
+fixes
 
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.70"
+		backport_tag="v5.10.75"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
