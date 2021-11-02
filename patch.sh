@@ -468,6 +468,7 @@ ti_pm_firmware () {
 }
 
 cleanup_dts_builds () {
+	rm -rf arch/arm/boot/dts/modules.order || true
 	rm -rf arch/arm/boot/dts/.*cmd || true
 	rm -rf arch/arm/boot/dts/.*tmp || true
 	rm -rf arch/arm/boot/dts/*dtb || true
@@ -617,7 +618,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.4.147"
+	backport_tag="v5.4.157"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -666,7 +667,9 @@ backports () {
 	else
 		patch_backports
 	fi
+}
 
+brcmfmac () {
 	backport_tag="v5.4.18"
 
 	subsystem="brcm80211"
@@ -882,6 +885,7 @@ soc () {
 
 ###
 backports
+brcmfmac
 #reverts
 drivers
 soc
@@ -889,7 +893,7 @@ soc
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.66"
+		backport_tag="v5.10.77"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
