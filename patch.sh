@@ -250,6 +250,49 @@ wpanusb () {
 	dir 'wpanusb'
 }
 
+bcfserial () {
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ ! -d ./bcfserial ] ; then
+			${git_bin} clone https://github.com/statropy/bcfserial --depth=1
+			cd ./bcfserial
+				bcfserial_hash=$(git rev-parse HEAD)
+			cd -
+		else
+			rm -rf ./bcfserial || true
+			${git_bin} clone https://github.com/statropy/bcfserial --depth=1
+			cd ./wpanusb
+				bcfserial_hash=$(git rev-parse HEAD)
+			cd -
+		fi
+
+		cd ./KERNEL/
+
+		cp -v ../bcfserial/bcfserial.c drivers/net/ieee802154/
+
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: bcfserial: https://github.com/statropy/bcfserial' -m "https://github.com/statropy/bcfserial/commit/${bcfserial_hash}" -s
+		${git_bin} format-patch -1 -o ../patches/bcfserial/
+		echo "BCFSERIAL: https://github.com/statropy/bcfserial/commit/${bcfserial_hash}" > ../patches/git/BCFSERIAL
+
+		rm -rf ../bcfserial/ || true
+
+		${git_bin} reset --hard HEAD~1
+
+		start_cleanup
+
+		${git} "${DIR}/patches/bcfserial/0001-merge-bcfserial-https-github.com-statropy-bcfserial.patch"
+
+		wdir="bcfserial"
+		number=1
+		cleanup
+
+		exit 2
+	fi
+	dir 'bcfserial'
+}
+
 ksmbd () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -494,6 +537,7 @@ local_patch () {
 external_git
 aufs
 wpanusb
+bcfserial
 ksmbd
 #rt
 wireless_regdb
@@ -582,7 +626,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.77"
+	backport_tag="v5.10.79"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -600,7 +644,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.14.16"
+	backport_tag="v5.14.18"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -810,7 +854,7 @@ fixes
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.77"
+		backport_tag="v5.10.79"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
