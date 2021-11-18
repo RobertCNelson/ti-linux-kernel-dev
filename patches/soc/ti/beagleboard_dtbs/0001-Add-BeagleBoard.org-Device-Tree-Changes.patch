@@ -1,11 +1,11 @@
-From 70811d8a988596feac316717487801b2f656f084 Mon Sep 17 00:00:00 2001
+From 16b28f3ca405bb6184914f99f9fd036e7eccb949 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 16 Nov 2021 13:55:43 -0600
+Date: Wed, 17 Nov 2021 18:01:38 -0600
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/v5.10.x-ti
 
-https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/bb8ae2955e2198b1bb0b09b9a61cca38cbbab3cf
+https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/9f95f4f2871637ff568893ede9d3209e9b9453ab
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm/boot/dts/Makefile                    |   10 +
@@ -40,7 +40,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/am335x-sancloud-bbe.dts     |   72 +-
  arch/arm/boot/dts/am33xx-l4.dtsi              |   32 +-
  arch/arm/boot/dts/am33xx.dtsi                 |    4 +
- arch/arm/boot/dts/am5729-beagleboneai.dts     |   10 +
+ arch/arm/boot/dts/am5729-beagleboneai.dts     |  115 +-
  .../boot/dts/am57xx-beagle-x15-common.dtsi    |    8 +
  arch/arm/boot/dts/am57xx-beagle-x15-revb1.dts |    6 +
  arch/arm/boot/dts/am57xx-beagle-x15-revc.dts  |    6 +
@@ -73,7 +73,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/dt-bindings/clock/dra7.h              |    4 +
  include/dt-bindings/clock/omap5.h             |    2 +
  include/dt-bindings/pinctrl/omap.h            |    4 +-
- 65 files changed, 12217 insertions(+), 713 deletions(-)
+ 65 files changed, 12320 insertions(+), 715 deletions(-)
  create mode 100644 arch/arm/boot/dts/am335x-bbb-bone-buses.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-common-univ.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-jtag.dtsi
@@ -11294,7 +11294,7 @@ index d29cb4ec3fd2..7f3ff48eb277 100644
  				compatible = "ti,am3352-sgx530", "img,sgx530";
  				reg = <0x0 0x10000>;
 diff --git a/arch/arm/boot/dts/am5729-beagleboneai.dts b/arch/arm/boot/dts/am5729-beagleboneai.dts
-index 149cfafb90bf..4c3821365120 100644
+index 149cfafb90bf..d0b35f7c6cd8 100644
 --- a/arch/arm/boot/dts/am5729-beagleboneai.dts
 +++ b/arch/arm/boot/dts/am5729-beagleboneai.dts
 @@ -12,6 +12,7 @@
@@ -11305,7 +11305,14 @@ index 149cfafb90bf..4c3821365120 100644
  
  / {
  	model = "BeagleBoard.org BeagleBone AI";
-@@ -26,6 +27,8 @@ aliases {
+@@ -22,10 +23,15 @@ aliases {
+ 		rtc0 = &tps659038_rtc;
+ 		rtc1 = &rtc;
+ 		display0 = &hdmi_conn;
++		mmc0 = &mmc1;
++		mmc1 = &mmc2;
++		mmc2 = &mmc4;
+ 	};
  
  	chosen {
  		stdout-path = &uart1;
@@ -11314,7 +11321,108 @@ index 149cfafb90bf..4c3821365120 100644
  	};
  
  	memory@0 {
-@@ -204,6 +207,7 @@ extcon_usb1: extcon_usb1 {
+@@ -103,6 +109,8 @@ vtt_fixed: fixedregulator-vtt {
+ 
+ 	leds {
+ 		compatible = "gpio-leds";
++		pinctrl-names = "default";
++		pinctrl-0 = <&led_pins_default>;
+ 
+ 		led0 {
+ 			label = "beaglebone:green:usr0";
+@@ -186,10 +194,14 @@ hdmi_encoder_out: endpoint@0 {
+ 	emmc_pwrseq: emmc_pwrseq {
+ 		compatible = "mmc-pwrseq-emmc";
+ 		reset-gpios = <&gpio5 7 GPIO_ACTIVE_LOW>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&emmc_pwrseq_pins_default>;
+ 	};
+ 
+ 	brcmf_pwrseq: brcmf_pwrseq {
+ 		compatible = "mmc-pwrseq-simple";
++		pinctrl-names = "default";
++		pinctrl-0 = <&brcmf_pwrseq_pins_default>;
+ 		reset-gpios = <&gpio3 22 GPIO_ACTIVE_LOW>,	/* BT-REG-ON */
+ 				<&gpio3 18 GPIO_ACTIVE_LOW>;	/* WL-REG-ON */
+ 	};
+@@ -198,12 +210,84 @@ extcon_usb1: extcon_usb1 {
+ 		compatible = "linux,extcon-usb-gpio";
+ 		ti,enable-id-detection;
+ 		id-gpio = <&gpio3 13 GPIO_ACTIVE_HIGH>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&extcon_usb1_pins_default>;
++	};
++};
++
++&dra7_pmx_core {
++	extcon_usb1_pins_default: extcon_usb1_pins_default {
++		pinctrl-single,pins = <
++			DRA7XX_CORE_IOPAD(0x3518, PIN_INPUT | MUX_MODE14) /* AG2: vin1a_d9.gpio3_13  - USR0 */
++		>;
++	};
++
++	led_pins_default: led_pins_default {
++		pinctrl-single,pins = <
++			DRA7XX_CORE_IOPAD(0x3528, PIN_OUTPUT | MUX_MODE14) /* AF6: vin1a_d13.gpio3_17  - USR0 */
++			DRA7XX_CORE_IOPAD(0x36c0, PIN_OUTPUT | MUX_MODE14) /* J11: mcasp1_axr3.gpio5_5 - USR1 */
++			DRA7XX_CORE_IOPAD(0x3520, PIN_OUTPUT | MUX_MODE14) /* AG5: vin1a_d12.gpio3_15  - USR2 */
++			DRA7XX_CORE_IOPAD(0x351c, PIN_OUTPUT | MUX_MODE14) /* AG3: vin1a_d10.gpio3_14  - USR3 */
++			DRA7XX_CORE_IOPAD(0x3500, PIN_OUTPUT | MUX_MODE14) /* AH6: vin1a_d3.gpio3_7    - USR4 */
++		>;
++	};
++
++	emmc_pwrseq_pins_default: emmc_pwrseq_pins_default {
++		pinctrl-single,pins = <
++			DRA7XX_CORE_IOPAD(0x36c8, PIN_OUTPUT_PULLUP | MUX_MODE14) /* F13: mcasp1_axr5.gpio5_7 - eMMC_RSTn */
++		>;
++	};
++
++	brcmf_pwrseq_pins_default: brcmf_pwrseq_pins_default {
++		pinctrl-single,pins = <
++			DRA7XX_CORE_IOPAD(0x352c, PIN_OUTPUT_PULLUP | MUX_MODE14) /* AF3: vin1a_d14.gpio3_18 - WL_REG_ON */
++			DRA7XX_CORE_IOPAD(0x353c, PIN_OUTPUT_PULLUP | MUX_MODE14) /* AE5: vin1a_d18.gpio3_22 - BT_REG_ON */
++		>;
++	};
++
++	wifibt_extra_pins_default: wifibt_extra_pins_default {
++		pinctrl-single,pins = <
++			DRA7XX_CORE_IOPAD(0x3540, PIN_INPUT | MUX_MODE14) /* AE1: vin1a_d19.gpio3_23 - WL_HOST_WAKE */
++			DRA7XX_CORE_IOPAD(0x3450, PIN_INPUT | MUX_MODE8) /* P6: vin1a_d20.uart6_rxd - UART6_RXD */
++			DRA7XX_CORE_IOPAD(0x3454, PIN_INPUT | MUX_MODE8) /* R9: vin1a_d21.uart6_txd - UART6_TXD */
++			DRA7XX_CORE_IOPAD(0x3458, PIN_INPUT | MUX_MODE8) /* R5: vin1a_d22.uart6_ctsn - UART6_CTSN */
++			DRA7XX_CORE_IOPAD(0x345c, PIN_INPUT | MUX_MODE8) /* P5: vin1a_d23.uart6_rtsn - UART6_RTSN */
++			DRA7XX_CORE_IOPAD(0x3534, PIN_INPUT_PULLDOWN | MUX_MODE14) /* AF1: vin1a_d16.gpio3_20 - BT_HOST_WAKE */
++			DRA7XX_CORE_IOPAD(0x3538, PIN_OUTPUT_PULLDOWN | MUX_MODE14) /* AE3: vin1a_d6.gpio3_21 - BT_WAKE */
++		>;
++	};
++
++	adc_pins_default: adc_pins_default {
++		pinctrl-single,pins = <
++			DRA7XX_CORE_IOPAD(0x3550, PIN_OUTPUT | MUX_MODE14) /* AD3: vin1a_d23.gpio3_27 - VDD_ADC_SEL */
++			DRA7XX_CORE_IOPAD(0x34DC, PIN_INPUT_PULLUP | MUX_MODE14) /* AG8: vin1a_clk0.gpio2_30 - INT_ADC */
++		>;
++	};
++
++	pmic_pins_default: pmic_pins_default {
++		pinctrl-single,pins = <
++			DRA7XX_CORE_IOPAD(0x3690, PIN_INPUT_PULLUP | MUX_MODE14) /* F21: gpio6_16.gpio6_16 - PMIC_INT */
++		>;
++	};
++
++	hdmi_pins_default: hdmi_pins_default {
++		pinctrl-single,pins = <
++			DRA7XX_CORE_IOPAD(0x3808, PIN_INPUT | MUX_MODE1) /* C25: i2c2_sda.hdmi1_ddc_scl - HDMI_DDC_SCL */
++			DRA7XX_CORE_IOPAD(0x380C, PIN_INPUT | MUX_MODE1) /* F17: i2c2_scl.hdmi1_ddc_sda - HDMI_DDC_SDA */
++			DRA7XX_CORE_IOPAD(0x37BC, PIN_INPUT | MUX_MODE6) /* B20: spi1_cs3.hdmi1_cec - HDMI_DDC_CEC */
++#if 0
++			DRA7XX_CORE_IOPAD(0x37B8, PIN_INPUT | MUX_MODE6) /* B21: spi1_cs2.hdmi1_hpd - HDMI_DDC_HPD */
++#else
++			DRA7XX_CORE_IOPAD(0x37B8, PIN_INPUT | MUX_MODE14) /* B21: spi1_cs2.gpio7_12 - HDMI_DDC_HPD */
++#endif
++		>;
+ 	};
+ };
+ 
  &i2c1 {
  	status = "okay";
  	clock-frequency = <400000>;
@@ -11322,7 +11430,46 @@ index 149cfafb90bf..4c3821365120 100644
  
  	tps659038: tps659038@58 {
  		compatible = "ti,tps659038";
-@@ -486,6 +490,7 @@ &cpu0 {
+@@ -211,6 +295,9 @@ tps659038: tps659038@58 {
+ 		interrupt-parent = <&gpio6>;
+ 		interrupts = <16 IRQ_TYPE_LEVEL_LOW>;
+ 
++		pinctrl-names = "default";
++		pinctrl-0 = <&pmic_pins_default>;
++
+ 		#interrupt-cells = <2>;
+ 		interrupt-controller;
+ 
+@@ -424,12 +511,15 @@ stmpe811@41 {
+ 		st,adc-freq = <1>; /* 3.25 MHz ADC clock speed */
+ 		st,sample-time = <4>; /* ADC converstion time: 80 clocks */
+ 
++		pinctrl-names = "default";
++		pinctrl-0 = <&adc_pins_default>;
++
+ 		stmpe_adc {
+ 			compatible = "st,stmpe-adc";
+ 			st,norequest-mask = <0x00>; /* mask any channels to be used by touchscreen */
+ 			adc0: iio-device@0 {
+ 				#io-channel-cells = <1>;
+-				iio-channels = <&adc0 4>, <&adc0 1>, <&adc0 2>, <&adc0 3>, <&adc0 4>, <&adc0 5>, <&adc0 6>;
++				iio-channels = <&adc0 0>, <&adc0 1>, <&adc0 2>, <&adc0 3>, <&adc0 4>, <&adc0 5>, <&adc0 6>;
+ 				iio-channel-names = "AIN0_P9_39", "AIN1_P9_40", "AIN2_P9_37", "AIN3_P9_38",
+ 					"AIN4_P9_33", "AIN5_P9_36", "AIN6_P9_35";
+ 			};
+@@ -462,6 +552,11 @@ stmpe_pwm {
+ 			#pwm-cells = <2>;
+ 		};
+ 	};
++
++	eeprom: eeprom@50 {
++		compatible = "atmel,24c32";
++		reg = <0x50>;
++	};
+ };
+ 
+ &mcspi3 {
+@@ -486,6 +581,7 @@ &cpu0 {
  
  &uart1 {
  	status = "okay";
@@ -11330,7 +11477,51 @@ index 149cfafb90bf..4c3821365120 100644
  };
  
  &davinci_mdio_sw {
-@@ -675,6 +680,7 @@ &uart6 {
+@@ -550,7 +646,11 @@ &mmc2 {
+ 	ti,needs-special-reset;
+ 	dmas = <&sdma_xbar 47>, <&sdma_xbar 48>;
+ 	dma-names = "tx", "rx";
+-
++	pinctrl-names = "default", "hs", "ddr_1_8v", "hs200_1_8v";
++	pinctrl-0 = <&mmc2_pins_default>;
++	pinctrl-1 = <&mmc2_pins_hs>;
++	pinctrl-2 = <&mmc2_pins_ddr_rev20>;
++	pinctrl-3 = <&mmc2_pins_hs200>;
+ };
+ 
+ &mmc4 {
+@@ -563,6 +663,10 @@ &mmc4 {
+ 	/* DDR50: DDR up to 50 MHz (1.8 V signaling). */
+ 	status = "okay";
+ 
++	pinctrl-names = "default", "hs";
++	pinctrl-0 = <&mmc4_pins_default &wifibt_extra_pins_default>;
++	pinctrl-1 = <&mmc4_pins_hs &wifibt_extra_pins_default>;
++
+ 	ti,needs-special-reset;
+ 	vmmc-supply = <&vdd_3v3>;
+ 	cap-power-off-card;
+@@ -614,6 +718,10 @@ &usb2 {
+ 	dr_mode = "host";
+ };
+ 
++&bb2d {
++	status = "okay";
++};
++
+ &dss {
+ 	status = "okay";
+ 	vdda_video-supply = <&vdd_1v8_pll>;
+@@ -622,6 +730,8 @@ &dss {
+ &hdmi {
+ 	status = "okay";
+ 	vdda-supply = <&vdd_1v8_phy_ldo4>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&hdmi_pins_default>;
+ 
+ 	port {
+ 		hdmi_out: endpoint {
+@@ -675,6 +785,7 @@ &uart6 {
  &i2c4 {
  	status = "okay";
  	clock-frequency = <100000>;
@@ -11338,14 +11529,6 @@ index 149cfafb90bf..4c3821365120 100644
  };
  
  &cpu0_opp_table {
-@@ -702,3 +708,7 @@ &dsp2 {
- 	status = "okay";
- 	memory-region = <&dsp2_memory_region>;
- };
-+
-+&bb2d {
-+	status = "okay";
-+};
 diff --git a/arch/arm/boot/dts/am57xx-beagle-x15-common.dtsi b/arch/arm/boot/dts/am57xx-beagle-x15-common.dtsi
 index b5ea44497a4f..c8e25f9c5478 100644
 --- a/arch/arm/boot/dts/am57xx-beagle-x15-common.dtsi
