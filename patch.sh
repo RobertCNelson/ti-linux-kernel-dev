@@ -566,6 +566,7 @@ backports () {
 
 drivers () {
 	dir 'drivers/spi'
+	dir 'drivers/eqep'
 }
 
 ###
