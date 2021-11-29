@@ -1,25 +1,178 @@
-From 83e9c62fea15bf02ce4572564ef95850166f0a8c Mon Sep 17 00:00:00 2001
+From 8353888b5de1d005e303599fe3f9cd64860bc58f Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 16 Nov 2021 15:00:39 -0600
+Date: Mon, 29 Nov 2021 11:16:07 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.79
+Reference: v5.10.82
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/adc/ad7192.c                 |  1 +
- drivers/iio/adc/ad7780.c                 |  2 +-
- drivers/iio/adc/ad7793.c                 |  2 +-
- drivers/iio/adc/aspeed_adc.c             |  1 +
- drivers/iio/adc/max1027.c                |  3 +--
- drivers/iio/adc/mt6577_auxadc.c          |  8 +++++++
- drivers/iio/adc/ti-adc128s052.c          |  6 +++++
- drivers/iio/common/ssp_sensors/ssp_spi.c | 11 +++++++--
- drivers/iio/dac/ad5624r_spi.c            | 18 +++++++++++++-
- drivers/iio/dac/ti-dac5571.c             |  1 +
- drivers/iio/light/opt3001.c              |  6 ++---
- drivers/iio/temperature/ltc2983.c        | 30 +++++++++++-------------
- 12 files changed, 63 insertions(+), 26 deletions(-)
+ drivers/iio/accel/st_accel_core.c            | 21 ++++----------
+ drivers/iio/accel/st_accel_i2c.c             | 17 +++++++++--
+ drivers/iio/accel/st_accel_spi.c             | 17 +++++++++--
+ drivers/iio/adc/ad7192.c                     |  1 +
+ drivers/iio/adc/ad7780.c                     |  2 +-
+ drivers/iio/adc/ad7793.c                     |  2 +-
+ drivers/iio/adc/aspeed_adc.c                 |  1 +
+ drivers/iio/adc/max1027.c                    |  3 +-
+ drivers/iio/adc/mt6577_auxadc.c              |  8 ++++++
+ drivers/iio/adc/ti-adc128s052.c              |  6 ++++
+ drivers/iio/common/ssp_sensors/ssp_spi.c     | 11 +++++--
+ drivers/iio/dac/ad5446.c                     |  9 +++++-
+ drivers/iio/dac/ad5624r_spi.c                | 18 +++++++++++-
+ drivers/iio/dac/ad5770r.c                    |  2 +-
+ drivers/iio/dac/ti-dac5571.c                 |  1 +
+ drivers/iio/gyro/st_gyro_core.c              | 15 ++--------
+ drivers/iio/gyro/st_gyro_i2c.c               | 17 +++++++++--
+ drivers/iio/gyro/st_gyro_spi.c               | 17 +++++++++--
+ drivers/iio/imu/adis.c                       |  4 ++-
+ drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c |  6 ++--
+ drivers/iio/light/opt3001.c                  |  6 ++--
+ drivers/iio/magnetometer/st_magn_core.c      | 15 ++--------
+ drivers/iio/magnetometer/st_magn_i2c.c       | 14 ++++++++-
+ drivers/iio/magnetometer/st_magn_spi.c       | 14 ++++++++-
+ drivers/iio/pressure/st_pressure_core.c      | 15 ++--------
+ drivers/iio/pressure/st_pressure_i2c.c       | 17 +++++++++--
+ drivers/iio/pressure/st_pressure_spi.c       | 17 +++++++++--
+ drivers/iio/temperature/ltc2983.c            | 30 +++++++++-----------
+ 28 files changed, 209 insertions(+), 97 deletions(-)
 
+diff --git a/drivers/iio/accel/st_accel_core.c b/drivers/iio/accel/st_accel_core.c
+index 43c50167d220..bde0ca3ef7a4 100644
+--- a/drivers/iio/accel/st_accel_core.c
++++ b/drivers/iio/accel/st_accel_core.c
+@@ -1255,13 +1255,9 @@ int st_accel_common_probe(struct iio_dev *indio_dev)
+ 	indio_dev->modes = INDIO_DIRECT_MODE;
+ 	indio_dev->info = &accel_info;
+ 
+-	err = st_sensors_power_enable(indio_dev);
+-	if (err)
+-		return err;
+-
+ 	err = st_sensors_verify_id(indio_dev);
+ 	if (err < 0)
+-		goto st_accel_power_off;
++		return err;
+ 
+ 	adata->num_data_channels = ST_ACCEL_NUMBER_DATA_CHANNELS;
+ 	indio_dev->num_channels = ST_SENSORS_NUMBER_ALL_CHANNELS;
+@@ -1270,10 +1266,8 @@ int st_accel_common_probe(struct iio_dev *indio_dev)
+ 	channels = devm_kmemdup(&indio_dev->dev,
+ 				adata->sensor_settings->ch,
+ 				channels_size, GFP_KERNEL);
+-	if (!channels) {
+-		err = -ENOMEM;
+-		goto st_accel_power_off;
+-	}
++	if (!channels)
++		return -ENOMEM;
+ 
+ 	if (apply_acpi_orientation(indio_dev, channels))
+ 		dev_warn(&indio_dev->dev,
+@@ -1288,11 +1282,11 @@ int st_accel_common_probe(struct iio_dev *indio_dev)
+ 
+ 	err = st_sensors_init_sensor(indio_dev, pdata);
+ 	if (err < 0)
+-		goto st_accel_power_off;
++		return err;
+ 
+ 	err = st_accel_allocate_ring(indio_dev);
+ 	if (err < 0)
+-		goto st_accel_power_off;
++		return err;
+ 
+ 	if (adata->irq > 0) {
+ 		err = st_sensors_allocate_trigger(indio_dev,
+@@ -1315,9 +1309,6 @@ int st_accel_common_probe(struct iio_dev *indio_dev)
+ 		st_sensors_deallocate_trigger(indio_dev);
+ st_accel_probe_trigger_error:
+ 	st_accel_deallocate_ring(indio_dev);
+-st_accel_power_off:
+-	st_sensors_power_disable(indio_dev);
+-
+ 	return err;
+ }
+ EXPORT_SYMBOL(st_accel_common_probe);
+@@ -1326,8 +1317,6 @@ void st_accel_common_remove(struct iio_dev *indio_dev)
+ {
+ 	struct st_sensor_data *adata = iio_priv(indio_dev);
+ 
+-	st_sensors_power_disable(indio_dev);
+-
+ 	iio_device_unregister(indio_dev);
+ 	if (adata->irq > 0)
+ 		st_sensors_deallocate_trigger(indio_dev);
+diff --git a/drivers/iio/accel/st_accel_i2c.c b/drivers/iio/accel/st_accel_i2c.c
+index 360e16f2cadb..02c823b93ecd 100644
+--- a/drivers/iio/accel/st_accel_i2c.c
++++ b/drivers/iio/accel/st_accel_i2c.c
+@@ -174,16 +174,29 @@ static int st_accel_i2c_probe(struct i2c_client *client)
+ 	if (ret < 0)
+ 		return ret;
+ 
++	ret = st_sensors_power_enable(indio_dev);
++	if (ret)
++		return ret;
++
+ 	ret = st_accel_common_probe(indio_dev);
+ 	if (ret < 0)
+-		return ret;
++		goto st_accel_power_off;
+ 
+ 	return 0;
++
++st_accel_power_off:
++	st_sensors_power_disable(indio_dev);
++
++	return ret;
+ }
+ 
+ static int st_accel_i2c_remove(struct i2c_client *client)
+ {
+-	st_accel_common_remove(i2c_get_clientdata(client));
++	struct iio_dev *indio_dev = i2c_get_clientdata(client);
++
++	st_accel_common_remove(indio_dev);
++
++	st_sensors_power_disable(indio_dev);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/iio/accel/st_accel_spi.c b/drivers/iio/accel/st_accel_spi.c
+index 568ff1bae0ee..386ae18d5f26 100644
+--- a/drivers/iio/accel/st_accel_spi.c
++++ b/drivers/iio/accel/st_accel_spi.c
+@@ -123,16 +123,29 @@ static int st_accel_spi_probe(struct spi_device *spi)
+ 	if (err < 0)
+ 		return err;
+ 
++	err = st_sensors_power_enable(indio_dev);
++	if (err)
++		return err;
++
+ 	err = st_accel_common_probe(indio_dev);
+ 	if (err < 0)
+-		return err;
++		goto st_accel_power_off;
+ 
+ 	return 0;
++
++st_accel_power_off:
++	st_sensors_power_disable(indio_dev);
++
++	return err;
+ }
+ 
+ static int st_accel_spi_remove(struct spi_device *spi)
+ {
+-	st_accel_common_remove(spi_get_drvdata(spi));
++	struct iio_dev *indio_dev = spi_get_drvdata(spi);
++
++	st_accel_common_remove(indio_dev);
++
++	st_sensors_power_disable(indio_dev);
+ 
+ 	return 0;
+ }
 diff --git a/drivers/iio/adc/ad7192.c b/drivers/iio/adc/ad7192.c
 index 1141cc13a124..1b8baba9d4d6 100644
 --- a/drivers/iio/adc/ad7192.c
@@ -181,6 +334,27 @@ index 4864c38b8d1c..769bd9280524 100644
  			sd = ssp_print_mcu_debug(dataframe, &idx, len);
  			if (sd) {
  				dev_err(SSP_DEV,
+diff --git a/drivers/iio/dac/ad5446.c b/drivers/iio/dac/ad5446.c
+index d87e21016863..e86886ca5ee4 100644
+--- a/drivers/iio/dac/ad5446.c
++++ b/drivers/iio/dac/ad5446.c
+@@ -531,8 +531,15 @@ static int ad5622_write(struct ad5446_state *st, unsigned val)
+ {
+ 	struct i2c_client *client = to_i2c_client(st->dev);
+ 	__be16 data = cpu_to_be16(val);
++	int ret;
++
++	ret = i2c_master_send(client, (char *)&data, sizeof(data));
++	if (ret < 0)
++		return ret;
++	if (ret != sizeof(data))
++		return -EIO;
+ 
+-	return i2c_master_send(client, (char *)&data, sizeof(data));
++	return 0;
+ }
+ 
+ /*
 diff --git a/drivers/iio/dac/ad5624r_spi.c b/drivers/iio/dac/ad5624r_spi.c
 index 2b2b8edfd258..ab4997bfd6d4 100644
 --- a/drivers/iio/dac/ad5624r_spi.c
@@ -217,6 +391,19 @@ index 2b2b8edfd258..ab4997bfd6d4 100644
  	}
  
  	spi_set_drvdata(spi, indio_dev);
+diff --git a/drivers/iio/dac/ad5770r.c b/drivers/iio/dac/ad5770r.c
+index 42decba1463c..56d8bd2dd92f 100644
+--- a/drivers/iio/dac/ad5770r.c
++++ b/drivers/iio/dac/ad5770r.c
+@@ -522,7 +522,7 @@ static int ad5770r_channel_config(struct ad5770r_state *st)
+ 		return -EINVAL;
+ 
+ 	device_for_each_child_node(&st->spi->dev, child) {
+-		ret = fwnode_property_read_u32(child, "num", &num);
++		ret = fwnode_property_read_u32(child, "reg", &num);
+ 		if (ret)
+ 			goto err_child_out;
+ 		if (num >= AD5770R_MAX_CHANNELS) {
 diff --git a/drivers/iio/dac/ti-dac5571.c b/drivers/iio/dac/ti-dac5571.c
 index d3295767a079..c0714cb1e164 100644
 --- a/drivers/iio/dac/ti-dac5571.c
@@ -229,6 +416,176 @@ index d3295767a079..c0714cb1e164 100644
  		goto err;
  	}
  
+diff --git a/drivers/iio/gyro/st_gyro_core.c b/drivers/iio/gyro/st_gyro_core.c
+index c8aa051995d3..8c87f85f20bd 100644
+--- a/drivers/iio/gyro/st_gyro_core.c
++++ b/drivers/iio/gyro/st_gyro_core.c
+@@ -466,13 +466,9 @@ int st_gyro_common_probe(struct iio_dev *indio_dev)
+ 	indio_dev->modes = INDIO_DIRECT_MODE;
+ 	indio_dev->info = &gyro_info;
+ 
+-	err = st_sensors_power_enable(indio_dev);
+-	if (err)
+-		return err;
+-
+ 	err = st_sensors_verify_id(indio_dev);
+ 	if (err < 0)
+-		goto st_gyro_power_off;
++		return err;
+ 
+ 	gdata->num_data_channels = ST_GYRO_NUMBER_DATA_CHANNELS;
+ 	indio_dev->channels = gdata->sensor_settings->ch;
+@@ -485,11 +481,11 @@ int st_gyro_common_probe(struct iio_dev *indio_dev)
+ 
+ 	err = st_sensors_init_sensor(indio_dev, pdata);
+ 	if (err < 0)
+-		goto st_gyro_power_off;
++		return err;
+ 
+ 	err = st_gyro_allocate_ring(indio_dev);
+ 	if (err < 0)
+-		goto st_gyro_power_off;
++		return err;
+ 
+ 	if (gdata->irq > 0) {
+ 		err = st_sensors_allocate_trigger(indio_dev,
+@@ -512,9 +508,6 @@ int st_gyro_common_probe(struct iio_dev *indio_dev)
+ 		st_sensors_deallocate_trigger(indio_dev);
+ st_gyro_probe_trigger_error:
+ 	st_gyro_deallocate_ring(indio_dev);
+-st_gyro_power_off:
+-	st_sensors_power_disable(indio_dev);
+-
+ 	return err;
+ }
+ EXPORT_SYMBOL(st_gyro_common_probe);
+@@ -523,8 +516,6 @@ void st_gyro_common_remove(struct iio_dev *indio_dev)
+ {
+ 	struct st_sensor_data *gdata = iio_priv(indio_dev);
+ 
+-	st_sensors_power_disable(indio_dev);
+-
+ 	iio_device_unregister(indio_dev);
+ 	if (gdata->irq > 0)
+ 		st_sensors_deallocate_trigger(indio_dev);
+diff --git a/drivers/iio/gyro/st_gyro_i2c.c b/drivers/iio/gyro/st_gyro_i2c.c
+index 8190966e6ff0..3ed577977946 100644
+--- a/drivers/iio/gyro/st_gyro_i2c.c
++++ b/drivers/iio/gyro/st_gyro_i2c.c
+@@ -86,16 +86,29 @@ static int st_gyro_i2c_probe(struct i2c_client *client,
+ 	if (err < 0)
+ 		return err;
+ 
++	err = st_sensors_power_enable(indio_dev);
++	if (err)
++		return err;
++
+ 	err = st_gyro_common_probe(indio_dev);
+ 	if (err < 0)
+-		return err;
++		goto st_gyro_power_off;
+ 
+ 	return 0;
++
++st_gyro_power_off:
++	st_sensors_power_disable(indio_dev);
++
++	return err;
+ }
+ 
+ static int st_gyro_i2c_remove(struct i2c_client *client)
+ {
+-	st_gyro_common_remove(i2c_get_clientdata(client));
++	struct iio_dev *indio_dev = i2c_get_clientdata(client);
++
++	st_gyro_common_remove(indio_dev);
++
++	st_sensors_power_disable(indio_dev);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/iio/gyro/st_gyro_spi.c b/drivers/iio/gyro/st_gyro_spi.c
+index efb862763ca3..c04bcf2518c1 100644
+--- a/drivers/iio/gyro/st_gyro_spi.c
++++ b/drivers/iio/gyro/st_gyro_spi.c
+@@ -90,16 +90,29 @@ static int st_gyro_spi_probe(struct spi_device *spi)
+ 	if (err < 0)
+ 		return err;
+ 
++	err = st_sensors_power_enable(indio_dev);
++	if (err)
++		return err;
++
+ 	err = st_gyro_common_probe(indio_dev);
+ 	if (err < 0)
+-		return err;
++		goto st_gyro_power_off;
+ 
+ 	return 0;
++
++st_gyro_power_off:
++	st_sensors_power_disable(indio_dev);
++
++	return err;
+ }
+ 
+ static int st_gyro_spi_remove(struct spi_device *spi)
+ {
+-	st_gyro_common_remove(spi_get_drvdata(spi));
++	struct iio_dev *indio_dev = spi_get_drvdata(spi);
++
++	st_gyro_common_remove(indio_dev);
++
++	st_sensors_power_disable(indio_dev);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/iio/imu/adis.c b/drivers/iio/imu/adis.c
+index f8b7837d8b8f..715eef81bc24 100644
+--- a/drivers/iio/imu/adis.c
++++ b/drivers/iio/imu/adis.c
+@@ -434,6 +434,8 @@ int __adis_initial_startup(struct adis *adis)
+ 	if (ret)
+ 		return ret;
+ 
++	adis_enable_irq(adis, false);
++
+ 	if (!adis->data->prod_id_reg)
+ 		return 0;
+ 
+@@ -530,7 +532,7 @@ int adis_init(struct adis *adis, struct iio_dev *indio_dev,
+ 		adis->current_page = 0;
+ 	}
+ 
+-	return adis_enable_irq(adis, false);
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(adis_init);
+ 
+diff --git a/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c b/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
+index 2ab1ac5a2412..558ca3843bb9 100644
+--- a/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
++++ b/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
+@@ -1465,6 +1465,8 @@ st_lsm6dsx_set_odr(struct st_lsm6dsx_sensor *sensor, u32 req_odr)
+ 	int err;
+ 
+ 	switch (sensor->id) {
++	case ST_LSM6DSX_ID_GYRO:
++		break;
+ 	case ST_LSM6DSX_ID_EXT0:
+ 	case ST_LSM6DSX_ID_EXT1:
+ 	case ST_LSM6DSX_ID_EXT2:
+@@ -1490,8 +1492,8 @@ st_lsm6dsx_set_odr(struct st_lsm6dsx_sensor *sensor, u32 req_odr)
+ 		}
+ 		break;
+ 	}
+-	default:
+-		break;
++	default: /* should never occur */
++		return -EINVAL;
+ 	}
+ 
+ 	if (req_odr > 0) {
 diff --git a/drivers/iio/light/opt3001.c b/drivers/iio/light/opt3001.c
 index 2d48d61909a4..ff776259734a 100644
 --- a/drivers/iio/light/opt3001.c
@@ -253,6 +610,254 @@ index 2d48d61909a4..ff776259734a 100644
  		return ret;
  
  	if (opt->use_irq) {
+diff --git a/drivers/iio/magnetometer/st_magn_core.c b/drivers/iio/magnetometer/st_magn_core.c
+index 79de721e6015..0fc38f17dbe0 100644
+--- a/drivers/iio/magnetometer/st_magn_core.c
++++ b/drivers/iio/magnetometer/st_magn_core.c
+@@ -494,13 +494,9 @@ int st_magn_common_probe(struct iio_dev *indio_dev)
+ 	indio_dev->modes = INDIO_DIRECT_MODE;
+ 	indio_dev->info = &magn_info;
+ 
+-	err = st_sensors_power_enable(indio_dev);
+-	if (err)
+-		return err;
+-
+ 	err = st_sensors_verify_id(indio_dev);
+ 	if (err < 0)
+-		goto st_magn_power_off;
++		return err;
+ 
+ 	mdata->num_data_channels = ST_MAGN_NUMBER_DATA_CHANNELS;
+ 	indio_dev->channels = mdata->sensor_settings->ch;
+@@ -511,11 +507,11 @@ int st_magn_common_probe(struct iio_dev *indio_dev)
+ 
+ 	err = st_sensors_init_sensor(indio_dev, NULL);
+ 	if (err < 0)
+-		goto st_magn_power_off;
++		return err;
+ 
+ 	err = st_magn_allocate_ring(indio_dev);
+ 	if (err < 0)
+-		goto st_magn_power_off;
++		return err;
+ 
+ 	if (mdata->irq > 0) {
+ 		err = st_sensors_allocate_trigger(indio_dev,
+@@ -538,9 +534,6 @@ int st_magn_common_probe(struct iio_dev *indio_dev)
+ 		st_sensors_deallocate_trigger(indio_dev);
+ st_magn_probe_trigger_error:
+ 	st_magn_deallocate_ring(indio_dev);
+-st_magn_power_off:
+-	st_sensors_power_disable(indio_dev);
+-
+ 	return err;
+ }
+ EXPORT_SYMBOL(st_magn_common_probe);
+@@ -549,8 +542,6 @@ void st_magn_common_remove(struct iio_dev *indio_dev)
+ {
+ 	struct st_sensor_data *mdata = iio_priv(indio_dev);
+ 
+-	st_sensors_power_disable(indio_dev);
+-
+ 	iio_device_unregister(indio_dev);
+ 	if (mdata->irq > 0)
+ 		st_sensors_deallocate_trigger(indio_dev);
+diff --git a/drivers/iio/magnetometer/st_magn_i2c.c b/drivers/iio/magnetometer/st_magn_i2c.c
+index c6bb4ce77594..4b6a251dd44e 100644
+--- a/drivers/iio/magnetometer/st_magn_i2c.c
++++ b/drivers/iio/magnetometer/st_magn_i2c.c
+@@ -78,18 +78,30 @@ static int st_magn_i2c_probe(struct i2c_client *client,
+ 	if (err < 0)
+ 		return err;
+ 
++	err = st_sensors_power_enable(indio_dev);
++	if (err)
++		return err;
++
+ 	err = st_magn_common_probe(indio_dev);
+ 	if (err < 0)
+-		return err;
++		goto st_magn_power_off;
+ 
+ 	return 0;
++
++st_magn_power_off:
++	st_sensors_power_disable(indio_dev);
++
++	return err;
+ }
+ 
+ static int st_magn_i2c_remove(struct i2c_client *client)
+ {
+ 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
++
+ 	st_magn_common_remove(indio_dev);
+ 
++	st_sensors_power_disable(indio_dev);
++
+ 	return 0;
+ }
+ 
+diff --git a/drivers/iio/magnetometer/st_magn_spi.c b/drivers/iio/magnetometer/st_magn_spi.c
+index 3d08d74c367d..501eff32df78 100644
+--- a/drivers/iio/magnetometer/st_magn_spi.c
++++ b/drivers/iio/magnetometer/st_magn_spi.c
+@@ -72,18 +72,30 @@ static int st_magn_spi_probe(struct spi_device *spi)
+ 	if (err < 0)
+ 		return err;
+ 
++	err = st_sensors_power_enable(indio_dev);
++	if (err)
++		return err;
++
+ 	err = st_magn_common_probe(indio_dev);
+ 	if (err < 0)
+-		return err;
++		goto st_magn_power_off;
+ 
+ 	return 0;
++
++st_magn_power_off:
++	st_sensors_power_disable(indio_dev);
++
++	return err;
+ }
+ 
+ static int st_magn_spi_remove(struct spi_device *spi)
+ {
+ 	struct iio_dev *indio_dev = spi_get_drvdata(spi);
++
+ 	st_magn_common_remove(indio_dev);
+ 
++	st_sensors_power_disable(indio_dev);
++
+ 	return 0;
+ }
+ 
+diff --git a/drivers/iio/pressure/st_pressure_core.c b/drivers/iio/pressure/st_pressure_core.c
+index 789a2928504a..7912b5a68395 100644
+--- a/drivers/iio/pressure/st_pressure_core.c
++++ b/drivers/iio/pressure/st_pressure_core.c
+@@ -689,13 +689,9 @@ int st_press_common_probe(struct iio_dev *indio_dev)
+ 	indio_dev->modes = INDIO_DIRECT_MODE;
+ 	indio_dev->info = &press_info;
+ 
+-	err = st_sensors_power_enable(indio_dev);
+-	if (err)
+-		return err;
+-
+ 	err = st_sensors_verify_id(indio_dev);
+ 	if (err < 0)
+-		goto st_press_power_off;
++		return err;
+ 
+ 	/*
+ 	 * Skip timestamping channel while declaring available channels to
+@@ -718,11 +714,11 @@ int st_press_common_probe(struct iio_dev *indio_dev)
+ 
+ 	err = st_sensors_init_sensor(indio_dev, pdata);
+ 	if (err < 0)
+-		goto st_press_power_off;
++		return err;
+ 
+ 	err = st_press_allocate_ring(indio_dev);
+ 	if (err < 0)
+-		goto st_press_power_off;
++		return err;
+ 
+ 	if (press_data->irq > 0) {
+ 		err = st_sensors_allocate_trigger(indio_dev,
+@@ -745,9 +741,6 @@ int st_press_common_probe(struct iio_dev *indio_dev)
+ 		st_sensors_deallocate_trigger(indio_dev);
+ st_press_probe_trigger_error:
+ 	st_press_deallocate_ring(indio_dev);
+-st_press_power_off:
+-	st_sensors_power_disable(indio_dev);
+-
+ 	return err;
+ }
+ EXPORT_SYMBOL(st_press_common_probe);
+@@ -756,8 +749,6 @@ void st_press_common_remove(struct iio_dev *indio_dev)
+ {
+ 	struct st_sensor_data *press_data = iio_priv(indio_dev);
+ 
+-	st_sensors_power_disable(indio_dev);
+-
+ 	iio_device_unregister(indio_dev);
+ 	if (press_data->irq > 0)
+ 		st_sensors_deallocate_trigger(indio_dev);
+diff --git a/drivers/iio/pressure/st_pressure_i2c.c b/drivers/iio/pressure/st_pressure_i2c.c
+index 09c6903f99b8..8c26ff61e56a 100644
+--- a/drivers/iio/pressure/st_pressure_i2c.c
++++ b/drivers/iio/pressure/st_pressure_i2c.c
+@@ -98,16 +98,29 @@ static int st_press_i2c_probe(struct i2c_client *client,
+ 	if (ret < 0)
+ 		return ret;
+ 
++	ret = st_sensors_power_enable(indio_dev);
++	if (ret)
++		return ret;
++
+ 	ret = st_press_common_probe(indio_dev);
+ 	if (ret < 0)
+-		return ret;
++		goto st_press_power_off;
+ 
+ 	return 0;
++
++st_press_power_off:
++	st_sensors_power_disable(indio_dev);
++
++	return ret;
+ }
+ 
+ static int st_press_i2c_remove(struct i2c_client *client)
+ {
+-	st_press_common_remove(i2c_get_clientdata(client));
++	struct iio_dev *indio_dev = i2c_get_clientdata(client);
++
++	st_press_common_remove(indio_dev);
++
++	st_sensors_power_disable(indio_dev);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/iio/pressure/st_pressure_spi.c b/drivers/iio/pressure/st_pressure_spi.c
+index b5ee3ec2764f..8cf8cd3b4554 100644
+--- a/drivers/iio/pressure/st_pressure_spi.c
++++ b/drivers/iio/pressure/st_pressure_spi.c
+@@ -82,16 +82,29 @@ static int st_press_spi_probe(struct spi_device *spi)
+ 	if (err < 0)
+ 		return err;
+ 
++	err = st_sensors_power_enable(indio_dev);
++	if (err)
++		return err;
++
+ 	err = st_press_common_probe(indio_dev);
+ 	if (err < 0)
+-		return err;
++		goto st_press_power_off;
+ 
+ 	return 0;
++
++st_press_power_off:
++	st_sensors_power_disable(indio_dev);
++
++	return err;
+ }
+ 
+ static int st_press_spi_remove(struct spi_device *spi)
+ {
+-	st_press_common_remove(spi_get_drvdata(spi));
++	struct iio_dev *indio_dev = spi_get_drvdata(spi);
++
++	st_press_common_remove(indio_dev);
++
++	st_sensors_power_disable(indio_dev);
+ 
+ 	return 0;
+ }
 diff --git a/drivers/iio/temperature/ltc2983.c b/drivers/iio/temperature/ltc2983.c
 index 3b5ba26d7d86..3b4a0e60e605 100644
 --- a/drivers/iio/temperature/ltc2983.c
