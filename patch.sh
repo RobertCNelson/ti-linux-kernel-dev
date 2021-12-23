@@ -558,7 +558,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.19.205"
+	backport_tag="v4.19.222"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -573,7 +573,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.205"
+	backport_tag="v4.19.222"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -588,7 +588,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.19.205"
+	backport_tag="v4.19.222"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -606,7 +606,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.4.143"
+	backport_tag="v5.4.168"
 
 	subsystem="wiznet"
 	#regenerate="enable"
