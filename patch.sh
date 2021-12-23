@@ -568,7 +568,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v4.19.192"
+	backport_tag="v4.19.222"
 
 	subsystem="greybus"
 	#regenerate="enable"
@@ -584,7 +584,7 @@ backports () {
 		${git} "${DIR}/patches/backports/greybus/0002-greybus-drivers-staging-greybus-module.c-no-struct_s.patch"
 	fi
 
-	backport_tag="v4.14.234"
+	backport_tag="v4.14.259"
 
 	subsystem="wlcore"
 	#regenerate="enable"
@@ -599,7 +599,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v4.14.234"
+	backport_tag="v4.14.259"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -617,7 +617,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.4.122"
+	backport_tag="v5.4.168"
 
 	subsystem="wiznet"
 	#regenerate="enable"
