@@ -127,11 +127,11 @@ aufs_fail () {
 }
 
 aufs () {
-	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10
+	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10.82
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=5.10
+		KERNEL_REL=5.10.82
 		wget https://raw.githubusercontent.com/sfjro/${aufs_prefix}standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
 		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
 		rm -rf ${aufs_prefix}kbuild.patch
@@ -355,11 +355,7 @@ rt_cleanup () {
 rt () {
 	rt_patch="${KERNEL_REL}${kernel_rt}"
 
-	${git_bin} revert --no-edit af756be29c825f267e7a8870f9179d9c35c09eb8
-	${git_bin} revert --no-edit 226d68fb6c0a22cf8cc258ff8912956516f944c1
-	${git_bin} revert --no-edit 02ddf26d849dd241e22a8713e15e243d851199cc
-	${git_bin} revert --no-edit 7f43cda650d5ca7cac9ced26bb2f3f64643ddb9d
-	${git_bin} revert --no-edit 47462c5e600fbaffd755cd13dedd80d04e41ff83
+	#${git_bin} revert --no-edit xyz
 
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -643,7 +639,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.87"
+	backport_tag="v5.10.88"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -657,11 +653,11 @@ backports () {
 
 		post_backports
 		exit 2
-	else
+	#else
 		patch_backports
 	fi
 
-	backport_tag="v5.15.10"
+	backport_tag="v5.15.11"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -871,7 +867,7 @@ fixes
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.87"
+		backport_tag="v5.15.11"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
