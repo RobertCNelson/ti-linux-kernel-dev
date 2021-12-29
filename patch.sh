@@ -127,11 +127,11 @@ aufs_fail () {
 }
 
 aufs () {
-	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10
+	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10.82
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=5.10
+		KERNEL_REL=5.10.82
 		wget https://raw.githubusercontent.com/sfjro/${aufs_prefix}standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
 		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
 		rm -rf ${aufs_prefix}kbuild.patch
@@ -183,12 +183,19 @@ aufs () {
 
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: aufs' -m "https://github.com/sfjro/${aufs_prefix}standalone/commit/${aufs_hash}" -s
-		${git_bin} format-patch -5 -o ../patches/aufs/
+
+		wget https://raw.githubusercontent.com/sfjro/${aufs_prefix}standalone/aufs${KERNEL_REL}/rt.patch
+		patch -p1 < rt.patch || aufs_fail
+		rm -rf rt.patch
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: aufs-rt' -s
+
+		${git_bin} format-patch -6 -o ../patches/aufs/
 		echo "AUFS: https://github.com/sfjro/${aufs_prefix}standalone/commit/${aufs_hash}" > ../patches/git/AUFS
 
 		rm -rf ../${aufs_prefix}standalone/ || true
 
-		${git_bin} reset --hard HEAD~5
+		${git_bin} reset --hard HEAD~6
 
 		start_cleanup
 
@@ -197,9 +204,10 @@ aufs () {
 		${git} "${DIR}/patches/aufs/0003-merge-aufs-mmap.patch"
 		${git} "${DIR}/patches/aufs/0004-merge-aufs-standalone.patch"
 		${git} "${DIR}/patches/aufs/0005-merge-aufs.patch"
+		${git} "${DIR}/patches/aufs/0006-merge-aufs-rt.patch"
 
 		wdir="aufs"
-		number=5
+		number=6
 		cleanup
 	fi
 
@@ -529,7 +537,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.82"
+	backport_tag="v5.10.88"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -543,11 +551,11 @@ backports () {
 
 		post_backports
 		exit 2
-	else
+	#else
 		patch_backports
 	fi
 
-	backport_tag="v5.15.5"
+	backport_tag="v5.15.11"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -576,7 +584,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.15.5"
+		backport_tag="v5.15.11"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
