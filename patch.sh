@@ -457,7 +457,9 @@ beagleboard_dtbs () {
 		cd ./KERNEL/
 
 		cleanup_dts_builds
+		rm -rf arch/arm64/boot/dts/ti/overlays/ || true
 
+		mkdir -p arch/arm64/boot/dts/ti/overlays/
 		cp -vr ../${work_dir}/src/arm64/* arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
@@ -500,7 +502,6 @@ wireless_regdb
 next_dtbs
 beagleboard_dtbs
 #local_patch
-dir 'fixes'
 
 pre_backports () {
 	echo "dir: backports/${subsystem}"
@@ -573,8 +574,13 @@ backports () {
 }
 
 drivers () {
+	#https://github.com/raspberrypi/linux/branches
+	#exit 2
+	dir 'RPi'
 	dir 'drivers/spi'
 	dir 'drivers/eqep'
+	dir 'mikrobus'
+	dir 'fixes'
 }
 
 ###
