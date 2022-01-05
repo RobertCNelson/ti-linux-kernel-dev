@@ -581,6 +581,7 @@ drivers () {
 	dir 'drivers/eqep'
 	dir 'mikrobus'
 	dir 'fixes'
+	dir 'tusb322'
 }
 
 ###
