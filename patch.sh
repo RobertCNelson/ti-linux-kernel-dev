@@ -846,6 +846,7 @@ drivers () {
 	dir 'drivers/greybus'
 	dir 'drivers/fb_ssd1306'
 	dir 'drivers/hackaday'
+	dir 'drivers/qcacld'
 }
 
 soc () {
