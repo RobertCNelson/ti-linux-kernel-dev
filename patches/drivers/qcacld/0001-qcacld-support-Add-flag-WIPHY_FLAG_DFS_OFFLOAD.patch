@@ -1,0 +1,51 @@
+From 60271e76b8f55efc9246823d2a4dacfa186c54c0 Mon Sep 17 00:00:00 2001
+From: Paul Barker <paul.barker@sancloud.com>
+Date: Mon, 18 Oct 2021 12:20:13 +0100
+Subject: [PATCH 1/3] qcacld support: Add flag WIPHY_FLAG_DFS_OFFLOAD
+
+Taken from commit 8e407b62f2ed89fe41c40a976669df1693cf7027
+in https://github.com/boundarydevices/linux-imx6.
+
+    cfg80211: Using new wiphy flag WIPHY_FLAG_DFS_OFFLOAD
+    When flag WIPHY_FLAG_DFS_OFFLOAD is defined, the driver would handle
+    all the DFS related operations. Therefore the kernel needs to ignore
+    the DFS state that it uses to block the userspace calls to the
+    driver through cfg8021 APIs. Also it should treat the userspace
+    calls to start radar detection as a no-op.
+
+Ref: BSP-65
+Signed-off-by: Paul Barker <paul.barker@sancloud.com>
+---
+ include/net/cfg80211.h | 1 +
+ net/wireless/chan.c    | 3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
+index fe3a4f77bfae..9fb231850e2f 100644
+--- a/include/net/cfg80211.h
++++ b/include/net/cfg80211.h
+@@ -4326,6 +4326,7 @@ enum wiphy_flags {
+ 	WIPHY_FLAG_SUPPORTS_5_10_MHZ		= BIT(22),
+ 	WIPHY_FLAG_HAS_CHANNEL_SWITCH		= BIT(23),
+ 	WIPHY_FLAG_HAS_STATIC_WEP		= BIT(24),
++	WIPHY_FLAG_DFS_OFFLOAD                  = BIT(25)
+ };
+ 
+ /**
+diff --git a/net/wireless/chan.c b/net/wireless/chan.c
+index 22d1779ab2b1..b7c4c8ad77d3 100644
+--- a/net/wireless/chan.c
++++ b/net/wireless/chan.c
+@@ -874,7 +874,8 @@ static bool cfg80211_secondary_chans_ok(struct wiphy *wiphy,
+ 
+ 	for (freq = start_freq; freq <= end_freq; freq += MHZ_TO_KHZ(20)) {
+ 		c = ieee80211_get_channel_khz(wiphy, freq);
+-		if (!c || c->flags & prohibited_flags)
++		if (!c || ((c->flags & prohibited_flags) &&
++			!(wiphy->flags & WIPHY_FLAG_DFS_OFFLOAD)))
+ 			return false;
+ 	}
+ 
+-- 
+2.30.2
+

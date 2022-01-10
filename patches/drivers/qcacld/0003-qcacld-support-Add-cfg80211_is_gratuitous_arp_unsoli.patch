@@ -1,0 +1,98 @@
+From 94a00afb9ccd5b344afe9ab15b7689c00301708e Mon Sep 17 00:00:00 2001
+From: Paul Barker <paul.barker@sancloud.com>
+Date: Mon, 18 Oct 2021 12:26:21 +0100
+Subject: [PATCH 3/3] qcacld support: Add
+ cfg80211_is_gratuitous_arp_unsolicited_na()
+
+Taken from commit 8e407b62f2ed89fe41c40a976669df1693cf7027
+in https://github.com/boundarydevices/linux-imx6.
+
+Ref: BSP-65
+Signed-off-by: Paul Barker <paul.barker@sancloud.com>
+---
+ include/net/cfg80211.h |  9 ++++++++
+ net/wireless/util.c    | 51 ++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 60 insertions(+)
+
+diff --git a/include/net/cfg80211.h b/include/net/cfg80211.h
+index e60bd4d6f0f8..6e2439b16149 100644
+--- a/include/net/cfg80211.h
++++ b/include/net/cfg80211.h
+@@ -7993,6 +7993,15 @@ void cfg80211_pmsr_complete(struct wireless_dev *wdev,
+ bool cfg80211_iftype_allowed(struct wiphy *wiphy, enum nl80211_iftype iftype,
+ 			     bool is_4addr, u8 check_swif);
+ 
++/**
++ * cfg80211_is_gratuitous_arp_unsolicited_na - packet is grat. ARP/unsol. NA
++ * @skb: the input packet, must be an ethernet frame already
++ *
++ * Return: %true if the packet is a gratuitous ARP or unsolicited NA packet.
++ * This is used to drop packets that shouldn't occur because the AP implements
++ * a proxy service.
++ */
++bool cfg80211_is_gratuitous_arp_unsolicited_na(struct sk_buff *skb);
+ 
+ /* Logging, debugging and troubleshooting/diagnostic helpers. */
+ 
+diff --git a/net/wireless/util.c b/net/wireless/util.c
+index e4247c354356..29b1b042bf44 100644
+--- a/net/wireless/util.c
++++ b/net/wireless/util.c
+@@ -2244,3 +2244,54 @@ bool cfg80211_iftype_allowed(struct wiphy *wiphy, enum nl80211_iftype iftype,
+ 	return false;
+ }
+ EXPORT_SYMBOL(cfg80211_iftype_allowed);
++
++bool cfg80211_is_gratuitous_arp_unsolicited_na(struct sk_buff *skb)
++{
++    const struct ethhdr *eth = (void *)skb->data;
++    const struct {
++        struct arphdr hdr;
++        u8 ar_sha[ETH_ALEN];
++        u8 ar_sip[4];
++        u8 ar_tha[ETH_ALEN];
++        u8 ar_tip[4];
++    } __packed *arp;
++    const struct ipv6hdr *ipv6;
++    const struct icmp6hdr *icmpv6;
++
++    switch (eth->h_proto) {
++    case cpu_to_be16(ETH_P_ARP):
++        /* can't say - but will probably be dropped later anyway */
++        if (!pskb_may_pull(skb, sizeof(*eth) + sizeof(*arp)))
++            return false;
++
++        arp = (void *)(eth + 1);
++
++        if ((arp->hdr.ar_op == cpu_to_be16(ARPOP_REPLY) ||
++             arp->hdr.ar_op == cpu_to_be16(ARPOP_REQUEST)) &&
++            !memcmp(arp->ar_sip, arp->ar_tip, sizeof(arp->ar_sip)))
++            return true;
++        break;
++    case cpu_to_be16(ETH_P_IPV6):
++        /* can't say - but will probably be dropped later anyway */
++        if (!pskb_may_pull(skb, sizeof(*eth) + sizeof(*ipv6) +
++                    sizeof(*icmpv6)))
++            return false;
++
++        ipv6 = (void *)(eth + 1);
++        icmpv6 = (void *)(ipv6 + 1);
++
++        if (icmpv6->icmp6_type == NDISC_NEIGHBOUR_ADVERTISEMENT &&
++            !memcmp(&ipv6->saddr, &ipv6->daddr, sizeof(ipv6->saddr)))
++            return true;
++        break;
++    default:
++        /*
++         * no need to support other protocols, proxy service isn't
++         * specified for any others
++         */
++        break;
++    }
++
++    return false;
++}
++EXPORT_SYMBOL(cfg80211_is_gratuitous_arp_unsolicited_na);
+-- 
+2.30.2
+
