@@ -77,6 +77,7 @@ if [ -e ${DIR}/version.sh ]; then
 	make ARCH=${KERNEL_ARCH} savedefconfig
 	cp ${DIR}/KERNEL/defconfig ${DIR}/KERNEL/arch/${KERNEL_ARCH}/configs/${example}_defconfig
 	${git_bin} add arch/${KERNEL_ARCH}/configs/${example}_defconfig
+	${git_bin} add arch/${KERNEL_ARCH}/configs/ti_sdk_arm64_release_defconfig
 
 	if [ "x${ti_git_old_release}" = "x${ti_git_post}" ] ; then
 		echo "${KERNEL_TAG}${BUILD}" > ${wfile}
