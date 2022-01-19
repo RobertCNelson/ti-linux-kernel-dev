@@ -582,6 +582,7 @@ drivers () {
 	dir 'mikrobus'
 	dir 'fixes'
 	dir 'tusb322'
+	dir 'boris'
 }
 
 ###
