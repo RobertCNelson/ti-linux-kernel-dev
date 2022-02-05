@@ -586,6 +586,7 @@ drivers () {
 	dir 'tusb322'
 	dir 'boris'
 	dir 'dma-buff'
+	dir 'csi2rx'
 }
 
 ###
