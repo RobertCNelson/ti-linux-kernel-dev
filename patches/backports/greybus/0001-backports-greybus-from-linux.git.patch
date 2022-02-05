@@ -1,19 +1,19 @@
-From 22726f3f1f2953e2a30c0b584803a6bab5debeb7 Mon Sep 17 00:00:00 2001
+From a636a473982d0b5981b9f3d39d8989d8e2d40c9d Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 23 Dec 2021 16:50:31 -0600
+Date: Sat, 5 Feb 2022 17:46:15 -0600
 Subject: [PATCH] backports: greybus: from: linux.git
 
-Reference: v4.19.222
+Reference: v4.19.227
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/staging/greybus/audio_codec.c         |  2 +
  drivers/staging/greybus/audio_manager.c       |  2 +-
- drivers/staging/greybus/audio_topology.c      | 29 ++++----
+ drivers/staging/greybus/audio_topology.c      | 44 ++++++++----
  drivers/staging/greybus/light.c               | 15 ++--
  drivers/staging/greybus/sdio.c                | 10 ++-
  drivers/staging/greybus/tools/loopback_test.c | 21 +++---
  drivers/staging/greybus/uart.c                | 68 +++++++++----------
- 7 files changed, 78 insertions(+), 69 deletions(-)
+ 7 files changed, 93 insertions(+), 69 deletions(-)
 
 diff --git a/drivers/staging/greybus/audio_codec.c b/drivers/staging/greybus/audio_codec.c
 index 35acd55ca5ab..6cbf69a57dfd 100644
@@ -50,10 +50,20 @@ index d44b070d8862..0f5c68edf2c1 100644
  
  	is_empty = list_empty(&modules_list);
 diff --git a/drivers/staging/greybus/audio_topology.c b/drivers/staging/greybus/audio_topology.c
-index b71078339e86..860247d71818 100644
+index b71078339e86..a48e59fe18e8 100644
 --- a/drivers/staging/greybus/audio_topology.c
 +++ b/drivers/staging/greybus/audio_topology.c
-@@ -460,6 +460,15 @@ static int gbcodec_mixer_dapm_ctl_put(struct snd_kcontrol *kcontrol,
+@@ -145,6 +145,9 @@ static const char **gb_generate_enum_strings(struct gbaudio_module_info *gb,
+ 
+ 	items = le32_to_cpu(gbenum->items);
+ 	strings = devm_kcalloc(gb->dev, items, sizeof(char *), GFP_KERNEL);
++	if (!strings)
++		return NULL;
++
+ 	data = gbenum->names;
+ 
+ 	for (i = 0; i < items; i++) {
+@@ -460,6 +463,15 @@ static int gbcodec_mixer_dapm_ctl_put(struct snd_kcontrol *kcontrol,
  	val = ucontrol->value.integer.value[0] & mask;
  	connect = !!val;
  
@@ -69,7 +79,7 @@ index b71078339e86..860247d71818 100644
  	/* update ucontrol */
  	if (gbvalue.value.integer_value[0] != val) {
  		for (wi = 0; wi < wlist->num_widgets; wi++) {
-@@ -473,25 +482,17 @@ static int gbcodec_mixer_dapm_ctl_put(struct snd_kcontrol *kcontrol,
+@@ -473,25 +485,17 @@ static int gbcodec_mixer_dapm_ctl_put(struct snd_kcontrol *kcontrol,
  		gbvalue.value.integer_value[0] =
  			cpu_to_le32(ucontrol->value.integer.value[0]);
  
@@ -101,6 +111,46 @@ index b71078339e86..860247d71818 100644
  }
  
  #define SOC_DAPM_MIXER_GB(xname, kcount, data) \
+@@ -661,6 +665,8 @@ static int gbaudio_tplg_create_enum_kctl(struct gbaudio_module_info *gb,
+ 	/* since count=1, and reg is dummy */
+ 	gbe->max = le32_to_cpu(gb_enum->items);
+ 	gbe->texts = gb_generate_enum_strings(gb, gb_enum);
++	if (!gbe->texts)
++		return -ENOMEM;
+ 
+ 	/* debug enum info */
+ 	dev_dbg(gb->dev, "Max:%d, name_length:%d\n", gbe->max,
+@@ -870,6 +876,8 @@ static int gbaudio_tplg_create_enum_ctl(struct gbaudio_module_info *gb,
+ 	/* since count=1, and reg is dummy */
+ 	gbe->max = le32_to_cpu(gb_enum->items);
+ 	gbe->texts = gb_generate_enum_strings(gb, gb_enum);
++	if (!gbe->texts)
++		return -ENOMEM;
+ 
+ 	/* debug enum info */
+ 	dev_dbg(gb->dev, "Max:%d, name_length:%d\n", gbe->max,
+@@ -1043,6 +1051,10 @@ static int gbaudio_tplg_create_widget(struct gbaudio_module_info *module,
+ 			csize += le16_to_cpu(gbenum->names_length);
+ 			control->texts = (const char * const *)
+ 				gb_generate_enum_strings(module, gbenum);
++			if (!control->texts) {
++				ret = -ENOMEM;
++				goto error;
++			}
+ 			control->items = le32_to_cpu(gbenum->items);
+ 		} else {
+ 			csize = sizeof(struct gb_audio_control);
+@@ -1191,6 +1203,10 @@ static int gbaudio_tplg_process_kcontrols(struct gbaudio_module_info *module,
+ 			csize += le16_to_cpu(gbenum->names_length);
+ 			control->texts = (const char * const *)
+ 				gb_generate_enum_strings(module, gbenum);
++			if (!control->texts) {
++				ret = -ENOMEM;
++				goto error;
++			}
+ 			control->items = le32_to_cpu(gbenum->items);
+ 		} else {
+ 			csize = sizeof(struct gb_audio_control);
 diff --git a/drivers/staging/greybus/light.c b/drivers/staging/greybus/light.c
 index 010ae1e9c7fb..db06cd544af5 100644
 --- a/drivers/staging/greybus/light.c
