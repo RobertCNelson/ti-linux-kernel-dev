@@ -54,6 +54,5 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 
 ti_git_old_release="ea9901831ea4d8cf5eaa9a15dc2af1d3c556ae24"
-        ti_git_pre="ea9901831ea4d8cf5eaa9a15dc2af1d3c556ae24"
-       ti_git_post="ea9901831ea4d8cf5eaa9a15dc2af1d3c556ae24"
+ti_git_new_release="ea9901831ea4d8cf5eaa9a15dc2af1d3c556ae24"
 #
