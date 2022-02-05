@@ -54,11 +54,5 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 
 ti_git_old_release="5a23bc00e08d26bb83952953d909c95b42fab70c"
-        ti_git_pre="5a23bc00e08d26bb83952953d909c95b42fab70c"
-       ti_git_post="5a23bc00e08d26bb83952953d909c95b42fab70c"
-#
-
-#https://source.denx.de/Xenomai/xenomai.git
-#https://source.denx.de/Xenomai/xenomai/-/commits/stable/v3.1.x/
-#xenomai_checkout="cdc938bc199a86097d936caf600fa13af029a434"
+ti_git_new_release="5a23bc00e08d26bb83952953d909c95b42fab70c"
 #
