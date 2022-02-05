@@ -463,6 +463,9 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/src/arm64/* arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
+		device="k3-j721e-edgeai-apps.dtb" ; dtb_makefile_append
+		device="k3-j721e-sk-rpi-exp-header.dtb" ; dtb_makefile_append
+		device="k3-j721e-vision-apps.dtb" ; dtb_makefile_append
 		device="k3-j721e-beagleboneai64.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm64/boot/dts/ti/
