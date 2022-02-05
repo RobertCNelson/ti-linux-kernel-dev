@@ -538,7 +538,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.93"
+	backport_tag="v5.10.98"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -552,11 +552,11 @@ backports () {
 
 		post_backports
 		exit 2
-	#else
+	else
 		patch_backports
 	fi
 
-	backport_tag="v5.15.16"
+	backport_tag="v5.15.21"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -580,7 +580,9 @@ drivers () {
 	dir 'drivers/spi'
 	dir 'drivers/eqep'
 	dir 'mikrobus'
-	dir 'fixes'
+	#dir 'fixes'
+	#${git} "${DIR}/patches/fixes/0001-fix-pcie.patch"
+	${git} "${DIR}/patches/fixes/0002-v2-usb-gadget-composite-Fix-null-pointer-exception.patch"
 	dir 'tusb322'
 	dir 'boris'
 }
@@ -592,7 +594,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.15.16"
+		backport_tag="v5.16.7"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
