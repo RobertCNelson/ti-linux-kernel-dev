@@ -585,6 +585,7 @@ drivers () {
 	${git} "${DIR}/patches/fixes/0002-v2-usb-gadget-composite-Fix-null-pointer-exception.patch"
 	dir 'tusb322'
 	dir 'boris'
+	dir 'dma-buff'
 }
 
 ###

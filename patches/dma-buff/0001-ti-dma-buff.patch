@@ -1,0 +1,442 @@
+From 7ce8ba3ed1171422bafccba8f34c644b5b8f1eda Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Sat, 5 Feb 2022 14:24:38 -0600
+Subject: [PATCH] ti-dma-buff
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ .../bindings/misc/ti,dma_buf_phys.yaml        |  32 +++
+ drivers/dma-buf/heaps/carveout-heap.c         |  20 +-
+ drivers/misc/Kconfig                          |   5 +
+ drivers/misc/Makefile                         |   1 +
+ drivers/misc/dma-buf-phys.c                   | 231 ++++++++++++++++++
+ include/uapi/linux/dma_buf_phys.h             |  35 +++
+ 6 files changed, 318 insertions(+), 6 deletions(-)
+ create mode 100644 Documentation/devicetree/bindings/misc/ti,dma_buf_phys.yaml
+ create mode 100644 drivers/misc/dma-buf-phys.c
+ create mode 100644 include/uapi/linux/dma_buf_phys.h
+
+diff --git a/Documentation/devicetree/bindings/misc/ti,dma_buf_phys.yaml b/Documentation/devicetree/bindings/misc/ti,dma_buf_phys.yaml
+new file mode 100644
+index 000000000000..998bb2943e00
+--- /dev/null
++++ b/Documentation/devicetree/bindings/misc/ti,dma_buf_phys.yaml
+@@ -0,0 +1,32 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++# Copyright 2021 Texas Instruments Incorporated
++%YAML 1.2
++---
++$id: "http://devicetree.org/schemas/misc/ti,dma_buf_phys.yaml#"
++$schema: "http://devicetree.org/meta-schemas/core.yaml#"
++
++title: DMA-BUF contiguous buffer physical address user-space exporter
++
++maintainer: Gowtham Tammana <g-tammana@ti.com>
++
++description: |
++  Driver allowing user-space attaching of DMA-BUFs returning CPU
++  physical addresses. The reasoning for making this act like a regular
++  device described by DT is so the virtual device that binds the buffer
++  can be made to act as if it is out on a bus or behind an IOMMU, for
++  example.
++
++properties:
++  compatible:
++    const: ti,dma_buf_phys
++
++required:
++  - compatible
++
++examples:
++  - |
++    dma_buf_phys {
++            compatible = "ti,dma_buf_phys";
++            iommus = <&some_iommu>;
++            dma-coherent;
++    };
+diff --git a/drivers/dma-buf/heaps/carveout-heap.c b/drivers/dma-buf/heaps/carveout-heap.c
+index de0d5bcd59d3..e027c117d02e 100644
+--- a/drivers/dma-buf/heaps/carveout-heap.c
++++ b/drivers/dma-buf/heaps/carveout-heap.c
+@@ -19,6 +19,7 @@
+ struct carveout_dma_heap {
+ 	struct dma_heap *heap;
+ 	struct gen_pool *pool;
++	bool cached;
+ };
+ 
+ struct carveout_dma_heap_buffer {
+@@ -30,6 +31,7 @@ struct carveout_dma_heap_buffer {
+ 	unsigned long len;
+ 	void *vaddr;
+ 	phys_addr_t paddr;
++	bool cached;
+ };
+ 
+ struct dma_heap_attachment {
+@@ -127,8 +129,8 @@ static int dma_heap_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
+ 	struct carveout_dma_heap_buffer *buffer = dmabuf->priv;
+ 	int ret;
+ 
+-	/* Carveouts are not cached */
+-	vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
++	if (!buffer->cached)
++		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
+ 
+ 	ret = vm_iomap_memory(vma, buffer->paddr, buffer->len);
+ 	if (ret)
+@@ -149,7 +151,10 @@ static void *dma_heap_vmap(struct dma_buf *dmabuf)
+ 		vaddr = buffer->vaddr;
+ 		goto exit;
+ 	}
+-	vaddr = memremap(buffer->paddr, buffer->len, MEMREMAP_WC);
++	if (buffer->cached)
++		vaddr = memremap(buffer->paddr, buffer->len, MEMREMAP_WB);
++	else
++		vaddr = memremap(buffer->paddr, buffer->len, MEMREMAP_WC);
+ 	if (!vaddr) {
+ 		pr_err("Could not memremap buffer\n");
+ 		goto exit;
+@@ -203,6 +208,7 @@ static int carveout_dma_heap_allocate(struct dma_heap *heap,
+ 	if (!buffer)
+ 		return -ENOMEM;
+ 	buffer->pool = carveout_dma_heap->pool;
++	buffer->cached = carveout_dma_heap->cached;
+ 	INIT_LIST_HEAD(&buffer->attachments);
+ 	mutex_init(&buffer->attachments_lock);
+ 	mutex_init(&buffer->vmap_lock);
+@@ -246,7 +252,7 @@ static struct dma_heap_ops carveout_dma_heap_ops = {
+ 	.allocate = carveout_dma_heap_allocate,
+ };
+ 
+-int carveout_dma_heap_export(phys_addr_t base, size_t size, const char *name)
++int carveout_dma_heap_export(phys_addr_t base, size_t size, const char *name, bool cached)
+ {
+ 	struct carveout_dma_heap *carveout_dma_heap;
+ 	struct dma_heap_export_info exp_info;
+@@ -268,6 +274,8 @@ int carveout_dma_heap_export(phys_addr_t base, size_t size, const char *name)
+ 		goto free_pool;
+ 	}
+ 
++	carveout_dma_heap->cached = cached;
++
+ 	exp_info.name = name;
+ 	exp_info.ops = &carveout_dma_heap_ops;
+ 	exp_info.priv = carveout_dma_heap;
+@@ -304,8 +312,8 @@ static int __init carveout_dma_heap_init_areas(void)
+ 
+ 	for (i = 0; i < heap_area_count; i++) {
+ 		struct reserved_mem *rmem = &heap_areas[i];
+-		int ret = carveout_dma_heap_export(rmem->base, rmem->size, rmem->name);
+-
++		bool cached = !of_get_flat_dt_prop(rmem->fdt_node, "no-map", NULL);
++		int ret = carveout_dma_heap_export(rmem->base, rmem->size, rmem->name, cached);
+ 		if (ret) {
+ 			pr_err("Carveout Heap: could not export as DMA-Heap\n");
+ 			return ret;
+diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
+index d16e1013942a..ccba9d0f6f38 100644
+--- a/drivers/misc/Kconfig
++++ b/drivers/misc/Kconfig
+@@ -473,6 +473,11 @@ config HISI_HIKEY_USB
+ 	  switching between the dual-role USB-C port and the USB-A host ports
+ 	  using only one USB controller.
+ 
++config DMA_BUF_PHYS
++	tristate "DMA-BUF physical address user-space exporter"
++	help
++	  Exports CPU physical address of DMA-BUF to user-space.
++
+ source "drivers/misc/c2port/Kconfig"
+ source "drivers/misc/eeprom/Kconfig"
+ source "drivers/misc/cb710/Kconfig"
+diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
+index 07c7197d4a1e..4b0ac87c7631 100644
+--- a/drivers/misc/Makefile
++++ b/drivers/misc/Makefile
+@@ -58,3 +58,4 @@ obj-$(CONFIG_HABANA_AI)		+= habanalabs/
+ obj-$(CONFIG_UACCE)		+= uacce/
+ obj-$(CONFIG_XILINX_SDFEC)	+= xilinx_sdfec.o
+ obj-$(CONFIG_HISI_HIKEY_USB)	+= hisi_hikey_usb.o
++obj-$(CONFIG_DMA_BUF_PHYS)	+= dma-buf-phys.o
+diff --git a/drivers/misc/dma-buf-phys.c b/drivers/misc/dma-buf-phys.c
+new file mode 100644
+index 000000000000..144975006b09
+--- /dev/null
++++ b/drivers/misc/dma-buf-phys.c
+@@ -0,0 +1,231 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * DMA-BUF contiguous buffer physical address user-space exporter
++ *
++ * Copyright (C) 2021 Texas Instruments Incorporated - http://www.ti.com/
++ *	Andrew F. Davis <afd@ti.com>
++ */
++
++#include <linux/device.h>
++#include <linux/dma-buf.h>
++#include <linux/err.h>
++#include <linux/kernel.h>
++#include <linux/miscdevice.h>
++#include <linux/module.h>
++#include <linux/of_device.h>
++#include <linux/platform_device.h>
++#include <linux/slab.h>
++#include <linux/uaccess.h>
++
++#include <uapi/linux/dma_buf_phys.h>
++
++#define DEVICE_NAME "dma-buf-phys"
++
++struct dma_buf_phys_priv {
++	struct miscdevice miscdev;
++};
++
++struct dma_buf_phys_file {
++	struct device *dev;
++	struct dma_buf *dma_buf;
++	struct dma_buf_attachment *attachment;
++	struct sg_table *sgt;
++};
++
++static int dma_buf_phys_open(struct inode *inode, struct file *file)
++{
++	struct miscdevice *miscdev = file->private_data;
++	struct device *dev = miscdev->this_device;
++	struct dma_buf_phys_file *priv;
++
++	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
++	if (!priv)
++		return -ENOMEM;
++	priv->dev = dev;
++	file->private_data = (void *)priv;
++
++	return 0;
++}
++
++static int dma_buf_phys_release(struct inode *inode, struct file *file)
++{
++	struct dma_buf_phys_file *priv = file->private_data;
++
++	if (priv->attachment && priv->sgt)
++		dma_buf_unmap_attachment(priv->attachment, priv->sgt, DMA_BIDIRECTIONAL);
++	if (priv->dma_buf && priv->attachment)
++		dma_buf_detach(priv->dma_buf, priv->attachment);
++	if (priv->dma_buf)
++		dma_buf_put(priv->dma_buf);
++
++	kfree(priv);
++
++	return 0;
++}
++
++static int dma_buf_phys_convert(struct dma_buf_phys_file *priv, int fd, u64 *phys)
++{
++	struct device *dev = priv->dev;
++	struct dma_buf *dma_buf;
++	struct dma_buf_attachment *attachment;
++	struct sg_table *sgt;
++	dma_addr_t dma_addr;
++	int ret;
++
++	dma_buf = dma_buf_get(fd);
++	if (IS_ERR(dma_buf))
++		return PTR_ERR(dma_buf);
++
++	/* Attach as the parent device as it will have the correct DMA ops set */
++	attachment = dma_buf_attach(dma_buf, dev->parent);
++	if (IS_ERR(attachment)) {
++		ret = PTR_ERR(attachment);
++		goto fail_put;
++	}
++
++	sgt = dma_buf_map_attachment(attachment, DMA_BIDIRECTIONAL);
++	if (IS_ERR(sgt)) {
++		ret = PTR_ERR(sgt);
++		goto fail_detach;
++	}
++
++	/* Without PAT only physically contiguous buffers can be supported */
++	if (sgt->orig_nents != 1) {
++		dev_err(dev, "DMA-BUF not contiguous\n");
++		ret = -EINVAL;
++		goto fail_unmap;
++	}
++
++	dma_addr = sg_dma_address(sgt->sgl);
++
++	*phys = dma_addr;
++
++	priv->dma_buf = dma_buf;
++	priv->attachment = attachment;
++	priv->sgt = sgt;
++
++	return 0;
++
++fail_unmap:
++	dma_buf_unmap_attachment(attachment, sgt, DMA_BIDIRECTIONAL);
++fail_detach:
++	dma_buf_detach(dma_buf, attachment);
++fail_put:
++	dma_buf_put(dma_buf);
++
++	return ret;
++}
++
++static long dma_buf_phys_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
++{
++	struct dma_buf_phys_file *priv = file->private_data;
++
++	switch (cmd) {
++	case DMA_BUF_PHYS_IOC_CONVERT:
++	{
++		struct dma_buf_phys_data data;
++		int ret;
++
++		/*
++		 * TODO: this should likely be properly serialized, but I
++		 * see no reason this file would ever need to be shared.
++		 */
++		/* one attachment per file */
++		if (priv->dma_buf)
++			return -EFAULT;
++
++		if (copy_from_user(&data, (void __user *)arg, _IOC_SIZE(cmd)))
++			return -EFAULT;
++
++		ret = dma_buf_phys_convert(priv, data.fd, &data.phys);
++		if (ret)
++			return ret;
++
++		if (copy_to_user((void __user *)arg, &data, _IOC_SIZE(cmd)))
++			return -EFAULT;
++
++		break;
++	}
++	default:
++		return -ENOTTY;
++	}
++
++	return 0;
++}
++
++static const struct file_operations dma_buf_phys_fops = {
++	.owner = THIS_MODULE,
++	.open = dma_buf_phys_open,
++	.release = dma_buf_phys_release,
++	.unlocked_ioctl = dma_buf_phys_ioctl,
++#ifdef CONFIG_COMPAT
++	.compat_ioctl	= dma_buf_phys_ioctl,
++#endif
++};
++
++static int dma_buf_phys_probe(struct platform_device *pdev)
++{
++	struct dma_buf_phys_priv *priv;
++	struct device *dev = &pdev->dev;
++	int err;
++
++	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
++	if (!priv)
++		return -ENOMEM;
++	dev_set_drvdata(dev, priv);
++
++	priv->miscdev.minor = MISC_DYNAMIC_MINOR;
++	priv->miscdev.name = devm_kasprintf(dev, GFP_KERNEL, "%s", DEVICE_NAME);
++	priv->miscdev.fops = &dma_buf_phys_fops;
++	priv->miscdev.parent = dev;
++	err = misc_register(&priv->miscdev);
++	if (err) {
++		dev_err(dev, "unable to register DMA-BUF to Phys misc device\n");
++		return err;
++	}
++
++	return 0;
++}
++
++static int dma_buf_phys_remove(struct platform_device *pdev)
++{
++	struct dma_buf_phys_priv *priv = dev_get_drvdata(&pdev->dev);
++
++	misc_deregister(&priv->miscdev);
++
++	return 0;
++}
++
++static const struct of_device_id dma_buf_phys_of_match[] = {
++	{ .compatible = "ti,dma_buf_phys", },
++	{},
++};
++MODULE_DEVICE_TABLE(of, dma_buf_phys_of_match);
++
++static struct platform_driver dma_buf_phys_driver = {
++	.probe = dma_buf_phys_probe,
++	.remove = dma_buf_phys_remove,
++	.driver = {
++		.name = "dma_buf_phys",
++		.of_match_table = dma_buf_phys_of_match,
++	}
++};
++
++static int __init dma_buf_phys_init(void)
++{
++	struct platform_device *pdev;
++	int ret;
++
++	ret = platform_driver_register(&dma_buf_phys_driver);
++	if (ret)
++		return ret;
++
++	pdev = platform_device_register_simple("dma_buf_phys", -1, NULL, 0);
++
++	return PTR_ERR_OR_ZERO(pdev);
++}
++device_initcall(dma_buf_phys_init);
++
++MODULE_AUTHOR("Andrew F. Davis <afd@ti.com>");
++MODULE_DESCRIPTION("DMA-BUF contiguous buffer physical address user-space exporter");
++MODULE_LICENSE("GPL v2");
+diff --git a/include/uapi/linux/dma_buf_phys.h b/include/uapi/linux/dma_buf_phys.h
+new file mode 100644
+index 000000000000..72d9d9e4b225
+--- /dev/null
++++ b/include/uapi/linux/dma_buf_phys.h
+@@ -0,0 +1,35 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++/*
++ * DMA-BUF contiguous buffer physical address user-space exporter
++ *
++ * Copyright (C) 2018-2019 Texas Instruments Incorporated - http://www.ti.com/
++ *	Andrew F. Davis <afd@ti.com>
++ */
++
++#ifndef DMA_BUF_PHYS_H
++#define DMA_BUF_PHYS_H
++
++#include <linux/ioctl.h>
++#include <linux/types.h>
++
++/**
++ * struct dma_buf_phys_data - metadata passed from userspace for conversion
++ * @fd:		DMA-BUF fd for conversion
++ * @phys:	populated with CPU physical address of DMA-BUF
++ */
++struct dma_buf_phys_data {
++	__u32 fd;
++	__u64 phys;
++};
++
++#define DMA_BUF_PHYS_IOC_MAGIC 'D'
++
++/**
++ * DOC: DMA_BUF_PHYS_IOC_CONVERT - Convert DMA-BUF to physical address
++ *
++ * Takes a dma_buf_phys_data struct containing a fd for a physicaly contigous
++ * buffer. Pins this buffer and populates phys field with the CPU physical address.
++ */
++#define DMA_BUF_PHYS_IOC_CONVERT _IOWR(DMA_BUF_PHYS_IOC_MAGIC, 0, struct dma_buf_phys_data)
++
++#endif /* DMA_BUF_PHYS_H */
+-- 
+2.30.2
+
