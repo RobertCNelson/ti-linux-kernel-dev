@@ -662,7 +662,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.4.168"
+	backport_tag="v5.4.177"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -942,7 +942,7 @@ fixes
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.88"
+		backport_tag="v5.10.98"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
