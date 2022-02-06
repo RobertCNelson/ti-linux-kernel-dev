@@ -52,7 +52,7 @@ if [ -e ${DIR}/version.sh ]; then
 		BRANCH="master"
 	fi
 
-	echo "merge ti: ${repo}/${ti_git_pre}...${ti_git_post}" > ${wfile}
+	echo "merge ti: ${repo}/${ti_git_old_release}...${ti_git_new_release}" > ${wfile}
 	cat_files
 
 	${git_bin} commit -a -F ${wfile} -s
