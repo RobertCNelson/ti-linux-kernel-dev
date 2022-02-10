@@ -1,0 +1,77 @@
+From 32aa1b50ed1cd2bca0da1f577d534bdeb4d291ab Mon Sep 17 00:00:00 2001
+From: Prashanth Kumar Amai <prashanth.amai@ti.com>
+Date: Thu, 26 Aug 2021 14:08:58 +0530
+Subject: [PATCH] v4l:vxd-dec:Flushing all the IO buffers and releasing all the
+ held buffers while joing v4l2 job_abort.
+
+This patch does the fulsh operation by releasing all the
+locked up buffers in the driver.
+It throws the v4l2 harmless traces while trying to
+re-release the released buffers.
+
+Signed-off-by: Prashanth Kumar Amai <prashanth.amai@ti.com>
+---
+ drivers/media/platform/vxe-vxd/decoder/core.c |  1 -
+ .../media/platform/vxe-vxd/decoder/decoder.c  |  2 --
+ .../media/platform/vxe-vxd/decoder/vxd_v4l2.c | 19 +++++++++++++++++++
+ 3 files changed, 19 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/platform/vxe-vxd/decoder/core.c b/drivers/media/platform/vxe-vxd/decoder/core.c
+index a68b26bcc..d190b570c 100644
+--- a/drivers/media/platform/vxe-vxd/decoder/core.c
++++ b/drivers/media/platform/vxe-vxd/decoder/core.c
+@@ -3184,7 +3184,6 @@ int core_stream_unmap_buf_sg(unsigned int buf_map_id)
+ #endif
+ 
+ 	/* Buffer should only be held by the client. */
+-	VDEC_ASSERT(ddbuf_map_info->ddbuf_info.ref_count == 1);
+ 	if (ddbuf_map_info->ddbuf_info.ref_count != 1)
+ 		return IMG_ERROR_MEMORY_IN_USE;
+ 
+diff --git a/drivers/media/platform/vxe-vxd/decoder/decoder.c b/drivers/media/platform/vxe-vxd/decoder/decoder.c
+index 40cedb373..d719a29bf 100644
+--- a/drivers/media/platform/vxe-vxd/decoder/decoder.c
++++ b/drivers/media/platform/vxe-vxd/decoder/decoder.c
+@@ -2046,8 +2046,6 @@ int decoder_stream_flush(void *dec_str_ctx_arg, unsigned char discard_refs)
+ 	 */
+ 	dec_str_unit = lst_first(&dec_str_ctx->pend_strunit_list);
+ 	while (dec_str_unit) {
+-		VDEC_ASSERT(dec_str_unit->str_unit->str_unit_type !=
+-			VDECDD_STRUNIT_PICTURE_START);
+ 		dec_str_unit = lst_next(dec_str_unit);
+ 	}
+ 
+diff --git a/drivers/media/platform/vxe-vxd/decoder/vxd_v4l2.c b/drivers/media/platform/vxe-vxd/decoder/vxd_v4l2.c
+index afaeb0291..c404a579d 100644
+--- a/drivers/media/platform/vxe-vxd/decoder/vxd_v4l2.c
++++ b/drivers/media/platform/vxe-vxd/decoder/vxd_v4l2.c
+@@ -1792,7 +1792,26 @@ static int job_ready(void *priv)
+ static void job_abort(void *priv)
+ {
+ 	struct vxd_dec_ctx *ctx = priv;
++	struct vb2_v4l2_buffer  *dst_vb;
++	struct vxd_buffer *dst_vxdb;
++	dst_vb = v4l2_m2m_dst_buf_remove(ctx->fh.m2m_ctx);
++	dst_vxdb = container_of(dst_vb, struct vxd_buffer, buffer.vb);
++
++	if (ctx->core_streaming) {
++		core_stream_stop(ctx->res_str_id);
++		ctx->core_streaming = FALSE;
++
++		core_stream_flush(ctx->res_str_id, TRUE);
++	}
++
++	pr_err("%s %d, dst_vxdb->buf_map_id %d\n",__func__,__LINE__, dst_vxdb->buf_map_id);
++	vxd_return_resource((void *)ctx, VXD_CB_PICT_DECODED, dst_vxdb->buf_map_id);
++
++	vxd_return_resource((void *)ctx, VXD_CB_PICT_DISPLAY, dst_vxdb->buf_map_id);
++
++	vxd_return_resource((void *)ctx, VXD_CB_PICT_RELEASE, dst_vxdb->buf_map_id);
+ 
++	vxd_return_resource((void *)ctx, VXD_CB_STR_END, 0);
+ 	/* Cancel the transaction at next callback */
+ 	ctx->aborting = 1;
+ }
+-- 
+2.17.1
+

@@ -1,144 +1,30 @@
-From 7ce8ba3ed1171422bafccba8f34c644b5b8f1eda Mon Sep 17 00:00:00 2001
-From: Robert Nelson <robertcnelson@gmail.com>
-Date: Sat, 5 Feb 2022 14:24:38 -0600
-Subject: [PATCH] ti-dma-buff
+From 243280b3b44579d57f58e3db6dcb6d2c6daacd42 Mon Sep 17 00:00:00 2001
+From: "Andrew F. Davis" <afd@ti.com>
+Date: Fri, 31 Jan 2020 16:13:28 -0500
+Subject: [PATCH 2/2] HACK: misc: Add dma-buf to physical address exporter
 
-Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+This is driver allows user-space to attach a DMA-BUF and
+receive back its CPU physical address. This is a temporary
+solution to allow CMEM like functionality from allocated
+buffers. This is a hack and this will be removed when proper
+solutions are implemented.
+
+Signed-off-by: Andrew F. Davis <afd@ti.com>
+Signed-off-by: Gowtham Tammana <g-tammana@ti.com>
 ---
- .../bindings/misc/ti,dma_buf_phys.yaml        |  32 +++
- drivers/dma-buf/heaps/carveout-heap.c         |  20 +-
- drivers/misc/Kconfig                          |   5 +
- drivers/misc/Makefile                         |   1 +
- drivers/misc/dma-buf-phys.c                   | 231 ++++++++++++++++++
- include/uapi/linux/dma_buf_phys.h             |  35 +++
- 6 files changed, 318 insertions(+), 6 deletions(-)
- create mode 100644 Documentation/devicetree/bindings/misc/ti,dma_buf_phys.yaml
+ drivers/misc/Kconfig              |   5 +
+ drivers/misc/Makefile             |   1 +
+ drivers/misc/dma-buf-phys.c       | 231 ++++++++++++++++++++++++++++++
+ include/uapi/linux/dma_buf_phys.h |  35 +++++
+ 4 files changed, 272 insertions(+)
  create mode 100644 drivers/misc/dma-buf-phys.c
  create mode 100644 include/uapi/linux/dma_buf_phys.h
 
-diff --git a/Documentation/devicetree/bindings/misc/ti,dma_buf_phys.yaml b/Documentation/devicetree/bindings/misc/ti,dma_buf_phys.yaml
-new file mode 100644
-index 000000000000..998bb2943e00
---- /dev/null
-+++ b/Documentation/devicetree/bindings/misc/ti,dma_buf_phys.yaml
-@@ -0,0 +1,32 @@
-+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+# Copyright 2021 Texas Instruments Incorporated
-+%YAML 1.2
-+---
-+$id: "http://devicetree.org/schemas/misc/ti,dma_buf_phys.yaml#"
-+$schema: "http://devicetree.org/meta-schemas/core.yaml#"
-+
-+title: DMA-BUF contiguous buffer physical address user-space exporter
-+
-+maintainer: Gowtham Tammana <g-tammana@ti.com>
-+
-+description: |
-+  Driver allowing user-space attaching of DMA-BUFs returning CPU
-+  physical addresses. The reasoning for making this act like a regular
-+  device described by DT is so the virtual device that binds the buffer
-+  can be made to act as if it is out on a bus or behind an IOMMU, for
-+  example.
-+
-+properties:
-+  compatible:
-+    const: ti,dma_buf_phys
-+
-+required:
-+  - compatible
-+
-+examples:
-+  - |
-+    dma_buf_phys {
-+            compatible = "ti,dma_buf_phys";
-+            iommus = <&some_iommu>;
-+            dma-coherent;
-+    };
-diff --git a/drivers/dma-buf/heaps/carveout-heap.c b/drivers/dma-buf/heaps/carveout-heap.c
-index de0d5bcd59d3..e027c117d02e 100644
---- a/drivers/dma-buf/heaps/carveout-heap.c
-+++ b/drivers/dma-buf/heaps/carveout-heap.c
-@@ -19,6 +19,7 @@
- struct carveout_dma_heap {
- 	struct dma_heap *heap;
- 	struct gen_pool *pool;
-+	bool cached;
- };
- 
- struct carveout_dma_heap_buffer {
-@@ -30,6 +31,7 @@ struct carveout_dma_heap_buffer {
- 	unsigned long len;
- 	void *vaddr;
- 	phys_addr_t paddr;
-+	bool cached;
- };
- 
- struct dma_heap_attachment {
-@@ -127,8 +129,8 @@ static int dma_heap_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
- 	struct carveout_dma_heap_buffer *buffer = dmabuf->priv;
- 	int ret;
- 
--	/* Carveouts are not cached */
--	vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
-+	if (!buffer->cached)
-+		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
- 
- 	ret = vm_iomap_memory(vma, buffer->paddr, buffer->len);
- 	if (ret)
-@@ -149,7 +151,10 @@ static void *dma_heap_vmap(struct dma_buf *dmabuf)
- 		vaddr = buffer->vaddr;
- 		goto exit;
- 	}
--	vaddr = memremap(buffer->paddr, buffer->len, MEMREMAP_WC);
-+	if (buffer->cached)
-+		vaddr = memremap(buffer->paddr, buffer->len, MEMREMAP_WB);
-+	else
-+		vaddr = memremap(buffer->paddr, buffer->len, MEMREMAP_WC);
- 	if (!vaddr) {
- 		pr_err("Could not memremap buffer\n");
- 		goto exit;
-@@ -203,6 +208,7 @@ static int carveout_dma_heap_allocate(struct dma_heap *heap,
- 	if (!buffer)
- 		return -ENOMEM;
- 	buffer->pool = carveout_dma_heap->pool;
-+	buffer->cached = carveout_dma_heap->cached;
- 	INIT_LIST_HEAD(&buffer->attachments);
- 	mutex_init(&buffer->attachments_lock);
- 	mutex_init(&buffer->vmap_lock);
-@@ -246,7 +252,7 @@ static struct dma_heap_ops carveout_dma_heap_ops = {
- 	.allocate = carveout_dma_heap_allocate,
- };
- 
--int carveout_dma_heap_export(phys_addr_t base, size_t size, const char *name)
-+int carveout_dma_heap_export(phys_addr_t base, size_t size, const char *name, bool cached)
- {
- 	struct carveout_dma_heap *carveout_dma_heap;
- 	struct dma_heap_export_info exp_info;
-@@ -268,6 +274,8 @@ int carveout_dma_heap_export(phys_addr_t base, size_t size, const char *name)
- 		goto free_pool;
- 	}
- 
-+	carveout_dma_heap->cached = cached;
-+
- 	exp_info.name = name;
- 	exp_info.ops = &carveout_dma_heap_ops;
- 	exp_info.priv = carveout_dma_heap;
-@@ -304,8 +312,8 @@ static int __init carveout_dma_heap_init_areas(void)
- 
- 	for (i = 0; i < heap_area_count; i++) {
- 		struct reserved_mem *rmem = &heap_areas[i];
--		int ret = carveout_dma_heap_export(rmem->base, rmem->size, rmem->name);
--
-+		bool cached = !of_get_flat_dt_prop(rmem->fdt_node, "no-map", NULL);
-+		int ret = carveout_dma_heap_export(rmem->base, rmem->size, rmem->name, cached);
- 		if (ret) {
- 			pr_err("Carveout Heap: could not export as DMA-Heap\n");
- 			return ret;
 diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
-index d16e1013942a..ccba9d0f6f38 100644
+index fafa8b0d8099..aedb0fa722aa 100644
 --- a/drivers/misc/Kconfig
 +++ b/drivers/misc/Kconfig
-@@ -473,6 +473,11 @@ config HISI_HIKEY_USB
+@@ -466,6 +466,11 @@ config HISI_HIKEY_USB
  	  switching between the dual-role USB-C port and the USB-A host ports
  	  using only one USB controller.
  
@@ -151,10 +37,10 @@ index d16e1013942a..ccba9d0f6f38 100644
  source "drivers/misc/eeprom/Kconfig"
  source "drivers/misc/cb710/Kconfig"
 diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
-index 07c7197d4a1e..4b0ac87c7631 100644
+index d23231e73330..6d3140a6159b 100644
 --- a/drivers/misc/Makefile
 +++ b/drivers/misc/Makefile
-@@ -58,3 +58,4 @@ obj-$(CONFIG_HABANA_AI)		+= habanalabs/
+@@ -57,3 +57,4 @@ obj-$(CONFIG_HABANA_AI)		+= habanalabs/
  obj-$(CONFIG_UACCE)		+= uacce/
  obj-$(CONFIG_XILINX_SDFEC)	+= xilinx_sdfec.o
  obj-$(CONFIG_HISI_HIKEY_USB)	+= hisi_hikey_usb.o
@@ -438,5 +324,5 @@ index 000000000000..72d9d9e4b225
 +
 +#endif /* DMA_BUF_PHYS_H */
 -- 
-2.30.2
+2.32.0
 

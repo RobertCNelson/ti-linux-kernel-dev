@@ -119,6 +119,19 @@ external_git () {
 		echo "${top_of_branch}"
 	fi
 	#exit 2
+
+	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-Add-DTB-overlays-for-vision-apps-and-ed.patch"
+	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-k3-j721e-common-proc-board.dts-Add-the-.patch"
+	${git} "${DIR}/patches/j7-evm/0001-HACK-dt-bindings-misc-Add-ti-dma_buf_phys-bindig-doc.patch"
+	${git} "${DIR}/patches/j7-evm/0002-HACK-misc-Add-dma-buf-to-physical-address-exporter.patch"
+	${git} "${DIR}/patches/j7-evm/0001-HACK-dma-buf-heaps-carveout-Add-support-for-cached-c.patch"
+	${git} "${DIR}/patches/j7-evm/0001-media-ti-j721e-csi2rx-Add-RAW8-and-RAW10-pixel-forma.patch"
+	${git} "${DIR}/patches/j7-evm/0002-media-cadence-Extend-format-to-support-RAW-data-for-.patch"
+	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-Add-DTB-overlay-for-RPi-expansion-heade.patch"
+	${git} "${DIR}/patches/j7-evm/0001-v4l-vxd-dec-Flushing-all-the-IO-buffers-and-releasin.patch"
+	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-k3-j721e-Changes-for-enabling-HW-PWM-on.patch"
+
+	#exit 2
 }
 
 aufs_fail () {
@@ -463,9 +476,6 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/src/arm64/* arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
-		device="k3-j721e-edgeai-apps.dtb" ; dtb_makefile_append
-		device="k3-j721e-sk-rpi-exp-header.dtb" ; dtb_makefile_append
-		device="k3-j721e-vision-apps.dtb" ; dtb_makefile_append
 		device="k3-j721e-beagleboneai64.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm64/boot/dts/ti/
@@ -588,8 +598,6 @@ drivers () {
 	${git} "${DIR}/patches/fixes/0002-v2-usb-gadget-composite-Fix-null-pointer-exception.patch"
 	dir 'tusb322'
 	dir 'boris'
-	dir 'dma-buff'
-	dir 'csi2rx'
 }
 
 ###
