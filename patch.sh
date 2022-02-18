@@ -593,9 +593,8 @@ drivers () {
 	dir 'drivers/spi'
 	dir 'drivers/eqep'
 	dir 'mikrobus'
-	#dir 'fixes'
-	#${git} "${DIR}/patches/fixes/0001-fix-pcie.patch"
-	${git} "${DIR}/patches/fixes/0002-v2-usb-gadget-composite-Fix-null-pointer-exception.patch"
+	dir 'pcie_reverts'
+	dir 'fixes'
 	dir 'tusb322'
 	dir 'boris'
 }
