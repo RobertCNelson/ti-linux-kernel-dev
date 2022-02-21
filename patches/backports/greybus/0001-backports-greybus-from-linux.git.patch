@@ -1,6 +1,6 @@
-From 93cea76ee2cebb2b34e17d1c9054856ba28e4c0a Mon Sep 17 00:00:00 2001
+From 87185c5e3eb4295cb9b6fc48fc365decbab50d81 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Sun, 6 Feb 2022 14:21:27 -0600
+Date: Mon, 21 Feb 2022 15:01:16 -0600
 Subject: [PATCH] backports: greybus: from: linux.git
 
 Reference: v5.12.19
@@ -9,18 +9,18 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/greybus/es2.c                         |   9 +-
  drivers/greybus/greybus_trace.h               |   6 +-
  drivers/staging/greybus/TODO                  |   2 +
- drivers/staging/greybus/audio_codec.c         | 109 +++++++-----------
+ drivers/staging/greybus/audio_codec.c         | 109 ++++++-----------
  drivers/staging/greybus/audio_helper.c        |  10 +-
  .../staging/greybus/audio_manager_module.c    |   3 +-
  drivers/staging/greybus/audio_manager_sysfs.c |   4 +-
  drivers/staging/greybus/audio_module.c        |  10 +-
- drivers/staging/greybus/audio_topology.c      |   6 +-
+ drivers/staging/greybus/audio_topology.c      | 113 ++++++++----------
  drivers/staging/greybus/hid.c                 |   6 +-
  drivers/staging/greybus/light.c               |   3 +-
  drivers/staging/greybus/power_supply.c        |   2 +-
  drivers/staging/greybus/spilib.c              |   4 +-
  drivers/staging/greybus/uart.c                |  62 +++++-----
- 14 files changed, 97 insertions(+), 139 deletions(-)
+ 14 files changed, 144 insertions(+), 199 deletions(-)
 
 diff --git a/drivers/greybus/es2.c b/drivers/greybus/es2.c
 index 1df6ab5d339d..48ad154df3a7 100644
@@ -461,10 +461,20 @@ index c52c4f361b90..0f9fdc077b4c 100644
  	desc.pid = 3; /* todo */
  	desc.intf_id = gbmodule->dev_id;
 diff --git a/drivers/staging/greybus/audio_topology.c b/drivers/staging/greybus/audio_topology.c
-index 662e3e8b4b63..e816e4db555e 100644
+index e1579f356af5..e816e4db555e 100644
 --- a/drivers/staging/greybus/audio_topology.c
 +++ b/drivers/staging/greybus/audio_topology.c
-@@ -200,7 +200,7 @@ static int gbcodec_mixer_ctl_info(struct snd_kcontrol *kcontrol,
+@@ -147,9 +147,6 @@ static const char **gb_generate_enum_strings(struct gbaudio_module_info *gb,
+ 
+ 	items = le32_to_cpu(gbenum->items);
+ 	strings = devm_kcalloc(gb->dev, items, sizeof(char *), GFP_KERNEL);
+-	if (!strings)
+-		return NULL;
+-
+ 	data = gbenum->names;
+ 
+ 	for (i = 0; i < items; i++) {
+@@ -203,7 +200,7 @@ static int gbcodec_mixer_ctl_info(struct snd_kcontrol *kcontrol,
  			return -EINVAL;
  		name = gbaudio_map_controlid(module, data->ctl_id,
  					     uinfo->value.enumerated.item);
@@ -473,7 +483,81 @@ index 662e3e8b4b63..e816e4db555e 100644
  		break;
  	default:
  		dev_err(comp->dev, "Invalid type: %d for %s:kcontrol\n",
-@@ -1047,7 +1047,7 @@ static int gbaudio_tplg_create_widget(struct gbaudio_module_info *module,
+@@ -658,8 +655,6 @@ static int gbaudio_tplg_create_enum_kctl(struct gbaudio_module_info *gb,
+ 	/* since count=1, and reg is dummy */
+ 	gbe->items = le32_to_cpu(gb_enum->items);
+ 	gbe->texts = gb_generate_enum_strings(gb, gb_enum);
+-	if (!gbe->texts)
+-		return -ENOMEM;
+ 
+ 	/* debug enum info */
+ 	dev_dbg(gb->dev, "Max:%d, name_length:%d\n", gbe->items,
+@@ -867,8 +862,6 @@ static int gbaudio_tplg_create_enum_ctl(struct gbaudio_module_info *gb,
+ 	/* since count=1, and reg is dummy */
+ 	gbe->items = le32_to_cpu(gb_enum->items);
+ 	gbe->texts = gb_generate_enum_strings(gb, gb_enum);
+-	if (!gbe->texts)
+-		return -ENOMEM;
+ 
+ 	/* debug enum info */
+ 	dev_dbg(gb->dev, "Max:%d, name_length:%d\n", gbe->items,
+@@ -981,44 +974,6 @@ static int gbaudio_widget_event(struct snd_soc_dapm_widget *w,
+ 	return ret;
+ }
+ 
+-static const struct snd_soc_dapm_widget gbaudio_widgets[] = {
+-	[snd_soc_dapm_spk]	= SND_SOC_DAPM_SPK(NULL, gbcodec_event_spk),
+-	[snd_soc_dapm_hp]	= SND_SOC_DAPM_HP(NULL, gbcodec_event_hp),
+-	[snd_soc_dapm_mic]	= SND_SOC_DAPM_MIC(NULL, gbcodec_event_int_mic),
+-	[snd_soc_dapm_output]	= SND_SOC_DAPM_OUTPUT(NULL),
+-	[snd_soc_dapm_input]	= SND_SOC_DAPM_INPUT(NULL),
+-	[snd_soc_dapm_switch]	= SND_SOC_DAPM_SWITCH_E(NULL, SND_SOC_NOPM,
+-					0, 0, NULL,
+-					gbaudio_widget_event,
+-					SND_SOC_DAPM_PRE_PMU |
+-					SND_SOC_DAPM_POST_PMD),
+-	[snd_soc_dapm_pga]	= SND_SOC_DAPM_PGA_E(NULL, SND_SOC_NOPM,
+-					0, 0, NULL, 0,
+-					gbaudio_widget_event,
+-					SND_SOC_DAPM_PRE_PMU |
+-					SND_SOC_DAPM_POST_PMD),
+-	[snd_soc_dapm_mixer]	= SND_SOC_DAPM_MIXER_E(NULL, SND_SOC_NOPM,
+-					0, 0, NULL, 0,
+-					gbaudio_widget_event,
+-					SND_SOC_DAPM_PRE_PMU |
+-					SND_SOC_DAPM_POST_PMD),
+-	[snd_soc_dapm_mux]	= SND_SOC_DAPM_MUX_E(NULL, SND_SOC_NOPM,
+-					0, 0, NULL,
+-					gbaudio_widget_event,
+-					SND_SOC_DAPM_PRE_PMU |
+-					SND_SOC_DAPM_POST_PMD),
+-	[snd_soc_dapm_aif_in]	= SND_SOC_DAPM_AIF_IN_E(NULL, NULL, 0,
+-					SND_SOC_NOPM, 0, 0,
+-					gbaudio_widget_event,
+-					SND_SOC_DAPM_PRE_PMU |
+-					SND_SOC_DAPM_POST_PMD),
+-	[snd_soc_dapm_aif_out]	= SND_SOC_DAPM_AIF_OUT_E(NULL, NULL, 0,
+-					SND_SOC_NOPM, 0, 0,
+-					gbaudio_widget_event,
+-					SND_SOC_DAPM_PRE_PMU |
+-					SND_SOC_DAPM_POST_PMD),
+-};
+-
+ static int gbaudio_tplg_create_widget(struct gbaudio_module_info *module,
+ 				      struct snd_soc_dapm_widget *dw,
+ 				      struct gb_audio_widget *w, int *w_size)
+@@ -1079,10 +1034,6 @@ static int gbaudio_tplg_create_widget(struct gbaudio_module_info *module,
+ 			csize += le16_to_cpu(gbenum->names_length);
+ 			control->texts = (const char * const *)
+ 				gb_generate_enum_strings(module, gbenum);
+-			if (!control->texts) {
+-				ret = -ENOMEM;
+-				goto error;
+-			}
+ 			control->items = le32_to_cpu(gbenum->items);
+ 		} else {
+ 			csize = sizeof(struct gb_audio_control);
+@@ -1096,42 +1047,82 @@ static int gbaudio_tplg_create_widget(struct gbaudio_module_info *module,
  	}
  
  	/* Prefix dev_id to widget control_name */
@@ -482,7 +566,89 @@ index 662e3e8b4b63..e816e4db555e 100644
  	snprintf(w->name, NAME_SIZE, "GB %d %s", module->dev_id, temp_name);
  
  	switch (w->type) {
-@@ -1169,7 +1169,7 @@ static int gbaudio_tplg_process_kcontrols(struct gbaudio_module_info *module,
+ 	case snd_soc_dapm_spk:
+-		*dw = gbaudio_widgets[w->type];
++		*dw = (struct snd_soc_dapm_widget)
++			SND_SOC_DAPM_SPK(w->name, gbcodec_event_spk);
+ 		module->op_devices |= GBAUDIO_DEVICE_OUT_SPEAKER;
+ 		break;
+ 	case snd_soc_dapm_hp:
+-		*dw = gbaudio_widgets[w->type];
++		*dw = (struct snd_soc_dapm_widget)
++			SND_SOC_DAPM_HP(w->name, gbcodec_event_hp);
+ 		module->op_devices |= (GBAUDIO_DEVICE_OUT_WIRED_HEADSET
+ 					| GBAUDIO_DEVICE_OUT_WIRED_HEADPHONE);
+ 		module->ip_devices |= GBAUDIO_DEVICE_IN_WIRED_HEADSET;
+ 		break;
+ 	case snd_soc_dapm_mic:
+-		*dw = gbaudio_widgets[w->type];
++		*dw = (struct snd_soc_dapm_widget)
++			SND_SOC_DAPM_MIC(w->name, gbcodec_event_int_mic);
+ 		module->ip_devices |= GBAUDIO_DEVICE_IN_BUILTIN_MIC;
+ 		break;
+ 	case snd_soc_dapm_output:
++		*dw = (struct snd_soc_dapm_widget)SND_SOC_DAPM_OUTPUT(w->name);
++		break;
+ 	case snd_soc_dapm_input:
++		*dw = (struct snd_soc_dapm_widget)SND_SOC_DAPM_INPUT(w->name);
++		break;
+ 	case snd_soc_dapm_switch:
++		*dw = (struct snd_soc_dapm_widget)
++			SND_SOC_DAPM_SWITCH_E(w->name, SND_SOC_NOPM, 0, 0,
++					      widget_kctls,
++					      gbaudio_widget_event,
++					      SND_SOC_DAPM_PRE_PMU |
++					      SND_SOC_DAPM_POST_PMD);
++		break;
+ 	case snd_soc_dapm_pga:
++		*dw = (struct snd_soc_dapm_widget)
++			SND_SOC_DAPM_PGA_E(w->name, SND_SOC_NOPM, 0, 0, NULL, 0,
++					   gbaudio_widget_event,
++					   SND_SOC_DAPM_PRE_PMU |
++					   SND_SOC_DAPM_POST_PMD);
++		break;
+ 	case snd_soc_dapm_mixer:
++		*dw = (struct snd_soc_dapm_widget)
++			SND_SOC_DAPM_MIXER_E(w->name, SND_SOC_NOPM, 0, 0, NULL,
++					     0, gbaudio_widget_event,
++					     SND_SOC_DAPM_PRE_PMU |
++					     SND_SOC_DAPM_POST_PMD);
++		break;
+ 	case snd_soc_dapm_mux:
+-		*dw = gbaudio_widgets[w->type];
++		*dw = (struct snd_soc_dapm_widget)
++			SND_SOC_DAPM_MUX_E(w->name, SND_SOC_NOPM, 0, 0,
++					   widget_kctls, gbaudio_widget_event,
++					   SND_SOC_DAPM_PRE_PMU |
++					   SND_SOC_DAPM_POST_PMD);
+ 		break;
+ 	case snd_soc_dapm_aif_in:
++		*dw = (struct snd_soc_dapm_widget)
++			SND_SOC_DAPM_AIF_IN_E(w->name, w->sname, 0,
++					      SND_SOC_NOPM,
++					      0, 0, gbaudio_widget_event,
++					      SND_SOC_DAPM_PRE_PMU |
++					      SND_SOC_DAPM_POST_PMD);
++		break;
+ 	case snd_soc_dapm_aif_out:
+-		*dw = gbaudio_widgets[w->type];
+-		dw->sname = w->sname;
++		*dw = (struct snd_soc_dapm_widget)
++			SND_SOC_DAPM_AIF_OUT_E(w->name, w->sname, 0,
++					       SND_SOC_NOPM,
++					       0, 0, gbaudio_widget_event,
++					       SND_SOC_DAPM_PRE_PMU |
++					       SND_SOC_DAPM_POST_PMD);
+ 		break;
+ 	default:
+ 		ret = -EINVAL;
+ 		goto error;
+ 	}
+-	dw->name = w->name;
+ 
+ 	dev_dbg(module->dev, "%s: widget of type %d created\n", dw->name,
+ 		dw->id);
+@@ -1178,7 +1169,7 @@ static int gbaudio_tplg_process_kcontrols(struct gbaudio_module_info *module,
  		}
  		control->id = curr->id;
  		/* Prefix dev_id to widget_name */
@@ -491,6 +657,17 @@ index 662e3e8b4b63..e816e4db555e 100644
  		snprintf(curr->name, NAME_SIZE, "GB %d %s", module->dev_id,
  			 temp_name);
  		control->name = curr->name;
+@@ -1192,10 +1183,6 @@ static int gbaudio_tplg_process_kcontrols(struct gbaudio_module_info *module,
+ 			csize += le16_to_cpu(gbenum->names_length);
+ 			control->texts = (const char * const *)
+ 				gb_generate_enum_strings(module, gbenum);
+-			if (!control->texts) {
+-				ret = -ENOMEM;
+-				goto error;
+-			}
+ 			control->items = le32_to_cpu(gbenum->items);
+ 		} else {
+ 			csize = sizeof(struct gb_audio_control);
 diff --git a/drivers/staging/greybus/hid.c b/drivers/staging/greybus/hid.c
 index ed706f39e87a..adb91286803a 100644
 --- a/drivers/staging/greybus/hid.c
