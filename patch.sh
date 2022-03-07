@@ -593,11 +593,9 @@ drivers () {
 	dir 'drivers/spi'
 	dir 'drivers/eqep'
 	dir 'mikrobus'
-	#dir 'pcie_reverts'
+	dir 'pcie'
+	dir 'usb'
 	#dir 'fixes'
-	${git} "${DIR}/patches/fixes/0001-HACK-Sierra-Drive-clock-out.patch"
-	#${git} "${DIR}/patches/fixes/0001-fix-pcie.patch"
-	${git} "${DIR}/patches/fixes/0002-v2-usb-gadget-composite-Fix-null-pointer-exception.patch"
 
 	dir 'tusb322'
 	dir 'boris'
