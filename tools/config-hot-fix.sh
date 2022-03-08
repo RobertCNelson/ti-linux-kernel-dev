@@ -82,7 +82,17 @@ config="CONFIG_WIMAX" ; config_disable
 config="CONFIG_WIMAX_I2400M" ; config_disable
 config="CONFIG_WIMAX_I2400M_USB" ; config_disable
 
+#Docker.io:
+config="CONFIG_CGROUP_HUGETLB" ; config_enable
+config="CONFIG_RT_GROUP_SCHED" ; config_enable
+
 #PHY: CONFIG_DP83867_PHY
 config="CONFIG_DP83867_PHY" ; config_enable
+
+#2022.03.01 fix W1, needs to be a module now...
+config="CONFIG_W1" ; config_module
+config="CONFIG_W1_MASTER_GPIO" ; config_module
+config="CONFIG_W1_SLAVE_DS2430" ; config_module
+config="CONFIG_W1_SLAVE_DS2433_CRC" ; config_enable
 
 cd ${DIR}/

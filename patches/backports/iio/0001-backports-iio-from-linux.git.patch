@@ -1,9 +1,9 @@
-From a9e63aec539641b61d3716daba8406e5f9c66008 Mon Sep 17 00:00:00 2001
+From 64b07f2db4956cbd0fb975ccc35b20092ae35614 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Sat, 5 Feb 2022 17:48:10 -0600
+Date: Tue, 8 Mar 2022 15:08:31 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v4.19.227
+Reference: v4.19.233
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/adis16201.c                 |  2 +-
@@ -29,6 +29,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/ina2xx-adc.c                  | 11 ++-
  drivers/iio/adc/max1118.c                     | 10 +-
  drivers/iio/adc/mcp3422.c                     | 16 ++--
+ drivers/iio/adc/men_z188_adc.c                |  9 +-
  drivers/iio/adc/mxs-lradc-adc.c               |  3 +-
  drivers/iio/adc/palmas_gpadc.c                |  4 +-
  drivers/iio/adc/qcom-spmi-vadc.c              |  2 +-
@@ -108,7 +109,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/staging/iio/cdc/ad7746.c              |  1 -
  drivers/staging/iio/resolver/ad2s1210.c       | 17 +++-
  include/linux/iio/iio.h                       |  2 +-
- 102 files changed, 1007 insertions(+), 418 deletions(-)
+ 103 files changed, 1015 insertions(+), 419 deletions(-)
 
 diff --git a/drivers/iio/accel/adis16201.c b/drivers/iio/accel/adis16201.c
 index 4c1d482ea73a..94a80f8fdd10 100644
@@ -1127,6 +1128,34 @@ index 819f26011500..4ee4ca35c255 100644
  }
  
  static int mcp3422_read_raw(struct iio_dev *iio,
+diff --git a/drivers/iio/adc/men_z188_adc.c b/drivers/iio/adc/men_z188_adc.c
+index c80261748d8f..49827bb64897 100644
+--- a/drivers/iio/adc/men_z188_adc.c
++++ b/drivers/iio/adc/men_z188_adc.c
+@@ -106,6 +106,7 @@ static int men_z188_probe(struct mcb_device *dev,
+ 	struct z188_adc *adc;
+ 	struct iio_dev *indio_dev;
+ 	struct resource *mem;
++	int ret;
+ 
+ 	indio_dev = devm_iio_device_alloc(&dev->dev, sizeof(struct z188_adc));
+ 	if (!indio_dev)
+@@ -132,8 +133,14 @@ static int men_z188_probe(struct mcb_device *dev,
+ 	adc->mem = mem;
+ 	mcb_set_drvdata(dev, indio_dev);
+ 
+-	return iio_device_register(indio_dev);
++	ret = iio_device_register(indio_dev);
++	if (ret)
++		goto err_unmap;
++
++	return 0;
+ 
++err_unmap:
++	iounmap(adc->base);
+ err:
+ 	mcb_release_mem(mem);
+ 	return -ENXIO;
 diff --git a/drivers/iio/adc/mxs-lradc-adc.c b/drivers/iio/adc/mxs-lradc-adc.c
 index c627513d9f0f..fc8b70d8d64c 100644
 --- a/drivers/iio/adc/mxs-lradc-adc.c
