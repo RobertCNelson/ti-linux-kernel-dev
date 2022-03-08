@@ -633,22 +633,6 @@ patch_backports (){
 backports () {
 	backport_tag="v5.12.19"
 
-	subsystem="greybus"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/greybus/* ./drivers/greybus/
-		cp -rv ~/linux-src/drivers/staging/greybus/* ./drivers/staging/greybus/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	backport_tag="v5.12.19"
-
 	subsystem="wlcore"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -662,7 +646,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.4.177"
+	backport_tag="v5.4.183"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -942,7 +926,7 @@ fixes
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.10.98"
+		backport_tag="v5.10.104"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
