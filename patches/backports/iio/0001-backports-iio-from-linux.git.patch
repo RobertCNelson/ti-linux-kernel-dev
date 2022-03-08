@@ -1,23 +1,26 @@
-From 3def173f16f0e68868170300678a7065f1596bcb Mon Sep 17 00:00:00 2001
+From deb6c492086f37aecd25fbaa7237195bca6ae350 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Sun, 6 Feb 2022 11:41:22 -0600
+Date: Tue, 8 Mar 2022 14:22:31 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.4.177
+Reference: v5.4.183
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/adis16201.c                 |  2 +-
  drivers/iio/accel/bma180.c                    | 85 ++++++++++++-------
  drivers/iio/accel/bma220_spi.c                | 10 ++-
+ drivers/iio/accel/bmc150-accel-core.c         |  5 +-
  drivers/iio/accel/hid-sensor-accel-3d.c       | 13 +--
- drivers/iio/accel/kxcjk-1013.c                | 29 ++++---
+ drivers/iio/accel/kxcjk-1013.c                | 34 +++++---
  drivers/iio/accel/kxsd9.c                     |  6 +-
  drivers/iio/accel/mma8452.c                   |  2 +-
+ drivers/iio/accel/mma9551.c                   |  5 +-
+ drivers/iio/accel/mma9553.c                   |  5 +-
  drivers/iio/accel/mxc4005.c                   | 12 ++-
  drivers/iio/accel/stk8312.c                   | 12 ++-
  drivers/iio/accel/stk8ba50.c                  | 17 ++--
  drivers/iio/adc/Kconfig                       |  1 +
- drivers/iio/adc/ad7124.c                      | 36 ++++----
+ drivers/iio/adc/ad7124.c                      | 38 +++++----
  drivers/iio/adc/ad7768-1.c                    | 10 ++-
  drivers/iio/adc/ad7793.c                      |  1 +
  drivers/iio/adc/ad7949.c                      |  2 +-
@@ -26,6 +29,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/axp20x_adc.c                  | 18 +---
  drivers/iio/adc/dln2-adc.c                    | 21 +++--
  drivers/iio/adc/hx711.c                       |  4 +-
+ drivers/iio/adc/men_z188_adc.c                |  9 +-
  drivers/iio/adc/mt6577_auxadc.c               |  8 ++
  drivers/iio/adc/mxs-lradc-adc.c               |  3 +-
  drivers/iio/adc/palmas_gpadc.c                |  4 +-
@@ -40,7 +44,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/dac/ad5446.c                      |  9 +-
  drivers/iio/dac/ad5624r_spi.c                 | 18 +++-
  drivers/iio/dac/ti-dac5571.c                  |  1 +
- drivers/iio/gyro/bmg160_core.c                | 10 ++-
+ drivers/iio/gyro/bmg160_core.c                | 15 +++-
  drivers/iio/gyro/fxas21002c_core.c            | 13 +--
  drivers/iio/gyro/itg3200_buffer.c             |  2 +-
  drivers/iio/gyro/mpu3050-core.c               | 15 +++-
@@ -49,6 +53,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/humidity/hid-sensor-humidity.c    | 12 +--
  drivers/iio/imu/adis16400.c                   |  6 +-
  drivers/iio/imu/adis_buffer.c                 |  3 -
+ drivers/iio/imu/kmx61.c                       |  5 +-
  drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c  |  6 +-
  drivers/iio/industrialio-trigger.c            |  1 -
  drivers/iio/light/hid-sensor-prox.c           | 13 ++-
@@ -60,7 +65,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/light/tcs3472.c                   | 16 ++--
  drivers/iio/light/tsl2583.c                   |  8 ++
  drivers/iio/light/vcnl4035.c                  |  3 +-
- drivers/iio/magnetometer/bmc150_magn.c        | 21 ++---
+ drivers/iio/magnetometer/bmc150_magn.c        | 22 ++---
  drivers/iio/magnetometer/hmc5843.h            |  8 +-
  drivers/iio/magnetometer/hmc5843_core.c       |  4 +-
  drivers/iio/magnetometer/rm3100-core.c        |  3 +-
@@ -73,7 +78,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/trigger/stm32-timer-trigger.c     |  2 +-
  drivers/staging/iio/cdc/ad7746.c              |  1 -
  .../linux/iio/common/cros_ec_sensors_core.h   |  2 +-
- 67 files changed, 427 insertions(+), 255 deletions(-)
+ 72 files changed, 461 insertions(+), 263 deletions(-)
 
 diff --git a/drivers/iio/accel/adis16201.c b/drivers/iio/accel/adis16201.c
 index c4810c73b2a2..2de45587569a 100644
@@ -257,6 +262,26 @@ index cae905039cb6..71ee42b0266d 100644
  					   pf->timestamp);
  err:
  	mutex_unlock(&data->lock);
+diff --git a/drivers/iio/accel/bmc150-accel-core.c b/drivers/iio/accel/bmc150-accel-core.c
+index bcdf25f32e22..a05d55125d13 100644
+--- a/drivers/iio/accel/bmc150-accel-core.c
++++ b/drivers/iio/accel/bmc150-accel-core.c
+@@ -1649,11 +1649,14 @@ int bmc150_accel_core_probe(struct device *dev, struct regmap *regmap, int irq,
+ 	ret = iio_device_register(indio_dev);
+ 	if (ret < 0) {
+ 		dev_err(dev, "Unable to register iio device\n");
+-		goto err_trigger_unregister;
++		goto err_pm_cleanup;
+ 	}
+ 
+ 	return 0;
+ 
++err_pm_cleanup:
++	pm_runtime_dont_use_autosuspend(dev);
++	pm_runtime_disable(dev);
+ err_trigger_unregister:
+ 	bmc150_accel_unregister_triggers(data, BMC150_ACCEL_TRIGGERS - 1);
+ err_buffer_cleanup:
 diff --git a/drivers/iio/accel/hid-sensor-accel-3d.c b/drivers/iio/accel/hid-sensor-accel-3d.c
 index 0d9e2def2b25..f908476fa095 100644
 --- a/drivers/iio/accel/hid-sensor-accel-3d.c
@@ -296,7 +321,7 @@ index 0d9e2def2b25..f908476fa095 100644
  		ret = 0;
  	break;
 diff --git a/drivers/iio/accel/kxcjk-1013.c b/drivers/iio/accel/kxcjk-1013.c
-index da9452e81105..6ff6f625bbf6 100644
+index da9452e81105..bd762976a381 100644
 --- a/drivers/iio/accel/kxcjk-1013.c
 +++ b/drivers/iio/accel/kxcjk-1013.c
 @@ -132,12 +132,23 @@ enum kx_acpi_type {
@@ -353,9 +378,19 @@ index da9452e81105..6ff6f625bbf6 100644
  					   data->timestamp);
  err:
  	iio_trigger_notify_done(indio_dev->trig);
-@@ -1411,8 +1415,7 @@ static int kxcjk1013_probe(struct i2c_client *client,
+@@ -1405,14 +1409,16 @@ static int kxcjk1013_probe(struct i2c_client *client,
+ 	ret = iio_device_register(indio_dev);
+ 	if (ret < 0) {
+ 		dev_err(&client->dev, "unable to register iio device\n");
+-		goto err_buffer_cleanup;
++		goto err_pm_cleanup;
+ 	}
+ 
  	return 0;
  
++err_pm_cleanup:
++	pm_runtime_dont_use_autosuspend(&client->dev);
++	pm_runtime_disable(&client->dev);
  err_buffer_cleanup:
 -	if (data->dready_trig)
 -		iio_triggered_buffer_cleanup(indio_dev);
@@ -363,7 +398,7 @@ index da9452e81105..6ff6f625bbf6 100644
  err_trigger_unregister:
  	if (data->dready_trig)
  		iio_trigger_unregister(data->dready_trig);
-@@ -1435,8 +1438,8 @@ static int kxcjk1013_remove(struct i2c_client *client)
+@@ -1435,8 +1441,8 @@ static int kxcjk1013_remove(struct i2c_client *client)
  	pm_runtime_set_suspended(&client->dev);
  	pm_runtime_put_noidle(&client->dev);
  
@@ -408,6 +443,47 @@ index 85d453b3f5ec..eaaee6f2a978 100644
  
  	return 0;
  }
+diff --git a/drivers/iio/accel/mma9551.c b/drivers/iio/accel/mma9551.c
+index 99e4a21ca942..8315c7ee66cf 100644
+--- a/drivers/iio/accel/mma9551.c
++++ b/drivers/iio/accel/mma9551.c
+@@ -496,11 +496,14 @@ static int mma9551_probe(struct i2c_client *client,
+ 	ret = iio_device_register(indio_dev);
+ 	if (ret < 0) {
+ 		dev_err(&client->dev, "unable to register iio device\n");
+-		goto out_poweroff;
++		goto err_pm_cleanup;
+ 	}
+ 
+ 	return 0;
+ 
++err_pm_cleanup:
++	pm_runtime_dont_use_autosuspend(&client->dev);
++	pm_runtime_disable(&client->dev);
+ out_poweroff:
+ 	mma9551_set_device_state(client, false);
+ 
+diff --git a/drivers/iio/accel/mma9553.c b/drivers/iio/accel/mma9553.c
+index 312070dcf035..73e85196d0bd 100644
+--- a/drivers/iio/accel/mma9553.c
++++ b/drivers/iio/accel/mma9553.c
+@@ -1135,12 +1135,15 @@ static int mma9553_probe(struct i2c_client *client,
+ 	ret = iio_device_register(indio_dev);
+ 	if (ret < 0) {
+ 		dev_err(&client->dev, "unable to register iio device\n");
+-		goto out_poweroff;
++		goto err_pm_cleanup;
+ 	}
+ 
+ 	dev_dbg(&indio_dev->dev, "Registered device %s\n", name);
+ 	return 0;
+ 
++err_pm_cleanup:
++	pm_runtime_dont_use_autosuspend(&client->dev);
++	pm_runtime_disable(&client->dev);
+ out_poweroff:
+ 	mma9551_set_device_state(client, false);
+ 	return ret;
 diff --git a/drivers/iio/accel/mxc4005.c b/drivers/iio/accel/mxc4005.c
 index 3d5bea651923..d81b02642a0b 100644
 --- a/drivers/iio/accel/mxc4005.c
@@ -550,9 +626,18 @@ index f0af3a42f53c..cb5788084299 100644
  	select MFD_STM32_TIMERS
  	select IIO_STM32_TIMER_TRIGGER
 diff --git a/drivers/iio/adc/ad7124.c b/drivers/iio/adc/ad7124.c
-index 306bf15023a7..fa808f9c0d9a 100644
+index 306bf15023a7..635cc1e7b123 100644
 --- a/drivers/iio/adc/ad7124.c
 +++ b/drivers/iio/adc/ad7124.c
+@@ -63,7 +63,7 @@
+ #define AD7124_CONFIG_REF_SEL(x)	FIELD_PREP(AD7124_CONFIG_REF_SEL_MSK, x)
+ #define AD7124_CONFIG_PGA_MSK		GENMASK(2, 0)
+ #define AD7124_CONFIG_PGA(x)		FIELD_PREP(AD7124_CONFIG_PGA_MSK, x)
+-#define AD7124_CONFIG_IN_BUFF_MSK	GENMASK(7, 6)
++#define AD7124_CONFIG_IN_BUFF_MSK	GENMASK(6, 5)
+ #define AD7124_CONFIG_IN_BUFF(x)	FIELD_PREP(AD7124_CONFIG_IN_BUFF_MSK, x)
+ 
+ /* AD7124_FILTER_X */
 @@ -473,6 +473,13 @@ static int ad7124_of_parse_channel_config(struct iio_dev *indio_dev,
  		if (ret)
  			goto err;
@@ -964,6 +1049,34 @@ index 62e6c8badd22..a3265166fd83 100644
  	/*
  	 * delay after a rising edge on SCK until the data is ready DOUT
  	 * this is dependent on the hx711 where the datasheet tells a
+diff --git a/drivers/iio/adc/men_z188_adc.c b/drivers/iio/adc/men_z188_adc.c
+index 3b2fbb7ce431..26caee73b764 100644
+--- a/drivers/iio/adc/men_z188_adc.c
++++ b/drivers/iio/adc/men_z188_adc.c
+@@ -103,6 +103,7 @@ static int men_z188_probe(struct mcb_device *dev,
+ 	struct z188_adc *adc;
+ 	struct iio_dev *indio_dev;
+ 	struct resource *mem;
++	int ret;
+ 
+ 	indio_dev = devm_iio_device_alloc(&dev->dev, sizeof(struct z188_adc));
+ 	if (!indio_dev)
+@@ -129,8 +130,14 @@ static int men_z188_probe(struct mcb_device *dev,
+ 	adc->mem = mem;
+ 	mcb_set_drvdata(dev, indio_dev);
+ 
+-	return iio_device_register(indio_dev);
++	ret = iio_device_register(indio_dev);
++	if (ret)
++		goto err_unmap;
++
++	return 0;
+ 
++err_unmap:
++	iounmap(adc->base);
+ err:
+ 	mcb_release_mem(mem);
+ 	return -ENXIO;
 diff --git a/drivers/iio/adc/mt6577_auxadc.c b/drivers/iio/adc/mt6577_auxadc.c
 index 2449d91e4766..9cdb9084c64e 100644
 --- a/drivers/iio/adc/mt6577_auxadc.c
@@ -1267,7 +1380,7 @@ index 3a2bb0efe50d..51c41ccf00ad 100644
  	}
  
 diff --git a/drivers/iio/gyro/bmg160_core.c b/drivers/iio/gyro/bmg160_core.c
-index 428ddfc13acb..276bed47e8d6 100644
+index 428ddfc13acb..bf1355360c51 100644
 --- a/drivers/iio/gyro/bmg160_core.c
 +++ b/drivers/iio/gyro/bmg160_core.c
 @@ -96,7 +96,11 @@ struct bmg160_data {
@@ -1298,6 +1411,22 @@ index 428ddfc13acb..276bed47e8d6 100644
  					   pf->timestamp);
  err:
  	iio_trigger_notify_done(indio_dev->trig);
+@@ -1169,11 +1173,14 @@ int bmg160_core_probe(struct device *dev, struct regmap *regmap, int irq,
+ 	ret = iio_device_register(indio_dev);
+ 	if (ret < 0) {
+ 		dev_err(dev, "unable to register iio device\n");
+-		goto err_buffer_cleanup;
++		goto err_pm_cleanup;
+ 	}
+ 
+ 	return 0;
+ 
++err_pm_cleanup:
++	pm_runtime_dont_use_autosuspend(dev);
++	pm_runtime_disable(dev);
+ err_buffer_cleanup:
+ 	iio_triggered_buffer_cleanup(indio_dev);
+ err_trigger_unregister:
 diff --git a/drivers/iio/gyro/fxas21002c_core.c b/drivers/iio/gyro/fxas21002c_core.c
 index 89d2bb2282ea..45e2b5b33072 100644
 --- a/drivers/iio/gyro/fxas21002c_core.c
@@ -1554,6 +1683,29 @@ index 4998a89d083d..8f8c1a87567b 100644
  	if (adis->data->has_paging) {
  		mutex_lock(&adis->txrx_lock);
  		if (adis->current_page != 0) {
+diff --git a/drivers/iio/imu/kmx61.c b/drivers/iio/imu/kmx61.c
+index e67466100aff..c7d19f9ca765 100644
+--- a/drivers/iio/imu/kmx61.c
++++ b/drivers/iio/imu/kmx61.c
+@@ -1393,7 +1393,7 @@ static int kmx61_probe(struct i2c_client *client,
+ 	ret = iio_device_register(data->acc_indio_dev);
+ 	if (ret < 0) {
+ 		dev_err(&client->dev, "Failed to register acc iio device\n");
+-		goto err_buffer_cleanup_mag;
++		goto err_pm_cleanup;
+ 	}
+ 
+ 	ret = iio_device_register(data->mag_indio_dev);
+@@ -1406,6 +1406,9 @@ static int kmx61_probe(struct i2c_client *client,
+ 
+ err_iio_unregister_acc:
+ 	iio_device_unregister(data->acc_indio_dev);
++err_pm_cleanup:
++	pm_runtime_dont_use_autosuspend(&client->dev);
++	pm_runtime_disable(&client->dev);
+ err_buffer_cleanup_mag:
+ 	if (client->irq > 0)
+ 		iio_triggered_buffer_cleanup(data->mag_indio_dev);
 diff --git a/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c b/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
 index 057a4b010010..8850da8e25d6 100644
 --- a/drivers/iio/imu/st_lsm6dsx/st_lsm6dsx_core.c
@@ -1891,7 +2043,7 @@ index cca4db312bd3..234623ab3817 100644
  
  	ret = regmap_read(data->regmap, VCNL4035_ALS_DATA, (int *)buffer);
 diff --git a/drivers/iio/magnetometer/bmc150_magn.c b/drivers/iio/magnetometer/bmc150_magn.c
-index d4de16750b10..087dc16c2185 100644
+index d4de16750b10..ef8f429cc96f 100644
 --- a/drivers/iio/magnetometer/bmc150_magn.c
 +++ b/drivers/iio/magnetometer/bmc150_magn.c
 @@ -136,8 +136,11 @@ struct bmc150_magn_data {
@@ -1941,23 +2093,24 @@ index d4de16750b10..087dc16c2185 100644
  					   pf->timestamp);
  
  err:
-@@ -944,12 +944,14 @@ int bmc150_magn_probe(struct device *dev, struct regmap *regmap,
+@@ -944,12 +944,15 @@ int bmc150_magn_probe(struct device *dev, struct regmap *regmap,
  	ret = iio_device_register(indio_dev);
  	if (ret < 0) {
  		dev_err(dev, "unable to register iio device\n");
 -		goto err_buffer_cleanup;
-+		goto err_disable_runtime_pm;
++		goto err_pm_cleanup;
  	}
  
  	dev_dbg(dev, "Registered device %s\n", name);
  	return 0;
  
-+err_disable_runtime_pm:
++err_pm_cleanup:
++	pm_runtime_dont_use_autosuspend(dev);
 +	pm_runtime_disable(dev);
  err_buffer_cleanup:
  	iio_triggered_buffer_cleanup(indio_dev);
  err_free_irq:
-@@ -973,7 +975,6 @@ int bmc150_magn_remove(struct device *dev)
+@@ -973,7 +976,6 @@ int bmc150_magn_remove(struct device *dev)
  
  	pm_runtime_disable(dev);
  	pm_runtime_set_suspended(dev);
