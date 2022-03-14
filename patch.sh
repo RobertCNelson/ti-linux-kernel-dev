@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2021 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2022 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -593,22 +593,6 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.12.19"
-
-	subsystem="greybus"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/greybus/* ./drivers/greybus/
-		cp -rv ~/linux-src/drivers/staging/greybus/* ./drivers/staging/greybus/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
 	backport_tag="v5.13.19"
 
 	subsystem="wlcore"
@@ -639,7 +623,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.103"
+	backport_tag="v5.10.105"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -657,7 +641,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.26"
+	backport_tag="v5.15.28"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -868,7 +852,7 @@ fixes
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.16.12"
+		backport_tag="v5.16.14"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
