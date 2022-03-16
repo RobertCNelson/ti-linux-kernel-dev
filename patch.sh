@@ -623,7 +623,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.105"
+	backport_tag="v5.10.106"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -641,7 +641,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.28"
+	backport_tag="v5.15.29"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -835,6 +835,7 @@ drivers () {
 
 soc () {
 	dir 'bootup_hacks'
+	dir 'drivers/ti/uio'
 }
 
 fixes () {
@@ -852,7 +853,7 @@ fixes
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.16.14"
+		backport_tag="v5.16.15"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
