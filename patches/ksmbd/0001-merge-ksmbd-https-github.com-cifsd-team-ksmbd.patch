@@ -1,13 +1,13 @@
-From bddef459b80e447becabc6668c7e23c94da12feb Mon Sep 17 00:00:00 2001
+From e35139219915ef18952acb959ae4ff4fe79ffa74 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 8 Mar 2022 10:51:28 -0600
+Date: Wed, 16 Mar 2022 15:36:23 -0500
 Subject: [PATCH] merge: ksmbd: https://github.com/cifsd-team/ksmbd
 
-https://github.com/cifsd-team/ksmbd/commit/3bedd0eee4059d34de081eeb1d38722f78d20bfd
+https://github.com/cifsd-team/ksmbd/commit/fc1c6308ceb02282f5386c1f264b07e901bf31f2
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  fs/ksmbd/Kconfig                        |   79 +
- fs/ksmbd/Makefile                       |   62 +
+ fs/ksmbd/Makefile                       |   75 +
  fs/ksmbd/README.md                      |  180 +
  fs/ksmbd/asn1.c                         |  343 +
  fs/ksmbd/asn1.h                         |   21 +
@@ -18,6 +18,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/connection.h                   |  209 +
  fs/ksmbd/crypto_ctx.c                   |  282 +
  fs/ksmbd/crypto_ctx.h                   |   74 +
+ fs/ksmbd/dkms.conf                      |    6 +
  fs/ksmbd/glob.h                         |   58 +
  fs/ksmbd/ksmbd.rst                      |  165 +
  fs/ksmbd/ksmbd_netlink.h                |  407 ++
@@ -75,7 +76,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/vfs_cache.c                    |  750 ++
  fs/ksmbd/vfs_cache.h                    |  182 +
  fs/ksmbd/xattr.h                        |  122 +
- 69 files changed, 46335 insertions(+)
+ 70 files changed, 46354 insertions(+)
  create mode 100644 fs/ksmbd/Kconfig
  create mode 100644 fs/ksmbd/Makefile
  create mode 100644 fs/ksmbd/README.md
@@ -88,6 +89,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 fs/ksmbd/connection.h
  create mode 100644 fs/ksmbd/crypto_ctx.c
  create mode 100644 fs/ksmbd/crypto_ctx.h
+ create mode 100644 fs/ksmbd/dkms.conf
  create mode 100644 fs/ksmbd/glob.h
  create mode 100644 fs/ksmbd/ksmbd.rst
  create mode 100644 fs/ksmbd/ksmbd_netlink.h
@@ -233,10 +235,10 @@ index 000000000000..feee79529cbd
 +	default n
 diff --git a/fs/ksmbd/Makefile b/fs/ksmbd/Makefile
 new file mode 100644
-index 000000000000..99ebc635fb87
+index 000000000000..cdd01c4ab516
 --- /dev/null
 +++ b/fs/ksmbd/Makefile
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,75 @@
 +# SPDX-License-Identifier: GPL-2.0-or-later
 +#
 +# Makefile for Linux SMB3 kernel server
@@ -292,6 +294,19 @@ index 000000000000..99ebc635fb87
 +	rm -f ${MDIR}/kernel/fs/ksmbd/ksmbd.ko
 +	install -m644 -b -D ksmbd.ko ${MDIR}/kernel/fs/ksmbd/ksmbd.ko
 +	depmod -a
++
++# install dkms
++PKGVER=$(shell echo `git rev-parse --short HEAD`)
++dkms-install:
++	rm -rf "/usr/src/ksmbd*"
++	cp -r "$(PWD)" "/usr/src/ksmbd-$(PKGVER)"
++	sed -e "s/@VERSION@/$(PKGVER)/" -i "/usr/src/ksmbd-$(PKGVER)/dkms.conf"
++	dkms install -m ksmbd/$(PKGVER) --force
++
++dkms-uninstall:
++	modprobe -r ksmbd
++	dkms remove ksmbd/$(PKGVER)
++	rm -rf "/usr/src/ksmbd-$(PKGVER)"
 +
 +uninstall:
 +	rm -rf ${MDIR}/kernel/fs/ksmbd
@@ -3694,6 +3709,18 @@ index 000000000000..ef11154b43df
 +int ksmbd_crypto_create(void);
 +
 +#endif /* __CRYPTO_CTX_H__ */
+diff --git a/fs/ksmbd/dkms.conf b/fs/ksmbd/dkms.conf
+new file mode 100644
+index 000000000000..61f057559ead
+--- /dev/null
++++ b/fs/ksmbd/dkms.conf
+@@ -0,0 +1,6 @@
++PACKAGE_NAME="ksmbd"
++PACKAGE_VERSION="@VERSION@"
++MAKE="'make' KDIR=$kernel_source_dir"
++BUILT_MODULE_NAME="ksmbd"
++DEST_MODULE_LOCATION="/kernel/fs/ksmbd"
++AUTOINSTALL="yes"
 diff --git a/fs/ksmbd/glob.h b/fs/ksmbd/glob.h
 new file mode 100644
 index 000000000000..0a5c671bab81
