@@ -909,6 +909,7 @@ drivers () {
 soc () {
 	dir 'bootup_hacks'
 	dir 'jadonk'
+	dir 'drivers/ti/uio'
 }
 
 fixes () {
