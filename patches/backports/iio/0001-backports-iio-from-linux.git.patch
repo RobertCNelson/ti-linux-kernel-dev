@@ -1,9 +1,9 @@
-From 64b07f2db4956cbd0fb975ccc35b20092ae35614 Mon Sep 17 00:00:00 2001
+From 3f61d18906c1487da4fed138ea72722c2ffdc3c3 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 8 Mar 2022 15:08:31 -0600
+Date: Fri, 15 Apr 2022 16:05:54 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v4.19.233
+Reference: v4.19.238
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/adis16201.c                 |  2 +-
@@ -44,8 +44,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/ti-ads1015.c                  | 22 ++++-
  drivers/iio/adc/ti-ads8688.c                  |  3 +-
  drivers/iio/adc/ti_am335x_adc.c               | 17 ++--
+ drivers/iio/adc/twl6030-gpadc.c               |  2 +
  drivers/iio/adc/vf610_adc.c                   | 10 +-
  drivers/iio/adc/xilinx-xadc-core.c            | 95 +++++++++++++++----
+ drivers/iio/afe/iio-rescale.c                 |  8 +-
  drivers/iio/chemical/ccs811.c                 | 13 ++-
  drivers/iio/common/ssp_sensors/ssp_spi.c      | 11 ++-
  .../iio/common/st_sensors/st_sensors_core.c   |  2 +-
@@ -76,6 +78,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../iio/imu/st_lsm6dsx/st_lsm6dsx_buffer.c    | 26 ++++-
  drivers/iio/industrialio-buffer.c             | 12 ++-
  drivers/iio/industrialio-trigger.c            |  1 -
+ drivers/iio/inkern.c                          | 40 ++++++--
  drivers/iio/light/hid-sensor-prox.c           | 13 ++-
  drivers/iio/light/isl29125.c                  | 10 +-
  drivers/iio/light/ltr501.c                    | 32 ++++---
@@ -106,10 +109,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/proximity/srf08.c                 | 14 +--
  .../iio/temperature/hid-sensor-temperature.c  | 14 +--
  drivers/iio/trigger/stm32-timer-trigger.c     | 13 ++-
+ drivers/staging/iio/adc/ad7280a.c             |  4 +-
  drivers/staging/iio/cdc/ad7746.c              |  1 -
  drivers/staging/iio/resolver/ad2s1210.c       | 17 +++-
  include/linux/iio/iio.h                       |  2 +-
- 103 files changed, 1015 insertions(+), 419 deletions(-)
+ 107 files changed, 1054 insertions(+), 434 deletions(-)
 
 diff --git a/drivers/iio/accel/adis16201.c b/drivers/iio/accel/adis16201.c
 index 4c1d482ea73a..94a80f8fdd10 100644
@@ -1660,6 +1664,19 @@ index 9d984f2a8ba7..80df5a377d30 100644
  
  	return 0;
  }
+diff --git a/drivers/iio/adc/twl6030-gpadc.c b/drivers/iio/adc/twl6030-gpadc.c
+index e470510e76ea..765aaee157e2 100644
+--- a/drivers/iio/adc/twl6030-gpadc.c
++++ b/drivers/iio/adc/twl6030-gpadc.c
+@@ -927,6 +927,8 @@ static int twl6030_gpadc_probe(struct platform_device *pdev)
+ 	ret = devm_request_threaded_irq(dev, irq, NULL,
+ 				twl6030_gpadc_irq_handler,
+ 				IRQF_ONESHOT, "twl6030_gpadc", indio_dev);
++	if (ret)
++		return ret;
+ 
+ 	ret = twl6030_gpadc_enable_irq(TWL6030_GPADC_RT_SW1_EOC_MASK);
+ 	if (ret < 0) {
 diff --git a/drivers/iio/adc/vf610_adc.c b/drivers/iio/adc/vf610_adc.c
 index bbcb7a4d7edf..3e480244ad9a 100644
 --- a/drivers/iio/adc/vf610_adc.c
@@ -1879,6 +1896,33 @@ index 1ae86e7359f7..1b0046cc717b 100644
  	ret = request_irq(xadc->irq, xadc->ops->interrupt_handler, 0,
  			dev_name(&pdev->dev), indio_dev);
  	if (ret)
+diff --git a/drivers/iio/afe/iio-rescale.c b/drivers/iio/afe/iio-rescale.c
+index e9ceee66d1e7..d9c41db8155f 100644
+--- a/drivers/iio/afe/iio-rescale.c
++++ b/drivers/iio/afe/iio-rescale.c
+@@ -38,7 +38,7 @@ static int rescale_read_raw(struct iio_dev *indio_dev,
+ 			    int *val, int *val2, long mask)
+ {
+ 	struct rescale *rescale = iio_priv(indio_dev);
+-	unsigned long long tmp;
++	s64 tmp;
+ 	int ret;
+ 
+ 	switch (mask) {
+@@ -59,10 +59,10 @@ static int rescale_read_raw(struct iio_dev *indio_dev,
+ 			*val2 = rescale->denominator;
+ 			return IIO_VAL_FRACTIONAL;
+ 		case IIO_VAL_FRACTIONAL_LOG2:
+-			tmp = *val * 1000000000LL;
+-			do_div(tmp, rescale->denominator);
++			tmp = (s64)*val * 1000000000LL;
++			tmp = div_s64(tmp, rescale->denominator);
+ 			tmp *= rescale->numerator;
+-			do_div(tmp, 1000000000LL);
++			tmp = div_s64(tmp, 1000000000LL);
+ 			*val = tmp;
+ 			return ret;
+ 		default:
 diff --git a/drivers/iio/chemical/ccs811.c b/drivers/iio/chemical/ccs811.c
 index b4a46eb45789..46d5d48b58b6 100644
 --- a/drivers/iio/chemical/ccs811.c
@@ -2823,6 +2867,70 @@ index ce66699c7fcc..49d76fa7f907 100644
  
  	return trig;
  
+diff --git a/drivers/iio/inkern.c b/drivers/iio/inkern.c
+index 06ca3f7fcc44..a8ccc6e5a773 100644
+--- a/drivers/iio/inkern.c
++++ b/drivers/iio/inkern.c
+@@ -591,28 +591,50 @@ EXPORT_SYMBOL_GPL(iio_read_channel_average_raw);
+ static int iio_convert_raw_to_processed_unlocked(struct iio_channel *chan,
+ 	int raw, int *processed, unsigned int scale)
+ {
+-	int scale_type, scale_val, scale_val2, offset;
++	int scale_type, scale_val, scale_val2;
++	int offset_type, offset_val, offset_val2;
+ 	s64 raw64 = raw;
+-	int ret;
+ 
+-	ret = iio_channel_read(chan, &offset, NULL, IIO_CHAN_INFO_OFFSET);
+-	if (ret >= 0)
+-		raw64 += offset;
++	offset_type = iio_channel_read(chan, &offset_val, &offset_val2,
++				       IIO_CHAN_INFO_OFFSET);
++	if (offset_type >= 0) {
++		switch (offset_type) {
++		case IIO_VAL_INT:
++			break;
++		case IIO_VAL_INT_PLUS_MICRO:
++		case IIO_VAL_INT_PLUS_NANO:
++			/*
++			 * Both IIO_VAL_INT_PLUS_MICRO and IIO_VAL_INT_PLUS_NANO
++			 * implicitely truncate the offset to it's integer form.
++			 */
++			break;
++		case IIO_VAL_FRACTIONAL:
++			offset_val /= offset_val2;
++			break;
++		case IIO_VAL_FRACTIONAL_LOG2:
++			offset_val >>= offset_val2;
++			break;
++		default:
++			return -EINVAL;
++		}
++
++		raw64 += offset_val;
++	}
+ 
+ 	scale_type = iio_channel_read(chan, &scale_val, &scale_val2,
+ 					IIO_CHAN_INFO_SCALE);
+ 	if (scale_type < 0) {
+ 		/*
+-		 * Just pass raw values as processed if no scaling is
+-		 * available.
++		 * If no channel scaling is available apply consumer scale to
++		 * raw value and return.
+ 		 */
+-		*processed = raw;
++		*processed = raw * scale;
+ 		return 0;
+ 	}
+ 
+ 	switch (scale_type) {
+ 	case IIO_VAL_INT:
+-		*processed = raw64 * scale_val;
++		*processed = raw64 * scale_val * scale;
+ 		break;
+ 	case IIO_VAL_INT_PLUS_MICRO:
+ 		if (scale_val2 < 0)
 diff --git a/drivers/iio/light/hid-sensor-prox.c b/drivers/iio/light/hid-sensor-prox.c
 index cf5a0c242609..3c25d6bb3764 100644
 --- a/drivers/iio/light/hid-sensor-prox.c
@@ -4028,6 +4136,22 @@ index ccf1ce653b25..e7acb9421e53 100644
 +MODULE_ALIAS("platform:stm32-timer-trigger");
  MODULE_DESCRIPTION("STMicroelectronics STM32 Timer Trigger driver");
  MODULE_LICENSE("GPL v2");
+diff --git a/drivers/staging/iio/adc/ad7280a.c b/drivers/staging/iio/adc/ad7280a.c
+index 6a48ad067a8b..15422d82f812 100644
+--- a/drivers/staging/iio/adc/ad7280a.c
++++ b/drivers/staging/iio/adc/ad7280a.c
+@@ -102,9 +102,9 @@
+ static unsigned int ad7280a_devaddr(unsigned int addr)
+ {
+ 	return ((addr & 0x1) << 4) |
+-	       ((addr & 0x2) << 3) |
++	       ((addr & 0x2) << 2) |
+ 	       (addr & 0x4) |
+-	       ((addr & 0x8) >> 3) |
++	       ((addr & 0x8) >> 2) |
+ 	       ((addr & 0x10) >> 4);
+ }
+ 
 diff --git a/drivers/staging/iio/cdc/ad7746.c b/drivers/staging/iio/cdc/ad7746.c
 index f53612a6461d..18a73ee48e7c 100644
 --- a/drivers/staging/iio/cdc/ad7746.c
