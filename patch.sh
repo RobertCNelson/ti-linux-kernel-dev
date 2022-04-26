@@ -628,5 +628,32 @@ packaging () {
 	${git} "${DIR}/patches/backports/bindeb-pkg/0003-builddeb-copy-arm64-boot-Image-to-boot.patch"
 }
 
+readme () {
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
+		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
+		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
+
+		mkdir -p "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
+		cp -v "${DIR}/3rdparty/readme/bug_report.md" "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
+		cp -v "${DIR}/3rdparty/readme/FUNDING.yml" "${DIR}/KERNEL/.github/"
+
+		git add -f README.md
+		git add -f jenkins_build.sh
+		git add -f Jenkinsfile
+
+		git add -f .github/ISSUE_TEMPLATE/bug_report.md
+		git add -f .github/FUNDING.yml
+
+		git commit -a -m 'enable: Jenkins: http://gfnd.rcn-ee.org:8080' -s
+		git format-patch -1 -o "${DIR}/patches/readme"
+		exit 2
+	else
+		dir 'readme'
+	fi
+}
+
 packaging
+readme
 echo "patch.sh ran successfully"
