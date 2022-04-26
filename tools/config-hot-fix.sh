@@ -150,4 +150,7 @@ config="CONFIG_LEDS_TRIGGER_NETDEV" ; config_module
 config="CONFIG_LEDS_TRIGGER_PATTERN" ; config_module
 config="CONFIG_LEDS_TRIGGER_AUDIO" ; config_module
 
+#PRU
+config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
+
 cd ${DIR}/
