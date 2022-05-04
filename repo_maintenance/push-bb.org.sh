@@ -62,7 +62,8 @@ cat_files () {
 DIR=$PWD
 git_bin=$(which git)
 
-repo="git@github.com:beagleboard/linux.git"
+repo_github="git@github.com:beagleboard/linux.git"
+repo_gitlab="git@git.beagleboard.org:beagleboard/linux.git"
 example="bb.org"
 compare="https://github.com/RobertCNelson/ti-linux-kernel/compare"
 
@@ -95,7 +96,13 @@ if [ -e ${DIR}/version.sh ]; then
 	${git_bin} tag -a "${KERNEL_TAG}${BUILD}" -F ${wfile} -f
 
 	#push tag
-	${git_bin} push -f ${repo} "${KERNEL_TAG}${BUILD}"
+	echo "log: git: pushing tags..."
+
+	echo "log: git push -f ${repo_github} ${KERNEL_TAG}${BUILD}"
+	${git_bin} push -f ${repo_github} "${KERNEL_TAG}${BUILD}"
+
+	echo "log: git push -f ${repo_gitlab} ${KERNEL_TAG}${BUILD}"
+	${git_bin} push -f ${repo_gitlab} "${KERNEL_TAG}${BUILD}"
 
 	echo "debug: pushing ${bborg_branch}"
 
@@ -104,8 +111,13 @@ if [ -e ${DIR}/version.sh ]; then
 	${git_bin} branch -m v${KERNEL_TAG}${BUILD} ${bborg_branch}
 
 	#push branch
-	echo "log: git push -f ${repo} ${bborg_branch}"
-	${git_bin} push -f ${repo} ${bborg_branch}
+	echo "log: git: pushing branch..."
+
+	echo "log: git push -f ${repo_github} ${bborg_branch}"
+	${git_bin} push -f ${repo_github} ${bborg_branch}
+
+	echo "log: git push -f ${repo_gitlab} ${bborg_branch}"
+	${git_bin} push -f ${repo_gitlab} ${bborg_branch}
 
 	cd ${DIR}/
 fi

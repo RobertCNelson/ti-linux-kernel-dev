@@ -259,7 +259,7 @@ wpanusb () {
 }
 
 bcfserial () {
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./bcfserial ] ; then
@@ -302,7 +302,7 @@ bcfserial () {
 }
 
 ksmbd () {
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./ksmbd ] ; then
@@ -357,7 +357,7 @@ rt () {
 
 	#${git_bin} revert --no-edit xyz
 
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		wget -c https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_REL}/older/patch-${rt_patch}.patch.xz
 		xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
@@ -376,7 +376,7 @@ rt () {
 
 wireless_regdb () {
 	#https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 
 		cd ../
@@ -478,7 +478,7 @@ beagleboard_dtbs () {
 	branch="v5.10.x-ti"
 	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
 	work_dir="BeagleBoard-DeviceTrees"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
 		if [ ! -d ./${work_dir} ] ; then
@@ -596,7 +596,7 @@ backports () {
 	backport_tag="v5.13.19"
 
 	subsystem="wlcore"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -611,7 +611,7 @@ backports () {
 	backport_tag="v5.13.19"
 
 	subsystem="spidev"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -623,10 +623,10 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.112"
+	backport_tag="v5.10.113"
 
 	subsystem="iio"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -641,10 +641,10 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.35"
+	backport_tag="v5.15.36"
 
 	subsystem="pinmux"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -662,7 +662,7 @@ brcmfmac () {
 	backport_tag="v5.10.9"
 
 	subsystem="brcm80211"
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
@@ -851,12 +851,12 @@ soc
 fixes
 
 packaging () {
-	#do_backport="enable"
+	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
 		backport_tag="v5.17.4"
 
 		subsystem="bindeb-pkg"
-		#regenerate="enable"
+		regenerate="enable"
 		if [ "x${regenerate}" = "xenable" ] ; then
 			pre_backports
 
@@ -873,11 +873,12 @@ packaging () {
 }
 
 readme () {
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
 		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
 		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
+		cp -v "${DIR}/3rdparty/readme/.gitlab-ci.yml" "${DIR}/KERNEL/.gitlab-ci.yml"
 
 		mkdir -p "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
 		cp -v "${DIR}/3rdparty/readme/bug_report.md" "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
@@ -886,11 +887,12 @@ readme () {
 		git add -f README.md
 		git add -f jenkins_build.sh
 		git add -f Jenkinsfile
+		git add -f .gitlab-ci.yml
 
 		git add -f .github/ISSUE_TEMPLATE/bug_report.md
 		git add -f .github/FUNDING.yml
 
-		git commit -a -m 'enable: Jenkins: http://gfnd.rcn-ee.org:8080' -s
+		git commit -a -m 'enable: Jenkins/gitlab-ci' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
 	else
