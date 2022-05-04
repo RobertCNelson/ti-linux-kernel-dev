@@ -623,7 +623,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.112"
+	backport_tag="v5.10.113"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -641,7 +641,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.35"
+	backport_tag="v5.15.37"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -851,9 +851,9 @@ soc
 fixes
 
 packaging () {
-	#do_backport="enable"
+	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.17.4"
+		backport_tag="v5.17.5"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
@@ -878,6 +878,7 @@ readme () {
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
 		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
 		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
+		cp -v "${DIR}/3rdparty/readme/.gitlab-ci.yml" "${DIR}/KERNEL/.gitlab-ci.yml"
 
 		mkdir -p "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
 		cp -v "${DIR}/3rdparty/readme/bug_report.md" "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
@@ -886,11 +887,12 @@ readme () {
 		git add -f README.md
 		git add -f jenkins_build.sh
 		git add -f Jenkinsfile
+		git add -f .gitlab-ci.yml
 
 		git add -f .github/ISSUE_TEMPLATE/bug_report.md
 		git add -f .github/FUNDING.yml
 
-		git commit -a -m 'enable: Jenkins: http://gfnd.rcn-ee.org:8080' -s
+		git commit -a -m 'enable: Jenkins/gitlab-ci' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
 	else
