@@ -551,7 +551,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.113"
+	backport_tag="v5.10.115"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -569,7 +569,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.37"
+	backport_tag="v5.15.39"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -609,7 +609,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.17.5"
+		backport_tag="v5.17.7"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
@@ -626,7 +626,6 @@ packaging () {
 	fi
 
 	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
-	${git} "${DIR}/patches/backports/bindeb-pkg/0003-builddeb-copy-arm64-boot-Image-to-boot.patch"
 }
 
 readme () {

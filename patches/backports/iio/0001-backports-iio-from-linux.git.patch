@@ -1,17 +1,22 @@
-From cd45a33333ff9c11a26d3d27653edc9b580390e8 Mon Sep 17 00:00:00 2001
+From 0aaecf75432e3969c2f052c4138e9b3d106da4e2 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 6 May 2022 12:04:53 -0500
+Date: Fri, 13 May 2022 13:49:57 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.113
+Reference: v5.10.115
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/accel/mma8452.c       | 29 +++++++++++++---------
- drivers/iio/adc/twl6030-gpadc.c   |  2 ++
- drivers/iio/afe/iio-rescale.c     |  8 +++----
- drivers/iio/inkern.c              | 40 ++++++++++++++++++++++++-------
- drivers/staging/iio/adc/ad7280a.c |  4 ++--
- 5 files changed, 57 insertions(+), 26 deletions(-)
+ drivers/iio/accel/mma8452.c                   | 29 +++++++++-----
+ drivers/iio/adc/twl6030-gpadc.c               |  2 +
+ drivers/iio/afe/iio-rescale.c                 |  8 ++--
+ drivers/iio/dac/ad5446.c                      |  2 +-
+ drivers/iio/dac/ad5592r-base.c                |  2 +-
+ drivers/iio/imu/bmi160/bmi160_core.c          | 20 +++++++---
+ .../iio/imu/inv_icm42600/inv_icm42600_i2c.c   | 15 ++++---
+ drivers/iio/inkern.c                          | 40 ++++++++++++++-----
+ drivers/iio/magnetometer/ak8975.c             |  1 +
+ drivers/staging/iio/adc/ad7280a.c             |  4 +-
+ 10 files changed, 83 insertions(+), 40 deletions(-)
 
 diff --git a/drivers/iio/accel/mma8452.c b/drivers/iio/accel/mma8452.c
 index a7208704d31c..e7e280282774 100644
@@ -166,6 +171,114 @@ index e42ea2b1707d..3809f98894a5 100644
  			*val = tmp;
  			return ret;
  		default:
+diff --git a/drivers/iio/dac/ad5446.c b/drivers/iio/dac/ad5446.c
+index e86886ca5ee4..b168eb14c246 100644
+--- a/drivers/iio/dac/ad5446.c
++++ b/drivers/iio/dac/ad5446.c
+@@ -178,7 +178,7 @@ static int ad5446_read_raw(struct iio_dev *indio_dev,
+ 
+ 	switch (m) {
+ 	case IIO_CHAN_INFO_RAW:
+-		*val = st->cached_val;
++		*val = st->cached_val >> chan->scan_type.shift;
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_SCALE:
+ 		*val = st->vref_mv;
+diff --git a/drivers/iio/dac/ad5592r-base.c b/drivers/iio/dac/ad5592r-base.c
+index 0405e92b9e8c..987264410278 100644
+--- a/drivers/iio/dac/ad5592r-base.c
++++ b/drivers/iio/dac/ad5592r-base.c
+@@ -523,7 +523,7 @@ static int ad5592r_alloc_channels(struct iio_dev *iio_dev)
+ 		if (!ret)
+ 			st->channel_modes[reg] = tmp;
+ 
+-		fwnode_property_read_u32(child, "adi,off-state", &tmp);
++		ret = fwnode_property_read_u32(child, "adi,off-state", &tmp);
+ 		if (!ret)
+ 			st->channel_offstate[reg] = tmp;
+ 	}
+diff --git a/drivers/iio/imu/bmi160/bmi160_core.c b/drivers/iio/imu/bmi160/bmi160_core.c
+index 82f03a4dc47a..5fd61889f593 100644
+--- a/drivers/iio/imu/bmi160/bmi160_core.c
++++ b/drivers/iio/imu/bmi160/bmi160_core.c
+@@ -731,7 +731,7 @@ static int bmi160_chip_init(struct bmi160_data *data, bool use_spi)
+ 
+ 	ret = regmap_write(data->regmap, BMI160_REG_CMD, BMI160_CMD_SOFTRESET);
+ 	if (ret)
+-		return ret;
++		goto disable_regulator;
+ 
+ 	usleep_range(BMI160_SOFTRESET_USLEEP, BMI160_SOFTRESET_USLEEP + 1);
+ 
+@@ -742,29 +742,37 @@ static int bmi160_chip_init(struct bmi160_data *data, bool use_spi)
+ 	if (use_spi) {
+ 		ret = regmap_read(data->regmap, BMI160_REG_DUMMY, &val);
+ 		if (ret)
+-			return ret;
++			goto disable_regulator;
+ 	}
+ 
+ 	ret = regmap_read(data->regmap, BMI160_REG_CHIP_ID, &val);
+ 	if (ret) {
+ 		dev_err(dev, "Error reading chip id\n");
+-		return ret;
++		goto disable_regulator;
+ 	}
+ 	if (val != BMI160_CHIP_ID_VAL) {
+ 		dev_err(dev, "Wrong chip id, got %x expected %x\n",
+ 			val, BMI160_CHIP_ID_VAL);
+-		return -ENODEV;
++		ret = -ENODEV;
++		goto disable_regulator;
+ 	}
+ 
+ 	ret = bmi160_set_mode(data, BMI160_ACCEL, true);
+ 	if (ret)
+-		return ret;
++		goto disable_regulator;
+ 
+ 	ret = bmi160_set_mode(data, BMI160_GYRO, true);
+ 	if (ret)
+-		return ret;
++		goto disable_accel;
+ 
+ 	return 0;
++
++disable_accel:
++	bmi160_set_mode(data, BMI160_ACCEL, false);
++
++disable_regulator:
++	regulator_bulk_disable(ARRAY_SIZE(data->supplies), data->supplies);
++	return ret;
+ }
+ 
+ static int bmi160_data_rdy_trigger_set_state(struct iio_trigger *trig,
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c
+index 85b1934cec60..53891010a91d 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c
+@@ -18,12 +18,15 @@ static int inv_icm42600_i2c_bus_setup(struct inv_icm42600_state *st)
+ 	unsigned int mask, val;
+ 	int ret;
+ 
+-	/* setup interface registers */
+-	ret = regmap_update_bits(st->map, INV_ICM42600_REG_INTF_CONFIG6,
+-				 INV_ICM42600_INTF_CONFIG6_MASK,
+-				 INV_ICM42600_INTF_CONFIG6_I3C_EN);
+-	if (ret)
+-		return ret;
++	/*
++	 * setup interface registers
++	 * This register write to REG_INTF_CONFIG6 enables a spike filter that
++	 * is impacting the line and can prevent the I2C ACK to be seen by the
++	 * controller. So we don't test the return value.
++	 */
++	regmap_update_bits(st->map, INV_ICM42600_REG_INTF_CONFIG6,
++			   INV_ICM42600_INTF_CONFIG6_MASK,
++			   INV_ICM42600_INTF_CONFIG6_I3C_EN);
+ 
+ 	ret = regmap_update_bits(st->map, INV_ICM42600_REG_INTF_CONFIG4,
+ 				 INV_ICM42600_INTF_CONFIG4_I3C_BUS_ONLY, 0);
 diff --git a/drivers/iio/inkern.c b/drivers/iio/inkern.c
 index ede99e0d5371..8c3faa797284 100644
 --- a/drivers/iio/inkern.c
@@ -230,6 +343,18 @@ index ede99e0d5371..8c3faa797284 100644
  		break;
  	case IIO_VAL_INT_PLUS_MICRO:
  		if (scale_val2 < 0)
+diff --git a/drivers/iio/magnetometer/ak8975.c b/drivers/iio/magnetometer/ak8975.c
+index d988b6ac3659..3774e5975f77 100644
+--- a/drivers/iio/magnetometer/ak8975.c
++++ b/drivers/iio/magnetometer/ak8975.c
+@@ -389,6 +389,7 @@ static int ak8975_power_on(const struct ak8975_data *data)
+ 	if (ret) {
+ 		dev_warn(&data->client->dev,
+ 			 "Failed to enable specified Vid supply\n");
++		regulator_disable(data->vdd);
+ 		return ret;
+ 	}
+ 
 diff --git a/drivers/staging/iio/adc/ad7280a.c b/drivers/staging/iio/adc/ad7280a.c
 index fef0055b8990..20183b2ea127 100644
 --- a/drivers/staging/iio/adc/ad7280a.c

@@ -1,9 +1,9 @@
-From d89eb637b97968c74ff8a08eb4d89d8de3154703 Mon Sep 17 00:00:00 2001
+From e11a9d76a510b99a48627c3cffcc04e61d1d57ab Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 6 May 2022 12:02:09 -0500
+Date: Fri, 13 May 2022 13:47:28 -0500
 Subject: [PATCH] merge: ksmbd: https://github.com/cifsd-team/ksmbd
 
-https://github.com/cifsd-team/ksmbd/commit/2396ace8fb6bb874d360dbe5a84da955fde3864e
+https://github.com/cifsd-team/ksmbd/commit/640437d3482ca3b1a2adb6ca9da28e7904f002f2
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  fs/ksmbd/Kconfig                        |   79 +
@@ -49,11 +49,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/server.h                       |   70 +
  fs/ksmbd/smb1misc.c                     |  297 +
  fs/ksmbd/smb1ops.c                      |   93 +
- fs/ksmbd/smb1pdu.c                      | 8506 ++++++++++++++++++++++
+ fs/ksmbd/smb1pdu.c                      | 8491 ++++++++++++++++++++++
  fs/ksmbd/smb1pdu.h                      | 1600 +++++
  fs/ksmbd/smb2misc.c                     |  452 ++
  fs/ksmbd/smb2ops.c                      |  365 +
- fs/ksmbd/smb2pdu.c                      | 8685 +++++++++++++++++++++++
+ fs/ksmbd/smb2pdu.c                      | 8680 +++++++++++++++++++++++
  fs/ksmbd/smb2pdu.h                      | 1708 +++++
  fs/ksmbd/smb_common.c                   |  741 ++
  fs/ksmbd/smb_common.h                   |  534 ++
@@ -76,7 +76,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/vfs_cache.c                    |  751 ++
  fs/ksmbd/vfs_cache.h                    |  182 +
  fs/ksmbd/xattr.h                        |  122 +
- 70 files changed, 46394 insertions(+)
+ 70 files changed, 46374 insertions(+)
  create mode 100644 fs/ksmbd/Kconfig
  create mode 100644 fs/ksmbd/Makefile
  create mode 100644 fs/ksmbd/README.md
@@ -11599,10 +11599,10 @@ index 000000000000..b1e2aac1c140
 +}
 diff --git a/fs/ksmbd/smb1pdu.c b/fs/ksmbd/smb1pdu.c
 new file mode 100644
-index 000000000000..73adfe2f3aa6
+index 000000000000..319642b98372
 --- /dev/null
 +++ b/fs/ksmbd/smb1pdu.c
-@@ -0,0 +1,8506 @@
+@@ -0,0 +1,8491 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -13868,20 +13868,15 @@ index 000000000000..73adfe2f3aa6
 +	}
 +
 +	if (is_relative_root) {
-+		int org_len = strnlen(name, PATH_MAX);
-+		int add_len = strnlen(root, PATH_MAX);
 +		char *full_name;
 +
-+		/* +3 for: '\'<root>'\' & '\0' */
-+		full_name = kzalloc(org_len + add_len + 3, GFP_KERNEL);
++		full_name = kasprintf(GFP_KERNEL, "\\%s\\%s", root, name);
 +		if (!full_name) {
 +			kfree(name);
 +			rsp->hdr.Status.CifsError = STATUS_NO_MEMORY;
 +			return -ENOMEM;
 +		}
 +
-+		snprintf(full_name, add_len + 3, "\\%s\\", root);
-+		strncat(full_name, name, org_len);
 +		kfree(name);
 +		name = full_name;
 +	}
@@ -13901,6 +13896,7 @@ index 000000000000..73adfe2f3aa6
 +	if (IS_ERR(conv_name)) {
 +		rsp->hdr.Status.CifsError =
 +			STATUS_OBJECT_NAME_INVALID;
++		kfree(name);
 +		return PTR_ERR(conv_name);
 +	}
 +
@@ -17816,7 +17812,6 @@ index 000000000000..73adfe2f3aa6
 +	int data_alignment_offset = 0;
 +	int rc = 0, reclen = 0;
 +	__u16 sid;
-+	char *name = NULL;
 +	char *pathname = NULL;
 +	int header_size, srch_cnt, struct_sz;
 +
@@ -17825,16 +17820,6 @@ index 000000000000..73adfe2f3aa6
 +	req_params = (struct smb_com_trans2_fnext_req_params *)
 +		(work->request_buf + le16_to_cpu(req->ParameterOffset) + 4);
 +	sid = req_params->SearchHandle;
-+
-+	/*Currently no usage of ResumeFilename*/
-+	name = req_params->ResumeFileName;
-+	name = smb_strndup_from_utf16(name, NAME_MAX, 1, conn->local_nls);
-+	if (IS_ERR(name)) {
-+		rsp->hdr.Status.CifsError = STATUS_NO_MEMORY;
-+		return PTR_ERR(name);
-+	}
-+	ksmbd_debug(SMB, "FileName after unicode conversion %s\n", name);
-+	kfree(name);
 +
 +	dir_fp = ksmbd_lookup_fd_fast(work, sid);
 +	if (!dir_fp) {
@@ -22546,10 +22531,10 @@ index 000000000000..598ab408604a
 +}
 diff --git a/fs/ksmbd/smb2pdu.c b/fs/ksmbd/smb2pdu.c
 new file mode 100644
-index 000000000000..1caf0d4a20a5
+index 000000000000..4d096a0404de
 --- /dev/null
 +++ b/fs/ksmbd/smb2pdu.c
-@@ -0,0 +1,8685 @@
+@@ -0,0 +1,8680 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -26542,6 +26527,12 @@ index 000000000000..1caf0d4a20a5
 +	set_ctx_actor(&dir_fp->readdir_data.ctx, __query_dir);
 +
 +	rc = iterate_dir(dir_fp->filp, &dir_fp->readdir_data.ctx);
++	/*
++	 * req->OutputBufferLength is too small to contain even one entry.
++	 * In this case, it immediately returns OutputBufferLength 0 to client.
++	 */
++	if (!d_info.out_buf_len && !d_info.num_entry)
++		goto no_buf_len;
 +	if (rc == 0)
 +		restart_ctx(&dir_fp->readdir_data.ctx);
 +	if (rc == -ENOSPC)
@@ -26568,10 +26559,12 @@ index 000000000000..1caf0d4a20a5
 +		rsp->Buffer[0] = 0;
 +		inc_rfc1001_len(work->response_buf, 9);
 +	} else {
++no_buf_len:
 +		((struct file_directory_info *)
 +		((char *)rsp->Buffer + d_info.last_entry_offset))
 +		->NextEntryOffset = 0;
-+		d_info.data_count -= d_info.last_entry_off_align;
++		if (d_info.data_count >= d_info.last_entry_off_align)
++			d_info.data_count -= d_info.last_entry_off_align;
 +
 +		rsp->StructureSize = cpu_to_le16(9);
 +		rsp->OutputBufferOffset = cpu_to_le16(72);
@@ -28960,22 +28953,17 @@ index 000000000000..1caf0d4a20a5
 +	length = le32_to_cpu(req->Length);
 +	id = req->VolatileFileId;
 +
-+	if (le16_to_cpu(req->DataOffset) ==
-+	    offsetof(struct smb2_write_req, Buffer)) {
-+		data_buf = (char *)&req->Buffer[0];
-+	} else {
-+		if ((u64)le16_to_cpu(req->DataOffset) + length >
-+		    get_rfc1002_len(work->request_buf)) {
-+			pr_err("invalid write data offset %u, smb_len %u\n",
-+			       le16_to_cpu(req->DataOffset),
-+			       get_rfc1002_len(work->request_buf));
-+			err = -EINVAL;
-+			goto out;
-+		}
-+
-+		data_buf = (char *)(((char *)&req->hdr.ProtocolId) +
-+				le16_to_cpu(req->DataOffset));
++	if ((u64)le16_to_cpu(req->DataOffset) + length >
++	    get_rfc1002_len(work->request_buf)) {
++		pr_err("invalid write data offset %u, smb_len %u\n",
++		       le16_to_cpu(req->DataOffset),
++		       get_rfc1002_len(work->request_buf));
++		err = -EINVAL;
++		goto out;
 +	}
++
++	data_buf = (char *)(((char *)&req->hdr.ProtocolId) +
++			   le16_to_cpu(req->DataOffset));
 +
 +	rpc_resp = ksmbd_rpc_write(work->sess, id, data_buf, length);
 +	if (rpc_resp) {
@@ -29117,22 +29105,16 @@ index 000000000000..1caf0d4a20a5
 +
 +	if (req->Channel != SMB2_CHANNEL_RDMA_V1 &&
 +	    req->Channel != SMB2_CHANNEL_RDMA_V1_INVALIDATE) {
-+		if (le16_to_cpu(req->DataOffset) ==
-+		    offsetof(struct smb2_write_req, Buffer)) {
-+			data_buf = (char *)&req->Buffer[0];
-+		} else {
-+			if ((u64)le16_to_cpu(req->DataOffset) + length >
-+			    get_rfc1002_len(work->request_buf)) {
-+				pr_err("invalid write data offset %u, smb_len %u\n",
-+				       le16_to_cpu(req->DataOffset),
-+				       get_rfc1002_len(work->request_buf));
-+				err = -EINVAL;
-+				goto out;
-+			}
-+
-+			data_buf = (char *)(((char *)&req->hdr.ProtocolId) +
-+					le16_to_cpu(req->DataOffset));
++		if ((u64)le16_to_cpu(req->DataOffset) + length >
++		    get_rfc1002_len(work->request_buf)) {
++			pr_err("invalid write data offset %u, smb_len %u\n",
++			       le16_to_cpu(req->DataOffset),
++			       get_rfc1002_len(work->request_buf));
++			err = -EINVAL;
++			goto out;
 +		}
++		data_buf = (char *)(((char *)&req->hdr.ProtocolId) +
++				    le16_to_cpu(req->DataOffset));
 +
 +		ksmbd_debug(SMB, "flags %u\n", le32_to_cpu(req->Flags));
 +		if (le32_to_cpu(req->Flags) & SMB2_WRITEFLAG_WRITE_THROUGH)
@@ -29148,8 +29130,6 @@ index 000000000000..1caf0d4a20a5
 +		/* read data from the client using rdma channel, and
 +		 * write the data.
 +		 */
-+		pr_err("filename %pd, offset %lld, len %zu\n",
-+			    fp->filp->f_path.dentry, offset, length);
 +		nbytes = smb2_write_rdma_channel(work, req, fp, offset,
 +						 le32_to_cpu(req->RemainingBytes),
 +						 writethrough);
