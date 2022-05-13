@@ -1,5 +1,11 @@
-| kernel | normal | rt |
-|:---:|:---:|:---:|
-|4.19 | [![Build Status](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/4.19/badge/icon)](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/4.19/) | [![Build Status](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/4.19-rt/badge/icon)](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/4.19-rt/) |
-|5.4 | [![Build Status](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/5.4/badge/icon)](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/5.4/) | [![Build Status](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/5.4-rt/badge/icon)](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/5.4-rt/) |
-|5.10 | [![Build Status](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/5.10/badge/icon)](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/5.10/) | [![Build Status](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/5.10-rt/badge/icon)](http://gfnd.rcn-ee.org:8080/view/BeagleBoard/job/beagleboard_kernel_builder/job/5.10-rt/) |
+# Gitlab CI
+
+| kernel | normal |
+|:---:|:---:|
+|5.10 | [![Build Status](https://git.beagleboard.org/beagleboard/linux/badges/5.10-arm64/pipeline.svg)](https://git.beagleboard.org/beagleboard/linux/-/pipelines?page=1&scope=all&ref=5.10-arm64) |
+
+# Jenkins
+
+| kernel | normal |
+|:---:|:---:|
+|5.10 | [![Build Status](http://eewiki.org:8080/job/ci-beagleboard-linux/job/5.10-arm64/badge/icon)](http://eewiki.org:8080/job/ci-beagleboard-linux/job/5.10-arm64/) |
