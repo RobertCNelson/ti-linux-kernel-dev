@@ -1,19 +1,19 @@
-From 7d80f129f4d2778b6b427b841ba3bf9be65b3f15 Mon Sep 17 00:00:00 2001
+From de96a4ec1cf9e982d9405a69fc19fcf963910a84 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 13 May 2022 13:48:47 -0500
+Date: Wed, 25 May 2022 18:25:00 -0500
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/v5.10.x-ti-arm64
 
-https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/d72f25e9dd3431633bf476d7e5112179b075c188
+https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/a4070e54bc1e701ff857b15b260a3977403382a2
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm64/boot/dts/ti/Makefile               |    1 +
- .../boot/dts/ti/k3-j721e-beagleboneai64.dts   | 2279 +++++++++++++++++
+ .../boot/dts/ti/k3-j721e-beagleboneai64.dts   | 2400 +++++++++++++++++
  .../dts/ti/k3-j721e-common-proc-board.dts     |   56 +-
  .../boot/dts/ti/k3-j721e-edgeai-apps.dts      |    2 +-
- arch/arm64/boot/dts/ti/k3-j721e-main.dtsi     |   35 +-
- .../dts/ti/k3-j721e-rtos-memory-map-old.dtsi  |  285 +++
+ arch/arm64/boot/dts/ti/k3-j721e-main.dtsi     |   65 +-
+ .../dts/ti/k3-j721e-rtos-memory-map-old.dtsi  |  285 ++
  .../boot/dts/ti/k3-j721e-rtos-memory-map.dtsi |   34 +-
  arch/arm64/boot/dts/ti/k3-j721e-sk.dts        |   24 -
  .../boot/dts/ti/k3-j721e-vision-apps.dts      |    2 +-
@@ -22,7 +22,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/dt-bindings/board/am572x-bone-pins.h  |  179 ++
  .../dt-bindings/board/k3-j721e-bone-pins.h    |  229 ++
  include/dt-bindings/pinctrl/k3.h              |  269 ++
- 14 files changed, 3583 insertions(+), 86 deletions(-)
+ 14 files changed, 3734 insertions(+), 86 deletions(-)
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-rtos-memory-map-old.dtsi
  create mode 100644 arch/arm64/boot/dts/ti/overlays/Makefile
@@ -41,10 +41,10 @@ index 8a66994e24e2..73b84c5b4932 100644
 +dtb-$(CONFIG_ARCH_K3) += k3-j721e-beagleboneai64.dtb
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts b/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
 new file mode 100644
-index 000000000000..e4fb2a7ec20a
+index 000000000000..9050a6115dba
 --- /dev/null
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
-@@ -0,0 +1,2279 @@
+@@ -0,0 +1,2400 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright (C) 2022 Texas Instruments Incorporated - https://www.ti.com/
@@ -775,6 +775,28 @@ index 000000000000..e4fb2a7ec20a
 +		};
 +	};
 +
++	reg_bridge: reg_bridge@0 {
++		reg = <0 0 0x0 0x0>;
++		compatible = "regulator-fixed";
++		regulator-name = "bridge_reg";
++		gpio = <&reg_display 0 0>;
++		vin-supply = <&reg_display>;
++		enable-active-high;
++	};
++
++	panel_disp0: panel_disp1@0 {
++		reg = <0 0 0x0 0x0>;
++		compatible = "raspberrypi,7inch-dsi", "simple-panel";
++		backlight = <&reg_display>;
++		power-supply = <&reg_display>;
++
++		port {
++			panel_in: endpoint {
++				remote-endpoint = <&panel_bridge_out>;
++			};
++		};
++	};
++
 +	clk_ov5640_fixed: ov5640-xclk {
 +		compatible = "fixed-clock";
 +		#clock-cells = <0>;
@@ -866,6 +888,13 @@ index 000000000000..e4fb2a7ec20a
 +		pinctrl-single,pins = <
 +			J721E_IOPAD(0x270, PIN_INPUT_PULLUP, 4) /* (T26) MMC2_CLK.I2C3_SCL */
 +			J721E_IOPAD(0x274, PIN_INPUT_PULLUP, 4) /* (T25) MMC2_CMD.I2C3_SDA */
++		>;
++	};
++
++	main_i2c4_pins_default: main-i2c-pins-default {
++		pinctrl-single,pins = <
++			J721E_IOPAD(0xa8, PIN_INPUT_PULLUP, 2) /* (AD19) PRG1_MDIO0_MDIO.I2C4_SCL */
++			J721E_IOPAD(0xac, PIN_INPUT_PULLUP, 2) /* (AD18) PRG1_MDIO0_MDC.I2C4_SDA */
 +		>;
 +	};
 +
@@ -1942,6 +1971,37 @@ index 000000000000..e4fb2a7ec20a
 +	symlink = "bone/i2c/3";
 +};
 +
++&main_i2c4 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&main_i2c4_pins_default>;
++	clock-frequency = <400000>;
++
++	reg_display: reg_display@45 {
++		compatible = "raspberrypi,7inch-touchscreen-panel-regulator";
++		reg = <0x45>;
++		gpio-controller;
++		#gpio-cells = <2>;
++	};
++
++	ft5406: ts@38 {
++		compatible = "edt,edt-ft5406";
++		reg = <0x38>;
++
++		touchscreen-size-x = < 800 >;
++		touchscreen-size-y = < 480 >;
++
++		vcc-supply = <&reg_display>;
++		reset-gpio = <&reg_display 1 1>;
++
++		/**
++		 * https://github.com/raspberrypi/linux/blob/rpi-5.10.y/arch/arm/boot/dts/overlays/edt-ft5406.dtsi
++		 * overlay adds following, not sure if required
++		 */
++		touchscreen-inverted-x;
++		touchscreen-inverted-y;
++	};
++};
++
 +&main_i2c5 {
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&main_i2c5_pins_default &csi0_gpio_pins_default>;
@@ -2061,6 +2121,14 @@ index 000000000000..e4fb2a7ec20a
 +			remote-endpoint = <&dp0_in>;
 +		};
 +	};
++
++	port@2 {
++		reg = <2>;
++
++		dpi1_out: endpoint {
++			remote-endpoint = <&dsi0_in>;
++		};
++	};
 +};
 +
 +&mhdp {
@@ -2085,6 +2153,53 @@ index 000000000000..e4fb2a7ec20a
 +			remote-endpoint = <&dp_connector_in>;
 +		};
 +	};
++};
++
++&dsi0 {
++/*
++ * DSI_WRAP_DPI_CONTROL (0x04710004) allows to select between various DPI options
++ * On reset, DPI1 is being used
++ */
++	ports {
++		port@0 {
++			reg = <0>;
++			dsi0_out: endpoint {
++				remote-endpoint = <&panel_bridge_in>;
++			};
++		};
++		port@1 {
++			reg = <1>;
++			dsi0_in: endpoint {
++				remote-endpoint = <&dpi1_out>;
++			};
++		};
++
++	};
++
++	bridge@0 {
++		compatible = "toshiba,tc358762";
++		reg = <0>;
++		vddc-supply = <&reg_bridge>;
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++				panel_bridge_in: endpoint {
++					remote-endpoint = <&dsi0_out>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++				panel_bridge_out: endpoint {
++					remote-endpoint = <&panel_in>;
++				};
++			};
++		};
++	};
++
 +};
 +
 +&mcasp0 {
@@ -2324,6 +2439,12 @@ index 000000000000..e4fb2a7ec20a
 +&csi1_port4 {
 +	status = "disabled";
 +};
++
++&dphy2 {
++	assigned-clocks = <&k3_clks 296 3>;
++	assigned-clock-parents = <&k3_clks 296 4>;
++	assigned-clock-rates = <19200000>;
++};
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts b/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts
 index 56d987db4bfc..eb365599253f 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts
@@ -2428,7 +2549,7 @@ index 5defaca9ccf1..c9c7d3813fff 100644
 +#include "k3-j721e-rtos-memory-map-old.dtsi"
  
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi b/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
-index 947e0d718c4b..5c4d4752ce8b 100644
+index 947e0d718c4b..6e9f5763ea96 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
 @@ -74,7 +74,7 @@ ehrpwm_tbclk: clock@4140 {
@@ -2516,6 +2637,48 @@ index 947e0d718c4b..5c4d4752ce8b 100644
  	};
  
  	vxe384: video-encoder@4200000 {
+@@ -1505,6 +1516,27 @@ dp0_ports: ports {
+ 		};
+ 	};
+ 
++	dsi0: dsi@48000000 {
++		compatible = "cdns,dsi";
++		reg = <0x0 0x04800000 0x0 0x100000>, <0x0 0x04710000 0x0 0x100>;
++		clocks = <&k3_clks 150 1>, <&k3_clks 150 5>;
++		clock-names = "dsi_p_clk", "dsi_sys_clk";
++		resets = <&k3_reset 150 1>;
++		reset-names = "dsi_p_rst";
++		power-domains = <&k3_pds 150 TI_SCI_PD_EXCLUSIVE>;
++		interrupt-parent = <&gic500>;
++		interrupts = <GIC_SPI 600 IRQ_TYPE_LEVEL_HIGH>;
++		phys = <&dphy2>;
++		phy-names = "dphy";
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		dsi0_ports: ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++		};
++	};
++
+ 	dss: dss@4a00000 {
+ 		compatible = "ti,j721e-dss";
+ 		reg =
+@@ -2572,4 +2604,13 @@ dphy1: phy@4590000 {
+ 		#phy-cells = <0>;
+ 		power-domains = <&k3_pds 148 TI_SCI_PD_EXCLUSIVE>;
+ 	};
++
++	dphy2: phy@4480000 {
++		compatible = "cdns,dphy";
++		reg = <0x0 0x04480000 0x0 0x1100>;
++		clocks = <&k3_clks 296 1>, <&k3_clks 296 3>;
++		clock-names = "psm", "pll_ref";
++		#phy-cells = <0>;
++		power-domains = <&k3_pds 296 TI_SCI_PD_EXCLUSIVE>;
++	};
+ };
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-rtos-memory-map-old.dtsi b/arch/arm64/boot/dts/ti/k3-j721e-rtos-memory-map-old.dtsi
 new file mode 100644
 index 000000000000..4a7ed8c945cc
