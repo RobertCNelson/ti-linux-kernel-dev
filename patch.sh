@@ -600,6 +600,7 @@ drivers () {
 	dir 'tusb322'
 	dir 'boris'
 	dir 'drivers/ti/uio'
+	dir 'dsi'
 }
 
 ###
