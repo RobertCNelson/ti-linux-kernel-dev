@@ -19,7 +19,7 @@ bborg_branch="5.10-arm64"
 #toolchain="gcc_9_arm"
 #toolchain="gcc_10_arm"
 #toolchain="gcc_11_arm"
-toolchain="gcc_12_arm"
+#toolchain="gcc_12_arm"
 #arm64
 KERNEL_ARCH=arm64
 DEBARCH=arm64
@@ -45,7 +45,7 @@ KERNEL_REL=5.10
 KERNEL_TAG=${KERNEL_REL}.109
 kernel_rt=".109-rt65"
 #Kernel Build
-BUILD=${build_prefix}48
+BUILD=${build_prefix}48.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -56,6 +56,6 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="7633f9be290d93fa89076d2507c9075d94e38a47"
-ti_git_new_release="9e58028f945f077b3e0d7423c6af8938ec46a80a"
+ti_git_old_release="9e58028f945f077b3e0d7423c6af8938ec46a80a"
+ti_git_new_release="cc13f3f3acad08038b76f5f26f66151c136d1eaf"
 #
