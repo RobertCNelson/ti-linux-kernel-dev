@@ -1,251 +1,303 @@
-From d326ae211ec6a425e894d2b0d4f273ccef4dfc12 Mon Sep 17 00:00:00 2001
+From 17d382e99ef7652f5c131173d14ecfc233cccab5 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 6 May 2022 11:00:15 -0500
+Date: Tue, 28 Jun 2022 14:21:28 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.113
+Reference: v5.10.126
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/accel/mma8452.c       | 29 +++++++++++++---------
- drivers/iio/adc/twl6030-gpadc.c   |  2 ++
- drivers/iio/afe/iio-rescale.c     |  8 +++----
- drivers/iio/inkern.c              | 40 ++++++++++++++++++++++++-------
- drivers/staging/iio/adc/ad7280a.c |  4 ++--
- 5 files changed, 57 insertions(+), 26 deletions(-)
+ drivers/iio/adc/ad7124.c                      |  1 -
+ drivers/iio/adc/sc27xx_adc.c                  | 20 ++++++++--------
+ drivers/iio/adc/stmpe-adc.c                   |  8 +++----
+ .../iio/common/st_sensors/st_sensors_core.c   | 24 ++++++++++++++-----
+ drivers/iio/dummy/iio_simple_dummy.c          | 20 +++++++++-------
+ drivers/iio/proximity/vl53l0x-i2c.c           |  7 +++---
+ include/linux/iio/common/st_sensors.h         |  3 +++
+ 7 files changed, 50 insertions(+), 33 deletions(-)
 
-diff --git a/drivers/iio/accel/mma8452.c b/drivers/iio/accel/mma8452.c
-index a7208704d31c..e7e280282774 100644
---- a/drivers/iio/accel/mma8452.c
-+++ b/drivers/iio/accel/mma8452.c
-@@ -176,6 +176,7 @@ static const struct mma8452_event_regs trans_ev_regs = {
-  * @enabled_events:		event flags enabled and handled by this driver
-  */
- struct mma_chip_info {
-+	const char *name;
- 	u8 chip_id;
- 	const struct iio_chan_spec *channels;
- 	int num_channels;
-@@ -1303,6 +1304,7 @@ enum {
+diff --git a/drivers/iio/adc/ad7124.c b/drivers/iio/adc/ad7124.c
+index bd3500995037..19ab7d7251bc 100644
+--- a/drivers/iio/adc/ad7124.c
++++ b/drivers/iio/adc/ad7124.c
+@@ -170,7 +170,6 @@ static const struct iio_chan_spec ad7124_channel_template = {
+ 		.sign = 'u',
+ 		.realbits = 24,
+ 		.storagebits = 32,
+-		.shift = 8,
+ 		.endianness = IIO_BE,
+ 	},
+ };
+diff --git a/drivers/iio/adc/sc27xx_adc.c b/drivers/iio/adc/sc27xx_adc.c
+index aa32a1f385e2..2b463e1cf1c7 100644
+--- a/drivers/iio/adc/sc27xx_adc.c
++++ b/drivers/iio/adc/sc27xx_adc.c
+@@ -36,8 +36,8 @@
  
- static const struct mma_chip_info mma_chip_info_table[] = {
- 	[mma8451] = {
-+		.name = "mma8451",
- 		.chip_id = MMA8451_DEVICE_ID,
- 		.channels = mma8451_channels,
- 		.num_channels = ARRAY_SIZE(mma8451_channels),
-@@ -1327,6 +1329,7 @@ static const struct mma_chip_info mma_chip_info_table[] = {
- 					MMA8452_INT_FF_MT,
- 	},
- 	[mma8452] = {
-+		.name = "mma8452",
- 		.chip_id = MMA8452_DEVICE_ID,
- 		.channels = mma8452_channels,
- 		.num_channels = ARRAY_SIZE(mma8452_channels),
-@@ -1343,6 +1346,7 @@ static const struct mma_chip_info mma_chip_info_table[] = {
- 					MMA8452_INT_FF_MT,
- 	},
- 	[mma8453] = {
-+		.name = "mma8453",
- 		.chip_id = MMA8453_DEVICE_ID,
- 		.channels = mma8453_channels,
- 		.num_channels = ARRAY_SIZE(mma8453_channels),
-@@ -1359,6 +1363,7 @@ static const struct mma_chip_info mma_chip_info_table[] = {
- 					MMA8452_INT_FF_MT,
- 	},
- 	[mma8652] = {
-+		.name = "mma8652",
- 		.chip_id = MMA8652_DEVICE_ID,
- 		.channels = mma8652_channels,
- 		.num_channels = ARRAY_SIZE(mma8652_channels),
-@@ -1368,6 +1373,7 @@ static const struct mma_chip_info mma_chip_info_table[] = {
- 		.enabled_events = MMA8452_INT_FF_MT,
- 	},
- 	[mma8653] = {
-+		.name = "mma8653",
- 		.chip_id = MMA8653_DEVICE_ID,
- 		.channels = mma8653_channels,
- 		.num_channels = ARRAY_SIZE(mma8653_channels),
-@@ -1382,6 +1388,7 @@ static const struct mma_chip_info mma_chip_info_table[] = {
- 		.enabled_events = MMA8452_INT_FF_MT,
- 	},
- 	[fxls8471] = {
-+		.name = "fxls8471",
- 		.chip_id = FXLS8471_DEVICE_ID,
- 		.channels = mma8451_channels,
- 		.num_channels = ARRAY_SIZE(mma8451_channels),
-@@ -1525,13 +1532,6 @@ static int mma8452_probe(struct i2c_client *client,
- 	struct mma8452_data *data;
- 	struct iio_dev *indio_dev;
- 	int ret;
--	const struct of_device_id *match;
--
--	match = of_match_device(mma8452_dt_ids, &client->dev);
--	if (!match) {
--		dev_err(&client->dev, "unknown device model\n");
--		return -ENODEV;
--	}
+ /* Bits and mask definition for SC27XX_ADC_CH_CFG register */
+ #define SC27XX_ADC_CHN_ID_MASK		GENMASK(4, 0)
+-#define SC27XX_ADC_SCALE_MASK		GENMASK(10, 8)
+-#define SC27XX_ADC_SCALE_SHIFT		8
++#define SC27XX_ADC_SCALE_MASK		GENMASK(10, 9)
++#define SC27XX_ADC_SCALE_SHIFT		9
  
- 	indio_dev = devm_iio_device_alloc(&client->dev, sizeof(*data));
- 	if (!indio_dev)
-@@ -1540,7 +1540,14 @@ static int mma8452_probe(struct i2c_client *client,
- 	data = iio_priv(indio_dev);
- 	data->client = client;
- 	mutex_init(&data->lock);
--	data->chip_info = match->data;
-+
-+	data->chip_info = device_get_match_data(&client->dev);
-+	if (!data->chip_info && id) {
-+		data->chip_info = &mma_chip_info_table[id->driver_data];
-+	} else {
-+		dev_err(&client->dev, "unknown device model\n");
-+		return -ENODEV;
-+	}
+ /* Bits definitions for SC27XX_ADC_INT_EN registers */
+ #define SC27XX_ADC_IRQ_EN		BIT(0)
+@@ -103,14 +103,14 @@ static struct sc27xx_adc_linear_graph small_scale_graph = {
+ 	100, 341,
+ };
  
- 	data->vdd_reg = devm_regulator_get(&client->dev, "vdd");
- 	if (IS_ERR(data->vdd_reg))
-@@ -1584,11 +1591,11 @@ static int mma8452_probe(struct i2c_client *client,
+-static const struct sc27xx_adc_linear_graph big_scale_graph_calib = {
+-	4200, 856,
+-	3600, 733,
++static const struct sc27xx_adc_linear_graph sc2731_big_scale_graph_calib = {
++	4200, 850,
++	3600, 728,
+ };
+ 
+-static const struct sc27xx_adc_linear_graph small_scale_graph_calib = {
+-	1000, 833,
+-	100, 80,
++static const struct sc27xx_adc_linear_graph sc2731_small_scale_graph_calib = {
++	1000, 838,
++	100, 84,
+ };
+ 
+ static int sc27xx_adc_get_calib_data(u32 calib_data, int calib_adc)
+@@ -130,11 +130,11 @@ static int sc27xx_adc_scale_calibration(struct sc27xx_adc_data *data,
+ 	size_t len;
+ 
+ 	if (big_scale) {
+-		calib_graph = &big_scale_graph_calib;
++		calib_graph = &sc2731_big_scale_graph_calib;
+ 		graph = &big_scale_graph;
+ 		cell_name = "big_scale_calib";
+ 	} else {
+-		calib_graph = &small_scale_graph_calib;
++		calib_graph = &sc2731_small_scale_graph_calib;
+ 		graph = &small_scale_graph;
+ 		cell_name = "small_scale_calib";
  	}
- 
- 	dev_info(&client->dev, "registering %s accelerometer; ID 0x%x\n",
--		 match->compatible, data->chip_info->chip_id);
-+		 data->chip_info->name, data->chip_info->chip_id);
- 
- 	i2c_set_clientdata(client, indio_dev);
- 	indio_dev->info = &mma8452_info;
--	indio_dev->name = id->name;
-+	indio_dev->name = data->chip_info->name;
- 	indio_dev->modes = INDIO_DIRECT_MODE;
- 	indio_dev->channels = data->chip_info->channels;
- 	indio_dev->num_channels = data->chip_info->num_channels;
-@@ -1814,7 +1821,7 @@ MODULE_DEVICE_TABLE(i2c, mma8452_id);
- static struct i2c_driver mma8452_driver = {
- 	.driver = {
- 		.name	= "mma8452",
--		.of_match_table = of_match_ptr(mma8452_dt_ids),
-+		.of_match_table = mma8452_dt_ids,
- 		.pm	= &mma8452_pm_ops,
- 	},
- 	.probe = mma8452_probe,
-diff --git a/drivers/iio/adc/twl6030-gpadc.c b/drivers/iio/adc/twl6030-gpadc.c
-index c6416ad795ca..256177b15c51 100644
---- a/drivers/iio/adc/twl6030-gpadc.c
-+++ b/drivers/iio/adc/twl6030-gpadc.c
-@@ -911,6 +911,8 @@ static int twl6030_gpadc_probe(struct platform_device *pdev)
- 	ret = devm_request_threaded_irq(dev, irq, NULL,
- 				twl6030_gpadc_irq_handler,
- 				IRQF_ONESHOT, "twl6030_gpadc", indio_dev);
-+	if (ret)
-+		return ret;
- 
- 	ret = twl6030_gpadc_enable_irq(TWL6030_GPADC_RT_SW1_EOC_MASK);
- 	if (ret < 0) {
-diff --git a/drivers/iio/afe/iio-rescale.c b/drivers/iio/afe/iio-rescale.c
-index e42ea2b1707d..3809f98894a5 100644
---- a/drivers/iio/afe/iio-rescale.c
-+++ b/drivers/iio/afe/iio-rescale.c
-@@ -38,7 +38,7 @@ static int rescale_read_raw(struct iio_dev *indio_dev,
- 			    int *val, int *val2, long mask)
+diff --git a/drivers/iio/adc/stmpe-adc.c b/drivers/iio/adc/stmpe-adc.c
+index fba659bfdb40..64305d9fa560 100644
+--- a/drivers/iio/adc/stmpe-adc.c
++++ b/drivers/iio/adc/stmpe-adc.c
+@@ -61,7 +61,7 @@ struct stmpe_adc {
+ static int stmpe_read_voltage(struct stmpe_adc *info,
+ 		struct iio_chan_spec const *chan, int *val)
  {
- 	struct rescale *rescale = iio_priv(indio_dev);
--	unsigned long long tmp;
-+	s64 tmp;
- 	int ret;
+-	long ret;
++	unsigned long ret;
  
- 	switch (mask) {
-@@ -59,10 +59,10 @@ static int rescale_read_raw(struct iio_dev *indio_dev,
- 			*val2 = rescale->denominator;
- 			return IIO_VAL_FRACTIONAL;
- 		case IIO_VAL_FRACTIONAL_LOG2:
--			tmp = *val * 1000000000LL;
--			do_div(tmp, rescale->denominator);
-+			tmp = (s64)*val * 1000000000LL;
-+			tmp = div_s64(tmp, rescale->denominator);
- 			tmp *= rescale->numerator;
--			do_div(tmp, 1000000000LL);
-+			tmp = div_s64(tmp, 1000000000LL);
- 			*val = tmp;
- 			return ret;
- 		default:
-diff --git a/drivers/iio/inkern.c b/drivers/iio/inkern.c
-index ede99e0d5371..8c3faa797284 100644
---- a/drivers/iio/inkern.c
-+++ b/drivers/iio/inkern.c
-@@ -561,28 +561,50 @@ EXPORT_SYMBOL_GPL(iio_read_channel_average_raw);
- static int iio_convert_raw_to_processed_unlocked(struct iio_channel *chan,
- 	int raw, int *processed, unsigned int scale)
+ 	mutex_lock(&info->lock);
+ 
+@@ -79,7 +79,7 @@ static int stmpe_read_voltage(struct stmpe_adc *info,
+ 
+ 	ret = wait_for_completion_timeout(&info->completion, STMPE_ADC_TIMEOUT);
+ 
+-	if (ret <= 0) {
++	if (ret == 0) {
+ 		stmpe_reg_write(info->stmpe, STMPE_REG_ADC_INT_STA,
+ 				STMPE_ADC_CH(info->channel));
+ 		mutex_unlock(&info->lock);
+@@ -96,7 +96,7 @@ static int stmpe_read_voltage(struct stmpe_adc *info,
+ static int stmpe_read_temp(struct stmpe_adc *info,
+ 		struct iio_chan_spec const *chan, int *val)
  {
--	int scale_type, scale_val, scale_val2, offset;
-+	int scale_type, scale_val, scale_val2;
-+	int offset_type, offset_val, offset_val2;
- 	s64 raw64 = raw;
--	int ret;
+-	long ret;
++	unsigned long ret;
  
--	ret = iio_channel_read(chan, &offset, NULL, IIO_CHAN_INFO_OFFSET);
--	if (ret >= 0)
--		raw64 += offset;
-+	offset_type = iio_channel_read(chan, &offset_val, &offset_val2,
-+				       IIO_CHAN_INFO_OFFSET);
-+	if (offset_type >= 0) {
-+		switch (offset_type) {
-+		case IIO_VAL_INT:
-+			break;
-+		case IIO_VAL_INT_PLUS_MICRO:
-+		case IIO_VAL_INT_PLUS_NANO:
-+			/*
-+			 * Both IIO_VAL_INT_PLUS_MICRO and IIO_VAL_INT_PLUS_NANO
-+			 * implicitely truncate the offset to it's integer form.
-+			 */
-+			break;
-+		case IIO_VAL_FRACTIONAL:
-+			offset_val /= offset_val2;
-+			break;
-+		case IIO_VAL_FRACTIONAL_LOG2:
-+			offset_val >>= offset_val2;
-+			break;
-+		default:
-+			return -EINVAL;
+ 	mutex_lock(&info->lock);
+ 
+@@ -114,7 +114,7 @@ static int stmpe_read_temp(struct stmpe_adc *info,
+ 
+ 	ret = wait_for_completion_timeout(&info->completion, STMPE_ADC_TIMEOUT);
+ 
+-	if (ret <= 0) {
++	if (ret == 0) {
+ 		mutex_unlock(&info->lock);
+ 		return -ETIMEDOUT;
+ 	}
+diff --git a/drivers/iio/common/st_sensors/st_sensors_core.c b/drivers/iio/common/st_sensors/st_sensors_core.c
+index 7a69c1be7393..56206fdbceb9 100644
+--- a/drivers/iio/common/st_sensors/st_sensors_core.c
++++ b/drivers/iio/common/st_sensors/st_sensors_core.c
+@@ -70,16 +70,18 @@ static int st_sensors_match_odr(struct st_sensor_settings *sensor_settings,
+ 
+ int st_sensors_set_odr(struct iio_dev *indio_dev, unsigned int odr)
+ {
+-	int err;
++	int err = 0;
+ 	struct st_sensor_odr_avl odr_out = {0, 0};
+ 	struct st_sensor_data *sdata = iio_priv(indio_dev);
+ 
++	mutex_lock(&sdata->odr_lock);
++
+ 	if (!sdata->sensor_settings->odr.mask)
+-		return 0;
++		goto unlock_mutex;
+ 
+ 	err = st_sensors_match_odr(sdata->sensor_settings, odr, &odr_out);
+ 	if (err < 0)
+-		goto st_sensors_match_odr_error;
++		goto unlock_mutex;
+ 
+ 	if ((sdata->sensor_settings->odr.addr ==
+ 					sdata->sensor_settings->pw.addr) &&
+@@ -102,7 +104,9 @@ int st_sensors_set_odr(struct iio_dev *indio_dev, unsigned int odr)
+ 	if (err >= 0)
+ 		sdata->odr = odr_out.hz;
+ 
+-st_sensors_match_odr_error:
++unlock_mutex:
++	mutex_unlock(&sdata->odr_lock);
++
+ 	return err;
+ }
+ EXPORT_SYMBOL(st_sensors_set_odr);
+@@ -364,6 +368,8 @@ int st_sensors_init_sensor(struct iio_dev *indio_dev,
+ 	struct st_sensors_platform_data *of_pdata;
+ 	int err = 0;
+ 
++	mutex_init(&sdata->odr_lock);
++
+ 	/* If OF/DT pdata exists, it will take precedence of anything else */
+ 	of_pdata = st_sensors_dev_probe(indio_dev->dev.parent, pdata);
+ 	if (IS_ERR(of_pdata))
+@@ -557,18 +563,24 @@ int st_sensors_read_info_raw(struct iio_dev *indio_dev,
+ 		err = -EBUSY;
+ 		goto out;
+ 	} else {
++		mutex_lock(&sdata->odr_lock);
+ 		err = st_sensors_set_enable(indio_dev, true);
+-		if (err < 0)
++		if (err < 0) {
++			mutex_unlock(&sdata->odr_lock);
+ 			goto out;
 +		}
-+
-+		raw64 += offset_val;
-+	}
  
- 	scale_type = iio_channel_read(chan, &scale_val, &scale_val2,
- 					IIO_CHAN_INFO_SCALE);
- 	if (scale_type < 0) {
- 		/*
--		 * Just pass raw values as processed if no scaling is
--		 * available.
-+		 * If no channel scaling is available apply consumer scale to
-+		 * raw value and return.
- 		 */
--		*processed = raw;
-+		*processed = raw * scale;
- 		return 0;
+ 		msleep((sdata->sensor_settings->bootime * 1000) / sdata->odr);
+ 		err = st_sensors_read_axis_data(indio_dev, ch, val);
+-		if (err < 0)
++		if (err < 0) {
++			mutex_unlock(&sdata->odr_lock);
+ 			goto out;
++		}
+ 
+ 		*val = *val >> ch->scan_type.shift;
+ 
+ 		err = st_sensors_set_enable(indio_dev, false);
++		mutex_unlock(&sdata->odr_lock);
+ 	}
+ out:
+ 	mutex_unlock(&indio_dev->mlock);
+diff --git a/drivers/iio/dummy/iio_simple_dummy.c b/drivers/iio/dummy/iio_simple_dummy.c
+index c0b7ef900735..c24f609c2ade 100644
+--- a/drivers/iio/dummy/iio_simple_dummy.c
++++ b/drivers/iio/dummy/iio_simple_dummy.c
+@@ -575,10 +575,9 @@ static struct iio_sw_device *iio_dummy_probe(const char *name)
+ 	 */
+ 
+ 	swd = kzalloc(sizeof(*swd), GFP_KERNEL);
+-	if (!swd) {
+-		ret = -ENOMEM;
+-		goto error_kzalloc;
+-	}
++	if (!swd)
++		return ERR_PTR(-ENOMEM);
++
+ 	/*
+ 	 * Allocate an IIO device.
+ 	 *
+@@ -590,7 +589,7 @@ static struct iio_sw_device *iio_dummy_probe(const char *name)
+ 	indio_dev = iio_device_alloc(parent, sizeof(*st));
+ 	if (!indio_dev) {
+ 		ret = -ENOMEM;
+-		goto error_ret;
++		goto error_free_swd;
  	}
  
- 	switch (scale_type) {
- 	case IIO_VAL_INT:
--		*processed = raw64 * scale_val;
-+		*processed = raw64 * scale_val * scale;
- 		break;
- 	case IIO_VAL_INT_PLUS_MICRO:
- 		if (scale_val2 < 0)
-diff --git a/drivers/staging/iio/adc/ad7280a.c b/drivers/staging/iio/adc/ad7280a.c
-index fef0055b8990..20183b2ea127 100644
---- a/drivers/staging/iio/adc/ad7280a.c
-+++ b/drivers/staging/iio/adc/ad7280a.c
-@@ -107,9 +107,9 @@
- static unsigned int ad7280a_devaddr(unsigned int addr)
- {
- 	return ((addr & 0x1) << 4) |
--	       ((addr & 0x2) << 3) |
-+	       ((addr & 0x2) << 2) |
- 	       (addr & 0x4) |
--	       ((addr & 0x8) >> 3) |
-+	       ((addr & 0x8) >> 2) |
- 	       ((addr & 0x10) >> 4);
+ 	st = iio_priv(indio_dev);
+@@ -616,6 +615,10 @@ static struct iio_sw_device *iio_dummy_probe(const char *name)
+ 	 *    indio_dev->name = spi_get_device_id(spi)->name;
+ 	 */
+ 	indio_dev->name = kstrdup(name, GFP_KERNEL);
++	if (!indio_dev->name) {
++		ret = -ENOMEM;
++		goto error_free_device;
++	}
+ 
+ 	/* Provide description of available channels */
+ 	indio_dev->channels = iio_dummy_channels;
+@@ -632,7 +635,7 @@ static struct iio_sw_device *iio_dummy_probe(const char *name)
+ 
+ 	ret = iio_simple_dummy_events_register(indio_dev);
+ 	if (ret < 0)
+-		goto error_free_device;
++		goto error_free_name;
+ 
+ 	ret = iio_simple_dummy_configure_buffer(indio_dev);
+ 	if (ret < 0)
+@@ -649,11 +652,12 @@ static struct iio_sw_device *iio_dummy_probe(const char *name)
+ 	iio_simple_dummy_unconfigure_buffer(indio_dev);
+ error_unregister_events:
+ 	iio_simple_dummy_events_unregister(indio_dev);
++error_free_name:
++	kfree(indio_dev->name);
+ error_free_device:
+ 	iio_device_free(indio_dev);
+-error_ret:
++error_free_swd:
+ 	kfree(swd);
+-error_kzalloc:
+ 	return ERR_PTR(ret);
  }
  
+diff --git a/drivers/iio/proximity/vl53l0x-i2c.c b/drivers/iio/proximity/vl53l0x-i2c.c
+index 235e125aeb3a..3d3ab86423ee 100644
+--- a/drivers/iio/proximity/vl53l0x-i2c.c
++++ b/drivers/iio/proximity/vl53l0x-i2c.c
+@@ -104,6 +104,7 @@ static int vl53l0x_read_proximity(struct vl53l0x_data *data,
+ 	u16 tries = 20;
+ 	u8 buffer[12];
+ 	int ret;
++	unsigned long time_left;
+ 
+ 	ret = i2c_smbus_write_byte_data(client, VL_REG_SYSRANGE_START, 1);
+ 	if (ret < 0)
+@@ -112,10 +113,8 @@ static int vl53l0x_read_proximity(struct vl53l0x_data *data,
+ 	if (data->client->irq) {
+ 		reinit_completion(&data->completion);
+ 
+-		ret = wait_for_completion_timeout(&data->completion, HZ/10);
+-		if (ret < 0)
+-			return ret;
+-		else if (ret == 0)
++		time_left = wait_for_completion_timeout(&data->completion, HZ/10);
++		if (time_left == 0)
+ 			return -ETIMEDOUT;
+ 
+ 		vl53l0x_clear_irq(data);
+diff --git a/include/linux/iio/common/st_sensors.h b/include/linux/iio/common/st_sensors.h
+index 33e939977444..c16a9dda3ad5 100644
+--- a/include/linux/iio/common/st_sensors.h
++++ b/include/linux/iio/common/st_sensors.h
+@@ -228,6 +228,7 @@ struct st_sensor_settings {
+  * @hw_irq_trigger: if we're using the hardware interrupt on the sensor.
+  * @hw_timestamp: Latest timestamp from the interrupt handler, when in use.
+  * @buffer_data: Data used by buffer part.
++ * @odr_lock: Local lock for preventing concurrent ODR accesses/changes
+  */
+ struct st_sensor_data {
+ 	struct device *dev;
+@@ -253,6 +254,8 @@ struct st_sensor_data {
+ 	s64 hw_timestamp;
+ 
+ 	char buffer_data[ST_SENSORS_MAX_BUFFER_SIZE] ____cacheline_aligned;
++
++	struct mutex odr_lock;
+ };
+ 
+ #ifdef CONFIG_IIO_BUFFER
 -- 
 2.30.2
 

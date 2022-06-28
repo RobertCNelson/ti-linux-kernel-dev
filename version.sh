@@ -19,7 +19,7 @@ DEBARCH=armhf
 #toolchain="gcc_9_arm"
 toolchain="gcc_10_arm"
 #toolchain="gcc_11_arm"
-toolchain="gcc_12_arm"
+#toolchain="gcc_12_arm"
 #arm64
 #KERNEL_ARCH=arm64
 #DEBARCH=arm64
@@ -42,10 +42,10 @@ toolchain="gcc_12_arm"
 
 #Kernel
 KERNEL_REL=5.10
-KERNEL_TAG=${KERNEL_REL}.109
-kernel_rt=".109-rt65"
+KERNEL_TAG=${KERNEL_REL}.120
+kernel_rt=".120-rt70"
 #Kernel Build
-BUILD=${build_prefix}45
+BUILD=${build_prefix}45.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -56,6 +56,6 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="9cff62efaca103acf18b8478362ec56e11d7f526"
-ti_git_new_release="2f6b5cad94895e2f0491dc34bcce93a382f80f28"
+ti_git_old_release="2f6b5cad94895e2f0491dc34bcce93a382f80f28"
+ti_git_new_release="016e97907aa4a3194540d461baf33c2d7439db75"
 #
