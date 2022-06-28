@@ -138,6 +138,8 @@ aufs_fail () {
 }
 
 aufs () {
+	${git_bin} revert --no-edit e68b60ae29de10c7bd7636e227164a8dbe305a82
+
 	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10.82
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
@@ -430,10 +432,6 @@ wireless_regdb () {
 	dir 'wireless_regdb'
 }
 
-next_dtbs () {
-	dir 'drivers/k3_j72xx_bandgap'
-}
-
 cleanup_dts_builds () {
 	rm -rf arch/arm64/boot/dts/ti/modules.order || true
 	rm -rf arch/arm64/boot/dts/ti/.*cmd || true
@@ -511,7 +509,6 @@ bcfserial
 ksmbd
 #rt
 wireless_regdb
-next_dtbs
 beagleboard_dtbs
 #local_patch
 
@@ -550,7 +547,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.119"
+	backport_tag="v5.10.126"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -568,7 +565,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.44"
+	backport_tag="v5.15.50"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -609,7 +606,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.17.12"
+		backport_tag="v5.17.15"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
