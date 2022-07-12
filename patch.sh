@@ -838,6 +838,7 @@ drivers () {
 soc () {
 	dir 'bootup_hacks'
 	dir 'drivers/ti/uio'
+	dir 'boris'
 }
 
 fixes () {
