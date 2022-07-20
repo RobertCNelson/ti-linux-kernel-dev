@@ -1,9 +1,9 @@
-From 669c7987e501c47eeac72b9b8e9420965f8cc9fe Mon Sep 17 00:00:00 2001
+From 4ff2154beebfd426b071e5488b434dfe2bf453e6 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 28 Jun 2022 14:15:26 -0500
+Date: Wed, 20 Jul 2022 14:12:30 -0500
 Subject: [PATCH] merge: ksmbd: https://github.com/cifsd-team/ksmbd
 
-https://github.com/cifsd-team/ksmbd/commit/4435d82902cf5d40b730bd2e7373c56109eaa0ee
+https://github.com/cifsd-team/ksmbd/commit/ad3bced04a30ea2fb0070330489d9452e2d6c69c
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  fs/ksmbd/Kconfig                        |   79 +
@@ -28,8 +28,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/ksmbd_work.h                   |  117 +
  fs/ksmbd/mgmt/ksmbd_ida.c               |   57 +
  fs/ksmbd/mgmt/ksmbd_ida.h               |   40 +
- fs/ksmbd/mgmt/share_config.c            |  238 +
- fs/ksmbd/mgmt/share_config.h            |   81 +
+ fs/ksmbd/mgmt/share_config.c            |  224 +
+ fs/ksmbd/mgmt/share_config.h            |   79 +
  fs/ksmbd/mgmt/tree_connect.c            |  129 +
  fs/ksmbd/mgmt/tree_connect.h            |   56 +
  fs/ksmbd/mgmt/user_config.c             |   79 +
@@ -57,8 +57,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/smb2pdu.h                      | 1708 +++++
  fs/ksmbd/smb_common.c                   |  744 ++
  fs/ksmbd/smb_common.h                   |  534 ++
- fs/ksmbd/smbacl.c                       | 1435 ++++
- fs/ksmbd/smbacl.h                       |  257 +
+ fs/ksmbd/smbacl.c                       | 1437 ++++
+ fs/ksmbd/smbacl.h                       |  259 +
  fs/ksmbd/smberr.h                       |  235 +
  fs/ksmbd/smbfsctl.h                     |   91 +
  fs/ksmbd/smbstatus.h                    | 1822 +++++
@@ -76,7 +76,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/vfs_cache.c                    |  751 ++
  fs/ksmbd/vfs_cache.h                    |  182 +
  fs/ksmbd/xattr.h                        |  122 +
- 70 files changed, 46427 insertions(+)
+ 70 files changed, 46415 insertions(+)
  create mode 100644 fs/ksmbd/Kconfig
  create mode 100644 fs/ksmbd/Makefile
  create mode 100644 fs/ksmbd/README.md
@@ -4754,10 +4754,10 @@ index 000000000000..e7df7786f431
 +#endif /* __KSMBD_IDA_MANAGEMENT_H__ */
 diff --git a/fs/ksmbd/mgmt/share_config.c b/fs/ksmbd/mgmt/share_config.c
 new file mode 100644
-index 000000000000..cb72d30f5b71
+index 000000000000..70655af93b44
 --- /dev/null
 +++ b/fs/ksmbd/mgmt/share_config.c
-@@ -0,0 +1,238 @@
+@@ -0,0 +1,224 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2018 Samsung Electronics Co., Ltd.
@@ -4982,26 +4982,12 @@ index 000000000000..cb72d30f5b71
 +	}
 +	return false;
 +}
-+
-+void ksmbd_share_configs_cleanup(void)
-+{
-+	struct ksmbd_share_config *share;
-+	struct hlist_node *tmp;
-+	int i;
-+
-+	down_write(&shares_table_lock);
-+	hash_for_each_safe(shares_table, i, tmp, share, hlist) {
-+		hash_del(&share->hlist);
-+		kill_share(share);
-+	}
-+	up_write(&shares_table_lock);
-+}
 diff --git a/fs/ksmbd/mgmt/share_config.h b/fs/ksmbd/mgmt/share_config.h
 new file mode 100644
-index 000000000000..953befc94e84
+index 000000000000..28bf3511763f
 --- /dev/null
 +++ b/fs/ksmbd/mgmt/share_config.h
-@@ -0,0 +1,81 @@
+@@ -0,0 +1,79 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/*
 + *   Copyright (C) 2018 Samsung Electronics Co., Ltd.
@@ -5080,8 +5066,6 @@ index 000000000000..953befc94e84
 +struct ksmbd_share_config *ksmbd_share_config_get(char *name);
 +bool ksmbd_share_veto_filename(struct ksmbd_share_config *share,
 +			       const char *filename);
-+void ksmbd_share_configs_cleanup(void);
-+
 +#endif /* __SHARE_CONFIG_MANAGEMENT_H__ */
 diff --git a/fs/ksmbd/mgmt/tree_connect.c b/fs/ksmbd/mgmt/tree_connect.c
 new file mode 100644
@@ -34246,10 +34230,10 @@ index 000000000000..d818b3ba6491
 +#endif /* __SMB_COMMON_H__ */
 diff --git a/fs/ksmbd/smbacl.c b/fs/ksmbd/smbacl.c
 new file mode 100644
-index 000000000000..275e3578520d
+index 000000000000..19c682a8a7ac
 --- /dev/null
 +++ b/fs/ksmbd/smbacl.c
-@@ -0,0 +1,1435 @@
+@@ -0,0 +1,1437 @@
 +// SPDX-License-Identifier: LGPL-2.1+
 +/*
 + *   Copyright (C) International Business Machines  Corp., 2007,2008
@@ -34533,7 +34517,8 @@ index 000000000000..275e3578520d
 +		uid_t id;
 +
 +		id = le32_to_cpu(psid->sub_auth[psid->num_subauth - 1]);
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0) || \
++    (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 52) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0))
 +		uid = mapped_kuid_user(user_ns, &init_user_ns, KUIDT_INIT(id));
 +#else
 +		/*
@@ -34556,7 +34541,8 @@ index 000000000000..275e3578520d
 +		gid_t id;
 +
 +		id = le32_to_cpu(psid->sub_auth[psid->num_subauth - 1]);
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0) || \
++    (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 52) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0))
 +		gid = mapped_kgid_user(user_ns, &init_user_ns, KGIDT_INIT(id));
 +#else
 +		/*
@@ -35687,10 +35673,10 @@ index 000000000000..275e3578520d
 +}
 diff --git a/fs/ksmbd/smbacl.h b/fs/ksmbd/smbacl.h
 new file mode 100644
-index 000000000000..f2bcdb4228f3
+index 000000000000..7368bf4a0dce
 --- /dev/null
 +++ b/fs/ksmbd/smbacl.h
-@@ -0,0 +1,257 @@
+@@ -0,0 +1,259 @@
 +/* SPDX-License-Identifier: LGPL-2.1+ */
 +/*
 + *   Copyright (c) International Business Machines  Corp., 2007
@@ -35914,7 +35900,8 @@ index 000000000000..f2bcdb4228f3
 +	kuid_t kuid;
 +
 +	/* If this is an idmapped mount, apply the idmapping. */
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0) || \
++    (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 52) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0))
 +	kuid = mapped_kuid_fs(mnt_userns, &init_user_ns, pace->e_uid);
 +#else
 +	kuid = kuid_into_mnt(mnt_userns, pace->e_uid);
@@ -35934,7 +35921,8 @@ index 000000000000..f2bcdb4228f3
 +	kgid_t kgid;
 +
 +	/* If this is an idmapped mount, apply the idmapping. */
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0) || \
++    (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 52) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0))
 +	kgid = mapped_kgid_fs(mnt_userns, &init_user_ns, pace->e_gid);
 +#else
 +	kgid = kgid_into_mnt(mnt_userns, pace->e_gid);
