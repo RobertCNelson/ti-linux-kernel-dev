@@ -580,6 +580,22 @@ backports () {
 	else
 		patch_backports
 	fi
+
+	backport_tag="v5.15.57"
+
+	subsystem="it66121"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/gpu/drm/bridge/ite-it66121.c ./drivers/gpu/drm/bridge/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+		${git} "${DIR}/patches/backports/${subsystem}/0002-wire-up-it66121.patch"
+	fi
 }
 
 drivers () {
