@@ -612,6 +612,7 @@ drivers () {
 	dir 'boris'
 	dir 'drivers/ti/uio'
 	dir 'dsi'
+	dir 'tiam62x'
 }
 
 ###

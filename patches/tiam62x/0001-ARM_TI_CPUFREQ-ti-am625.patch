@@ -1,0 +1,123 @@
+From 7bc9de9e95d63671785efeb7d02e0ea8a9b254b0 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Thu, 11 Aug 2022 16:47:31 -0500
+Subject: [PATCH] ARM_TI_CPUFREQ: ti,am625
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/cpufreq/Kconfig.arm          |  4 +--
+ drivers/cpufreq/cpufreq-dt-platdev.c |  1 +
+ drivers/cpufreq/ti-cpufreq.c         | 41 ++++++++++++++++++++++++++--
+ 3 files changed, 42 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/cpufreq/Kconfig.arm b/drivers/cpufreq/Kconfig.arm
+index 1f73fa75b1a0..65830ebe5285 100644
+--- a/drivers/cpufreq/Kconfig.arm
++++ b/drivers/cpufreq/Kconfig.arm
+@@ -323,8 +323,8 @@ config ARM_TEGRA194_CPUFREQ
+ 
+ config ARM_TI_CPUFREQ
+ 	bool "Texas Instruments CPUFreq support"
+-	depends on ARCH_OMAP2PLUS
+-	default ARCH_OMAP2PLUS
++	depends on ARCH_OMAP2PLUS || ARCH_K3
++	default y
+ 	help
+ 	  This driver enables valid OPPs on the running platform based on
+ 	  values contained within the SoC in use. Enable this in order to
+diff --git a/drivers/cpufreq/cpufreq-dt-platdev.c b/drivers/cpufreq/cpufreq-dt-platdev.c
+index a3734014db47..4e103159785c 100644
+--- a/drivers/cpufreq/cpufreq-dt-platdev.c
++++ b/drivers/cpufreq/cpufreq-dt-platdev.c
+@@ -148,6 +148,7 @@ static const struct of_device_id blacklist[] __initconst = {
+ 	{ .compatible = "ti,am43", },
+ 	{ .compatible = "ti,dra7", },
+ 	{ .compatible = "ti,omap3", },
++	{ .compatible = "ti,am625", },
+ 
+ 	{ .compatible = "qcom,ipq8064", },
+ 	{ .compatible = "qcom,apq8064", },
+diff --git a/drivers/cpufreq/ti-cpufreq.c b/drivers/cpufreq/ti-cpufreq.c
+index 8f9fdd864391..48279bb00c18 100644
+--- a/drivers/cpufreq/ti-cpufreq.c
++++ b/drivers/cpufreq/ti-cpufreq.c
+@@ -39,6 +39,14 @@
+ #define OMAP34xx_ProdID_SKUID			0x4830A20C
+ #define OMAP3_SYSCON_BASE	(0x48000000 + 0x2000 + 0x270)
+ 
++#define AM625_EFUSE_K_MPU_OPP			11
++#define AM625_EFUSE_S_MPU_OPP			19
++#define AM625_EFUSE_T_MPU_OPP			20
++
++#define AM625_SUPPORT_K_MPU_OPP			BIT(0)
++#define AM625_SUPPORT_S_MPU_OPP			BIT(1)
++#define AM625_SUPPORT_T_MPU_OPP			BIT(2)
++
+ #define VERSION_COUNT				2
+ 
+ struct ti_cpufreq_data;
+@@ -105,6 +113,25 @@ static unsigned long omap3_efuse_xlate(struct ti_cpufreq_data *opp_data,
+ 	return BIT(efuse);
+ }
+ 
++static unsigned long am625_efuse_xlate(struct ti_cpufreq_data *opp_data,
++				       unsigned long efuse)
++{
++	unsigned long calculated_efuse = AM625_SUPPORT_K_MPU_OPP;
++
++	switch (efuse) {
++	case AM625_EFUSE_T_MPU_OPP:
++		calculated_efuse |= AM625_SUPPORT_T_MPU_OPP;
++		fallthrough;
++	case AM625_EFUSE_S_MPU_OPP:
++		calculated_efuse |= AM625_SUPPORT_S_MPU_OPP;
++		fallthrough;
++	case AM625_EFUSE_K_MPU_OPP:
++		calculated_efuse |= AM625_SUPPORT_K_MPU_OPP;
++	}
++
++	return calculated_efuse;
++}
++
+ static struct ti_cpufreq_soc_data am3x_soc_data = {
+ 	.efuse_xlate = amx3_efuse_xlate,
+ 	.efuse_fallback = AM33XX_800M_ARM_MPU_MAX_FREQ,
+@@ -199,6 +226,14 @@ static struct ti_cpufreq_soc_data am3517_soc_data = {
+ 	.multi_regulator = false,
+ };
+ 
++static struct ti_cpufreq_soc_data am625_soc_data = {
++	.efuse_xlate = am625_efuse_xlate,
++	.efuse_offset = 0x0018,
++	.efuse_mask = 0x07c0,
++	.efuse_shift = 0x6,
++	.rev_offset = 0x0014,
++	.multi_regulator = false,
++};
+ 
+ /**
+  * ti_cpufreq_get_efuse() - Parse and return efuse value present on SoC
+@@ -302,6 +337,7 @@ static const struct of_device_id ti_cpufreq_of_match[] = {
+ 	{ .compatible = "ti,dra7", .data = &dra7_soc_data },
+ 	{ .compatible = "ti,omap34xx", .data = &omap34xx_soc_data, },
+ 	{ .compatible = "ti,omap36xx", .data = &omap36xx_soc_data, },
++	{ .compatible = "ti,am625", .data = &am625_soc_data, },
+ 	/* legacy */
+ 	{ .compatible = "ti,omap3430", .data = &omap34xx_soc_data, },
+ 	{ .compatible = "ti,omap3630", .data = &omap36xx_soc_data, },
+@@ -373,9 +409,10 @@ static int ti_cpufreq_probe(struct platform_device *pdev)
+ 	ti_opp_table = dev_pm_opp_set_supported_hw(opp_data->cpu_dev,
+ 						   version, VERSION_COUNT);
+ 	if (IS_ERR(ti_opp_table)) {
+-		dev_err(opp_data->cpu_dev,
+-			"Failed to set supported hardware\n");
+ 		ret = PTR_ERR(ti_opp_table);
++		if (ret != -EPROBE_DEFER)
++			dev_err(opp_data->cpu_dev,
++				"Failed to set supported hardware %d\n", ret);
+ 		goto fail_put_node;
+ 	}
+ 
+-- 
+2.30.2
+
