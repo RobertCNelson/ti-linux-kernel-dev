@@ -124,7 +124,6 @@ external_git () {
 	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-k3-j721e-common-proc-board.dts-Add-the-.patch"
 	${git} "${DIR}/patches/j7-evm/0001-HACK-dt-bindings-misc-Add-ti-dma_buf_phys-bindig-doc.patch"
 	${git} "${DIR}/patches/j7-evm/0002-HACK-misc-Add-dma-buf-to-physical-address-exporter.patch"
-	${git} "${DIR}/patches/j7-evm/0001-HACK-dma-buf-heaps-carveout-Add-support-for-cached-c.patch"
 	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-Add-DTB-overlay-for-RPi-expansion-heade.patch"
 	${git} "${DIR}/patches/j7-evm/0001-v4l-vxd-dec-Flushing-all-the-IO-buffers-and-releasin.patch"
 	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-k3-j721e-Changes-for-enabling-HW-PWM-on.patch"
@@ -138,13 +137,13 @@ aufs_fail () {
 }
 
 aufs () {
-	${git_bin} revert --no-edit e68b60ae29de10c7bd7636e227164a8dbe305a82
+	#${git_bin} revert --no-edit e68b60ae29de10c7bd7636e227164a8dbe305a82
 
-	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10.82
+	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10.117
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=5.10.82
+		KERNEL_REL=5.10.117
 		wget https://raw.githubusercontent.com/sfjro/${aufs_prefix}standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
 		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
 		rm -rf ${aufs_prefix}kbuild.patch
@@ -547,7 +546,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.133"
+	backport_tag="v5.10.136"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -565,7 +564,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.57"
+	backport_tag="v5.15.60"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -581,7 +580,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.57"
+	backport_tag="v5.15.60"
 
 	subsystem="it66121"
 	#regenerate="enable"
@@ -622,7 +621,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.18.14"
+		backport_tag="v5.19.1"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
