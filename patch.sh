@@ -613,6 +613,7 @@ drivers () {
 	dir 'drivers/ti/uio'
 	dir 'dsi'
 	dir 'tiam62x'
+	dir 'android'
 }
 
 ###
