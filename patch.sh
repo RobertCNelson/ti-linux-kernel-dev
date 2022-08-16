@@ -624,6 +624,7 @@ backports () {
 		exit 2
 	else
 		patch_backports
+		${git} "${DIR}/patches/backports/${subsystem}/0002-iwlwifi-disable-pnvm-loading.patch"
 	fi
 }
 
