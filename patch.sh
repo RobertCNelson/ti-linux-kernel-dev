@@ -595,6 +595,21 @@ backports () {
 		patch_backports
 		${git} "${DIR}/patches/backports/${subsystem}/0002-wire-up-it66121.patch"
 	fi
+
+	backport_tag="v5.10.136"
+
+	subsystem="intel"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/net/wireless/intel/* ./drivers/net/wireless/intel/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
 }
 
 drivers () {
