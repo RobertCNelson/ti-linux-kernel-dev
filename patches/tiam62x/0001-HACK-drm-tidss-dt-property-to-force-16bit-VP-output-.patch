@@ -1,0 +1,72 @@
+From aee4bb5604e1d3f15981f3a0ab3c5ace9ebd34e4 Mon Sep 17 00:00:00 2001
+From: Darren Etheridge <detheridge@ti.com>
+Date: Tue, 24 May 2022 23:24:01 -0500
+Subject: [PATCH 01/18] HACK: drm/tidss: dt property to force 16bit VP output
+ to a 24bit bridge
+
+On some boards the HDMI bridge takes a 24bit DPI input,  but only 16
+data pins are actually enabled from the SoC.  This new property
+forces the output to be RGB565 on a specific video port if the
+bridge requests a 24bit RGB color space.
+
+This assumes that the video port is connected like so:
+
+SoC : Bridge
+R0 ->   R3
+R1 ->   R4
+R2 ->   R5
+R3 ->   R6
+R4 ->   R7
+G0 ->   G2
+G1 ->   G3
+G2 ->   G4
+G3 ->   G5
+G4 ->   G6
+G5 ->   G7
+B0 ->   B3
+B1 ->   B4
+B2 ->   B5
+B3 ->   B6
+B4 ->   B7
+
+On the bridge side R0->R2, G0->G1, B0->B2 would be tied to ground.
+
+The bridge sees 24bits of data,  but the lsb's are always zero.
+
+Signed-off-by: Darren Etheridge <detheridge@ti.com>
+Signed-off-by: Nishanth Menon <nm@ti.com>
+---
+ drivers/gpu/drm/tidss/tidss_dispc.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/drivers/gpu/drm/tidss/tidss_dispc.c b/drivers/gpu/drm/tidss/tidss_dispc.c
+index cab41ece9e4b..04c84b0b546c 100644
+--- a/drivers/gpu/drm/tidss/tidss_dispc.c
++++ b/drivers/gpu/drm/tidss/tidss_dispc.c
+@@ -876,6 +876,23 @@ struct dispc_bus_format *dispc_vp_find_bus_fmt(struct dispc_device *dispc,
+ 					       u32 bus_fmt, u32 bus_flags)
+ {
+ 	unsigned int i;
++	u32 override_vp;
++
++	/*
++	 * This is where the requested format is 24 bit, but the DSS is wired
++	 * up such that only 16 bits are used and the lsb's of R,G and B are
++	 * unused. This would apply to some boards where the video port is connected
++	 * to a 24bit HDMI bridge but with only 16 RGB lines are available
++	 */
++	if (bus_fmt == MEDIA_BUS_FMT_RGB888_1X24 &&
++	    !of_property_read_u32(dispc->dev->of_node, "rgb565_to_888_on_port", &override_vp)) {
++		if (override_vp == hw_videoport) {
++			dev_dbg(dispc->dev,
++				"%s: Using rgb565 override mode to output to 24bit bridge on port %d",
++				__func__, hw_videoport);
++			bus_fmt = MEDIA_BUS_FMT_RGB565_1X16;
++		}
++	}
+ 
+ 	for (i = 0; i < ARRAY_SIZE(dispc_bus_formats); ++i) {
+ 		if (dispc_bus_formats[i].bus_fmt == bus_fmt)
+-- 
+2.30.2
+

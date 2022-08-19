@@ -1,0 +1,1377 @@
+From 7c32d7f4941016492d3aea56e994030eb2b4af3e Mon Sep 17 00:00:00 2001
+From: Vaishnav Achath <vaishnav.a@ti.com>
+Date: Fri, 24 Jun 2022 10:44:16 +0530
+Subject: [PATCH 02/18] HACK: net: phy: Add DP83TD510 phy support
+
+Commit 165cd04fe25392f875ebb94188c4faa20905290d upstream
+and related patches to phy layer.
+
+This is not a clean backport, needs work to properly
+pick the necessary patches.
+
+Signed-off-by: Vaishnav Achath <vaishnav.a@ti.com>
+---
+ drivers/net/phy/Kconfig      |   6 +
+ drivers/net/phy/Makefile     |   1 +
+ drivers/net/phy/dp83td510.c  | 209 +++++++++++++++++++
+ drivers/net/phy/phy-c45.c    | 387 ++++++++++++++++++++++++++++++++++-
+ drivers/net/phy/phy-core.c   |   3 +-
+ drivers/net/phy/phy.c        |  17 +-
+ drivers/net/phy/phy_device.c |  50 ++++-
+ drivers/net/phy/phylink.c    |   4 +-
+ include/linux/mdio.h         |  70 +++++++
+ include/linux/phy.h          |  19 +-
+ include/uapi/linux/ethtool.h |   1 +
+ include/uapi/linux/mdio.h    |  86 ++++++++
+ net/ethtool/common.c         |   1 +
+ net/ethtool/linkmodes.c      |   1 +
+ 14 files changed, 832 insertions(+), 23 deletions(-)
+ create mode 100644 drivers/net/phy/dp83td510.c
+
+diff --git a/drivers/net/phy/Kconfig b/drivers/net/phy/Kconfig
+index 698bea312adc..17e82bda1ce3 100644
+--- a/drivers/net/phy/Kconfig
++++ b/drivers/net/phy/Kconfig
+@@ -302,6 +302,12 @@ config DP83869_PHY
+ 	  Currently supports the DP83869 PHY.  This PHY supports copper and
+ 	  fiber connections.
+ 
++config DP83TD510_PHY
++	tristate "Texas Instruments DP83TD510 Ethernet 10Base-T1L PHY"
++	help
++	  Support for the DP83TD510 Ethernet 10Base-T1L PHY. This PHY supports
++	  a 10M single pair Ethernet connection for up to 1000 meter cable.
++
+ config VITESSE_PHY
+ 	tristate "Vitesse PHYs"
+ 	help
+diff --git a/drivers/net/phy/Makefile b/drivers/net/phy/Makefile
+index a13e402074cf..bf62ce211eb4 100644
+--- a/drivers/net/phy/Makefile
++++ b/drivers/net/phy/Makefile
+@@ -56,6 +56,7 @@ obj-$(CONFIG_DP83848_PHY)	+= dp83848.o
+ obj-$(CONFIG_DP83867_PHY)	+= dp83867.o
+ obj-$(CONFIG_DP83869_PHY)	+= dp83869.o
+ obj-$(CONFIG_DP83TC811_PHY)	+= dp83tc811.o
++obj-$(CONFIG_DP83TD510_PHY)	+= dp83td510.o
+ obj-$(CONFIG_FIXED_PHY)		+= fixed_phy.o
+ obj-$(CONFIG_ICPLUS_PHY)	+= icplus.o
+ obj-$(CONFIG_INTEL_XWAY_PHY)	+= intel-xway.o
+diff --git a/drivers/net/phy/dp83td510.c b/drivers/net/phy/dp83td510.c
+new file mode 100644
+index 000000000000..1ae792b0daaa
+--- /dev/null
++++ b/drivers/net/phy/dp83td510.c
+@@ -0,0 +1,209 @@
++// SPDX-License-Identifier: GPL-2.0
++/* Driver for the Texas Instruments DP83TD510 PHY
++ * Copyright (c) 2022 Pengutronix, Oleksij Rempel <kernel@pengutronix.de>
++ */
++
++#include <linux/bitfield.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/phy.h>
++
++#define DP83TD510E_PHY_ID			0x20000181
++
++/* MDIO_MMD_VEND2 registers */
++#define DP83TD510E_PHY_STS			0x10
++#define DP83TD510E_STS_MII_INT			BIT(7)
++#define DP83TD510E_LINK_STATUS			BIT(0)
++
++#define DP83TD510E_GEN_CFG			0x11
++#define DP83TD510E_GENCFG_INT_POLARITY		BIT(3)
++#define DP83TD510E_GENCFG_INT_EN		BIT(1)
++#define DP83TD510E_GENCFG_INT_OE		BIT(0)
++
++#define DP83TD510E_INTERRUPT_REG_1		0x12
++#define DP83TD510E_INT1_LINK			BIT(13)
++#define DP83TD510E_INT1_LINK_EN			BIT(5)
++
++#define DP83TD510E_AN_STAT_1			0x60c
++#define DP83TD510E_MASTER_SLAVE_RESOL_FAIL	BIT(15)
++
++static int dp83td510_config_intr(struct phy_device *phydev)
++{
++	int ret;
++
++	if (phydev->interrupts == PHY_INTERRUPT_ENABLED) {
++		/* Clear any pending interrupts */
++		ret = phy_write_mmd(phydev, MDIO_MMD_VEND2, DP83TD510E_PHY_STS,
++				    0x0);
++		if (ret)
++			return ret;
++
++		ret = phy_write_mmd(phydev, MDIO_MMD_VEND2,
++				    DP83TD510E_INTERRUPT_REG_1,
++				    DP83TD510E_INT1_LINK_EN);
++		if (ret)
++			return ret;
++
++		ret = phy_set_bits_mmd(phydev, MDIO_MMD_VEND2,
++				       DP83TD510E_GEN_CFG,
++				       DP83TD510E_GENCFG_INT_POLARITY |
++				       DP83TD510E_GENCFG_INT_EN |
++				       DP83TD510E_GENCFG_INT_OE);
++	} else {
++		ret = phy_write_mmd(phydev, MDIO_MMD_VEND2,
++				    DP83TD510E_INTERRUPT_REG_1, 0x0);
++		if (ret)
++			return ret;
++
++		ret = phy_clear_bits_mmd(phydev, MDIO_MMD_VEND2,
++					 DP83TD510E_GEN_CFG,
++					 DP83TD510E_GENCFG_INT_EN);
++		if (ret)
++			return ret;
++
++		/* Clear any pending interrupts */
++		ret = phy_write_mmd(phydev, MDIO_MMD_VEND2, DP83TD510E_PHY_STS,
++				    0x0);
++	}
++
++	return ret;
++}
++
++static irqreturn_t dp83td510_handle_interrupt(struct phy_device *phydev)
++{
++	int  ret;
++
++	ret = phy_read_mmd(phydev, MDIO_MMD_VEND2, DP83TD510E_PHY_STS);
++	if (ret < 0) {
++		phy_error(phydev);
++		return IRQ_NONE;
++	} else if (!(ret & DP83TD510E_STS_MII_INT)) {
++		return IRQ_NONE;
++	}
++
++	/* Read the current enabled interrupts */
++	ret = phy_read_mmd(phydev, MDIO_MMD_VEND2, DP83TD510E_INTERRUPT_REG_1);
++	if (ret < 0) {
++		phy_error(phydev);
++		return IRQ_NONE;
++	} else if (!(ret & DP83TD510E_INT1_LINK_EN) ||
++		   !(ret & DP83TD510E_INT1_LINK)) {
++		return IRQ_NONE;
++	}
++
++	phy_trigger_machine(phydev);
++
++	return IRQ_HANDLED;
++}
++
++static int dp83td510_read_status(struct phy_device *phydev)
++{
++	u16 phy_sts;
++	int ret;
++
++	phydev->speed = SPEED_UNKNOWN;
++	phydev->duplex = DUPLEX_UNKNOWN;
++	phydev->pause = 0;
++	phydev->asym_pause = 0;
++	linkmode_zero(phydev->lp_advertising);
++
++	phy_sts = phy_read(phydev, DP83TD510E_PHY_STS);
++
++	phydev->link = !!(phy_sts & DP83TD510E_LINK_STATUS);
++	if (phydev->link) {
++		/* This PHY supports only one link mode: 10BaseT1L_Full */
++		phydev->duplex = DUPLEX_FULL;
++		phydev->speed = SPEED_10;
++
++		if (phydev->autoneg == AUTONEG_ENABLE) {
++			ret = genphy_c45_read_lpa(phydev);
++			if (ret)
++				return ret;
++
++			phy_resolve_aneg_linkmode(phydev);
++		}
++	}
++
++	if (phydev->autoneg == AUTONEG_ENABLE) {
++		ret = genphy_c45_baset1_read_status(phydev);
++		if (ret < 0)
++			return ret;
++
++		ret = phy_read_mmd(phydev, MDIO_MMD_VEND2,
++				   DP83TD510E_AN_STAT_1);
++		if (ret < 0)
++			return ret;
++
++		if (ret & DP83TD510E_MASTER_SLAVE_RESOL_FAIL)
++			phydev->master_slave_state = MASTER_SLAVE_STATE_ERR;
++	} else {
++		return genphy_c45_pma_baset1_read_master_slave(phydev);
++	}
++
++	return 0;
++}
++
++static int dp83td510_config_aneg(struct phy_device *phydev)
++{
++	bool changed = false;
++	int ret;
++
++	ret = genphy_c45_pma_baset1_setup_master_slave(phydev);
++	if (ret < 0)
++		return ret;
++
++	if (phydev->autoneg == AUTONEG_DISABLE)
++		return genphy_c45_an_disable_aneg(phydev);
++
++	ret = genphy_c45_an_config_aneg(phydev);
++	if (ret < 0)
++		return ret;
++	if (ret > 0)
++		changed = true;
++
++	return genphy_c45_check_and_restart_aneg(phydev, changed);
++}
++
++static int dp83td510_get_features(struct phy_device *phydev)
++{
++	/* This PHY can't respond on MDIO bus if no RMII clock is enabled.
++	 * In case RMII mode is used (most meaningful mode for this PHY) and
++	 * the PHY do not have own XTAL, and CLK providing MAC is not probed,
++	 * we won't be able to read all needed ability registers.
++	 * So provide it manually.
++	 */
++
++	linkmode_set_bit(ETHTOOL_LINK_MODE_Autoneg_BIT, phydev->supported);
++	linkmode_set_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, phydev->supported);
++	linkmode_set_bit(ETHTOOL_LINK_MODE_Pause_BIT, phydev->supported);
++	linkmode_set_bit(ETHTOOL_LINK_MODE_10baseT1L_Full_BIT,
++			 phydev->supported);
++
++	return 0;
++}
++
++static struct phy_driver dp83td510_driver[] = {
++{
++	PHY_ID_MATCH_MODEL(DP83TD510E_PHY_ID),
++	.name		= "TI DP83TD510E",
++
++	.config_aneg	= dp83td510_config_aneg,
++	.read_status	= dp83td510_read_status,
++	.get_features	= dp83td510_get_features,
++	.config_intr	= dp83td510_config_intr,
++	.handle_interrupt = dp83td510_handle_interrupt,
++
++	.suspend	= genphy_suspend,
++	.resume		= genphy_resume,
++} };
++module_phy_driver(dp83td510_driver);
++
++static struct mdio_device_id __maybe_unused dp83td510_tbl[] = {
++	{ PHY_ID_MATCH_MODEL(DP83TD510E_PHY_ID) },
++	{ }
++};
++MODULE_DEVICE_TABLE(mdio, dp83td510_tbl);
++
++MODULE_DESCRIPTION("Texas Instruments DP83TD510E PHY driver");
++MODULE_AUTHOR("Oleksij Rempel <kernel@pengutronix.de>");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/net/phy/phy-c45.c b/drivers/net/phy/phy-c45.c
+index bd11e62bfdfe..29b1df03f3e8 100644
+--- a/drivers/net/phy/phy-c45.c
++++ b/drivers/net/phy/phy-c45.c
+@@ -9,7 +9,99 @@
+ #include <linux/phy.h>
+ 
+ /**
+- * genphy_c45_setup_forced - configures a forced speed
++ * genphy_c45_baset1_able - checks if the PMA has BASE-T1 extended abilities
++ * @phydev: target phy_device struct
++ */
++static bool genphy_c45_baset1_able(struct phy_device *phydev)
++{
++	int val;
++
++	if (phydev->pma_extable == -ENODATA) {
++		val = phy_read_mmd(phydev, MDIO_MMD_PMAPMD, MDIO_PMA_EXTABLE);
++		if (val < 0)
++			return false;
++
++		phydev->pma_extable = val;
++	}
++
++	return !!(phydev->pma_extable & MDIO_PMA_EXTABLE_BT1);
++}
++
++/**
++ * genphy_c45_pma_can_sleep - checks if the PMA have sleep support
++ * @phydev: target phy_device struct
++ */
++static bool genphy_c45_pma_can_sleep(struct phy_device *phydev)
++{
++	int stat1;
++
++	stat1 = phy_read_mmd(phydev, MDIO_MMD_PMAPMD, MDIO_STAT1);
++	if (stat1 < 0)
++		return false;
++
++	return !!(stat1 & MDIO_STAT1_LPOWERABLE);
++}
++
++/**
++ * genphy_c45_pma_resume - wakes up the PMA module
++ * @phydev: target phy_device struct
++ */
++int genphy_c45_pma_resume(struct phy_device *phydev)
++{
++	if (!genphy_c45_pma_can_sleep(phydev))
++		return -EOPNOTSUPP;
++
++	return phy_clear_bits_mmd(phydev, MDIO_MMD_PMAPMD, MDIO_CTRL1,
++				  MDIO_CTRL1_LPOWER);
++}
++EXPORT_SYMBOL_GPL(genphy_c45_pma_resume);
++
++/**
++ * genphy_c45_pma_suspend - suspends the PMA module
++ * @phydev: target phy_device struct
++ */
++int genphy_c45_pma_suspend(struct phy_device *phydev)
++{
++	if (!genphy_c45_pma_can_sleep(phydev))
++		return -EOPNOTSUPP;
++
++	return phy_set_bits_mmd(phydev, MDIO_MMD_PMAPMD, MDIO_CTRL1,
++				MDIO_CTRL1_LPOWER);
++}
++EXPORT_SYMBOL_GPL(genphy_c45_pma_suspend);
++
++/**
++ * genphy_c45_pma_baset1_setup_master_slave - configures forced master/slave
++ * role of BaseT1 devices.
++ * @phydev: target phy_device struct
++ */
++int genphy_c45_pma_baset1_setup_master_slave(struct phy_device *phydev)
++{
++	int ctl = 0;
++
++	switch (phydev->master_slave_set) {
++	case MASTER_SLAVE_CFG_MASTER_PREFERRED:
++	case MASTER_SLAVE_CFG_MASTER_FORCE:
++		ctl = MDIO_PMA_PMD_BT1_CTRL_CFG_MST;
++		break;
++	case MASTER_SLAVE_CFG_SLAVE_FORCE:
++	case MASTER_SLAVE_CFG_SLAVE_PREFERRED:
++		break;
++	case MASTER_SLAVE_CFG_UNKNOWN:
++	case MASTER_SLAVE_CFG_UNSUPPORTED:
++		return 0;
++	default:
++		phydev_warn(phydev, "Unsupported Master/Slave mode\n");
++		return -EOPNOTSUPP;
++	}
++
++	return phy_modify_mmd(phydev, MDIO_MMD_PMAPMD, MDIO_PMA_PMD_BT1_CTRL,
++			     MDIO_PMA_PMD_BT1_CTRL_CFG_MST, ctl);
++}
++EXPORT_SYMBOL_GPL(genphy_c45_pma_baset1_setup_master_slave);
++
++/**
++ * genphy_c45_pma_setup_forced - configures a forced speed
+  * @phydev: target phy_device struct
+  */
+ int genphy_c45_pma_setup_forced(struct phy_device *phydev)
+@@ -37,7 +129,10 @@ int genphy_c45_pma_setup_forced(struct phy_device *phydev)
+ 
+ 	switch (phydev->speed) {
+ 	case SPEED_10:
+-		ctrl2 |= MDIO_PMA_CTRL2_10BT;
++		if (genphy_c45_baset1_able(phydev))
++			ctrl2 |= MDIO_PMA_CTRL2_BASET1;
++		else
++			ctrl2 |= MDIO_PMA_CTRL2_10BT;
+ 		break;
+ 	case SPEED_100:
+ 		ctrl1 |= MDIO_PMA_CTRL1_SPEED100;
+@@ -75,10 +170,81 @@ int genphy_c45_pma_setup_forced(struct phy_device *phydev)
+ 	if (ret < 0)
+ 		return ret;
+ 
++	if (genphy_c45_baset1_able(phydev)) {
++		ret = genphy_c45_pma_baset1_setup_master_slave(phydev);
++		if (ret < 0)
++			return ret;
++	}
++
+ 	return genphy_c45_an_disable_aneg(phydev);
+ }
+ EXPORT_SYMBOL_GPL(genphy_c45_pma_setup_forced);
+ 
++/* Sets master/slave preference and supported technologies.
++ * The preference is set in the BIT(4) of BASE-T1 AN
++ * advertisement register 7.515 and whether the status
++ * is forced or not, it is set in the BIT(12) of BASE-T1
++ * AN advertisement register 7.514.
++ * Sets 10BASE-T1L Ability BIT(14) in BASE-T1 autonegotiation
++ * advertisement register [31:16] if supported.
++ */
++static int genphy_c45_baset1_an_config_aneg(struct phy_device *phydev)
++{
++	int changed = 0;
++	u16 adv_l = 0;
++	u16 adv_m = 0;
++	int ret;
++
++	switch (phydev->master_slave_set) {
++	case MASTER_SLAVE_CFG_MASTER_FORCE:
++	case MASTER_SLAVE_CFG_SLAVE_FORCE:
++		adv_l |= MDIO_AN_T1_ADV_L_FORCE_MS;
++		break;
++	case MASTER_SLAVE_CFG_MASTER_PREFERRED:
++	case MASTER_SLAVE_CFG_SLAVE_PREFERRED:
++		break;
++	case MASTER_SLAVE_CFG_UNKNOWN:
++	case MASTER_SLAVE_CFG_UNSUPPORTED:
++		return 0;
++	default:
++		phydev_warn(phydev, "Unsupported Master/Slave mode\n");
++		return -EOPNOTSUPP;
++	}
++
++	switch (phydev->master_slave_set) {
++	case MASTER_SLAVE_CFG_MASTER_FORCE:
++	case MASTER_SLAVE_CFG_MASTER_PREFERRED:
++		adv_m |= MDIO_AN_T1_ADV_M_MST;
++		break;
++	case MASTER_SLAVE_CFG_SLAVE_FORCE:
++	case MASTER_SLAVE_CFG_SLAVE_PREFERRED:
++		break;
++	default:
++		break;
++	}
++
++	adv_l |= linkmode_adv_to_mii_t1_adv_l_t(phydev->advertising);
++
++	ret = phy_modify_mmd_changed(phydev, MDIO_MMD_AN, MDIO_AN_T1_ADV_L,
++				     (MDIO_AN_T1_ADV_L_FORCE_MS | MDIO_AN_T1_ADV_L_PAUSE_CAP
++				     | MDIO_AN_T1_ADV_L_PAUSE_ASYM), adv_l);
++	if (ret < 0)
++		return ret;
++	if (ret > 0)
++		changed = 1;
++
++	adv_m |= linkmode_adv_to_mii_t1_adv_m_t(phydev->advertising);
++
++	ret = phy_modify_mmd_changed(phydev, MDIO_MMD_AN, MDIO_AN_T1_ADV_M,
++				     MDIO_AN_T1_ADV_M_MST | MDIO_AN_T1_ADV_M_B10L, adv_m);
++	if (ret < 0)
++		return ret;
++	if (ret > 0)
++		changed = 1;
++
++	return changed;
++}
++
+ /**
+  * genphy_c45_an_config_aneg - configure advertisement registers
+  * @phydev: target phy_device struct
+@@ -98,6 +264,9 @@ int genphy_c45_an_config_aneg(struct phy_device *phydev)
+ 
+ 	changed = genphy_config_eee_advert(phydev);
+ 
++	if (genphy_c45_baset1_able(phydev))
++		return genphy_c45_baset1_an_config_aneg(phydev);
++
+ 	adv = linkmode_adv_to_mii_adv_t(phydev->advertising);
+ 
+ 	ret = phy_modify_mmd_changed(phydev, MDIO_MMD_AN, MDIO_AN_ADVERTISE,
+@@ -129,14 +298,18 @@ EXPORT_SYMBOL_GPL(genphy_c45_an_config_aneg);
+  * @phydev: target phy_device struct
+  *
+  * Disable auto-negotiation in the Clause 45 PHY. The link parameters
+- * parameters are controlled through the PMA/PMD MMD registers.
++ * are controlled through the PMA/PMD MMD registers.
+  *
+  * Returns zero on success, negative errno code on failure.
+  */
+ int genphy_c45_an_disable_aneg(struct phy_device *phydev)
+ {
++	u16 reg = MDIO_CTRL1;
++
++	if (genphy_c45_baset1_able(phydev))
++		reg = MDIO_AN_T1_CTRL;
+ 
+-	return phy_clear_bits_mmd(phydev, MDIO_MMD_AN, MDIO_CTRL1,
++	return phy_clear_bits_mmd(phydev, MDIO_MMD_AN, reg,
+ 				  MDIO_AN_CTRL1_ENABLE | MDIO_AN_CTRL1_RESTART);
+ }
+ EXPORT_SYMBOL_GPL(genphy_c45_an_disable_aneg);
+@@ -151,7 +324,12 @@ EXPORT_SYMBOL_GPL(genphy_c45_an_disable_aneg);
+  */
+ int genphy_c45_restart_aneg(struct phy_device *phydev)
+ {
+-	return phy_set_bits_mmd(phydev, MDIO_MMD_AN, MDIO_CTRL1,
++	u16 reg = MDIO_CTRL1;
++
++	if (genphy_c45_baset1_able(phydev))
++		reg = MDIO_AN_T1_CTRL;
++
++	return phy_set_bits_mmd(phydev, MDIO_MMD_AN, reg,
+ 				MDIO_AN_CTRL1_ENABLE | MDIO_AN_CTRL1_RESTART);
+ }
+ EXPORT_SYMBOL_GPL(genphy_c45_restart_aneg);
+@@ -167,11 +345,15 @@ EXPORT_SYMBOL_GPL(genphy_c45_restart_aneg);
+  */
+ int genphy_c45_check_and_restart_aneg(struct phy_device *phydev, bool restart)
+ {
++	u16 reg = MDIO_CTRL1;
+ 	int ret;
+ 
++	if (genphy_c45_baset1_able(phydev))
++		reg = MDIO_AN_T1_CTRL;
++
+ 	if (!restart) {
+ 		/* Configure and restart aneg if it wasn't set before */
+-		ret = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_CTRL1);
++		ret = phy_read_mmd(phydev, MDIO_MMD_AN, reg);
+ 		if (ret < 0)
+ 			return ret;
+ 
+@@ -199,7 +381,13 @@ EXPORT_SYMBOL_GPL(genphy_c45_check_and_restart_aneg);
+  */
+ int genphy_c45_aneg_done(struct phy_device *phydev)
+ {
+-	int val = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_STAT1);
++	int reg = MDIO_STAT1;
++	int val;
++
++	if (genphy_c45_baset1_able(phydev))
++		reg = MDIO_AN_T1_STAT;
++
++	val = phy_read_mmd(phydev, MDIO_MMD_AN, reg);
+ 
+ 	return val < 0 ? val : val & MDIO_AN_STAT1_COMPLETE ? 1 : 0;
+ }
+@@ -264,6 +452,49 @@ int genphy_c45_read_link(struct phy_device *phydev)
+ }
+ EXPORT_SYMBOL_GPL(genphy_c45_read_link);
+ 
++/* Read the Clause 45 defined BASE-T1 AN (7.513) status register to check
++ * if autoneg is complete. If so read the BASE-T1 Autonegotiation
++ * Advertisement registers filling in the link partner advertisement,
++ * pause and asym_pause members in phydev.
++ */
++static int genphy_c45_baset1_read_lpa(struct phy_device *phydev)
++{
++	int val;
++
++	val = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_AN_T1_STAT);
++	if (val < 0)
++		return val;
++
++	if (!(val & MDIO_AN_STAT1_COMPLETE)) {
++		linkmode_clear_bit(ETHTOOL_LINK_MODE_Autoneg_BIT, phydev->lp_advertising);
++		mii_t1_adv_l_mod_linkmode_t(phydev->lp_advertising, 0);
++		mii_t1_adv_m_mod_linkmode_t(phydev->lp_advertising, 0);
++
++		phydev->pause = 0;
++		phydev->asym_pause = 0;
++
++		return 0;
++	}
++
++	linkmode_mod_bit(ETHTOOL_LINK_MODE_Autoneg_BIT, phydev->lp_advertising, 1);
++
++	val = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_AN_T1_LP_L);
++	if (val < 0)
++		return val;
++
++	mii_t1_adv_l_mod_linkmode_t(phydev->lp_advertising, val);
++	phydev->pause = val & MDIO_AN_T1_ADV_L_PAUSE_CAP ? 1 : 0;
++	phydev->asym_pause = val & MDIO_AN_T1_ADV_L_PAUSE_ASYM ? 1 : 0;
++
++	val = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_AN_T1_LP_M);
++	if (val < 0)
++		return val;
++
++	mii_t1_adv_m_mod_linkmode_t(phydev->lp_advertising, val);
++
++	return 0;
++}
++
+ /**
+  * genphy_c45_read_lpa - read the link partner advertisement and pause
+  * @phydev: target phy_device struct
+@@ -278,6 +509,9 @@ int genphy_c45_read_lpa(struct phy_device *phydev)
+ {
+ 	int val;
+ 
++	if (genphy_c45_baset1_able(phydev))
++		return genphy_c45_baset1_read_lpa(phydev);
++
+ 	val = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_STAT1);
+ 	if (val < 0)
+ 		return val;
+@@ -316,6 +550,34 @@ int genphy_c45_read_lpa(struct phy_device *phydev)
+ }
+ EXPORT_SYMBOL_GPL(genphy_c45_read_lpa);
+ 
++/**
++ * genphy_c45_pma_baset1_read_master_slave - read forced master/slave
++ * configuration
++ * @phydev: target phy_device struct
++ */
++int genphy_c45_pma_baset1_read_master_slave(struct phy_device *phydev)
++{
++	int val;
++
++	phydev->master_slave_state = MASTER_SLAVE_STATE_UNKNOWN;
++	phydev->master_slave_get = MASTER_SLAVE_CFG_UNKNOWN;
++
++	val = phy_read_mmd(phydev, MDIO_MMD_PMAPMD, MDIO_PMA_PMD_BT1_CTRL);
++	if (val < 0)
++		return val;
++
++	if (val & MDIO_PMA_PMD_BT1_CTRL_CFG_MST) {
++		phydev->master_slave_get = MASTER_SLAVE_CFG_MASTER_FORCE;
++		phydev->master_slave_state = MASTER_SLAVE_STATE_MASTER;
++	} else {
++		phydev->master_slave_get = MASTER_SLAVE_CFG_SLAVE_FORCE;
++		phydev->master_slave_state = MASTER_SLAVE_STATE_SLAVE;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(genphy_c45_pma_baset1_read_master_slave);
++
+ /**
+  * genphy_c45_read_pma - read link speed etc from PMA
+  * @phydev: target phy_device struct
+@@ -356,6 +618,12 @@ int genphy_c45_read_pma(struct phy_device *phydev)
+ 
+ 	phydev->duplex = DUPLEX_FULL;
+ 
++	if (genphy_c45_baset1_able(phydev)) {
++		val = genphy_c45_pma_baset1_read_master_slave(phydev);
++		if (val < 0)
++			return val;
++	}
++
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(genphy_c45_read_pma);
+@@ -487,12 +755,68 @@ int genphy_c45_pma_read_abilities(struct phy_device *phydev)
+ 					 phydev->supported,
+ 					 val & MDIO_PMA_NG_EXTABLE_5GBT);
+ 		}
++
++		if (val & MDIO_PMA_EXTABLE_BT1) {
++			val = phy_read_mmd(phydev, MDIO_MMD_PMAPMD, MDIO_PMA_PMD_BT1);
++			if (val < 0)
++				return val;
++
++			linkmode_mod_bit(ETHTOOL_LINK_MODE_10baseT1L_Full_BIT,
++					 phydev->supported,
++					 val & MDIO_PMA_PMD_BT1_B10L_ABLE);
++
++			val = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_AN_T1_STAT);
++			if (val < 0)
++				return val;
++
++			linkmode_mod_bit(ETHTOOL_LINK_MODE_Autoneg_BIT,
++					 phydev->supported,
++					 val & MDIO_AN_STAT1_ABLE);
++		}
+ 	}
+ 
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(genphy_c45_pma_read_abilities);
+ 
++/* Read master/slave preference from registers.
++ * The preference is read from the BIT(4) of BASE-T1 AN
++ * advertisement register 7.515 and whether the preference
++ * is forced or not, it is read from BASE-T1 AN advertisement
++ * register 7.514.
++ */
++int genphy_c45_baset1_read_status(struct phy_device *phydev)
++{
++	int ret;
++	int cfg;
++
++	phydev->master_slave_get = MASTER_SLAVE_CFG_UNKNOWN;
++	phydev->master_slave_state = MASTER_SLAVE_STATE_UNKNOWN;
++
++	ret = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_AN_T1_ADV_L);
++	if (ret < 0)
++		return ret;
++
++	cfg = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_AN_T1_ADV_M);
++	if (cfg < 0)
++		return cfg;
++
++	if (ret & MDIO_AN_T1_ADV_L_FORCE_MS) {
++		if (cfg & MDIO_AN_T1_ADV_M_MST)
++			phydev->master_slave_get = MASTER_SLAVE_CFG_MASTER_FORCE;
++		else
++			phydev->master_slave_get = MASTER_SLAVE_CFG_SLAVE_FORCE;
++	} else {
++		if (cfg & MDIO_AN_T1_ADV_M_MST)
++			phydev->master_slave_get = MASTER_SLAVE_CFG_MASTER_PREFERRED;
++		else
++			phydev->master_slave_get = MASTER_SLAVE_CFG_SLAVE_PREFERRED;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(genphy_c45_baset1_read_status);
++
+ /**
+  * genphy_c45_read_status - read PHY status
+  * @phydev: target phy_device struct
+@@ -517,6 +841,12 @@ int genphy_c45_read_status(struct phy_device *phydev)
+ 		if (ret)
+ 			return ret;
+ 
++		if (genphy_c45_baset1_able(phydev)) {
++			ret = genphy_c45_baset1_read_status(phydev);
++			if (ret < 0)
++				return ret;
++		}
++
+ 		phy_resolve_aneg_linkmode(phydev);
+ 	} else {
+ 		ret = genphy_c45_read_pma(phydev);
+@@ -560,6 +890,49 @@ int gen10g_config_aneg(struct phy_device *phydev)
+ }
+ EXPORT_SYMBOL_GPL(gen10g_config_aneg);
+ 
++int genphy_c45_loopback(struct phy_device *phydev, bool enable)
++{
++	return phy_modify_mmd(phydev, MDIO_MMD_PCS, MDIO_CTRL1,
++			      MDIO_PCS_CTRL1_LOOPBACK,
++			      enable ? MDIO_PCS_CTRL1_LOOPBACK : 0);
++}
++EXPORT_SYMBOL_GPL(genphy_c45_loopback);
++
++/**
++ * genphy_c45_fast_retrain - configure fast retrain registers
++ * @phydev: target phy_device struct
++ * @enable: enable fast retrain or not
++ *
++ * Description: If fast-retrain is enabled, we configure PHY as
++ *   advertising fast retrain capable and THP Bypass Request, then
++ *   enable fast retrain. If it is not enabled, we configure fast
++ *   retrain disabled.
++ */
++int genphy_c45_fast_retrain(struct phy_device *phydev, bool enable)
++{
++	int ret;
++
++	if (!enable)
++		return phy_clear_bits_mmd(phydev, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_FSRT_CSR,
++				MDIO_PMA_10GBR_FSRT_ENABLE);
++
++	if (linkmode_test_bit(ETHTOOL_LINK_MODE_2500baseT_Full_BIT, phydev->supported)) {
++		ret = phy_set_bits_mmd(phydev, MDIO_MMD_AN, MDIO_AN_10GBT_CTRL,
++				MDIO_AN_10GBT_CTRL_ADVFSRT2_5G);
++		if (ret)
++			return ret;
++
++		ret = phy_set_bits_mmd(phydev, MDIO_MMD_AN, MDIO_AN_CTRL2,
++				MDIO_AN_THP_BP2_5GT);
++		if (ret)
++			return ret;
++	}
++
++	return phy_set_bits_mmd(phydev, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_FSRT_CSR,
++			MDIO_PMA_10GBR_FSRT_ENABLE);
++}
++EXPORT_SYMBOL_GPL(genphy_c45_fast_retrain);
++
+ struct phy_driver genphy_c45_driver = {
+ 	.phy_id         = 0xffffffff,
+ 	.phy_id_mask    = 0xffffffff,
+diff --git a/drivers/net/phy/phy-core.c b/drivers/net/phy/phy-core.c
+index cccb83dae673..862a7687e4e0 100644
+--- a/drivers/net/phy/phy-core.c
++++ b/drivers/net/phy/phy-core.c
+@@ -13,7 +13,7 @@
+  */
+ const char *phy_speed_to_str(int speed)
+ {
+-	BUILD_BUG_ON_MSG(__ETHTOOL_LINK_MODE_MASK_NBITS != 92,
++	BUILD_BUG_ON_MSG(__ETHTOOL_LINK_MODE_MASK_NBITS != 93,
+ 		"Enum ethtool_link_mode_bit_indices and phylib are out of sync. "
+ 		"If a speed or mode has been added please update phy_speed_to_str "
+ 		"and the PHY settings array.\n");
+@@ -175,6 +175,7 @@ static const struct phy_setting settings[] = {
+ 	/* 10M */
+ 	PHY_SETTING(     10, FULL,     10baseT_Full		),
+ 	PHY_SETTING(     10, HALF,     10baseT_Half		),
++	PHY_SETTING(     10, FULL,     10baseT1L_Full		),
+ };
+ #undef PHY_SETTING
+ 
+diff --git a/drivers/net/phy/phy.c b/drivers/net/phy/phy.c
+index 18e67eb6d8b4..babcb18b368b 100644
+--- a/drivers/net/phy/phy.c
++++ b/drivers/net/phy/phy.c
+@@ -374,7 +374,11 @@ int phy_mii_ioctl(struct phy_device *phydev, struct ifreq *ifr, int cmd)
+ 			}
+ 		}
+ 
+-		mdiobus_write(phydev->mdio.bus, prtad, devad, val);
++		if (mdio_phy_id_is_c45(mii_data->phy_id))
++			mdiobus_c45_write(phydev->mdio.bus, prtad, devad,
++					  mii_data->reg_num, val);
++		else
++			mdiobus_write(phydev->mdio.bus, prtad, devad, val);
+ 
+ 		if (prtad == phydev->mdio.addr &&
+ 		    devad == MII_BMCR &&
+@@ -445,14 +449,15 @@ void phy_queue_state_machine(struct phy_device *phydev, unsigned long jiffies)
+ EXPORT_SYMBOL(phy_queue_state_machine);
+ 
+ /**
+- * phy_queue_state_machine - Trigger the state machine to run now
++ * phy_trigger_machine - Trigger the state machine to run now
+  *
+  * @phydev: the phy_device struct
+  */
+-static void phy_trigger_machine(struct phy_device *phydev)
++void phy_trigger_machine(struct phy_device *phydev)
+ {
+ 	phy_queue_state_machine(phydev, 0);
+ }
++EXPORT_SYMBOL(phy_trigger_machine);
+ 
+ static void phy_abort_cable_test(struct phy_device *phydev)
+ {
+@@ -671,7 +676,7 @@ int phy_start_cable_test_tdr(struct phy_device *phydev,
+ }
+ EXPORT_SYMBOL(phy_start_cable_test_tdr);
+ 
+-static int phy_config_aneg(struct phy_device *phydev)
++int phy_config_aneg(struct phy_device *phydev)
+ {
+ 	if (phydev->drv->config_aneg)
+ 		return phydev->drv->config_aneg(phydev);
+@@ -684,6 +689,7 @@ static int phy_config_aneg(struct phy_device *phydev)
+ 
+ 	return genphy_config_aneg(phydev);
+ }
++EXPORT_SYMBOL(phy_config_aneg);
+ 
+ /**
+  * phy_check_link_status - check link status and set state accordingly
+@@ -958,7 +964,7 @@ void phy_stop_machine(struct phy_device *phydev)
+  * Must not be called from interrupt context, or while the
+  * phydev->lock is held.
+  */
+-static void phy_error(struct phy_device *phydev)
++void phy_error(struct phy_device *phydev)
+ {
+ 	WARN_ON(1);
+ 
+@@ -968,6 +974,7 @@ static void phy_error(struct phy_device *phydev)
+ 
+ 	phy_trigger_machine(phydev);
+ }
++EXPORT_SYMBOL(phy_error);
+ 
+ /**
+  * phy_disable_interrupts - Disable the PHY interrupts from the PHY side
+diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
+index 0fa369c6eaa1..09a29f53d3ee 100644
+--- a/drivers/net/phy/phy_device.c
++++ b/drivers/net/phy/phy_device.c
+@@ -90,8 +90,9 @@ const int phy_10_100_features_array[4] = {
+ };
+ EXPORT_SYMBOL_GPL(phy_10_100_features_array);
+ 
+-const int phy_basic_t1_features_array[2] = {
++const int phy_basic_t1_features_array[3] = {
+ 	ETHTOOL_LINK_MODE_TP_BIT,
++	ETHTOOL_LINK_MODE_10baseT1L_Full_BIT,
+ 	ETHTOOL_LINK_MODE_100baseT1_Full_BIT,
+ };
+ EXPORT_SYMBOL_GPL(phy_basic_t1_features_array);
+@@ -513,10 +514,21 @@ phy_has_fixups_show(struct device *dev, struct device_attribute *attr,
+ }
+ static DEVICE_ATTR_RO(phy_has_fixups);
+ 
++static ssize_t phy_dev_flags_show(struct device *dev,
++				  struct device_attribute *attr,
++				  char *buf)
++{
++	struct phy_device *phydev = to_phy_device(dev);
++
++	return sprintf(buf, "0x%08x\n", phydev->dev_flags);
++}
++static DEVICE_ATTR_RO(phy_dev_flags);
++
+ static struct attribute *phy_dev_attrs[] = {
+ 	&dev_attr_phy_id.attr,
+ 	&dev_attr_phy_interface.attr,
+ 	&dev_attr_phy_has_fixups.attr,
++	&dev_attr_phy_dev_flags.attr,
+ 	NULL,
+ };
+ ATTRIBUTE_GROUPS(phy_dev);
+@@ -582,6 +594,7 @@ struct phy_device *phy_device_create(struct mii_bus *bus, int addr, u32 phy_id,
+ 
+ 	dev->autoneg = AUTONEG_ENABLE;
+ 
++	dev->pma_extable = -ENODATA;
+ 	dev->is_c45 = is_c45;
+ 	dev->phy_id = phy_id;
+ 	if (c45_ids)
+@@ -875,6 +888,18 @@ struct phy_device *get_phy_device(struct mii_bus *bus, int addr, bool is_c45)
+ 	if (r)
+ 		return ERR_PTR(r);
+ 
++	/* PHY device such as the Marvell Alaska 88E2110 will return a PHY ID
++	 * of 0 when probed using get_phy_c22_id() with no error. Proceed to
++	 * probe with C45 to see if we're able to get a valid PHY ID in the C45
++	 * space, if successful, create the C45 PHY device.
++	 */
++	if (!is_c45 && phy_id == 0 && bus->probe_capabilities >= MDIOBUS_C45) {
++		r = get_phy_c45_ids(bus, addr, &c45_ids);
++		if (!r)
++			return phy_device_create(bus, addr, phy_id,
++						 true, &c45_ids);
++	}
++
+ 	return phy_device_create(bus, addr, phy_id, is_c45, &c45_ids);
+ }
+ EXPORT_SYMBOL(get_phy_device);
+@@ -940,6 +965,20 @@ void phy_device_remove(struct phy_device *phydev)
+ }
+ EXPORT_SYMBOL(phy_device_remove);
+ 
++/**
++ * phy_get_c45_ids - Read 802.3-c45 IDs for phy device.
++ * @phydev: phy_device structure to read 802.3-c45 IDs
++ *
++ * Returns zero on success, %-EIO on bus access error, or %-ENODEV if
++ * the "devices in package" is invalid.
++ */
++int phy_get_c45_ids(struct phy_device *phydev)
++{
++	return get_phy_c45_ids(phydev->mdio.bus, phydev->mdio.addr,
++			       &phydev->c45_ids);
++}
++EXPORT_SYMBOL(phy_get_c45_ids);
++
+ /**
+  * phy_find_first - finds the first PHY device on the bus
+  * @bus: the target MII bus
+@@ -2007,17 +2046,11 @@ static int genphy_setup_master_slave(struct phy_device *phydev)
+ 				   CTL1000_PREFER_MASTER), ctl);
+ }
+ 
+-static int genphy_read_master_slave(struct phy_device *phydev)
++int genphy_read_master_slave(struct phy_device *phydev)
+ {
+ 	int cfg, state;
+ 	int val;
+ 
+-	if (!phydev->is_gigabit_capable) {
+-		phydev->master_slave_get = MASTER_SLAVE_CFG_UNSUPPORTED;
+-		phydev->master_slave_state = MASTER_SLAVE_STATE_UNSUPPORTED;
+-		return 0;
+-	}
+-
+ 	phydev->master_slave_get = MASTER_SLAVE_CFG_UNKNOWN;
+ 	phydev->master_slave_state = MASTER_SLAVE_STATE_UNKNOWN;
+ 
+@@ -2058,6 +2091,7 @@ static int genphy_read_master_slave(struct phy_device *phydev)
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL(genphy_read_master_slave);
+ 
+ /**
+  * genphy_restart_aneg - Enable and Restart Autonegotiation
+diff --git a/drivers/net/phy/phylink.c b/drivers/net/phy/phylink.c
+index ad94e6324ed0..71d1c95f436c 100644
+--- a/drivers/net/phy/phylink.c
++++ b/drivers/net/phy/phylink.c
+@@ -167,8 +167,10 @@ static void phylink_caps_to_linkmodes(unsigned long *linkmodes,
+ 	if (caps & MAC_10HD)
+ 		__set_bit(ETHTOOL_LINK_MODE_10baseT_Half_BIT, linkmodes);
+ 
+-	if (caps & MAC_10FD)
++	if (caps & MAC_10FD) {
+ 		__set_bit(ETHTOOL_LINK_MODE_10baseT_Full_BIT, linkmodes);
++		__set_bit(ETHTOOL_LINK_MODE_10baseT1L_Full_BIT, linkmodes);
++	}
+ 
+ 	if (caps & MAC_100HD) {
+ 		__set_bit(ETHTOOL_LINK_MODE_100baseT_Half_BIT, linkmodes);
+diff --git a/include/linux/mdio.h b/include/linux/mdio.h
+index de5fb4b333ce..dcd202344e95 100644
+--- a/include/linux/mdio.h
++++ b/include/linux/mdio.h
+@@ -325,6 +325,76 @@ static inline void mii_10gbt_stat_mod_linkmode_lpa_t(unsigned long *advertising,
+ 			 advertising, lpa & MDIO_AN_10GBT_STAT_LP10G);
+ }
+ 
++/**
++ * mii_t1_adv_l_mod_linkmode_t
++ * @advertising: target the linkmode advertisement settings
++ * @lpa: value of the BASE-T1 Autonegotiation Advertisement [15:0] Register
++ *
++ * A small helper function that translates BASE-T1 Autonegotiation
++ * Advertisement [15:0] Register bits to linkmode advertisement settings.
++ * Other bits in advertising aren't changed.
++ */
++static inline void mii_t1_adv_l_mod_linkmode_t(unsigned long *advertising, u32 lpa)
++{
++	linkmode_mod_bit(ETHTOOL_LINK_MODE_Pause_BIT, advertising,
++			 lpa & MDIO_AN_T1_ADV_L_PAUSE_CAP);
++	linkmode_mod_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, advertising,
++			 lpa & MDIO_AN_T1_ADV_L_PAUSE_ASYM);
++}
++
++/**
++ * mii_t1_adv_m_mod_linkmode_t
++ * @advertising: target the linkmode advertisement settings
++ * @lpa: value of the BASE-T1 Autonegotiation Advertisement [31:16] Register
++ *
++ * A small helper function that translates BASE-T1 Autonegotiation
++ * Advertisement [31:16] Register bits to linkmode advertisement settings.
++ * Other bits in advertising aren't changed.
++ */
++static inline void mii_t1_adv_m_mod_linkmode_t(unsigned long *advertising, u32 lpa)
++{
++	linkmode_mod_bit(ETHTOOL_LINK_MODE_10baseT1L_Full_BIT,
++			 advertising, lpa & MDIO_AN_T1_ADV_M_B10L);
++}
++
++/**
++ * linkmode_adv_to_mii_t1_adv_l_t
++ * @advertising: the linkmode advertisement settings
++ *
++ * A small helper function that translates linkmode advertisement
++ * settings to phy autonegotiation advertisements for the
++ * BASE-T1 Autonegotiation Advertisement [15:0] Register.
++ */
++static inline u32 linkmode_adv_to_mii_t1_adv_l_t(unsigned long *advertising)
++{
++	u32 result = 0;
++
++	if (linkmode_test_bit(ETHTOOL_LINK_MODE_Pause_BIT, advertising))
++		result |= MDIO_AN_T1_ADV_L_PAUSE_CAP;
++	if (linkmode_test_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, advertising))
++		result |= MDIO_AN_T1_ADV_L_PAUSE_ASYM;
++
++	return result;
++}
++
++/**
++ * linkmode_adv_to_mii_t1_adv_m_t
++ * @advertising: the linkmode advertisement settings
++ *
++ * A small helper function that translates linkmode advertisement
++ * settings to phy autonegotiation advertisements for the
++ * BASE-T1 Autonegotiation Advertisement [31:16] Register.
++ */
++static inline u32 linkmode_adv_to_mii_t1_adv_m_t(unsigned long *advertising)
++{
++	u32 result = 0;
++
++	if (linkmode_test_bit(ETHTOOL_LINK_MODE_10baseT1L_Full_BIT, advertising))
++		result |= MDIO_AN_T1_ADV_M_B10L;
++
++	return result;
++}
++
+ int __mdiobus_read(struct mii_bus *bus, int addr, u32 regnum);
+ int __mdiobus_write(struct mii_bus *bus, int addr, u32 regnum, u16 val);
+ int __mdiobus_modify_changed(struct mii_bus *bus, int addr, u32 regnum,
+diff --git a/include/linux/phy.h b/include/linux/phy.h
+index f149fdc020b8..9010ea801328 100644
+--- a/include/linux/phy.h
++++ b/include/linux/phy.h
+@@ -65,7 +65,7 @@ extern const int phy_basic_ports_array[3];
+ extern const int phy_fibre_port_array[1];
+ extern const int phy_all_ports_features_array[7];
+ extern const int phy_10_100_features_array[4];
+-extern const int phy_basic_t1_features_array[2];
++extern const int phy_basic_t1_features_array[3];
+ extern const int phy_gbit_features_array[2];
+ extern const int phy_10gbit_features_array[1];
+ 
+@@ -607,6 +607,8 @@ struct phy_device {
+ 	unsigned sysfs_links:1;
+ 	unsigned loopback_enabled:1;
+ 	unsigned downshifted_rate:1;
++	unsigned is_on_sfp_module:1;
++	unsigned mac_managed_pm:1;
+ 
+ 	unsigned autoneg:1;
+ 	/* The most recently read link state */
+@@ -688,6 +690,8 @@ struct phy_device {
+ 	u8 mdix;
+ 	u8 mdix_ctrl;
+ 
++	int pma_extable;
++
+ 	void (*phy_link_change)(struct phy_device *phydev, bool up);
+ 	void (*adjust_link)(struct net_device *dev);
+ 
+@@ -1450,6 +1454,7 @@ static inline int phy_device_register(struct phy_device *phy)
+ static inline void phy_device_free(struct phy_device *phydev) { }
+ #endif /* CONFIG_PHYLIB */
+ void phy_device_remove(struct phy_device *phydev);
++int phy_get_c45_ids(struct phy_device *phydev);
+ int phy_init_hw(struct phy_device *phydev);
+ int phy_suspend(struct phy_device *phydev);
+ int phy_resume(struct phy_device *phydev);
+@@ -1474,6 +1479,7 @@ void phy_disconnect(struct phy_device *phydev);
+ void phy_detach(struct phy_device *phydev);
+ void phy_start(struct phy_device *phydev);
+ void phy_stop(struct phy_device *phydev);
++int phy_config_aneg(struct phy_device *phydev);
+ int phy_start_aneg(struct phy_device *phydev);
+ int phy_aneg_done(struct phy_device *phydev);
+ int phy_speed_down(struct phy_device *phydev, bool sync);
+@@ -1560,10 +1566,12 @@ int genphy_update_link(struct phy_device *phydev);
+ int genphy_read_lpa(struct phy_device *phydev);
+ int genphy_read_status_fixed(struct phy_device *phydev);
+ int genphy_read_status(struct phy_device *phydev);
++int genphy_read_master_slave(struct phy_device *phydev);
+ int genphy_suspend(struct phy_device *phydev);
+ int genphy_resume(struct phy_device *phydev);
+ int genphy_loopback(struct phy_device *phydev, bool enable);
+ int genphy_soft_reset(struct phy_device *phydev);
++irqreturn_t genphy_handle_interrupt_no_ack(struct phy_device *phydev);
+ 
+ static inline int genphy_config_aneg(struct phy_device *phydev)
+ {
+@@ -1595,12 +1603,19 @@ int genphy_c45_read_link(struct phy_device *phydev);
+ int genphy_c45_read_lpa(struct phy_device *phydev);
+ int genphy_c45_read_pma(struct phy_device *phydev);
+ int genphy_c45_pma_setup_forced(struct phy_device *phydev);
++int genphy_c45_pma_baset1_setup_master_slave(struct phy_device *phydev);
+ int genphy_c45_an_config_aneg(struct phy_device *phydev);
+ int genphy_c45_an_disable_aneg(struct phy_device *phydev);
+ int genphy_c45_read_mdix(struct phy_device *phydev);
+ int genphy_c45_pma_read_abilities(struct phy_device *phydev);
++int genphy_c45_pma_baset1_read_master_slave(struct phy_device *phydev);
+ int genphy_c45_read_status(struct phy_device *phydev);
++int genphy_c45_baset1_read_status(struct phy_device *phydev);
+ int genphy_c45_config_aneg(struct phy_device *phydev);
++int genphy_c45_loopback(struct phy_device *phydev, bool enable);
++int genphy_c45_pma_resume(struct phy_device *phydev);
++int genphy_c45_pma_suspend(struct phy_device *phydev);
++int genphy_c45_fast_retrain(struct phy_device *phydev, bool enable);
+ 
+ /* Generic C45 PHY driver */
+ extern struct phy_driver genphy_c45_driver;
+@@ -1624,8 +1639,10 @@ void phy_drivers_unregister(struct phy_driver *drv, int n);
+ int phy_driver_register(struct phy_driver *new_driver, struct module *owner);
+ int phy_drivers_register(struct phy_driver *new_driver, int n,
+ 			 struct module *owner);
++void phy_error(struct phy_device *phydev);
+ void phy_state_machine(struct work_struct *work);
+ void phy_queue_state_machine(struct phy_device *phydev, unsigned long jiffies);
++void phy_trigger_machine(struct phy_device *phydev);
+ void phy_mac_interrupt(struct phy_device *phydev);
+ void phy_start_machine(struct phy_device *phydev);
+ void phy_stop_machine(struct phy_device *phydev);
+diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
+index 13772f039c8d..4f8baa353fed 100644
+--- a/include/uapi/linux/ethtool.h
++++ b/include/uapi/linux/ethtool.h
+@@ -1619,6 +1619,7 @@ enum ethtool_link_mode_bit_indices {
+ 	ETHTOOL_LINK_MODE_400000baseCR4_Full_BIT	 = 89,
+ 	ETHTOOL_LINK_MODE_100baseFX_Half_BIT		 = 90,
+ 	ETHTOOL_LINK_MODE_100baseFX_Full_BIT		 = 91,
++	ETHTOOL_LINK_MODE_10baseT1L_Full_BIT		 = 92,
+ 	/* must be last entry */
+ 	__ETHTOOL_LINK_MODE_MASK_NBITS
+ };
+diff --git a/include/uapi/linux/mdio.h b/include/uapi/linux/mdio.h
+index 3f302e2523b2..75b7257a51e1 100644
+--- a/include/uapi/linux/mdio.h
++++ b/include/uapi/linux/mdio.h
+@@ -53,18 +53,33 @@
+ #define MDIO_AN_EEE_LPABLE	61	/* EEE link partner ability */
+ #define MDIO_AN_EEE_ADV2	62	/* EEE advertisement 2 */
+ #define MDIO_AN_EEE_LPABLE2	63	/* EEE link partner ability 2 */
++#define MDIO_AN_CTRL2		64	/* AN THP bypass request control */
+ 
+ /* Media-dependent registers. */
+ #define MDIO_PMA_10GBT_SWAPPOL	130	/* 10GBASE-T pair swap & polarity */
+ #define MDIO_PMA_10GBT_TXPWR	131	/* 10GBASE-T TX power control */
+ #define MDIO_PMA_10GBT_SNR	133	/* 10GBASE-T SNR margin, lane A.
+ 					 * Lanes B-D are numbered 134-136. */
++#define MDIO_PMA_10GBR_FSRT_CSR	147	/* 10GBASE-R fast retrain status and control */
+ #define MDIO_PMA_10GBR_FECABLE	170	/* 10GBASE-R FEC ability */
+ #define MDIO_PCS_10GBX_STAT1	24	/* 10GBASE-X PCS status 1 */
+ #define MDIO_PCS_10GBRT_STAT1	32	/* 10GBASE-R/-T PCS status 1 */
+ #define MDIO_PCS_10GBRT_STAT2	33	/* 10GBASE-R/-T PCS status 2 */
+ #define MDIO_AN_10GBT_CTRL	32	/* 10GBASE-T auto-negotiation control */
+ #define MDIO_AN_10GBT_STAT	33	/* 10GBASE-T auto-negotiation status */
++#define MDIO_B10L_PMA_CTRL	2294	/* 10BASE-T1L PMA control */
++#define MDIO_PMA_10T1L_STAT	2295	/* 10BASE-T1L PMA status */
++#define MDIO_PCS_10T1L_CTRL	2278	/* 10BASE-T1L PCS control */
++#define MDIO_PMA_PMD_BT1	18	/* BASE-T1 PMA/PMD extended ability */
++#define MDIO_AN_T1_CTRL		512	/* BASE-T1 AN control */
++#define MDIO_AN_T1_STAT		513	/* BASE-T1 AN status */
++#define MDIO_AN_T1_ADV_L	514	/* BASE-T1 AN advertisement register [15:0] */
++#define MDIO_AN_T1_ADV_M	515	/* BASE-T1 AN advertisement register [31:16] */
++#define MDIO_AN_T1_ADV_H	516	/* BASE-T1 AN advertisement register [47:32] */
++#define MDIO_AN_T1_LP_L		517	/* BASE-T1 AN LP Base Page ability register [15:0] */
++#define MDIO_AN_T1_LP_M		518	/* BASE-T1 AN LP Base Page ability register [31:16] */
++#define MDIO_AN_T1_LP_H		519	/* BASE-T1 AN LP Base Page ability register [47:32] */
++#define MDIO_PMA_PMD_BT1_CTRL	2100	/* BASE-T1 PMA/PMD control register */
+ 
+ /* LASI (Link Alarm Status Interrupt) registers, defined by XENPAK MSA. */
+ #define MDIO_PMA_LASI_RXCTRL	0x9000	/* RX_ALARM control */
+@@ -120,6 +135,8 @@
+ #define MDIO_PMA_SPEED_100		0x0020	/* 100M capable */
+ #define MDIO_PMA_SPEED_10		0x0040	/* 10M capable */
+ #define MDIO_PCS_SPEED_10P2B		0x0002	/* 10PASS-TS/2BASE-TL capable */
++#define MDIO_PCS_SPEED_2_5G		0x0040	/* 2.5G capable */
++#define MDIO_PCS_SPEED_5G		0x0080	/* 5G capable */
+ 
+ /* Device present registers. */
+ #define MDIO_DEVS_PRESENT(devad)	(1 << (devad))
+@@ -155,6 +172,7 @@
+ #define MDIO_PMA_CTRL2_10BT		0x000f	/* 10BASE-T type */
+ #define MDIO_PMA_CTRL2_2_5GBT		0x0030  /* 2.5GBaseT type */
+ #define MDIO_PMA_CTRL2_5GBT		0x0031  /* 5GBaseT type */
++#define MDIO_PMA_CTRL2_BASET1		0x003D  /* BASE-T1 type */
+ #define MDIO_PCS_CTRL2_TYPE		0x0003	/* PCS type selection */
+ #define MDIO_PCS_CTRL2_10GBR		0x0000	/* 10GBASE-R type */
+ #define MDIO_PCS_CTRL2_10GBX		0x0001	/* 10GBASE-X type */
+@@ -208,6 +226,7 @@
+ #define MDIO_PMA_EXTABLE_1000BKX	0x0040	/* 1000BASE-KX ability */
+ #define MDIO_PMA_EXTABLE_100BTX		0x0080	/* 100BASE-TX ability */
+ #define MDIO_PMA_EXTABLE_10BT		0x0100	/* 10BASE-T ability */
++#define MDIO_PMA_EXTABLE_BT1		0x0800	/* BASE-T1 ability */
+ #define MDIO_PMA_EXTABLE_NBT		0x4000  /* 2.5/5GBASE-T ability */
+ 
+ /* PHY XGXS lane state register. */
+@@ -237,6 +256,9 @@
+ #define MDIO_PMA_10GBR_FECABLE_ABLE	0x0001	/* FEC ability */
+ #define MDIO_PMA_10GBR_FECABLE_ERRABLE	0x0002	/* FEC error indic. ability */
+ 
++/* PMA 10GBASE-R Fast Retrain status and control register. */
++#define MDIO_PMA_10GBR_FSRT_ENABLE	0x0001	/* Fast retrain enable */
++
+ /* PCS 10GBASE-R/-T status register 1. */
+ #define MDIO_PCS_10GBRT_STAT1_BLKLK	0x0001	/* Block lock attained */
+ 
+@@ -245,6 +267,7 @@
+ #define MDIO_PCS_10GBRT_STAT2_BER	0x3f00
+ 
+ /* AN 10GBASE-T control register. */
++#define MDIO_AN_10GBT_CTRL_ADVFSRT2_5G	0x0020	/* Advertise 2.5GBASE-T fast retrain */
+ #define MDIO_AN_10GBT_CTRL_ADV2_5G	0x0080	/* Advertise 2.5GBASE-T */
+ #define MDIO_AN_10GBT_CTRL_ADV5G	0x0100	/* Advertise 5GBASE-T */
+ #define MDIO_AN_10GBT_CTRL_ADV10G	0x1000	/* Advertise 10GBASE-T */
+@@ -260,6 +283,66 @@
+ #define MDIO_AN_10GBT_STAT_MS		0x4000	/* Master/slave config */
+ #define MDIO_AN_10GBT_STAT_MSFLT	0x8000	/* Master/slave config fault */
+ 
++/* 10BASE-T1L PMA control */
++#define MDIO_PMA_10T1L_CTRL_LB_EN	0x0001	/* Enable loopback mode */
++#define MDIO_PMA_10T1L_CTRL_EEE_EN	0x0400	/* Enable EEE mode */
++#define MDIO_PMA_10T1L_CTRL_LOW_POWER	0x0800	/* Low-power mode */
++#define MDIO_PMA_10T1L_CTRL_2V4_EN	0x1000	/* Enable 2.4 Vpp operating mode */
++#define MDIO_PMA_10T1L_CTRL_TX_DIS	0x4000	/* Transmit disable */
++#define MDIO_PMA_10T1L_CTRL_PMA_RST	0x8000	/* MA reset */
++
++/* 10BASE-T1L PMA status register. */
++#define MDIO_PMA_10T1L_STAT_LINK	0x0001	/* PMA receive link up */
++#define MDIO_PMA_10T1L_STAT_FAULT	0x0002	/* Fault condition detected */
++#define MDIO_PMA_10T1L_STAT_POLARITY	0x0004	/* Receive polarity is reversed */
++#define MDIO_PMA_10T1L_STAT_RECV_FAULT	0x0200	/* Able to detect fault on receive path */
++#define MDIO_PMA_10T1L_STAT_EEE		0x0400	/* PHY has EEE ability */
++#define MDIO_PMA_10T1L_STAT_LOW_POWER	0x0800	/* PMA has low-power ability */
++#define MDIO_PMA_10T1L_STAT_2V4_ABLE	0x1000	/* PHY has 2.4 Vpp operating mode ability */
++#define MDIO_PMA_10T1L_STAT_LB_ABLE	0x2000	/* PHY has loopback ability */
++
++/* 10BASE-T1L PCS control register. */
++#define MDIO_PCS_10T1L_CTRL_LB		0x4000	/* Enable PCS level loopback mode */
++#define MDIO_PCS_10T1L_CTRL_RESET	0x8000	/* PCS reset */
++
++/* BASE-T1 PMA/PMD extended ability register. */
++#define MDIO_PMA_PMD_BT1_B10L_ABLE	0x0004	/* 10BASE-T1L Ability */
++
++/* BASE-T1 auto-negotiation advertisement register [15:0] */
++#define MDIO_AN_T1_ADV_L_PAUSE_CAP	ADVERTISE_PAUSE_CAP
++#define MDIO_AN_T1_ADV_L_PAUSE_ASYM	ADVERTISE_PAUSE_ASYM
++#define MDIO_AN_T1_ADV_L_FORCE_MS	0x1000	/* Force Master/slave Configuration */
++#define MDIO_AN_T1_ADV_L_REMOTE_FAULT	ADVERTISE_RFAULT
++#define MDIO_AN_T1_ADV_L_ACK		ADVERTISE_LPACK
++#define MDIO_AN_T1_ADV_L_NEXT_PAGE_REQ	ADVERTISE_NPAGE
++
++/* BASE-T1 auto-negotiation advertisement register [31:16] */
++#define MDIO_AN_T1_ADV_M_B10L		0x4000	/* device is compatible with 10BASE-T1L */
++#define MDIO_AN_T1_ADV_M_MST		0x0010	/* advertise master preference */
++
++/* BASE-T1 auto-negotiation advertisement register [47:32] */
++#define MDIO_AN_T1_ADV_H_10L_TX_HI_REQ	0x1000	/* 10BASE-T1L High Level Transmit Request */
++#define MDIO_AN_T1_ADV_H_10L_TX_HI	0x2000	/* 10BASE-T1L High Level Transmit Ability */
++
++/* BASE-T1 AN LP Base Page ability register [15:0] */
++#define MDIO_AN_T1_LP_L_PAUSE_CAP	LPA_PAUSE_CAP
++#define MDIO_AN_T1_LP_L_PAUSE_ASYM	LPA_PAUSE_ASYM
++#define MDIO_AN_T1_LP_L_FORCE_MS	0x1000	/* LP Force Master/slave Configuration */
++#define MDIO_AN_T1_LP_L_REMOTE_FAULT	LPA_RFAULT
++#define MDIO_AN_T1_LP_L_ACK		LPA_LPACK
++#define MDIO_AN_T1_LP_L_NEXT_PAGE_REQ	LPA_NPAGE
++
++/* BASE-T1 AN LP Base Page ability register [31:16] */
++#define MDIO_AN_T1_LP_M_MST		0x0010	/* LP master preference */
++#define MDIO_AN_T1_LP_M_B10L		0x4000	/* LP is compatible with 10BASE-T1L */
++
++/* BASE-T1 AN LP Base Page ability register [47:32] */
++#define MDIO_AN_T1_LP_H_10L_TX_HI_REQ	0x1000	/* 10BASE-T1L High Level LP Transmit Request */
++#define MDIO_AN_T1_LP_H_10L_TX_HI	0x2000	/* 10BASE-T1L High Level LP Transmit Ability */
++
++/* BASE-T1 PMA/PMD control register */
++#define MDIO_PMA_PMD_BT1_CTRL_CFG_MST	0x4000 /* MASTER-SLAVE config value */
++
+ /* EEE Supported/Advertisement/LP Advertisement registers.
+  *
+  * EEE capability Register (3.20), Advertisement (7.60) and
+@@ -287,6 +370,9 @@
+ #define MDIO_EEE_2_5GT		0x0001	/* 2.5GT EEE cap */
+ #define MDIO_EEE_5GT		0x0002	/* 5GT EEE cap */
+ 
++/* AN MultiGBASE-T AN control 2 */
++#define MDIO_AN_THP_BP2_5GT	0x0008	/* 2.5GT THP bypass request */
++
+ /* 2.5G/5G Extended abilities register. */
+ #define MDIO_PMA_NG_EXTABLE_2_5GBT	0x0001	/* 2.5GBASET ability */
+ #define MDIO_PMA_NG_EXTABLE_5GBT	0x0002	/* 5GBASET ability */
+diff --git a/net/ethtool/common.c b/net/ethtool/common.c
+index 382829daae36..6e88b4b08d10 100644
+--- a/net/ethtool/common.c
++++ b/net/ethtool/common.c
+@@ -198,6 +198,7 @@ const char link_mode_names[][ETH_GSTRING_LEN] = {
+ 	__DEFINE_LINK_MODE_NAME(400000, CR4, Full),
+ 	__DEFINE_LINK_MODE_NAME(100, FX, Half),
+ 	__DEFINE_LINK_MODE_NAME(100, FX, Full),
++	__DEFINE_LINK_MODE_NAME(10, T1L, Full),
+ };
+ static_assert(ARRAY_SIZE(link_mode_names) == __ETHTOOL_LINK_MODE_MASK_NBITS);
+ 
+diff --git a/net/ethtool/linkmodes.c b/net/ethtool/linkmodes.c
+index c5bcb9abc8b9..544dbbb80856 100644
+--- a/net/ethtool/linkmodes.c
++++ b/net/ethtool/linkmodes.c
+@@ -264,6 +264,7 @@ static const struct link_mode_info link_mode_params[] = {
+ 	__DEFINE_LINK_MODE_PARAMS(400000, CR4, Full),
+ 	__DEFINE_LINK_MODE_PARAMS(100, FX, Half),
+ 	__DEFINE_LINK_MODE_PARAMS(100, FX, Full),
++	__DEFINE_LINK_MODE_PARAMS(10, T1L, Full)
+ };
+ 
+ const struct nla_policy ethnl_linkmodes_set_policy[] = {
+-- 
+2.30.2
+
