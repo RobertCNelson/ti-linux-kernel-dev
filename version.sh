@@ -4,10 +4,10 @@ ARCH=$(uname -m)
 
 config="omap2plus_defconfig"
 
-build_prefix="-ti-xenomai-r"
-branch_prefix="ti-linux-xenomai-"
+build_prefix="-ti-xenomai-bela-r"
+branch_prefix="ti-linux-xenomai-bela-"
 branch_postfix=".y"
-bborg_branch="4.14-xenomai"
+bborg_branch="4.14-xenomai-bela"
 
 #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v4.14-rc1
 #arm
