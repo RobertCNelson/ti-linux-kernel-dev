@@ -1,9 +1,9 @@
-From 7830613dc15f2dc273f1481e5bf003e2eb8cf90e Mon Sep 17 00:00:00 2001
+From 2034d4a55884200674dfa63cdbc0932bc638a56a Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 11 Aug 2022 15:41:24 -0500
+Date: Fri, 26 Aug 2022 15:26:26 -0500
 Subject: [PATCH] merge: ksmbd: https://github.com/cifsd-team/ksmbd
 
-https://github.com/cifsd-team/ksmbd/commit/55202de3b8e54a2808421c01e6bb726fb2d7e38f
+https://github.com/cifsd-team/ksmbd/commit/4009de1fa85535c549b138946e108070ea57e7dd
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  fs/ksmbd/Kconfig                        |   79 +
@@ -49,11 +49,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/server.h                       |   70 +
  fs/ksmbd/smb1misc.c                     |  297 +
  fs/ksmbd/smb1ops.c                      |   93 +
- fs/ksmbd/smb1pdu.c                      | 8490 ++++++++++++++++++++++
+ fs/ksmbd/smb1pdu.c                      | 8491 ++++++++++++++++++++++
  fs/ksmbd/smb1pdu.h                      | 1600 +++++
  fs/ksmbd/smb2misc.c                     |  450 ++
  fs/ksmbd/smb2ops.c                      |  365 +
- fs/ksmbd/smb2pdu.c                      | 8734 +++++++++++++++++++++++
+ fs/ksmbd/smb2pdu.c                      | 8722 +++++++++++++++++++++++
  fs/ksmbd/smb2pdu.h                      | 1708 +++++
  fs/ksmbd/smb_common.c                   |  744 ++
  fs/ksmbd/smb_common.h                   |  534 ++
@@ -71,12 +71,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/unicode.c                      |  402 ++
  fs/ksmbd/unicode.h                      |  360 +
  fs/ksmbd/uniupr.h                       |  268 +
- fs/ksmbd/vfs.c                          | 2526 +++++++
+ fs/ksmbd/vfs.c                          | 2529 +++++++
  fs/ksmbd/vfs.h                          |  239 +
  fs/ksmbd/vfs_cache.c                    |  751 ++
  fs/ksmbd/vfs_cache.h                    |  182 +
  fs/ksmbd/xattr.h                        |  122 +
- 70 files changed, 46581 insertions(+)
+ 70 files changed, 46573 insertions(+)
  create mode 100644 fs/ksmbd/Kconfig
  create mode 100644 fs/ksmbd/Makefile
  create mode 100644 fs/ksmbd/README.md
@@ -11652,10 +11652,10 @@ index 000000000000..b1e2aac1c140
 +}
 diff --git a/fs/ksmbd/smb1pdu.c b/fs/ksmbd/smb1pdu.c
 new file mode 100644
-index 000000000000..07b8d302e4a0
+index 000000000000..0fec3e5743fa
 --- /dev/null
 +++ b/fs/ksmbd/smb1pdu.c
-@@ -0,0 +1,8490 @@
+@@ -0,0 +1,8491 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -12897,6 +12897,7 @@ index 000000000000..07b8d302e4a0
 +	rsp->resp.hdr.WordCount = 0;
 +	rsp->resp.ByteCount = 0;
 +	if (rc < 0 && sess) {
++		xa_erase(&conn->sessions, sess->id);
 +		ksmbd_session_destroy(sess);
 +		work->sess = NULL;
 +	}
@@ -22581,10 +22582,10 @@ index 000000000000..598ab408604a
 +}
 diff --git a/fs/ksmbd/smb2pdu.c b/fs/ksmbd/smb2pdu.c
 new file mode 100644
-index 000000000000..652917e8e30a
+index 000000000000..3f4d8b13fec6
 --- /dev/null
 +++ b/fs/ksmbd/smb2pdu.c
-@@ -0,0 +1,8734 @@
+@@ -0,0 +1,8722 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -24938,15 +24939,15 @@ index 000000000000..652917e8e30a
 +			name += strlen(name) + 1) {
 +		ksmbd_debug(SMB, "%s, len %zd\n", name, strlen(name));
 +
-+		if (strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN) &&
-+		    strncmp(&name[XATTR_USER_PREFIX_LEN], DOS_ATTRIBUTE_PREFIX,
-+			    DOS_ATTRIBUTE_PREFIX_LEN) &&
-+		    strncmp(&name[XATTR_USER_PREFIX_LEN], STREAM_PREFIX, STREAM_PREFIX_LEN))
-+			continue;
-+
-+		err = ksmbd_vfs_remove_xattr(user_ns, path->dentry, name);
-+		if (err)
-+			ksmbd_debug(SMB, "remove xattr failed : %s\n", name);
++		if (!strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN) &&
++		    !strncmp(&name[XATTR_USER_PREFIX_LEN], STREAM_PREFIX,
++			     STREAM_PREFIX_LEN)) {
++			err = ksmbd_vfs_remove_xattr(user_ns, path->dentry,
++						     name);
++			if (err)
++				ksmbd_debug(SMB, "remove xattr failed : %s\n",
++					    name);
++		}
 +	}
 +out:
 +	kvfree(xattr_list);
@@ -25667,16 +25668,6 @@ index 000000000000..652917e8e30a
 +	list_add(&fp->node, &fp->f_ci->m_fp_list);
 +	write_unlock(&fp->f_ci->m_lock);
 +
-+	rc = ksmbd_vfs_getattr(&path, &stat);
-+	if (rc) {
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
-+		generic_fillattr(user_ns, d_inode(path.dentry), &stat);
-+#else
-+		generic_fillattr(d_inode(path.dentry), &stat);
-+#endif
-+		rc = 0;
-+	}
-+
 +	/* Check delete pending among previous fp before oplock break */
 +	if (ksmbd_inode_pending_delete(fp)) {
 +		rc = -EBUSY;
@@ -25763,6 +25754,10 @@ index 000000000000..652917e8e30a
 +		}
 +	}
 +
++	rc = ksmbd_vfs_getattr(&path, &stat);
++	if (rc)
++		goto err_out;
++
 +	if (stat.result_mask & STATX_BTIME)
 +		fp->create_time = ksmbd_UnixTimeToNT(stat.btime);
 +	else
@@ -25777,12 +25772,6 @@ index 000000000000..652917e8e30a
 +		smb2_new_xattrs(tcon, &path, fp);
 +
 +	memcpy(fp->client_guid, conn->ClientGUID, SMB2_CLIENT_GUID_SIZE);
-+
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
-+	generic_fillattr(user_ns, file_inode(fp->filp), &stat);
-+#else
-+	generic_fillattr(file_inode(fp->filp), &stat);
-+#endif
 +
 +	rsp->StructureSize = cpu_to_le16(89);
 +	rcu_read_lock();
@@ -43301,10 +43290,10 @@ index 000000000000..26583b776897
 +#endif /* __KSMBD_UNIUPR_H */
 diff --git a/fs/ksmbd/vfs.c b/fs/ksmbd/vfs.c
 new file mode 100644
-index 000000000000..ac4cb9465a66
+index 000000000000..13f37f4a7d0a
 --- /dev/null
 +++ b/fs/ksmbd/vfs.c
-@@ -0,0 +1,2526 @@
+@@ -0,0 +1,2529 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -44569,6 +44558,9 @@ index 000000000000..ac4cb9465a66
 +{
 +	int err = 0;
 +	struct file *filp;
++
++	if (size < 0)
++		return -EINVAL;
 +
 +	filp = fp->filp;
 +
