@@ -47,7 +47,7 @@ kernel_rt=".120-rt70"
 #Kernel Build
 BUILD=${build_prefix}48
 
-#v5.X-rcX + upto SHA
+#v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
 #KERNEL_SHA=""
 
