@@ -1,12 +1,14 @@
-From 0b1aab89681861800ebfcf06a8da7b7bb9eac18c Mon Sep 17 00:00:00 2001
+From 54c00fc61a98d8f61bd54b8e14ad9ee0dba7d4ba Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 11 Aug 2022 15:43:59 -0500
+Date: Thu, 1 Sep 2022 19:43:03 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.136
+Reference: v5.10.140
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/bma180.c                    |  3 ++-
+ drivers/iio/accel/bma400.h                    | 23 ++++++++++++++++--
+ drivers/iio/accel/bma400_core.c               |  4 ++--
  drivers/iio/accel/mma8452.c                   | 22 ++++++++++-------
  drivers/iio/accel/mxc4005.c                   |  4 ++--
  drivers/iio/adc/ad7124.c                      |  1 -
@@ -22,10 +24,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/gyro/mpu3050-core.c               |  1 +
  drivers/iio/imu/inv_icm42600/inv_icm42600.h   |  1 +
  .../iio/imu/inv_icm42600/inv_icm42600_core.c  |  2 +-
+ drivers/iio/light/isl29028.c                  |  2 +-
  drivers/iio/proximity/vl53l0x-i2c.c           |  7 +++---
  drivers/iio/trigger/iio-trig-sysfs.c          |  1 +
  include/linux/iio/common/st_sensors.h         |  3 +++
- 19 files changed, 92 insertions(+), 59 deletions(-)
+ 22 files changed, 116 insertions(+), 64 deletions(-)
 
 diff --git a/drivers/iio/accel/bma180.c b/drivers/iio/accel/bma180.c
 index da56488182d0..6aa5a72c89b2 100644
@@ -45,6 +48,61 @@ index da56488182d0..6aa5a72c89b2 100644
  	}
  
  	ret = iio_triggered_buffer_setup(indio_dev, NULL,
+diff --git a/drivers/iio/accel/bma400.h b/drivers/iio/accel/bma400.h
+index 5ad10db9819f..416090c6b1e8 100644
+--- a/drivers/iio/accel/bma400.h
++++ b/drivers/iio/accel/bma400.h
+@@ -83,8 +83,27 @@
+ #define BMA400_ACC_ODR_MIN_WHOLE_HZ 25
+ #define BMA400_ACC_ODR_MIN_HZ       12
+ 
+-#define BMA400_SCALE_MIN            38357
+-#define BMA400_SCALE_MAX            306864
++/*
++ * BMA400_SCALE_MIN macro value represents m/s^2 for 1 LSB before
++ * converting to micro values for +-2g range.
++ *
++ * For +-2g - 1 LSB = 0.976562 milli g = 0.009576 m/s^2
++ * For +-4g - 1 LSB = 1.953125 milli g = 0.019153 m/s^2
++ * For +-16g - 1 LSB = 7.8125 milli g = 0.076614 m/s^2
++ *
++ * The raw value which is used to select the different ranges is determined
++ * by the first bit set position from the scale value, so BMA400_SCALE_MIN
++ * should be odd.
++ *
++ * Scale values for +-2g, +-4g, +-8g and +-16g are populated into bma400_scales
++ * array by left shifting BMA400_SCALE_MIN.
++ * e.g.:
++ * To select +-2g = 9577 << 0 = raw value to write is 0.
++ * To select +-8g = 9577 << 2 = raw value to write is 2.
++ * To select +-16g = 9577 << 3 = raw value to write is 3.
++ */
++#define BMA400_SCALE_MIN            9577
++#define BMA400_SCALE_MAX            76617
+ 
+ #define BMA400_NUM_REGULATORS       2
+ #define BMA400_VDD_REGULATOR        0
+diff --git a/drivers/iio/accel/bma400_core.c b/drivers/iio/accel/bma400_core.c
+index 7eeba80e32cb..58aa6a0e1180 100644
+--- a/drivers/iio/accel/bma400_core.c
++++ b/drivers/iio/accel/bma400_core.c
+@@ -13,14 +13,14 @@
+ 
+ #include <linux/bitops.h>
+ #include <linux/device.h>
+-#include <linux/iio/iio.h>
+-#include <linux/iio/sysfs.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/regmap.h>
+ #include <linux/regulator/consumer.h>
+ 
++#include <linux/iio/iio.h>
++
+ #include "bma400.h"
+ 
+ /*
 diff --git a/drivers/iio/accel/mma8452.c b/drivers/iio/accel/mma8452.c
 index e7e280282774..b12e80464706 100644
 --- a/drivers/iio/accel/mma8452.c
@@ -533,6 +591,19 @@ index 8bd77185ccb7..dcbd4e928851 100644
  		dev_err(dev, "invalid chip = %d\n", chip);
  		return -ENODEV;
  	}
+diff --git a/drivers/iio/light/isl29028.c b/drivers/iio/light/isl29028.c
+index 2f8b494f3e08..74e75477660a 100644
+--- a/drivers/iio/light/isl29028.c
++++ b/drivers/iio/light/isl29028.c
+@@ -627,7 +627,7 @@ static int isl29028_probe(struct i2c_client *client,
+ 					 ISL29028_POWER_OFF_DELAY_MS);
+ 	pm_runtime_use_autosuspend(&client->dev);
+ 
+-	ret = devm_iio_device_register(indio_dev->dev.parent, indio_dev);
++	ret = iio_device_register(indio_dev);
+ 	if (ret < 0) {
+ 		dev_err(&client->dev,
+ 			"%s(): iio registration failed with error %d\n",
 diff --git a/drivers/iio/proximity/vl53l0x-i2c.c b/drivers/iio/proximity/vl53l0x-i2c.c
 index 235e125aeb3a..3d3ab86423ee 100644
 --- a/drivers/iio/proximity/vl53l0x-i2c.c

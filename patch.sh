@@ -120,13 +120,7 @@ external_git () {
 	fi
 	#exit 2
 
-	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-Add-DTB-overlays-for-vision-apps-and-ed.patch"
-	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-k3-j721e-common-proc-board.dts-Add-the-.patch"
-	${git} "${DIR}/patches/j7-evm/0001-HACK-dt-bindings-misc-Add-ti-dma_buf_phys-bindig-doc.patch"
-	${git} "${DIR}/patches/j7-evm/0002-HACK-misc-Add-dma-buf-to-physical-address-exporter.patch"
-	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-Add-DTB-overlay-for-RPi-expansion-heade.patch"
-	${git} "${DIR}/patches/j7-evm/0001-v4l-vxd-dec-Flushing-all-the-IO-buffers-and-releasin.patch"
-	${git} "${DIR}/patches/j7-evm/0001-arm64-dts-ti-k3-j721e-Changes-for-enabling-HW-PWM-on.patch"
+	dir 'j7-evm'
 
 	#exit 2
 }
@@ -445,7 +439,7 @@ dtb_makefile_append () {
 
 beagleboard_dtbs () {
 	branch="v5.10.x-ti-arm64"
-	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	https_repo="https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -476,7 +470,7 @@ beagleboard_dtbs () {
 
 		${git_bin} add -f arch/arm64/boot/dts/ti/
 		${git_bin} add -f include/dt-bindings/
-		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "${https_repo}/tree/${branch}" -m "${https_repo}/commit/${git_hash}" -s
+		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commits/${branch}" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
 		echo "BBDTBS: ${https_repo}/commit/${git_hash}" > ../patches/git/BBDTBS
 
@@ -546,7 +540,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.136"
+	backport_tag="v5.10.140"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -564,7 +558,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.60"
+	backport_tag="v5.15.64"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -580,7 +574,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.60"
+	backport_tag="v5.18.19"
 
 	subsystem="it66121"
 	#regenerate="enable"
@@ -654,7 +648,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.19.1"
+		backport_tag="v5.19.6"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
