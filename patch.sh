@@ -119,10 +119,6 @@ external_git () {
 		echo "${top_of_branch}"
 	fi
 	#exit 2
-
-	dir 'j7-evm'
-
-	#exit 2
 }
 
 aufs_fail () {
@@ -131,13 +127,11 @@ aufs_fail () {
 }
 
 aufs () {
-	#${git_bin} revert --no-edit e68b60ae29de10c7bd7636e227164a8dbe305a82
-
-	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10.117
+	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10.140
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=5.10.117
+		KERNEL_REL=5.10.140
 		wget https://raw.githubusercontent.com/sfjro/${aufs_prefix}standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
 		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
 		rm -rf ${aufs_prefix}kbuild.patch
@@ -438,7 +432,7 @@ dtb_makefile_append () {
 }
 
 beagleboard_dtbs () {
-	branch="v5.10.x-ti-arm64"
+	branch="v5.10.x-ti-unified-staging"
 	https_repo="https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
@@ -466,7 +460,6 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
 		device="k3-j721e-beagleboneai64.dtb" ; dtb_makefile_append
-		device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm64/boot/dts/ti/
 		${git_bin} add -f include/dt-bindings/
@@ -540,7 +533,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.140"
+	backport_tag="v5.10.142"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -558,7 +551,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.64"
+	backport_tag="v5.15.67"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -589,37 +582,6 @@ backports () {
 		patch_backports
 		${git} "${DIR}/patches/backports/${subsystem}/0002-wire-up-it66121.patch"
 	fi
-
-	backport_tag="v5.11.22"
-
-	subsystem="bluetooth"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/bluetooth/* ./drivers/bluetooth/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	backport_tag="v5.11.22"
-
-	subsystem="intel"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/net/wireless/intel/* ./drivers/net/wireless/intel/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-		${git} "${DIR}/patches/backports/${subsystem}/0002-iwlwifi-disable-pnvm-loading.patch"
-	fi
 }
 
 drivers () {
@@ -648,7 +610,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.19.6"
+		backport_tag="v5.19.8"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"

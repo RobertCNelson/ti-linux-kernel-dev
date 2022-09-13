@@ -4,10 +4,10 @@ ARCH=$(uname -m)
 
 config="defconfig"
 
-build_prefix="-ti-arm64-r"
-branch_prefix="ti-linux-arm64-"
+build_prefix="-ti-arm64-staging-r"
+branch_prefix="ti-linux-arm64-staging-"
 branch_postfix=".y"
-bborg_branch="5.10-arm64"
+bborg_branch="5.10-arm64-staging"
 
 #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v5.10-rc1
 #arm
@@ -42,10 +42,10 @@ toolchain="gcc_10_aarch64"
 
 #Kernel
 KERNEL_REL=5.10
-KERNEL_TAG=${KERNEL_REL}.120
-kernel_rt=".120-rt70"
+KERNEL_TAG=${KERNEL_REL}.140
+kernel_rt=".140-rt73"
 #Kernel Build
-BUILD=${build_prefix}63
+BUILD=${build_prefix}0.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -57,5 +57,5 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 
 ti_git_old_release="2176e1735b744c2b002b8c86ca748483c5f7cf0c"
-ti_git_new_release="2176e1735b744c2b002b8c86ca748483c5f7cf0c"
+ti_git_new_release="40117751e2b743dc9657545e0619aa0d6b9b9568"
 #
