@@ -794,10 +794,29 @@ brcmfmac () {
 		patch -p1 < ../patches/cypress/brcmfmac/0099-brcmfmac-enable-pmk-catching-for-ext-sae-wpa3-ap.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0100-brcmfmac-fixes-CYW4373-SDIO-CMD53-error.patch
 
+		#v5.10.9-2022_0331
+		patch -p1 < ../patches/cypress/brcmfmac/0101-brcmfmac-add-PCIe-mailbox-support-for-core-revision-.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0102-brcmfmac-add-support-for-TRX-firmware-download.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0103-brcmfmac-add-Cypress-PCIe-vendor-ID.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0104-brcmfmac-add-support-for-CYW55560-PCIe-chipset.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0105-brcmfmac-add-bootloader-console-buffer-support-for-P.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0106-brcmfmac-support-4373-pcie.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0107-brcmfmac-extsae-supports-FT-over-SAE.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0108-brcmfmac-extsae-supports-SAE-OKC-roam.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0109-nl80211-add-roaming-offload-support.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0110-brcm80211-add-FT-11r-OKC-roaming-offload-support.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0111-brcmfmac-support-extsae-with-psk-1x-offloading.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0112-Disable-out-of-band-device-wake-based-DeepSleep-Stat.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0113-brcmfmac-Improve-the-delay-during-scan.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0114-brcmfmac-skip-6G-oob-scan-report.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0115-Revert-brcmfmac-Improve-the-delay-during-scan.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0116-brcmfmac-Improve-the-delay-during-scan.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0117-brcmfmac-add-FW-AP-selection-mod-param.patch
+
 		#exit 2
 
 		${git_bin} add .
-		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.10.9-2021_1020" -s
+		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.10.9-2022_0331" -s
 		${git_bin} format-patch -1 -o ../patches/cypress/
 
 		exit 2
