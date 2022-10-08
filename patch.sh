@@ -816,10 +816,31 @@ brcmfmac () {
 		patch -p1 < ../patches/cypress/brcmfmac/0117-brcmfmac-remove-default-2s-power-save-max-timeout.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0118-brcmfmac-fixes-scan-invalid-channel-when-enable-host.patch
 
+		#v5.10.9-2022_0909
+		patch -p1 < ../patches/cypress/brcmfmac/0119-brcmfmac-do-not-disable-controller-in-apmode-stop.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0120-brcmfmac-support-11ax-and-6G-band.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0121-brcmfmac-fixes-invalid-channel-still-in-the-channel-.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0122-non-upstream-Fix-lspci-not-enumerating-wifi-device-a.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0123-brcmfmac-support-signal-monitor-feature-for-wpa_supp.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0124-brcmfmac-add-support-for-CYW55560-SDIO-chipset.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0125-brcmfmac-Modified-Kconfig-help-format.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0126-brcmfmac-Fix-incorrect-WARN_ON-causing-set_pmk-failu.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0127-brcmfmac-report-cqm-rssi-event-based-on-rssi-change-.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0128-brcmfmac-add-WPA3_AUTH_1X_SUITE_B_SHA384-related-sup.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0129-non-upstream-Handle-the-6G-case-in-the-bw_cap-chansp.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0130-non-upstream-Fix-kernel-crash-caused-by-race-on-time.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0131-brcmfmac-update-the-statically-defined-HE-MAC-PHY-Ca.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0132-brcmfmac-fix-set_pmk-warning-message.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0133-brcmfmac-update-BIP-setting-and-wsec_info-for-GMAC-a.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0134-brcmfmac-send-roam-request-when-supplicant-triggers-.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0135-brcmfmac-send-BCNLOST_MSG-event-on-beacon-loss-for-s.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0136-brcmfmac-trying-to-get-GCMP-cap-before-doing-set-it.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0137-brcmfmac-update-firmware-loading-name-for-CY5557x.patch
+
 		#exit 2
 
 		${git_bin} add .
-		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.10.9-2022_0511" -s
+		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.10.9-2022_0909" -s
 		${git_bin} format-patch -1 -o ../patches/cypress/
 
 		exit 2
@@ -828,7 +849,6 @@ brcmfmac () {
 	fi
 
 	dir 'cypress'
-	dir 'cypress/fixes'
 }
 
 reverts () {
