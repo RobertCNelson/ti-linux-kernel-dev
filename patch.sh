@@ -127,11 +127,11 @@ aufs_fail () {
 }
 
 aufs () {
-	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10.117
+	#https://github.com/sfjro/aufs5-standalone/tree/aufs5.10.140
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=5.10.117
+		KERNEL_REL=5.10.140
 		wget https://raw.githubusercontent.com/sfjro/${aufs_prefix}standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
 		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
 		rm -rf ${aufs_prefix}kbuild.patch
@@ -475,8 +475,8 @@ dtb_makefile_append () {
 }
 
 beagleboard_dtbs () {
-	branch="v5.10.x-ti"
-	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	branch="v5.10.x-ti-unified"
+	https_repo="https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -522,7 +522,7 @@ beagleboard_dtbs () {
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
-		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "${https_repo}/tree/${branch}" -m "${https_repo}/commit/${git_hash}" -s
+		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${branch}" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${git_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
 		echo "BBDTBS: ${https_repo}/commit/${git_hash}" > ../patches/git/BBDTBS
 
@@ -623,7 +623,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.139"
+	backport_tag="v5.10.147"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -641,7 +641,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.15.63"
+	backport_tag="v5.15.72"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -923,7 +923,7 @@ fixes
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.19.4"
+		backport_tag="v5.19.14"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
