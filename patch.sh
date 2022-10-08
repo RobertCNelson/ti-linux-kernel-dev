@@ -876,6 +876,16 @@ drivers () {
 	#https://github.com/raspberrypi/linux/branches
 	#exit 2
 	dir 'RPi'
+
+	#cd KERNEL/
+	#git checkout v5.10-rc1 -b tmp
+	#git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git topic/overlays-v5.10-rc1
+	#mkdir ../patches/overlays
+	#git format-patch -12 -o ../patches/overlays/
+	#https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git/log/?h=topic/overlays-v5.10-rc1
+	#../
+	dir 'overlays'
+
 	dir 'drivers/ar1021_i2c'
 	dir 'drivers/sound'
 	dir 'drivers/spi'

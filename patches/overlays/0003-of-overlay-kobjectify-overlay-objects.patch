@@ -1,0 +1,166 @@
+From 54ce4c13b5406b0ece4e0430ed6858696062739a Mon Sep 17 00:00:00 2001
+From: Pantelis Antoniou <pantelis.antoniou@konsulko.com>
+Date: Sun, 15 Mar 2015 20:39:36 +0200
+Subject: [PATCH 03/12] of: overlay: kobjectify overlay objects
+
+We are going to need the overlays to appear on sysfs with runtime
+global properties (like master enable) so turn them into kobjects.
+
+They have to be in sysfs so that people can have information about the
+overlays applied in the system, i.e. where their targets are and whether
+removal is possible. In a future more attributes can be added
+in a backwards compatible manner.
+
+Signed-off-by: Pantelis Antoniou <pantelis.antoniou@konsulko.com>
+[geert: Rebase to v4.15-rc1]
+[Fengguang Wu: Make overlay_changeset_release() static]
+[geert: Rebase on top of commit 39a751a4cb7e4798 ("of: change overlay apply input data from unflattened to FDT")
+Signed-off-by: Geert Uytterhoeven <geert+renesas@glider.be>
+---
+ drivers/of/base.c       |  5 +++++
+ drivers/of/of_private.h |  9 ++++++++
+ drivers/of/overlay.c    | 48 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 62 insertions(+)
+
+diff --git a/drivers/of/base.c b/drivers/of/base.c
+index 161a23631472..4368431e520a 100644
+--- a/drivers/of/base.c
++++ b/drivers/of/base.c
+@@ -166,6 +166,7 @@ void __of_phandle_cache_inv_entry(phandle handle)
+ void __init of_core_init(void)
+ {
+ 	struct device_node *np;
++	int ret;
+ 
+ 
+ 	/* Create the kset, and register existing nodes */
+@@ -186,6 +187,10 @@ void __init of_core_init(void)
+ 	/* Symlink in /proc as required by userspace ABI */
+ 	if (of_root)
+ 		proc_symlink("device-tree", NULL, "/sys/firmware/devicetree/base");
++
++	ret = of_overlay_init();
++	if (ret != 0)
++		pr_warn("of_init: of_overlay_init failed!\n");
+ }
+ 
+ static struct property *__of_find_property(const struct device_node *np,
+diff --git a/drivers/of/of_private.h b/drivers/of/of_private.h
+index d9e6a324de0a..85c2e1455bd1 100644
+--- a/drivers/of/of_private.h
++++ b/drivers/of/of_private.h
+@@ -169,4 +169,13 @@ static inline int of_dma_get_range(struct device_node *np,
+ }
+ #endif
+ 
++#if defined(CONFIG_OF_OVERLAY)
++extern int of_overlay_init(void);
++#else
++static inline int of_overlay_init(void)
++{
++	return 0;
++}
++#endif
++
+ #endif /* _LINUX_OF_PRIVATE_H */
+diff --git a/drivers/of/overlay.c b/drivers/of/overlay.c
+index 50bbe0edf538..8220582c9767 100644
+--- a/drivers/of/overlay.c
++++ b/drivers/of/overlay.c
+@@ -20,6 +20,7 @@
+ #include <linux/libfdt.h>
+ #include <linux/err.h>
+ #include <linux/idr.h>
++#include <linux/sysfs.h>
+ 
+ #include "of_private.h"
+ 
+@@ -73,6 +74,7 @@ struct overlay_changeset {
+ 	struct fragment *fragments;
+ 	bool symbols_fragment;
+ 	struct of_changeset cset;
++	struct kobject kobj;
+ };
+ 
+ /* flags are sticky - once set, do not reset */
+@@ -859,6 +861,18 @@ static void free_overlay_changeset(struct overlay_changeset *ovcs)
+ 		of_node_put(ovcs->fragments[i].overlay);
+ 	}
+ 	kfree(ovcs->fragments);
++	kobject_put(&ovcs->kobj);
++}
++
++static inline struct overlay_changeset *kobj_to_ovcs(struct kobject *kobj)
++{
++	return container_of(kobj, struct overlay_changeset, kobj);
++}
++
++static void overlay_changeset_release(struct kobject *kobj)
++{
++	struct overlay_changeset *ovcs = kobj_to_ovcs(kobj);
++
+ 	/*
+ 	 * There should be no live pointers into ovcs->overlay_tree and
+ 	 * ovcs->fdt due to the policy that overlay notifiers are not allowed
+@@ -869,6 +883,12 @@ static void free_overlay_changeset(struct overlay_changeset *ovcs)
+ 	kfree(ovcs);
+ }
+ 
++static struct kobj_type overlay_changeset_ktype = {
++	.release = overlay_changeset_release,
++};
++
++static struct kset *ov_kset;
++
+ /*
+  * internal documentation
+  *
+@@ -939,6 +959,8 @@ static int of_overlay_apply(const void *fdt, struct device_node *tree,
+ 		goto out;
+ 	}
+ 
++	kobject_init(&ovcs->kobj, &overlay_changeset_ktype);
++
+ 	of_overlay_mutex_lock();
+ 	mutex_lock(&of_mutex);
+ 
+@@ -976,6 +998,22 @@ static int of_overlay_apply(const void *fdt, struct device_node *tree,
+ 		goto err_free_overlay_changeset;
+ 	}
+ 
++	ovcs->kobj.kset = ov_kset;
++	ret = kobject_add(&ovcs->kobj, NULL, "%d", ovcs->id);
++	if (ret != 0) {
++		pr_err("%s: kobject_add() failed for tree@%s\n", __func__,
++				tree->full_name);
++		ret_tmp = 0;
++		ret_revert = __of_changeset_revert_entries(&ovcs->cset,
++							   &ret_tmp);
++		if (ret_revert) {
++			pr_debug("overlay changeset revert error %d\n",
++				 ret_revert);
++			devicetree_state_flags |= DTSF_REVERT_FAIL;
++		}
++		goto err_free_overlay_changeset;
++	}
++
+ 	ret = __of_changeset_apply_notify(&ovcs->cset);
+ 	if (ret)
+ 		pr_err("overlay apply changeset entry notify error %d\n", ret);
+@@ -1275,3 +1313,13 @@ int of_overlay_remove_all(void)
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(of_overlay_remove_all);
++
++/* called from of_init() */
++int of_overlay_init(void)
++{
++	ov_kset = kset_create_and_add("overlays", NULL, &of_kset->kobj);
++	if (!ov_kset)
++		return -ENOMEM;
++
++	return 0;
++}
+-- 
+2.30.2
+
