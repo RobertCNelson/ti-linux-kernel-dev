@@ -1,0 +1,163 @@
+From 1fe685b0c8058c0d955776f4f21e39b5f61f597e Mon Sep 17 00:00:00 2001
+From: Pantelis Antoniou <pantelis.antoniou@konsulko.com>
+Date: Wed, 14 Oct 2015 13:20:54 +0300
+Subject: [PATCH 09/12] of: rename *_node_sysfs to _node_post
+
+Signed-off-by: Pantelis Antoniou <pantelis.antoniou@konsulko.com>
+[geert: Convert new user in of_unittest_overlay_high_level()]
+[geert: Rebase to v4.15-rc1]
+[geert: Rebase on top of commit 39a751a4cb7e4798 ("of: change overlay apply input data from unflattened to FDT")
+Signed-off-by: Geert Uytterhoeven <geert+renesas@glider.be>
+---
+ drivers/of/base.c       |  2 +-
+ drivers/of/dynamic.c    |  8 ++++----
+ drivers/of/kobj.c       |  4 ++--
+ drivers/of/of_private.h | 12 ++++++------
+ drivers/of/unittest.c   |  6 +++---
+ 5 files changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/of/base.c b/drivers/of/base.c
+index 4368431e520a..5bd54b032899 100644
+--- a/drivers/of/base.c
++++ b/drivers/of/base.c
+@@ -178,7 +178,7 @@ void __init of_core_init(void)
+ 		return;
+ 	}
+ 	for_each_of_allnodes(np) {
+-		__of_attach_node_sysfs(np);
++		__of_attach_node_post(np);
+ 		if (np->phandle && !phandle_cache[of_phandle_cache_hash(np->phandle)])
+ 			phandle_cache[of_phandle_cache_hash(np->phandle)] = np;
+ 	}
+diff --git a/drivers/of/dynamic.c b/drivers/of/dynamic.c
+index fe64430b438a..7478bfc8d440 100644
+--- a/drivers/of/dynamic.c
++++ b/drivers/of/dynamic.c
+@@ -243,7 +243,7 @@ int of_attach_node(struct device_node *np)
+ 	__of_attach_node(np);
+ 	raw_spin_unlock_irqrestore(&devtree_lock, flags);
+ 
+-	__of_attach_node_sysfs(np);
++	__of_attach_node_post(np);
+ 	mutex_unlock(&of_mutex);
+ 
+ 	of_reconfig_notify(OF_RECONFIG_ATTACH_NODE, &rd);
+@@ -295,7 +295,7 @@ int of_detach_node(struct device_node *np)
+ 	__of_detach_node(np);
+ 	raw_spin_unlock_irqrestore(&devtree_lock, flags);
+ 
+-	__of_detach_node_sysfs(np);
++	__of_detach_node_post(np);
+ 	mutex_unlock(&of_mutex);
+ 
+ 	of_reconfig_notify(OF_RECONFIG_DETACH_NODE, &rd);
+@@ -634,10 +634,10 @@ static int __of_changeset_entry_apply(struct of_changeset_entry *ce)
+ 
+ 	switch (ce->action) {
+ 	case OF_RECONFIG_ATTACH_NODE:
+-		__of_attach_node_sysfs(ce->np);
++		__of_attach_node_post(ce->np);
+ 		break;
+ 	case OF_RECONFIG_DETACH_NODE:
+-		__of_detach_node_sysfs(ce->np);
++		__of_detach_node_post(ce->np);
+ 		break;
+ 	case OF_RECONFIG_ADD_PROPERTY:
+ 		/* ignore duplicate names */
+diff --git a/drivers/of/kobj.c b/drivers/of/kobj.c
+index a32e60b024b8..a2f956ca34b4 100644
+--- a/drivers/of/kobj.c
++++ b/drivers/of/kobj.c
+@@ -112,7 +112,7 @@ void __of_update_property_sysfs(struct device_node *np, struct property *newprop
+ 	__of_add_property_sysfs(np, newprop);
+ }
+ 
+-int __of_attach_node_sysfs(struct device_node *np)
++int __of_attach_node_post(struct device_node *np)
+ {
+ 	const char *name;
+ 	struct kobject *parent;
+@@ -146,7 +146,7 @@ int __of_attach_node_sysfs(struct device_node *np)
+ 	return 0;
+ }
+ 
+-void __of_detach_node_sysfs(struct device_node *np)
++void __of_detach_node_post(struct device_node *np)
+ {
+ 	struct property *pp;
+ 
+diff --git a/drivers/of/of_private.h b/drivers/of/of_private.h
+index 85c2e1455bd1..8f1234538c67 100644
+--- a/drivers/of/of_private.h
++++ b/drivers/of/of_private.h
+@@ -63,8 +63,8 @@ int __of_add_property_sysfs(struct device_node *np, struct property *pp);
+ void __of_remove_property_sysfs(struct device_node *np, struct property *prop);
+ void __of_update_property_sysfs(struct device_node *np, struct property *newprop,
+ 		struct property *oldprop);
+-int __of_attach_node_sysfs(struct device_node *np);
+-void __of_detach_node_sysfs(struct device_node *np);
++int __of_attach_node_post(struct device_node *np);
++void __of_detach_node_post(struct device_node *np);
+ #else
+ static inline int __of_add_property_sysfs(struct device_node *np, struct property *pp)
+ {
+@@ -73,11 +73,11 @@ static inline int __of_add_property_sysfs(struct device_node *np, struct propert
+ static inline void __of_remove_property_sysfs(struct device_node *np, struct property *prop) {}
+ static inline void __of_update_property_sysfs(struct device_node *np,
+ 		struct property *newprop, struct property *oldprop) {}
+-static inline int __of_attach_node_sysfs(struct device_node *np)
++static inline int __of_attach_node_post(struct device_node *np)
+ {
+ 	return 0;
+ }
+-static inline void __of_detach_node_sysfs(struct device_node *np) {}
++static inline void __of_detach_node_post(struct device_node *np) {}
+ #endif
+ 
+ #if defined(CONFIG_OF_RESOLVE)
+@@ -135,9 +135,9 @@ extern int __of_update_property(struct device_node *np,
+ extern void __of_update_property_sysfs(struct device_node *np,
+ 		struct property *newprop, struct property *oldprop);
+ 
+-extern int __of_attach_node_sysfs(struct device_node *np);
++extern int __of_attach_node_post(struct device_node *np);
+ extern void __of_detach_node(struct device_node *np);
+-extern void __of_detach_node_sysfs(struct device_node *np);
++extern void __of_detach_node_post(struct device_node *np);
+ 
+ extern void __of_sysfs_remove_bin_file(struct device_node *np,
+ 				       struct property *prop);
+diff --git a/drivers/of/unittest.c b/drivers/of/unittest.c
+index 06cc988faf78..f4dce42dad25 100644
+--- a/drivers/of/unittest.c
++++ b/drivers/of/unittest.c
+@@ -1371,7 +1371,7 @@ static void attach_node_and_children(struct device_node *np)
+ 	of_node_clear_flag(np, OF_DETACHED);
+ 	raw_spin_unlock_irqrestore(&devtree_lock, flags);
+ 
+-	__of_attach_node_sysfs(np);
++	__of_attach_node_post(np);
+ 	mutex_unlock(&of_mutex);
+ 
+ 	while (child) {
+@@ -1431,7 +1431,7 @@ static int __init unittest_data_add(void)
+ 	if (!of_root) {
+ 		of_root = unittest_data_node;
+ 		for_each_of_allnodes(np)
+-			__of_attach_node_sysfs(np);
++			__of_attach_node_post(np);
+ 		of_aliases = of_find_node_by_path("/aliases");
+ 		of_chosen = of_find_node_by_path("/chosen");
+ 		of_overlay_mutex_unlock();
+@@ -3095,7 +3095,7 @@ static __init void of_unittest_overlay_high_level(void)
+ 		of_root->child = overlay_base_root->child;
+ 
+ 	for_each_of_allnodes_from(overlay_base_root, np)
+-		__of_attach_node_sysfs(np);
++		__of_attach_node_post(np);
+ 
+ 	if (of_symbols) {
+ 		struct property *new_prop;
+-- 
+2.30.2
+
