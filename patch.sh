@@ -806,17 +806,20 @@ brcmfmac () {
 		patch -p1 < ../patches/cypress/brcmfmac/0109-nl80211-add-roaming-offload-support.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0110-brcm80211-add-FT-11r-OKC-roaming-offload-support.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0111-brcmfmac-support-extsae-with-psk-1x-offloading.patch
-		patch -p1 < ../patches/cypress/brcmfmac/0112-Disable-out-of-band-device-wake-based-DeepSleep-Stat.patch
+
+		#v5.10.9-2022_0511
+		patch -p1 < ../patches/cypress/brcmfmac/0112-brcmfmac-disable-out-of-band-device-wake-based-DeepS.patch
 		patch -p1 < ../patches/cypress/brcmfmac/0113-brcmfmac-Improve-the-delay-during-scan.patch
-		patch -p1 < ../patches/cypress/brcmfmac/0114-brcmfmac-skip-6G-oob-scan-report.patch
-		patch -p1 < ../patches/cypress/brcmfmac/0115-Revert-brcmfmac-Improve-the-delay-during-scan.patch
-		patch -p1 < ../patches/cypress/brcmfmac/0116-brcmfmac-Improve-the-delay-during-scan.patch
-		patch -p1 < ../patches/cypress/brcmfmac/0117-brcmfmac-add-FW-AP-selection-mod-param.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0114-non-upstream-skip-6G-oob-scan-report.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0115-brcmfmac-add-FW-AP-selection-mod-param.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0116-brcmfmac-changing-info-messages-under-debug-BRCMF_IN.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0117-brcmfmac-remove-default-2s-power-save-max-timeout.patch
+		patch -p1 < ../patches/cypress/brcmfmac/0118-brcmfmac-fixes-scan-invalid-channel-when-enable-host.patch
 
 		#exit 2
 
 		${git_bin} add .
-		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.10.9-2022_0331" -s
+		${git_bin} commit -a -m "cypress fmac patchset" -m "v5.10.9-2022_0511" -s
 		${git_bin} format-patch -1 -o ../patches/cypress/
 
 		exit 2
