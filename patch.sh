@@ -646,6 +646,8 @@ drivers () {
 	dir 'tusb322'
 	dir 'boris'
 	dir 'drivers/ti/uio'
+	dir 'rpi-panel'
+
 	dir 'dsi'
 	dir 'tiam62x'
 	dir 'android'
