@@ -648,6 +648,7 @@ drivers () {
 	dir 'drivers/ti/uio'
 	dir 'rpi-panel'
 	dir 'edt-ft'
+	dir 'panel-simple'
 
 	dir 'dsi'
 	dir 'tiam62x'
