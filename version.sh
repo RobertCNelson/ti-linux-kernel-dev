@@ -58,4 +58,8 @@ DISTRO=xross
 
 ti_git_old_release="2176e1735b744c2b002b8c86ca748483c5f7cf0c"
 ti_git_new_release="2176e1735b744c2b002b8c86ca748483c5f7cf0c"
+
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.04.01.002
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=shortlog;h=2176e1735b744c2b002b8c86ca748483c5f7cf0c
+
 #
