@@ -131,8 +131,6 @@ aufs_fail () {
 }
 
 aufs () {
-	#${git_bin} revert --no-edit e68b60ae29de10c7bd7636e227164a8dbe305a82
-
 	#https://github.com/sfjro/aufs-standalone/tree/aufs5.10.117
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
@@ -438,7 +436,7 @@ dtb_makefile_append () {
 }
 
 beagleboard_dtbs () {
-	branch="v5.10.x-ti-arm64"
+	branch="v5.10.x-ti-unified-staging"
 	https_repo="https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
