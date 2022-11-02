@@ -78,16 +78,18 @@ if [ -e ${DIR}/version.sh ]; then
 	make ARCH=${KERNEL_ARCH} savedefconfig
 	cp ${DIR}/KERNEL/defconfig ${DIR}/KERNEL/arch/${KERNEL_ARCH}/configs/${example}_defconfig
 	${git_bin} add arch/${KERNEL_ARCH}/configs/${example}_defconfig
+	#${git_bin} add arch/${KERNEL_ARCH}/configs/ti_sdk_am3x_release_defconfig
+	#${git_bin} add arch/${KERNEL_ARCH}/configs/ti_sdk_dra7x_release_defconfig
 	${git_bin} add arch/${KERNEL_ARCH}/configs/ti_sdk_arm64_release_defconfig
 
-	if [ "x${ti_git_old_tag}" = "x${ti_git_new_tag}" ] ; then
+	if [ "x${ti_git_old_release}" = "x${ti_git_new_release}" ] ; then
 		echo "${KERNEL_TAG}${BUILD}" > ${wfile}
 		echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" >> ${wfile}
 		cat_files
 	else
 		echo "${KERNEL_TAG}${BUILD}" > ${wfile}
 		echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" >> ${wfile}
-		echo "${KERNEL_REL} TI Delta: ${compare}/${ti_git_old_tag}...${ti_git_new_tag}" >> ${wfile}
+		echo "${KERNEL_REL} TI Delta: ${compare}/${ti_git_old_release}...${ti_git_new_release}" >> ${wfile}
 		cat_files
 	fi
 	${git_bin} commit -a -F ${wfile} -s
