@@ -1,0 +1,261 @@
+From a711b811ce5e44f55eaf07d3f518aabcfbff7f95 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Sun, 30 Oct 2022 17:53:26 -0500
+Subject: [PATCH 3/3] Revert "drm/bridge: cdns-dsi: Add support for J721E
+ wrapper"
+
+This reverts commit de3c3af242ae34519098deef095637cf138eb509.
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/gpu/drm/bridge/cadence/Kconfig        | 10 ----
+ drivers/gpu/drm/bridge/cadence/Makefile       |  1 -
+ .../gpu/drm/bridge/cadence/cdns-dsi-core.c    | 37 +-------------
+ .../gpu/drm/bridge/cadence/cdns-dsi-core.h    | 13 -----
+ .../gpu/drm/bridge/cadence/cdns-dsi-j721e.c   | 51 -------------------
+ .../gpu/drm/bridge/cadence/cdns-dsi-j721e.h   | 18 -------
+ 6 files changed, 1 insertion(+), 129 deletions(-)
+ delete mode 100644 drivers/gpu/drm/bridge/cadence/cdns-dsi-j721e.c
+ delete mode 100644 drivers/gpu/drm/bridge/cadence/cdns-dsi-j721e.h
+
+diff --git a/drivers/gpu/drm/bridge/cadence/Kconfig b/drivers/gpu/drm/bridge/cadence/Kconfig
+index b0d2c918c627..3cee94f1c510 100644
+--- a/drivers/gpu/drm/bridge/cadence/Kconfig
++++ b/drivers/gpu/drm/bridge/cadence/Kconfig
+@@ -33,13 +33,3 @@ config DRM_CDNS_DSI
+ 	help
+ 	  Support Cadence DPI to DSI bridge. This is an internal
+ 	  bridge and is meant to be directly embedded in a SoC.
+-
+-if DRM_CDNS_DSI
+-
+-config DRM_CDNS_DSI_J721E
+-	bool "J721E Cadence DPI/DSI wrapper support"
+-	default y
+-	help
+-	  Support J721E Cadence DPI/DSI wrapper. This wrapper adds
+-	  support to select which DPI input to use for the bridge.
+-endif
+diff --git a/drivers/gpu/drm/bridge/cadence/Makefile b/drivers/gpu/drm/bridge/cadence/Makefile
+index 0e54764a7e63..b524a7ce2028 100644
+--- a/drivers/gpu/drm/bridge/cadence/Makefile
++++ b/drivers/gpu/drm/bridge/cadence/Makefile
+@@ -4,4 +4,3 @@ cdns-mhdp8546-y := cdns-mhdp8546-core.o
+ cdns-mhdp8546-$(CONFIG_DRM_CDNS_MHDP8546_J721E) += cdns-mhdp8546-j721e.o
+ obj-$(CONFIG_DRM_CDNS_DSI) += cdns-dsi.o
+ cdns-dsi-y := cdns-dsi-core.o
+-cdns-dsi-$(CONFIG_DRM_CDNS_DSI_J721E) += cdns-dsi-j721e.o
+diff --git a/drivers/gpu/drm/bridge/cadence/cdns-dsi-core.c b/drivers/gpu/drm/bridge/cadence/cdns-dsi-core.c
+index cce51ee51dfd..afb7e7aaf842 100644
+--- a/drivers/gpu/drm/bridge/cadence/cdns-dsi-core.c
++++ b/drivers/gpu/drm/bridge/cadence/cdns-dsi-core.c
+@@ -15,16 +15,12 @@
+ #include <linux/iopoll.h>
+ #include <linux/module.h>
+ #include <linux/of_address.h>
+-#include <linux/of_device.h>
+ #include <linux/of_graph.h>
+ #include <linux/platform_device.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/reset.h>
+ 
+ #include "cdns-dsi-core.h"
+-#ifdef CONFIG_DRM_CDNS_DSI_J721E
+-#include "cdns-dsi-j721e.h"
+-#endif
+ 
+ static inline struct cdns_dsi *input_to_dsi(struct cdns_dsi_input *input)
+ {
+@@ -269,10 +265,6 @@ static void cdns_dsi_bridge_disable(struct drm_bridge *bridge)
+ 
+ 	val = readl(dsi->regs + MCTL_MAIN_EN) & ~IF_EN(input->id);
+ 	writel(val, dsi->regs + MCTL_MAIN_EN);
+-
+-	if (dsi->platform_ops && dsi->platform_ops->disable)
+-		dsi->platform_ops->disable(dsi);
+-
+ 	pm_runtime_put(dsi->base.dev);
+ }
+ 
+@@ -368,9 +360,6 @@ static void cdns_dsi_bridge_enable(struct drm_bridge *bridge)
+ 	if (WARN_ON(pm_runtime_get_sync(dsi->base.dev) < 0))
+ 		return;
+ 
+-	if (dsi->platform_ops && dsi->platform_ops->enable)
+-		dsi->platform_ops->enable(dsi);
+-
+ 	mode = &bridge->encoder->crtc->state->adjusted_mode;
+ 	nlanes = output->dev->lanes;
+ 
+@@ -813,8 +802,6 @@ static int cdns_dsi_drm_probe(struct platform_device *pdev)
+ 		goto err_disable_pclk;
+ 	}
+ 
+-	dsi->platform_ops = of_device_get_match_data(&pdev->dev);
+-
+ 	val = readl(dsi->regs + IP_CONF);
+ 	dsi->direct_cmd_fifo_depth = 1 << (DIRCMD_FIFO_DEPTH(val) + 2);
+ 	dsi->rx_fifo_depth = RX_FIFO_DEPTH(val);
+@@ -850,27 +837,14 @@ static int cdns_dsi_drm_probe(struct platform_device *pdev)
+ 	dsi->base.dev = &pdev->dev;
+ 	dsi->base.ops = &cdns_dsi_ops;
+ 
+-	if (dsi->platform_ops && dsi->platform_ops->init) {
+-		ret = dsi->platform_ops->init(dsi);
+-		if (ret != 0) {
+-			dev_err(&pdev->dev, "platform initialization failed: %d\n",
+-				ret);
+-			goto err_disable_runtime_pm;
+-		}
+-	}
+-
+ 	ret = mipi_dsi_host_register(&dsi->base);
+ 	if (ret)
+-		goto err_deinit_platform;
++		goto err_disable_runtime_pm;
+ 
+ 	clk_disable_unprepare(dsi->dsi_p_clk);
+ 
+ 	return 0;
+ 
+-err_deinit_platform:
+-	if (dsi->platform_ops && dsi->platform_ops->exit)
+-		dsi->platform_ops->exit(dsi);
+-
+ err_disable_runtime_pm:
+ 	pm_runtime_disable(&pdev->dev);
+ 
+@@ -885,10 +859,6 @@ static int cdns_dsi_drm_remove(struct platform_device *pdev)
+ 	struct cdns_dsi *dsi = platform_get_drvdata(pdev);
+ 
+ 	mipi_dsi_host_unregister(&dsi->base);
+-
+-	if (dsi->platform_ops && dsi->platform_ops->exit)
+-		dsi->platform_ops->exit(dsi);
+-
+ 	pm_runtime_disable(&pdev->dev);
+ 
+ 	return 0;
+@@ -896,11 +866,6 @@ static int cdns_dsi_drm_remove(struct platform_device *pdev)
+ 
+ static const struct of_device_id cdns_dsi_of_match[] = {
+ 	{ .compatible = "cdns,dsi" },
+-#ifdef CONFIG_DRM_CDNS_DSI_J721E
+-	{ .compatible = "ti,j721e-dsi",
+-	  .data = &dsi_ti_j721e_ops,
+-	},
+-#endif
+ 	{ },
+ };
+ MODULE_DEVICE_TABLE(of, cdns_dsi_of_match);
+diff --git a/drivers/gpu/drm/bridge/cadence/cdns-dsi-core.h b/drivers/gpu/drm/bridge/cadence/cdns-dsi-core.h
+index 37568b547fbe..65cc77f19b39 100644
+--- a/drivers/gpu/drm/bridge/cadence/cdns-dsi-core.h
++++ b/drivers/gpu/drm/bridge/cadence/cdns-dsi-core.h
+@@ -439,22 +439,9 @@ struct cdns_dsi_input {
+ 	struct drm_bridge bridge;
+ };
+ 
+-struct cdns_dsi;
+-
+-struct dsi_platform_ops {
+-	int (*init)(struct cdns_dsi *dsi);
+-	void (*exit)(struct cdns_dsi *dsi);
+-	void (*enable)(struct cdns_dsi *dsi);
+-	void (*disable)(struct cdns_dsi *dsi);
+-};
+-
+ struct cdns_dsi {
+ 	struct mipi_dsi_host base;
+ 	void __iomem *regs;
+-#ifdef CONFIG_DRM_CDNS_DSI_J721E
+-	void __iomem *j721e_regs;
+-#endif
+-	const struct dsi_platform_ops *platform_ops;
+ 	struct cdns_dsi_input input;
+ 	struct cdns_dsi_output output;
+ 	unsigned int direct_cmd_fifo_depth;
+diff --git a/drivers/gpu/drm/bridge/cadence/cdns-dsi-j721e.c b/drivers/gpu/drm/bridge/cadence/cdns-dsi-j721e.c
+deleted file mode 100644
+index b5216acb333e..000000000000
+--- a/drivers/gpu/drm/bridge/cadence/cdns-dsi-j721e.c
++++ /dev/null
+@@ -1,51 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0
+-/*
+- * TI j721e Cadence DSI wrapper
+- *
+- * Copyright (C) 2022 Texas Instruments Incorporated - http://www.ti.com/
+- * Author: Rahul T R <r-ravikumar@ti.com>
+- */
+-
+-#include <linux/io.h>
+-#include <linux/platform_device.h>
+-
+-#include "cdns-dsi-j721e.h"
+-
+-#define DSI_WRAP_REVISION		0x0
+-#define DSI_WRAP_DPI_CONTROL		0x4
+-#define DSI_WRAP_DSC_CONTROL		0x8
+-#define DSI_WRAP_DPI_SECURE		0xc
+-#define DSI_WRAP_DSI_0_ASF_STATUS	0x10
+-
+-#define DSI_WRAP_DPI_0_EN		BIT(0)
+-#define DSI_WRAP_DSI2_MUX_SEL		BIT(4)
+-
+-static int cdns_dsi_j721e_init(struct cdns_dsi *dsi)
+-{
+-	struct platform_device *pdev = to_platform_device(dsi->base.dev);
+-
+-	dsi->j721e_regs = devm_platform_ioremap_resource(pdev, 1);
+-	return PTR_ERR_OR_ZERO(dsi->j721e_regs);
+-}
+-
+-static void cdns_dsi_j721e_enable(struct cdns_dsi *dsi)
+-{
+-	/*
+-	 * Enable DPI0 as its input. DSS0 DPI2 is connected
+-	 * to DSI DPI0. This is the only supported configuration on
+-	 * J721E.
+-	 */
+-	writel(DSI_WRAP_DPI_0_EN, dsi->j721e_regs + DSI_WRAP_DPI_CONTROL);
+-}
+-
+-static void cdns_dsi_j721e_disable(struct cdns_dsi *dsi)
+-{
+-	/* Put everything to defaults  */
+-	writel(0, dsi->j721e_regs + DSI_WRAP_DPI_CONTROL);
+-}
+-
+-const struct dsi_platform_ops dsi_ti_j721e_ops = {
+-	.init = cdns_dsi_j721e_init,
+-	.enable = cdns_dsi_j721e_enable,
+-	.disable = cdns_dsi_j721e_disable,
+-};
+diff --git a/drivers/gpu/drm/bridge/cadence/cdns-dsi-j721e.h b/drivers/gpu/drm/bridge/cadence/cdns-dsi-j721e.h
+deleted file mode 100644
+index 01f3dbd92db2..000000000000
+--- a/drivers/gpu/drm/bridge/cadence/cdns-dsi-j721e.h
++++ /dev/null
+@@ -1,18 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+-/*
+- * TI j721e Cadence DSI wrapper
+- *
+- * Copyright (C) 2022 Texas Instruments Incorporated - http://www.ti.com/
+- * Author: Rahul T R <r-ravikumar@ti.com>
+- */
+-
+-#ifndef CDNS_DSI_J721E_H
+-#define CDNS_DSI_J721E_H
+-
+-#include "cdns-dsi-core.h"
+-
+-struct dsi_platform_ops;
+-
+-extern const struct dsi_platform_ops dsi_ti_j721e_ops;
+-
+-#endif /* !CDNS_DSI_J721E_H */
+-- 
+2.30.2
+

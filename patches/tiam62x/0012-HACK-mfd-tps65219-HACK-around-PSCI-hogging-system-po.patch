@@ -1,0 +1,55 @@
+From 5e379ccd6c56176ec7d75246a7670415ab8c1616 Mon Sep 17 00:00:00 2001
+From: Nishanth Menon <nm@ti.com>
+Date: Tue, 12 Jul 2022 10:26:45 -0500
+Subject: [PATCH 12/18] HACK: mfd: tps65219: HACK around PSCI hogging system
+ poweroff
+
+Allow override PSCI driver hogging the poweroff of the system.
+
+Signed-off-by: Nishanth Menon <nm@ti.com>
+---
+ drivers/mfd/tps65219.c | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/mfd/tps65219.c b/drivers/mfd/tps65219.c
+index 64b977346c72..0e52a77fbbfb 100644
+--- a/drivers/mfd/tps65219.c
++++ b/drivers/mfd/tps65219.c
+@@ -293,6 +293,7 @@ static int tps65219_probe(struct i2c_client *client,
+ 	struct tps65219 *tps;
+ 	int ret;
+ 	unsigned int chipid;
++	bool pm_off;
+ 
+ 	tps = devm_kzalloc(&client->dev, sizeof(*tps), GFP_KERNEL);
+ 	if (!tps)
+@@ -338,15 +339,20 @@ static int tps65219_probe(struct i2c_client *client,
+ 		return -ENODEV;
+ 	}
+ 
++	pm_off = of_device_is_system_power_controller(client->dev.of_node);
++	if (!pm_off)
++		return ret;
++
+ 	/* If a pm_power_off function has already been added, leave it alone */
+-	if (pm_power_off) {
+-		dev_info(tps->dev,
+-			 "%s: pm_power_off function already registered\n",
++	if (pm_power_off && pm_off) {
++		dev_warn(tps->dev,
++			 "%s: pm_power_off function already registered - OVERRIDE!\n",
+ 			 __func__);
+-	} else {
+-		tps65219_i2c_client = client;
+-		pm_power_off = &pmic_do_poweroff;
+ 	}
++
++	tps65219_i2c_client = client;
++	pm_power_off = &pmic_do_poweroff;
++
+ 	return ret;
+ }
+ 
+-- 
+2.30.2
+

@@ -1,0 +1,1706 @@
+From fbd3b50228323a6e4108d87293e7315905670a79 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Sun, 30 Oct 2022 18:16:47 -0500
+Subject: [PATCH] backports: bluetooth: from: linux.git
+
+Reference: v5.11.22
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/bluetooth/bfusb.c      |   3 -
+ drivers/bluetooth/btintel.c    |  21 +-
+ drivers/bluetooth/btintel.h    |   6 +
+ drivers/bluetooth/btmtksdio.c  |   6 +-
+ drivers/bluetooth/btmtkuart.c  |  13 +-
+ drivers/bluetooth/btqca.c      |  63 ++---
+ drivers/bluetooth/btqca.h      |  22 +-
+ drivers/bluetooth/btrtl.c      | 123 +++++----
+ drivers/bluetooth/btusb.c      | 465 +++++++++++++++++++++++++++++----
+ drivers/bluetooth/hci_bcm.c    |   7 +-
+ drivers/bluetooth/hci_h5.c     |   1 +
+ drivers/bluetooth/hci_ll.c     |   1 +
+ drivers/bluetooth/hci_qca.c    | 125 ++++++---
+ drivers/bluetooth/hci_serdev.c |   3 +-
+ drivers/bluetooth/hci_vhci.c   |   2 -
+ 15 files changed, 646 insertions(+), 215 deletions(-)
+
+diff --git a/drivers/bluetooth/bfusb.c b/drivers/bluetooth/bfusb.c
+index cab93935cc7f..5a321b4076aa 100644
+--- a/drivers/bluetooth/bfusb.c
++++ b/drivers/bluetooth/bfusb.c
+@@ -628,9 +628,6 @@ static int bfusb_probe(struct usb_interface *intf, const struct usb_device_id *i
+ 	data->bulk_out_ep   = bulk_out_ep->desc.bEndpointAddress;
+ 	data->bulk_pkt_size = le16_to_cpu(bulk_out_ep->desc.wMaxPacketSize);
+ 
+-	if (!data->bulk_pkt_size)
+-		goto done;
+-
+ 	rwlock_init(&data->lock);
+ 
+ 	data->reassembly = NULL;
+diff --git a/drivers/bluetooth/btintel.c b/drivers/bluetooth/btintel.c
+index 88ce5f0ffc4b..41ff2071d7ef 100644
+--- a/drivers/bluetooth/btintel.c
++++ b/drivers/bluetooth/btintel.c
+@@ -437,31 +437,38 @@ int btintel_read_version_tlv(struct hci_dev *hdev, struct intel_version_tlv *ver
+ 		tlv = (struct intel_tlv *)skb->data;
+ 		switch (tlv->type) {
+ 		case INTEL_TLV_CNVI_TOP:
+-			version->cnvi_top = get_unaligned_le32(tlv->val);
++			version->cnvi_top =
++				__le32_to_cpu(get_unaligned_le32(tlv->val));
+ 			break;
+ 		case INTEL_TLV_CNVR_TOP:
+-			version->cnvr_top = get_unaligned_le32(tlv->val);
++			version->cnvr_top =
++				__le32_to_cpu(get_unaligned_le32(tlv->val));
+ 			break;
+ 		case INTEL_TLV_CNVI_BT:
+-			version->cnvi_bt = get_unaligned_le32(tlv->val);
++			version->cnvi_bt =
++				__le32_to_cpu(get_unaligned_le32(tlv->val));
+ 			break;
+ 		case INTEL_TLV_CNVR_BT:
+-			version->cnvr_bt = get_unaligned_le32(tlv->val);
++			version->cnvr_bt =
++				__le32_to_cpu(get_unaligned_le32(tlv->val));
+ 			break;
+ 		case INTEL_TLV_DEV_REV_ID:
+-			version->dev_rev_id = get_unaligned_le16(tlv->val);
++			version->dev_rev_id =
++				__le16_to_cpu(get_unaligned_le16(tlv->val));
+ 			break;
+ 		case INTEL_TLV_IMAGE_TYPE:
+ 			version->img_type = tlv->val[0];
+ 			break;
+ 		case INTEL_TLV_TIME_STAMP:
+-			version->timestamp = get_unaligned_le16(tlv->val);
++			version->timestamp =
++				__le16_to_cpu(get_unaligned_le16(tlv->val));
+ 			break;
+ 		case INTEL_TLV_BUILD_TYPE:
+ 			version->build_type = tlv->val[0];
+ 			break;
+ 		case INTEL_TLV_BUILD_NUM:
+-			version->build_num = get_unaligned_le32(tlv->val);
++			version->build_num =
++				__le32_to_cpu(get_unaligned_le32(tlv->val));
+ 			break;
+ 		case INTEL_TLV_SECURE_BOOT:
+ 			version->secure_boot = tlv->val[0];
+diff --git a/drivers/bluetooth/btintel.h b/drivers/bluetooth/btintel.h
+index 78cc64b42b30..6511b091caf5 100644
+--- a/drivers/bluetooth/btintel.h
++++ b/drivers/bluetooth/btintel.h
+@@ -132,6 +132,12 @@ struct intel_debug_features {
+ 	__u8    page1[16];
+ } __packed;
+ 
++#define INTEL_HW_PLATFORM(cnvx_bt)	((u8)(((cnvx_bt) & 0x0000ff00) >> 8))
++#define INTEL_HW_VARIANT(cnvx_bt)	((u8)(((cnvx_bt) & 0x003f0000) >> 16))
++#define INTEL_CNVX_TOP_TYPE(cnvx_top)	((cnvx_top) & 0x00000fff)
++#define INTEL_CNVX_TOP_STEP(cnvx_top)	(((cnvx_top) & 0x0f000000) >> 24)
++#define INTEL_CNVX_TOP_PACK_SWAB(t, s)	__swab16(((__u16)(((t) << 4) | (s))))
++
+ #if IS_ENABLED(CONFIG_BT_INTEL)
+ 
+ int btintel_check_bdaddr(struct hci_dev *hdev);
+diff --git a/drivers/bluetooth/btmtksdio.c b/drivers/bluetooth/btmtksdio.c
+index c41560be39fb..5f9f02795631 100644
+--- a/drivers/bluetooth/btmtksdio.c
++++ b/drivers/bluetooth/btmtksdio.c
+@@ -981,8 +981,6 @@ static int btmtksdio_probe(struct sdio_func *func,
+ 	hdev->manufacturer = 70;
+ 	set_bit(HCI_QUIRK_NON_PERSISTENT_SETUP, &hdev->quirks);
+ 
+-	sdio_set_drvdata(func, bdev);
+-
+ 	err = hci_register_dev(hdev);
+ 	if (err < 0) {
+ 		dev_err(&func->dev, "Can't register HCI device\n");
+@@ -990,6 +988,8 @@ static int btmtksdio_probe(struct sdio_func *func,
+ 		return err;
+ 	}
+ 
++	sdio_set_drvdata(func, bdev);
++
+ 	/* pm_runtime_enable would be done after the firmware is being
+ 	 * downloaded because the core layer probably already enables
+ 	 * runtime PM for this func such as the case host->caps &
+@@ -1042,8 +1042,6 @@ static int btmtksdio_runtime_suspend(struct device *dev)
+ 	if (!bdev)
+ 		return 0;
+ 
+-	sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
+-
+ 	sdio_claim_host(bdev->func);
+ 
+ 	sdio_writel(bdev->func, C_FW_OWN_REQ_SET, MTK_REG_CHLPCR, &err);
+diff --git a/drivers/bluetooth/btmtkuart.c b/drivers/bluetooth/btmtkuart.c
+index 719d4685a2dd..6c40bc75fb5b 100644
+--- a/drivers/bluetooth/btmtkuart.c
++++ b/drivers/bluetooth/btmtkuart.c
+@@ -158,10 +158,8 @@ static int mtk_hci_wmt_sync(struct hci_dev *hdev,
+ 	int err;
+ 
+ 	hlen = sizeof(*hdr) + wmt_params->dlen;
+-	if (hlen > 255) {
+-		err = -EINVAL;
+-		goto err_free_skb;
+-	}
++	if (hlen > 255)
++		return -EINVAL;
+ 
+ 	hdr = (struct mtk_wmt_hdr *)&wc;
+ 	hdr->dir = 1;
+@@ -175,7 +173,7 @@ static int mtk_hci_wmt_sync(struct hci_dev *hdev,
+ 	err = __hci_cmd_send(hdev, 0xfc6f, hlen, &wc);
+ 	if (err < 0) {
+ 		clear_bit(BTMTKUART_TX_WAIT_VND_EVT, &bdev->tx_state);
+-		goto err_free_skb;
++		return err;
+ 	}
+ 
+ 	/* The vendor specific WMT commands are all answered by a vendor
+@@ -192,14 +190,13 @@ static int mtk_hci_wmt_sync(struct hci_dev *hdev,
+ 	if (err == -EINTR) {
+ 		bt_dev_err(hdev, "Execution of wmt command interrupted");
+ 		clear_bit(BTMTKUART_TX_WAIT_VND_EVT, &bdev->tx_state);
+-		goto err_free_skb;
++		return err;
+ 	}
+ 
+ 	if (err) {
+ 		bt_dev_err(hdev, "Execution of wmt command timed out");
+ 		clear_bit(BTMTKUART_TX_WAIT_VND_EVT, &bdev->tx_state);
+-		err = -ETIMEDOUT;
+-		goto err_free_skb;
++		return -ETIMEDOUT;
+ 	}
+ 
+ 	/* Parse and handle the return WMT event */
+diff --git a/drivers/bluetooth/btqca.c b/drivers/bluetooth/btqca.c
+index 7551cac3fd7a..f85a55add9be 100644
+--- a/drivers/bluetooth/btqca.c
++++ b/drivers/bluetooth/btqca.c
+@@ -14,12 +14,11 @@
+ 
+ #define VERSION "0.1"
+ 
+-int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version,
++int qca_read_soc_version(struct hci_dev *hdev, struct qca_btsoc_version *ver,
+ 			 enum qca_btsoc_type soc_type)
+ {
+ 	struct sk_buff *skb;
+ 	struct edl_event_hdr *edl;
+-	struct qca_btsoc_version *ver;
+ 	char cmd;
+ 	int err = 0;
+ 	u8 event_type = HCI_EV_VENDOR;
+@@ -70,9 +69,9 @@ int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version,
+ 	}
+ 
+ 	if (soc_type >= QCA_WCN3991)
+-		memmove(&edl->data, &edl->data[1], sizeof(*ver));
+-
+-	ver = (struct qca_btsoc_version *)(edl->data);
++		memcpy(ver, edl->data + 1, sizeof(*ver));
++	else
++		memcpy(ver, &edl->data, sizeof(*ver));
+ 
+ 	bt_dev_info(hdev, "QCA Product ID   :0x%08x",
+ 		    le32_to_cpu(ver->product_id));
+@@ -83,13 +82,7 @@ int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version,
+ 	bt_dev_info(hdev, "QCA Patch Version:0x%08x",
+ 		    le16_to_cpu(ver->patch_ver));
+ 
+-	/* QCA chipset version can be decided by patch and SoC
+-	 * version, combination with upper 2 bytes from SoC
+-	 * and lower 2 bytes from patch will be used.
+-	 */
+-	*soc_version = (le32_to_cpu(ver->soc_id) << 16) |
+-		       (le16_to_cpu(ver->rom_ver) & 0x0000ffff);
+-	if (*soc_version == 0)
++	if (ver->soc_id == 0 || ver->rom_ver == 0)
+ 		err = -EILSEQ;
+ 
+ out:
+@@ -143,7 +136,7 @@ int qca_send_pre_shutdown_cmd(struct hci_dev *hdev)
+ EXPORT_SYMBOL_GPL(qca_send_pre_shutdown_cmd);
+ 
+ static void qca_tlv_check_data(struct qca_fw_config *config,
+-		u8 *fw_data, enum qca_btsoc_type soc_type)
++		const struct firmware *fw, enum qca_btsoc_type soc_type)
+ {
+ 	const u8 *data;
+ 	u32 type_len;
+@@ -154,7 +147,7 @@ static void qca_tlv_check_data(struct qca_fw_config *config,
+ 	struct tlv_type_nvm *tlv_nvm;
+ 	uint8_t nvm_baud_rate = config->user_baud_rate;
+ 
+-	tlv = (struct tlv_type_hdr *)fw_data;
++	tlv = (struct tlv_type_hdr *)fw->data;
+ 
+ 	type_len = le32_to_cpu(tlv->type_len);
+ 	length = (type_len >> 8) & 0x00ffffff;
+@@ -350,9 +343,8 @@ static int qca_download_firmware(struct hci_dev *hdev,
+ 				 enum qca_btsoc_type soc_type)
+ {
+ 	const struct firmware *fw;
+-	u8 *data;
+ 	const u8 *segment;
+-	int ret, size, remain, i = 0;
++	int ret, remain, i = 0;
+ 
+ 	bt_dev_info(hdev, "QCA Downloading %s", config->fwname);
+ 
+@@ -363,22 +355,10 @@ static int qca_download_firmware(struct hci_dev *hdev,
+ 		return ret;
+ 	}
+ 
+-	size = fw->size;
+-	data = vmalloc(fw->size);
+-	if (!data) {
+-		bt_dev_err(hdev, "QCA Failed to allocate memory for file: %s",
+-			   config->fwname);
+-		release_firmware(fw);
+-		return -ENOMEM;
+-	}
+-
+-	memcpy(data, fw->data, size);
+-	release_firmware(fw);
+-
+-	qca_tlv_check_data(config, data, soc_type);
++	qca_tlv_check_data(config, fw, soc_type);
+ 
+-	segment = data;
+-	remain = size;
++	segment = fw->data;
++	remain = fw->size;
+ 	while (remain > 0) {
+ 		int segsize = min(MAX_SIZE_PER_TLV_SEGMENT, remain);
+ 
+@@ -408,7 +388,7 @@ static int qca_download_firmware(struct hci_dev *hdev,
+ 		ret = qca_inject_cmd_complete_event(hdev);
+ 
+ out:
+-	vfree(data);
++	release_firmware(fw);
+ 
+ 	return ret;
+ }
+@@ -459,15 +439,20 @@ int qca_set_bdaddr_rome(struct hci_dev *hdev, const bdaddr_t *bdaddr)
+ EXPORT_SYMBOL_GPL(qca_set_bdaddr_rome);
+ 
+ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
+-		   enum qca_btsoc_type soc_type, u32 soc_ver,
++		   enum qca_btsoc_type soc_type, struct qca_btsoc_version ver,
+ 		   const char *firmware_name)
+ {
+ 	struct qca_fw_config config;
+ 	int err;
+ 	u8 rom_ver = 0;
++	u32 soc_ver;
+ 
+ 	bt_dev_dbg(hdev, "QCA setup on UART");
+ 
++	soc_ver = get_soc_ver(ver.soc_id, ver.rom_ver);
++
++	bt_dev_info(hdev, "QCA controller version 0x%08x", soc_ver);
++
+ 	config.user_baud_rate = baudrate;
+ 
+ 	/* Download rampatch file */
+@@ -504,9 +489,15 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
+ 	if (firmware_name)
+ 		snprintf(config.fwname, sizeof(config.fwname),
+ 			 "qca/%s", firmware_name);
+-	else if (qca_is_wcn399x(soc_type))
+-		snprintf(config.fwname, sizeof(config.fwname),
+-			 "qca/crnv%02x.bin", rom_ver);
++	else if (qca_is_wcn399x(soc_type)) {
++		if (ver.soc_id == QCA_WCN3991_SOC_ID) {
++			snprintf(config.fwname, sizeof(config.fwname),
++				 "qca/crnv%02xu.bin", rom_ver);
++		} else {
++			snprintf(config.fwname, sizeof(config.fwname),
++				 "qca/crnv%02x.bin", rom_ver);
++		}
++	}
+ 	else if (soc_type == QCA_QCA6390)
+ 		snprintf(config.fwname, sizeof(config.fwname),
+ 			 "qca/htnv%02x.bin", rom_ver);
+diff --git a/drivers/bluetooth/btqca.h b/drivers/bluetooth/btqca.h
+index d81b74c408a5..e73b8f8775bd 100644
+--- a/drivers/bluetooth/btqca.h
++++ b/drivers/bluetooth/btqca.h
+@@ -34,6 +34,18 @@
+ #define QCA_HCI_CC_OPCODE		0xFC00
+ #define QCA_HCI_CC_SUCCESS		0x00
+ 
++#define QCA_WCN3991_SOC_ID		(0x40014320)
++
++/* QCA chipset version can be decided by patch and SoC
++ * version, combination with upper 2 bytes from SoC
++ * and lower 2 bytes from patch will be used.
++ */
++#define get_soc_ver(soc_id, rom_ver)	\
++	((le32_to_cpu(soc_id) << 16) | (le16_to_cpu(rom_ver)))
++
++#define QCA_FW_BUILD_VER_LEN		255
++
++
+ enum qca_baudrate {
+ 	QCA_BAUDRATE_115200 	= 0,
+ 	QCA_BAUDRATE_57600,
+@@ -136,9 +148,9 @@ enum qca_btsoc_type {
+ 
+ int qca_set_bdaddr_rome(struct hci_dev *hdev, const bdaddr_t *bdaddr);
+ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
+-		   enum qca_btsoc_type soc_type, u32 soc_ver,
++		   enum qca_btsoc_type soc_type, struct qca_btsoc_version ver,
+ 		   const char *firmware_name);
+-int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version,
++int qca_read_soc_version(struct hci_dev *hdev, struct qca_btsoc_version *ver,
+ 			 enum qca_btsoc_type);
+ int qca_set_bdaddr(struct hci_dev *hdev, const bdaddr_t *bdaddr);
+ int qca_send_pre_shutdown_cmd(struct hci_dev *hdev);
+@@ -155,13 +167,15 @@ static inline int qca_set_bdaddr_rome(struct hci_dev *hdev, const bdaddr_t *bdad
+ }
+ 
+ static inline int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
+-				 enum qca_btsoc_type soc_type, u32 soc_ver,
++				 enum qca_btsoc_type soc_type,
++				 struct qca_btsoc_version ver,
+ 				 const char *firmware_name)
+ {
+ 	return -EOPNOTSUPP;
+ }
+ 
+-static inline int qca_read_soc_version(struct hci_dev *hdev, u32 *soc_version,
++static inline int qca_read_soc_version(struct hci_dev *hdev,
++				       struct qca_btsoc_version *ver,
+ 				       enum qca_btsoc_type)
+ {
+ 	return -EOPNOTSUPP;
+diff --git a/drivers/bluetooth/btrtl.c b/drivers/bluetooth/btrtl.c
+index 3a9afc905f24..a4f7cace66b0 100644
+--- a/drivers/bluetooth/btrtl.c
++++ b/drivers/bluetooth/btrtl.c
+@@ -18,23 +18,25 @@
+ #define VERSION "0.1"
+ 
+ #define RTL_EPATCH_SIGNATURE	"Realtech"
+-#define RTL_ROM_LMP_3499	0x3499
+ #define RTL_ROM_LMP_8723A	0x1200
+ #define RTL_ROM_LMP_8723B	0x8723
+-#define RTL_ROM_LMP_8723D	0x8873
+ #define RTL_ROM_LMP_8821A	0x8821
+ #define RTL_ROM_LMP_8761A	0x8761
+ #define RTL_ROM_LMP_8822B	0x8822
++#define RTL_ROM_LMP_8852A	0x8852
+ #define RTL_CONFIG_MAGIC	0x8723ab55
+ 
+ #define IC_MATCH_FL_LMPSUBV	(1 << 0)
+ #define IC_MATCH_FL_HCIREV	(1 << 1)
+ #define IC_MATCH_FL_HCIVER	(1 << 2)
+ #define IC_MATCH_FL_HCIBUS	(1 << 3)
+-#define IC_INFO(lmps, hcir) \
+-	.match_flags = IC_MATCH_FL_LMPSUBV | IC_MATCH_FL_HCIREV, \
++#define IC_INFO(lmps, hcir, hciv, bus) \
++	.match_flags = IC_MATCH_FL_LMPSUBV | IC_MATCH_FL_HCIREV | \
++		       IC_MATCH_FL_HCIVER | IC_MATCH_FL_HCIBUS, \
+ 	.lmp_subver = (lmps), \
+-	.hci_rev = (hcir)
++	.hci_rev = (hcir), \
++	.hci_ver = (hciv), \
++	.hci_bus = (bus)
+ 
+ struct id_table {
+ 	__u16 match_flags;
+@@ -55,119 +57,100 @@ struct btrtl_device_info {
+ 	int fw_len;
+ 	u8 *cfg_data;
+ 	int cfg_len;
++	bool drop_fw;
+ };
+ 
+ static const struct id_table ic_id_table[] = {
+-	{ IC_MATCH_FL_LMPSUBV, RTL_ROM_LMP_8723A, 0x0,
+-	  .config_needed = false,
+-	  .has_rom_version = false,
+-	  .fw_name = "rtl_bt/rtl8723a_fw.bin",
+-	  .cfg_name = NULL },
+-
+-	{ IC_MATCH_FL_LMPSUBV, RTL_ROM_LMP_3499, 0x0,
++	/* 8723A */
++	{ IC_INFO(RTL_ROM_LMP_8723A, 0xb, 0x6, HCI_USB),
+ 	  .config_needed = false,
+ 	  .has_rom_version = false,
+ 	  .fw_name = "rtl_bt/rtl8723a_fw.bin",
+ 	  .cfg_name = NULL },
+ 
+ 	/* 8723BS */
+-	{ .match_flags = IC_MATCH_FL_LMPSUBV | IC_MATCH_FL_HCIREV |
+-			 IC_MATCH_FL_HCIVER | IC_MATCH_FL_HCIBUS,
+-	  .lmp_subver = RTL_ROM_LMP_8723B,
+-	  .hci_rev = 0xb,
+-	  .hci_ver = 6,
+-	  .hci_bus = HCI_UART,
++	{ IC_INFO(RTL_ROM_LMP_8723B, 0xb, 0x6, HCI_UART),
+ 	  .config_needed = true,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8723bs_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8723bs_config" },
+ 
+ 	/* 8723B */
+-	{ IC_INFO(RTL_ROM_LMP_8723B, 0xb),
++	{ IC_INFO(RTL_ROM_LMP_8723B, 0xb, 0x6, HCI_USB),
+ 	  .config_needed = false,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8723b_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8723b_config" },
+ 
+ 	/* 8723D */
+-	{ IC_INFO(RTL_ROM_LMP_8723B, 0xd),
++	{ IC_INFO(RTL_ROM_LMP_8723B, 0xd, 0x8, HCI_USB),
+ 	  .config_needed = true,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8723d_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8723d_config" },
+ 
+ 	/* 8723DS */
+-	{ .match_flags = IC_MATCH_FL_LMPSUBV | IC_MATCH_FL_HCIREV |
+-			 IC_MATCH_FL_HCIVER | IC_MATCH_FL_HCIBUS,
+-	  .lmp_subver = RTL_ROM_LMP_8723B,
+-	  .hci_rev = 0xd,
+-	  .hci_ver = 8,
+-	  .hci_bus = HCI_UART,
++	{ IC_INFO(RTL_ROM_LMP_8723B, 0xd, 0x8, HCI_UART),
+ 	  .config_needed = true,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8723ds_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8723ds_config" },
+ 
+-	/* 8723DU */
+-	{ IC_INFO(RTL_ROM_LMP_8723D, 0x826C),
+-	  .config_needed = true,
+-	  .has_rom_version = true,
+-	  .fw_name  = "rtl_bt/rtl8723d_fw.bin",
+-	  .cfg_name = "rtl_bt/rtl8723d_config" },
+-
+ 	/* 8821A */
+-	{ IC_INFO(RTL_ROM_LMP_8821A, 0xa),
++	{ IC_INFO(RTL_ROM_LMP_8821A, 0xa, 0x6, HCI_USB),
+ 	  .config_needed = false,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8821a_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8821a_config" },
+ 
+ 	/* 8821C */
+-	{ IC_INFO(RTL_ROM_LMP_8821A, 0xc),
++	{ IC_INFO(RTL_ROM_LMP_8821A, 0xc, 0x8, HCI_USB),
+ 	  .config_needed = false,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8821c_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8821c_config" },
+ 
+ 	/* 8761A */
+-	{ IC_INFO(RTL_ROM_LMP_8761A, 0xa),
++	{ IC_INFO(RTL_ROM_LMP_8761A, 0xa, 0x6, HCI_USB),
+ 	  .config_needed = false,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8761a_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8761a_config" },
+ 
+ 	/* 8761B */
+-	{ IC_INFO(RTL_ROM_LMP_8761A, 0xb),
++	{ IC_INFO(RTL_ROM_LMP_8761A, 0xb, 0xa, HCI_USB),
+ 	  .config_needed = false,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8761b_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8761b_config" },
+ 
+ 	/* 8822C with UART interface */
+-	{ .match_flags = IC_MATCH_FL_LMPSUBV | IC_MATCH_FL_HCIREV |
+-			 IC_MATCH_FL_HCIBUS,
+-	  .lmp_subver = RTL_ROM_LMP_8822B,
+-	  .hci_rev = 0x000c,
+-	  .hci_ver = 0x0a,
+-	  .hci_bus = HCI_UART,
++	{ IC_INFO(RTL_ROM_LMP_8822B, 0xc, 0xa, HCI_UART),
+ 	  .config_needed = true,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8822cs_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8822cs_config" },
+ 
+ 	/* 8822C with USB interface */
+-	{ IC_INFO(RTL_ROM_LMP_8822B, 0xc),
++	{ IC_INFO(RTL_ROM_LMP_8822B, 0xc, 0xa, HCI_USB),
+ 	  .config_needed = false,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8822cu_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8822cu_config" },
+ 
+ 	/* 8822B */
+-	{ IC_INFO(RTL_ROM_LMP_8822B, 0xb),
++	{ IC_INFO(RTL_ROM_LMP_8822B, 0xb, 0x7, HCI_USB),
+ 	  .config_needed = true,
+ 	  .has_rom_version = true,
+ 	  .fw_name  = "rtl_bt/rtl8822b_fw.bin",
+ 	  .cfg_name = "rtl_bt/rtl8822b_config" },
++
++	/* 8852A */
++	{ IC_INFO(RTL_ROM_LMP_8852A, 0xa, 0xb, HCI_USB),
++	  .config_needed = false,
++	  .has_rom_version = true,
++	  .fw_name  = "rtl_bt/rtl8852au_fw.bin",
++	  .cfg_name = "rtl_bt/rtl8852au_config" },
+ 	};
+ 
+ static const struct id_table *btrtl_match_ic(u16 lmp_subver, u16 hci_rev,
+@@ -275,6 +258,7 @@ static int rtlbt_parse_firmware(struct hci_dev *hdev,
+ 		{ RTL_ROM_LMP_8821A, 10 },	/* 8821C */
+ 		{ RTL_ROM_LMP_8822B, 13 },	/* 8822C */
+ 		{ RTL_ROM_LMP_8761A, 14 },	/* 8761B */
++		{ RTL_ROM_LMP_8852A, 18 },	/* 8852A */
+ 	};
+ 
+ 	min_size = sizeof(struct rtl_epatch_header) + sizeof(extension_sig) + 3;
+@@ -563,6 +547,8 @@ struct btrtl_device_info *btrtl_initialize(struct hci_dev *hdev,
+ 	u16 hci_rev, lmp_subver;
+ 	u8 hci_ver;
+ 	int ret;
++	u16 opcode;
++	u8 cmd[2];
+ 
+ 	btrtl_dev = kzalloc(sizeof(*btrtl_dev), GFP_KERNEL);
+ 	if (!btrtl_dev) {
+@@ -584,6 +570,49 @@ struct btrtl_device_info *btrtl_initialize(struct hci_dev *hdev,
+ 	hci_ver = resp->hci_ver;
+ 	hci_rev = le16_to_cpu(resp->hci_rev);
+ 	lmp_subver = le16_to_cpu(resp->lmp_subver);
++
++	if (resp->hci_ver == 0x8 && le16_to_cpu(resp->hci_rev) == 0x826c &&
++	    resp->lmp_ver == 0x8 && le16_to_cpu(resp->lmp_subver) == 0xa99e)
++		btrtl_dev->drop_fw = true;
++
++	if (btrtl_dev->drop_fw) {
++		opcode = hci_opcode_pack(0x3f, 0x66);
++		cmd[0] = opcode & 0xff;
++		cmd[1] = opcode >> 8;
++
++		skb = bt_skb_alloc(sizeof(cmd), GFP_KERNEL);
++		if (!skb)
++			goto out_free;
++
++		skb_put_data(skb, cmd, sizeof(cmd));
++		hci_skb_pkt_type(skb) = HCI_COMMAND_PKT;
++
++		hdev->send(hdev, skb);
++
++		/* Ensure the above vendor command is sent to controller and
++		 * process has done.
++		 */
++		msleep(200);
++
++		/* Read the local version again. Expect to have the vanilla
++		 * version as cold boot.
++		 */
++		skb = btrtl_read_local_version(hdev);
++		if (IS_ERR(skb)) {
++			ret = PTR_ERR(skb);
++			goto err_free;
++		}
++
++		resp = (struct hci_rp_read_local_version *)skb->data;
++		rtl_dev_info(hdev, "examining hci_ver=%02x hci_rev=%04x lmp_ver=%02x lmp_subver=%04x",
++			     resp->hci_ver, resp->hci_rev,
++			     resp->lmp_ver, resp->lmp_subver);
++
++		hci_ver = resp->hci_ver;
++		hci_rev = le16_to_cpu(resp->hci_rev);
++		lmp_subver = le16_to_cpu(resp->lmp_subver);
++	}
++out_free:
+ 	kfree_skb(skb);
+ 
+ 	btrtl_dev->ic_info = btrtl_match_ic(lmp_subver, hci_rev, hci_ver,
+@@ -654,12 +683,12 @@ int btrtl_download_firmware(struct hci_dev *hdev,
+ 
+ 	switch (btrtl_dev->ic_info->lmp_subver) {
+ 	case RTL_ROM_LMP_8723A:
+-	case RTL_ROM_LMP_3499:
+ 		return btrtl_setup_rtl8723a(hdev, btrtl_dev);
+ 	case RTL_ROM_LMP_8723B:
+ 	case RTL_ROM_LMP_8821A:
+ 	case RTL_ROM_LMP_8761A:
+ 	case RTL_ROM_LMP_8822B:
++	case RTL_ROM_LMP_8852A:
+ 		return btrtl_setup_rtl8723b(hdev, btrtl_dev);
+ 	default:
+ 		rtl_dev_info(hdev, "assuming no firmware upload needed");
+@@ -835,3 +864,5 @@ MODULE_FIRMWARE("rtl_bt/rtl8821a_fw.bin");
+ MODULE_FIRMWARE("rtl_bt/rtl8821a_config.bin");
+ MODULE_FIRMWARE("rtl_bt/rtl8822b_fw.bin");
+ MODULE_FIRMWARE("rtl_bt/rtl8822b_config.bin");
++MODULE_FIRMWARE("rtl_bt/rtl8852au_fw.bin");
++MODULE_FIRMWARE("rtl_bt/rtl8852au_config.bin");
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index 538232b4c42a..3620981e8b1c 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -60,6 +60,7 @@ static struct usb_driver btusb_driver;
+ #define BTUSB_WIDEBAND_SPEECH	0x400000
+ #define BTUSB_VALID_LE_STATES   0x800000
+ #define BTUSB_QCA_WCN6855	0x1000000
++#define BTUSB_INTEL_NEWGEN	0x2000000
+ 
+ static const struct usb_device_id btusb_table[] = {
+ 	/* Generic Bluetooth USB device */
+@@ -269,8 +270,6 @@ static const struct usb_device_id blacklist_table[] = {
+ 						     BTUSB_WIDEBAND_SPEECH },
+ 	{ USB_DEVICE(0x0cf3, 0xe360), .driver_info = BTUSB_QCA_ROME |
+ 						     BTUSB_WIDEBAND_SPEECH },
+-	{ USB_DEVICE(0x0cf3, 0xe500), .driver_info = BTUSB_QCA_ROME |
+-						     BTUSB_WIDEBAND_SPEECH },
+ 	{ USB_DEVICE(0x0489, 0xe092), .driver_info = BTUSB_QCA_ROME |
+ 						     BTUSB_WIDEBAND_SPEECH },
+ 	{ USB_DEVICE(0x0489, 0xe09f), .driver_info = BTUSB_QCA_ROME |
+@@ -367,7 +366,7 @@ static const struct usb_device_id blacklist_table[] = {
+ 						     BTUSB_WIDEBAND_SPEECH },
+ 	{ USB_DEVICE(0x8087, 0x0029), .driver_info = BTUSB_INTEL_NEW |
+ 						     BTUSB_WIDEBAND_SPEECH },
+-	{ USB_DEVICE(0x8087, 0x0032), .driver_info = BTUSB_INTEL_NEW |
++	{ USB_DEVICE(0x8087, 0x0032), .driver_info = BTUSB_INTEL_NEWGEN |
+ 						     BTUSB_WIDEBAND_SPEECH},
+ 	{ USB_DEVICE(0x8087, 0x07da), .driver_info = BTUSB_CSR },
+ 	{ USB_DEVICE(0x8087, 0x07dc), .driver_info = BTUSB_INTEL },
+@@ -379,15 +378,6 @@ static const struct usb_device_id blacklist_table[] = {
+ 	{ USB_DEVICE(0x8087, 0x0aaa), .driver_info = BTUSB_INTEL_NEW |
+ 						     BTUSB_WIDEBAND_SPEECH |
+ 						     BTUSB_VALID_LE_STATES },
+-	{ USB_DEVICE(0x10ab, 0x9309), .driver_info = BTUSB_QCA_WCN6855 |
+-						     BTUSB_WIDEBAND_SPEECH |
+-						     BTUSB_VALID_LE_STATES },
+-	{ USB_DEVICE(0x10ab, 0x9409), .driver_info = BTUSB_QCA_WCN6855 |
+-						     BTUSB_WIDEBAND_SPEECH |
+-						     BTUSB_VALID_LE_STATES },
+-	{ USB_DEVICE(0x0489, 0xe0d0), .driver_info = BTUSB_QCA_WCN6855 |
+-						     BTUSB_WIDEBAND_SPEECH |
+-						     BTUSB_VALID_LE_STATES },
+ 
+ 	/* Other Intel Bluetooth devices */
+ 	{ USB_VENDOR_AND_INTERFACE_INFO(0x8087, 0xe0, 0x01, 0x01),
+@@ -396,7 +386,9 @@ static const struct usb_device_id blacklist_table[] = {
+ 	/* Realtek 8822CE Bluetooth devices */
+ 	{ USB_DEVICE(0x0bda, 0xb00c), .driver_info = BTUSB_REALTEK |
+ 						     BTUSB_WIDEBAND_SPEECH },
+-	{ USB_DEVICE(0x0bda, 0xc822), .driver_info = BTUSB_REALTEK |
++
++	/* Realtek 8852AE Bluetooth devices */
++	{ USB_DEVICE(0x0bda, 0xc852), .driver_info = BTUSB_REALTEK |
+ 						     BTUSB_WIDEBAND_SPEECH },
+ 
+ 	/* Realtek Bluetooth devices */
+@@ -409,13 +401,8 @@ static const struct usb_device_id blacklist_table[] = {
+ 			 BTUSB_WIDEBAND_SPEECH |
+ 			 BTUSB_VALID_LE_STATES },
+ 
+-	/* MediaTek MT7922A Bluetooth devices */
+-	{ USB_DEVICE(0x0489, 0xe0d8), .driver_info = BTUSB_MEDIATEK |
+-						     BTUSB_WIDEBAND_SPEECH |
+-						     BTUSB_VALID_LE_STATES },
+-	{ USB_DEVICE(0x0489, 0xe0d9), .driver_info = BTUSB_MEDIATEK |
+-						     BTUSB_WIDEBAND_SPEECH |
+-						     BTUSB_VALID_LE_STATES },
++	/* Additional MediaTek MT7615E Bluetooth devices */
++	{ USB_DEVICE(0x13d3, 0x3560), .driver_info = BTUSB_MEDIATEK},
+ 
+ 	/* Additional Realtek 8723AE Bluetooth devices */
+ 	{ USB_DEVICE(0x0930, 0x021d), .driver_info = BTUSB_REALTEK },
+@@ -448,8 +435,26 @@ static const struct usb_device_id blacklist_table[] = {
+ 	{ USB_DEVICE(0x0b05, 0x185c), .driver_info = BTUSB_REALTEK },
+ 
+ 	/* Additional Realtek 8822CE Bluetooth devices */
+-	{ USB_DEVICE(0x04ca, 0x4005), .driver_info = BTUSB_REALTEK },
+-	{ USB_DEVICE(0x13d3, 0x3548), .driver_info = BTUSB_REALTEK },
++	{ USB_DEVICE(0x04ca, 0x4005), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
++	{ USB_DEVICE(0x04c5, 0x161f), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
++	{ USB_DEVICE(0x0b05, 0x18ef), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
++	{ USB_DEVICE(0x13d3, 0x3548), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
++	{ USB_DEVICE(0x13d3, 0x3549), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
++	{ USB_DEVICE(0x13d3, 0x3553), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
++	{ USB_DEVICE(0x13d3, 0x3555), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
++	{ USB_DEVICE(0x2ff8, 0x3051), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
++	{ USB_DEVICE(0x1358, 0xc123), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
++	{ USB_DEVICE(0x0bda, 0xc123), .driver_info = BTUSB_REALTEK |
++						     BTUSB_WIDEBAND_SPEECH },
+ 
+ 	/* Silicon Wave based devices */
+ 	{ USB_DEVICE(0x0c10, 0x0000), .driver_info = BTUSB_SWAVE },
+@@ -503,7 +508,6 @@ static const struct dmi_system_id btusb_needs_reset_resume_table[] = {
+ #define BTUSB_HW_RESET_ACTIVE	12
+ #define BTUSB_TX_WAIT_VND_EVT	13
+ #define BTUSB_WAKEUP_DISABLE	14
+-#define BTUSB_USE_ALT3_FOR_WBS	15
+ 
+ struct btusb_data {
+ 	struct hci_dev       *hdev;
+@@ -1736,20 +1740,9 @@ static void btusb_work(struct work_struct *work)
+ 			/* Bluetooth USB spec recommends alt 6 (63 bytes), but
+ 			 * many adapters do not support it.  Alt 1 appears to
+ 			 * work for all adapters that do not have alt 6, and
+-			 * which work with WBS at all.  Some devices prefer
+-			 * alt 3 (HCI payload >= 60 Bytes let air packet
+-			 * data satisfy 60 bytes), requiring
+-			 * MTU >= 3 (packets) * 25 (size) - 3 (headers) = 72
+-			 * see also Core spec 5, vol 4, B 2.1.1 & Table 2.1.
++			 * which work with WBS at all.
+ 			 */
+-			if (btusb_find_altsetting(data, 6))
+-				new_alts = 6;
+-			else if (btusb_find_altsetting(data, 3) &&
+-				 hdev->sco_mtu >= 72 &&
+-				 test_bit(BTUSB_USE_ALT3_FOR_WBS, &data->flags))
+-				new_alts = 3;
+-			else
+-				new_alts = 1;
++			new_alts = btusb_find_altsetting(data, 6) ? 6 : 1;
+ 		}
+ 
+ 		if (btusb_switch_alt_setting(hdev, new_alts) < 0)
+@@ -1799,6 +1792,7 @@ static int btusb_setup_csr(struct hci_dev *hdev)
+ 	struct hci_rp_read_local_version *rp;
+ 	struct sk_buff *skb;
+ 	bool is_fake = false;
++	int ret;
+ 
+ 	BT_DBG("%s", hdev->name);
+ 
+@@ -1887,6 +1881,43 @@ static int btusb_setup_csr(struct hci_dev *hdev)
+ 		 */
+ 		clear_bit(HCI_QUIRK_RESET_ON_CLOSE, &hdev->quirks);
+ 		clear_bit(HCI_QUIRK_SIMULTANEOUS_DISCOVERY, &hdev->quirks);
++
++		/*
++		 * Special workaround for clones with a Barrot 8041a02 chip,
++		 * these clones are really messed-up:
++		 * 1. Their bulk rx endpoint will never report any data unless
++		 * the device was suspended at least once (yes really).
++		 * 2. They will not wakeup when autosuspended and receiving data
++		 * on their bulk rx endpoint from e.g. a keyboard or mouse
++		 * (IOW remote-wakeup support is broken for the bulk endpoint).
++		 *
++		 * To fix 1. enable runtime-suspend, force-suspend the
++		 * hci and then wake-it up by disabling runtime-suspend.
++		 *
++		 * To fix 2. clear the hci's can_wake flag, this way the hci
++		 * will still be autosuspended when it is not open.
++		 */
++		if (bcdDevice == 0x8891 &&
++		    le16_to_cpu(rp->lmp_subver) == 0x1012 &&
++		    le16_to_cpu(rp->hci_rev) == 0x0810 &&
++		    le16_to_cpu(rp->hci_ver) == BLUETOOTH_VER_4_0) {
++			bt_dev_warn(hdev, "CSR: detected a fake CSR dongle using a Barrot 8041a02 chip, this chip is very buggy and may have issues\n");
++
++			pm_runtime_allow(&data->udev->dev);
++
++			ret = pm_runtime_suspend(&data->udev->dev);
++			if (ret >= 0)
++				msleep(200);
++			else
++				bt_dev_err(hdev, "Failed to suspend the device for Barrot 8041a02 receive-issue workaround\n");
++
++			pm_runtime_forbid(&data->udev->dev);
++
++			device_set_wakeup_capable(&data->udev->dev, false);
++			/* Re-enable autosuspend if this was requested */
++			if (enable_autosuspend)
++				usb_enable_autosuspend(data->udev);
++		}
+ 	}
+ 
+ 	kfree_skb(skb);
+@@ -2398,6 +2429,182 @@ static bool btusb_setup_intel_new_get_fw_name(struct intel_version *ver,
+ 	return true;
+ }
+ 
++static void btusb_setup_intel_newgen_get_fw_name(const struct intel_version_tlv *ver_tlv,
++						 char *fw_name, size_t len,
++						 const char *suffix)
++{
++	/* The firmware file name for new generation controllers will be
++	 * ibt-<cnvi_top type+cnvi_top step>-<cnvr_top type+cnvr_top step>
++	 */
++	snprintf(fw_name, len, "intel/ibt-%04x-%04x.%s",
++		 INTEL_CNVX_TOP_PACK_SWAB(INTEL_CNVX_TOP_TYPE(ver_tlv->cnvi_top),
++					  INTEL_CNVX_TOP_STEP(ver_tlv->cnvi_top)),
++		 INTEL_CNVX_TOP_PACK_SWAB(INTEL_CNVX_TOP_TYPE(ver_tlv->cnvr_top),
++					  INTEL_CNVX_TOP_STEP(ver_tlv->cnvr_top)),
++		 suffix);
++}
++
++static int btusb_intel_download_firmware_newgen(struct hci_dev *hdev,
++						struct intel_version_tlv *ver,
++						u32 *boot_param)
++{
++	const struct firmware *fw;
++	char fwname[64];
++	int err;
++	struct btusb_data *data = hci_get_drvdata(hdev);
++
++	if (!ver || !boot_param)
++		return -EINVAL;
++
++	/* The hardware platform number has a fixed value of 0x37 and
++	 * for now only accept this single value.
++	 */
++	if (INTEL_HW_PLATFORM(ver->cnvi_bt) != 0x37) {
++		bt_dev_err(hdev, "Unsupported Intel hardware platform (0x%2x)",
++			   INTEL_HW_PLATFORM(ver->cnvi_bt));
++		return -EINVAL;
++	}
++
++	/* The firmware variant determines if the device is in bootloader
++	 * mode or is running operational firmware. The value 0x03 identifies
++	 * the bootloader and the value 0x23 identifies the operational
++	 * firmware.
++	 *
++	 * When the operational firmware is already present, then only
++	 * the check for valid Bluetooth device address is needed. This
++	 * determines if the device will be added as configured or
++	 * unconfigured controller.
++	 *
++	 * It is not possible to use the Secure Boot Parameters in this
++	 * case since that command is only available in bootloader mode.
++	 */
++	if (ver->img_type == 0x03) {
++		clear_bit(BTUSB_BOOTLOADER, &data->flags);
++		btintel_check_bdaddr(hdev);
++		return 0;
++	}
++
++	/* Check for supported iBT hardware variants of this firmware
++	 * loading method.
++	 *
++	 * This check has been put in place to ensure correct forward
++	 * compatibility options when newer hardware variants come along.
++	 */
++	switch (INTEL_HW_VARIANT(ver->cnvi_bt)) {
++	case 0x17:	/* TyP */
++	case 0x18:	/* Slr */
++	case 0x19:	/* Slr-F */
++		break;
++	default:
++		bt_dev_err(hdev, "Unsupported Intel hardware variant (0x%x)",
++			   INTEL_HW_VARIANT(ver->cnvi_bt));
++		return -EINVAL;
++	}
++
++	/* If the device is not in bootloader mode, then the only possible
++	 * choice is to return an error and abort the device initialization.
++	 */
++	if (ver->img_type != 0x01) {
++		bt_dev_err(hdev, "Unsupported Intel firmware variant (0x%x)",
++			   ver->img_type);
++		return -ENODEV;
++	}
++
++	/* It is required that every single firmware fragment is acknowledged
++	 * with a command complete event. If the boot parameters indicate
++	 * that this bootloader does not send them, then abort the setup.
++	 */
++	if (ver->limited_cce != 0x00) {
++		bt_dev_err(hdev, "Unsupported Intel firmware loading method (0x%x)",
++			   ver->limited_cce);
++		return -EINVAL;
++	}
++
++	/* Secure boot engine type should be either 1 (ECDSA) or 0 (RSA) */
++	if (ver->sbe_type > 0x01) {
++		bt_dev_err(hdev, "Unsupported Intel secure boot engine type (0x%x)",
++			   ver->sbe_type);
++		return -EINVAL;
++	}
++
++	/* If the OTP has no valid Bluetooth device address, then there will
++	 * also be no valid address for the operational firmware.
++	 */
++	if (!bacmp(&ver->otp_bd_addr, BDADDR_ANY)) {
++		bt_dev_info(hdev, "No device address configured");
++		set_bit(HCI_QUIRK_INVALID_BDADDR, &hdev->quirks);
++	}
++
++	btusb_setup_intel_newgen_get_fw_name(ver, fwname, sizeof(fwname), "sfi");
++	err = request_firmware(&fw, fwname, &hdev->dev);
++	if (err < 0) {
++		bt_dev_err(hdev, "Failed to load Intel firmware file (%d)", err);
++		return err;
++	}
++
++	bt_dev_info(hdev, "Found device firmware: %s", fwname);
++
++	if (fw->size < 644) {
++		bt_dev_err(hdev, "Invalid size of firmware file (%zu)",
++			   fw->size);
++		err = -EBADF;
++		goto done;
++	}
++
++	set_bit(BTUSB_DOWNLOADING, &data->flags);
++
++	/* Start firmware downloading and get boot parameter */
++	err = btintel_download_firmware_newgen(hdev, fw, boot_param,
++					       INTEL_HW_VARIANT(ver->cnvi_bt),
++					       ver->sbe_type);
++	if (err < 0) {
++		/* When FW download fails, send Intel Reset to retry
++		 * FW download.
++		 */
++		btintel_reset_to_bootloader(hdev);
++		goto done;
++	}
++	set_bit(BTUSB_FIRMWARE_LOADED, &data->flags);
++
++	bt_dev_info(hdev, "Waiting for firmware download to complete");
++
++	/* Before switching the device into operational mode and with that
++	 * booting the loaded firmware, wait for the bootloader notification
++	 * that all fragments have been successfully received.
++	 *
++	 * When the event processing receives the notification, then the
++	 * BTUSB_DOWNLOADING flag will be cleared.
++	 *
++	 * The firmware loading should not take longer than 5 seconds
++	 * and thus just timeout if that happens and fail the setup
++	 * of this device.
++	 */
++	err = wait_on_bit_timeout(&data->flags, BTUSB_DOWNLOADING,
++				  TASK_INTERRUPTIBLE,
++				  msecs_to_jiffies(5000));
++	if (err == -EINTR) {
++		bt_dev_err(hdev, "Firmware loading interrupted");
++		goto done;
++	}
++
++	if (err) {
++		bt_dev_err(hdev, "Firmware loading timeout");
++		err = -ETIMEDOUT;
++		btintel_reset_to_bootloader(hdev);
++		goto done;
++	}
++
++	if (test_bit(BTUSB_FIRMWARE_FAILED, &data->flags)) {
++		bt_dev_err(hdev, "Firmware loading failed");
++		err = -ENOEXEC;
++		goto done;
++	}
++
++done:
++	release_firmware(fw);
++	return err;
++}
++
+ static int btusb_intel_download_firmware(struct hci_dev *hdev,
+ 					 struct intel_version *ver,
+ 					 struct intel_boot_params *params,
+@@ -2732,6 +2939,134 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
+ 	return 0;
+ }
+ 
++static int btusb_setup_intel_newgen(struct hci_dev *hdev)
++{
++	struct btusb_data *data = hci_get_drvdata(hdev);
++	u32 boot_param;
++	char ddcname[64];
++	ktime_t calltime, delta, rettime;
++	unsigned long long duration;
++	int err;
++	struct intel_debug_features features;
++	struct intel_version_tlv version;
++
++	bt_dev_dbg(hdev, "");
++
++	/* Set the default boot parameter to 0x0 and it is updated to
++	 * SKU specific boot parameter after reading Intel_Write_Boot_Params
++	 * command while downloading the firmware.
++	 */
++	boot_param = 0x00000000;
++
++	calltime = ktime_get();
++
++	/* Read the Intel version information to determine if the device
++	 * is in bootloader mode or if it already has operational firmware
++	 * loaded.
++	 */
++	err = btintel_read_version_tlv(hdev, &version);
++	if (err) {
++		bt_dev_err(hdev, "Intel Read version failed (%d)", err);
++		btintel_reset_to_bootloader(hdev);
++		return err;
++	}
++
++	btintel_version_info_tlv(hdev, &version);
++
++	err = btusb_intel_download_firmware_newgen(hdev, &version, &boot_param);
++	if (err)
++		return err;
++
++	/* check if controller is already having an operational firmware */
++	if (version.img_type == 0x03)
++		goto finish;
++
++	rettime = ktime_get();
++	delta = ktime_sub(rettime, calltime);
++	duration = (unsigned long long)ktime_to_ns(delta) >> 10;
++
++	bt_dev_info(hdev, "Firmware loaded in %llu usecs", duration);
++
++	calltime = ktime_get();
++
++	set_bit(BTUSB_BOOTING, &data->flags);
++
++	err = btintel_send_intel_reset(hdev, boot_param);
++	if (err) {
++		bt_dev_err(hdev, "Intel Soft Reset failed (%d)", err);
++		btintel_reset_to_bootloader(hdev);
++		return err;
++	}
++
++	/* The bootloader will not indicate when the device is ready. This
++	 * is done by the operational firmware sending bootup notification.
++	 *
++	 * Booting into operational firmware should not take longer than
++	 * 1 second. However if that happens, then just fail the setup
++	 * since something went wrong.
++	 */
++	bt_dev_info(hdev, "Waiting for device to boot");
++
++	err = wait_on_bit_timeout(&data->flags, BTUSB_BOOTING,
++				  TASK_INTERRUPTIBLE,
++				  msecs_to_jiffies(1000));
++
++	if (err == -EINTR) {
++		bt_dev_err(hdev, "Device boot interrupted");
++		return -EINTR;
++	}
++
++	if (err) {
++		bt_dev_err(hdev, "Device boot timeout");
++		btintel_reset_to_bootloader(hdev);
++		return -ETIMEDOUT;
++	}
++
++	rettime = ktime_get();
++	delta = ktime_sub(rettime, calltime);
++	duration = (unsigned long long)ktime_to_ns(delta) >> 10;
++
++	bt_dev_info(hdev, "Device booted in %llu usecs", duration);
++
++	clear_bit(BTUSB_BOOTLOADER, &data->flags);
++
++	btusb_setup_intel_newgen_get_fw_name(&version, ddcname, sizeof(ddcname),
++					     "ddc");
++	/* Once the device is running in operational mode, it needs to
++	 * apply the device configuration (DDC) parameters.
++	 *
++	 * The device can work without DDC parameters, so even if it
++	 * fails to load the file, no need to fail the setup.
++	 */
++	btintel_load_ddc_config(hdev, ddcname);
++
++	/* Read the Intel supported features and if new exception formats
++	 * supported, need to load the additional DDC config to enable.
++	 */
++	btintel_read_debug_features(hdev, &features);
++
++	/* Set DDC mask for available debug features */
++	btintel_set_debug_features(hdev, &features);
++
++	/* Read the Intel version information after loading the FW  */
++	err = btintel_read_version_tlv(hdev, &version);
++	if (err)
++		return err;
++
++	btintel_version_info_tlv(hdev, &version);
++
++finish:
++	/* Set the event mask for Intel specific vendor events. This enables
++	 * a few extra events that are useful during general operation. It
++	 * does not enable any debugging related events.
++	 *
++	 * The device will function correctly without these events enabled
++	 * and thus no need to fail the setup.
++	 */
++	btintel_set_event_mask(hdev, false);
++
++	return 0;
++}
+ static int btusb_shutdown_intel(struct hci_dev *hdev)
+ {
+ 	struct sk_buff *skb;
+@@ -2862,7 +3197,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+ 		skb = bt_skb_alloc(HCI_WMT_MAX_EVENT_SIZE, GFP_ATOMIC);
+ 		if (!skb) {
+ 			hdev->stat.err_rx++;
+-			kfree(urb->setup_packet);
+ 			return;
+ 		}
+ 
+@@ -2883,7 +3217,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+ 			data->evt_skb = skb_clone(skb, GFP_ATOMIC);
+ 			if (!data->evt_skb) {
+ 				kfree_skb(skb);
+-				kfree(urb->setup_packet);
+ 				return;
+ 			}
+ 		}
+@@ -2892,7 +3225,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+ 		if (err < 0) {
+ 			kfree_skb(data->evt_skb);
+ 			data->evt_skb = NULL;
+-			kfree(urb->setup_packet);
+ 			return;
+ 		}
+ 
+@@ -2903,7 +3235,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+ 			wake_up_bit(&data->flags,
+ 				    BTUSB_TX_WAIT_VND_EVT);
+ 		}
+-		kfree(urb->setup_packet);
+ 		return;
+ 	} else if (urb->status == -ENOENT) {
+ 		/* Avoid suspend failed when usb_kill_urb */
+@@ -2924,7 +3255,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+ 	usb_anchor_urb(urb, &data->ctrl_anchor);
+ 	err = usb_submit_urb(urb, GFP_ATOMIC);
+ 	if (err < 0) {
+-		kfree(urb->setup_packet);
+ 		/* -EPERM: urb is being killed;
+ 		 * -ENODEV: device got disconnected
+ 		 */
+@@ -2999,6 +3329,11 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
+ 	struct btmtk_wmt_hdr *hdr;
+ 	int err;
+ 
++	/* Submit control IN URB on demand to process the WMT event */
++	err = btusb_mtk_submit_wmt_recv_urb(hdev);
++	if (err < 0)
++		return err;
++
+ 	/* Send the WMT command and wait until the WMT event returns */
+ 	hlen = sizeof(*hdr) + wmt_params->dlen;
+ 	if (hlen > 255)
+@@ -3020,11 +3355,6 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
+ 		return err;
+ 	}
+ 
+-	/* Submit control IN URB on demand to process the WMT event */
+-	err = btusb_mtk_submit_wmt_recv_urb(hdev);
+-	if (err < 0)
+-		return err;
+-
+ 	/* The vendor specific WMT commands are all answered by a vendor
+ 	 * specific event and will have the Command Status or Command
+ 	 * Complete as with usual HCI command flow control.
+@@ -3488,12 +3818,14 @@ static int btusb_set_bdaddr_wcn6855(struct hci_dev *hdev,
+ #define QCA_SYSCFG_UPDATED	0x40
+ #define QCA_PATCH_UPDATED	0x80
+ #define QCA_DFU_TIMEOUT		3000
++#define QCA_FLAG_MULTI_NVM      0x80
+ 
+ struct qca_version {
+ 	__le32	rom_version;
+ 	__le32	patch_version;
+ 	__le32	ram_version;
+-	__le32	ref_clock;
++	__le16	board_id;
++	__le16	flag;
+ 	__u8	reserved[4];
+ } __packed;
+ 
+@@ -3585,11 +3917,6 @@ static int btusb_setup_qca_download_fw(struct hci_dev *hdev,
+ 	sent += size;
+ 	count -= size;
+ 
+-	/* ep2 need time to switch from function acl to function dfu,
+-	 * so we add 20ms delay here.
+-	 */
+-	msleep(20);
+-
+ 	while (count) {
+ 		size = min_t(size_t, count, QCA_DFU_PACKET_LEN);
+ 
+@@ -3681,8 +4008,14 @@ static int btusb_setup_qca_load_nvm(struct hci_dev *hdev,
+ 	char fwname[64];
+ 	int err;
+ 
+-	snprintf(fwname, sizeof(fwname), "qca/nvm_usb_%08x.bin",
+-		 le32_to_cpu(ver->rom_version));
++	if (((ver->flag >> 8) & 0xff) == QCA_FLAG_MULTI_NVM) {
++		snprintf(fwname, sizeof(fwname), "qca/nvm_usb_%08x_%04x.bin",
++			 le32_to_cpu(ver->rom_version),
++			 le16_to_cpu(ver->board_id));
++	} else {
++		snprintf(fwname, sizeof(fwname), "qca/nvm_usb_%08x.bin",
++			 le32_to_cpu(ver->rom_version));
++	}
+ 
+ 	err = request_firmware(&fw, fwname, &hdev->dev);
+ 	if (err) {
+@@ -3756,6 +4089,11 @@ static int btusb_setup_qca(struct hci_dev *hdev)
+ 			return err;
+ 	}
+ 
++	err = btusb_qca_send_vendor_req(udev, QCA_GET_TARGET_VERSION, &ver,
++					sizeof(ver));
++	if (err < 0)
++		return err;
++
+ 	if (!(status & QCA_SYSCFG_UPDATED)) {
+ 		err = btusb_setup_qca_load_nvm(hdev, &ver, info);
+ 		if (err < 0)
+@@ -4134,6 +4472,24 @@ static int btusb_probe(struct usb_interface *intf,
+ 		set_bit(HCI_QUIRK_NON_PERSISTENT_DIAG, &hdev->quirks);
+ 	}
+ 
++	if (id->driver_info & BTUSB_INTEL_NEWGEN) {
++		hdev->manufacturer = 2;
++		hdev->send = btusb_send_frame_intel;
++		hdev->setup = btusb_setup_intel_newgen;
++		hdev->shutdown = btusb_shutdown_intel_new;
++		hdev->hw_error = btintel_hw_error;
++		hdev->set_diag = btintel_set_diag;
++		hdev->set_bdaddr = btintel_set_bdaddr;
++		hdev->cmd_timeout = btusb_intel_cmd_timeout;
++		set_bit(HCI_QUIRK_STRICT_DUPLICATE_FILTER, &hdev->quirks);
++		set_bit(HCI_QUIRK_SIMULTANEOUS_DISCOVERY, &hdev->quirks);
++		set_bit(HCI_QUIRK_NON_PERSISTENT_DIAG, &hdev->quirks);
++
++		data->recv_event = btusb_recv_event_intel;
++		data->recv_bulk = btusb_recv_bulk_intel;
++		set_bit(BTUSB_BOOTLOADER, &data->flags);
++	}
++
+ 	if (id->driver_info & BTUSB_MARVELL)
+ 		hdev->set_bdaddr = btusb_set_bdaddr_marvell;
+ 
+@@ -4197,7 +4553,6 @@ static int btusb_probe(struct usb_interface *intf,
+ 		 * (DEVICE_REMOTE_WAKEUP)
+ 		 */
+ 		set_bit(BTUSB_WAKEUP_DISABLE, &data->flags);
+-		set_bit(BTUSB_USE_ALT3_FOR_WBS, &data->flags);
+ 	}
+ 
+ 	if (!reset)
+diff --git a/drivers/bluetooth/hci_bcm.c b/drivers/bluetooth/hci_bcm.c
+index 259a643377c2..8ea5ca8d71d6 100644
+--- a/drivers/bluetooth/hci_bcm.c
++++ b/drivers/bluetooth/hci_bcm.c
+@@ -1164,12 +1164,7 @@ static int bcm_probe(struct platform_device *pdev)
+ 		return -ENOMEM;
+ 
+ 	dev->dev = &pdev->dev;
+-
+-	ret = platform_get_irq(pdev, 0);
+-	if (ret < 0)
+-		return ret;
+-
+-	dev->irq = ret;
++	dev->irq = platform_get_irq(pdev, 0);
+ 
+ 	/* Initialize routing field to an unused value */
+ 	dev->pcm_int_params[0] = 0xff;
+diff --git a/drivers/bluetooth/hci_h5.c b/drivers/bluetooth/hci_h5.c
+index 996729e78105..95ecd30e6619 100644
+--- a/drivers/bluetooth/hci_h5.c
++++ b/drivers/bluetooth/hci_h5.c
+@@ -1009,6 +1009,7 @@ static struct h5_vnd rtl_vnd = {
+ #ifdef CONFIG_ACPI
+ static const struct acpi_device_id h5_acpi_match[] = {
+ #ifdef CONFIG_BT_HCIUART_RTL
++	{ "OBDA0623", (kernel_ulong_t)&rtl_vnd },
+ 	{ "OBDA8723", (kernel_ulong_t)&rtl_vnd },
+ #endif
+ 	{ },
+diff --git a/drivers/bluetooth/hci_ll.c b/drivers/bluetooth/hci_ll.c
+index 8bfe024d1fcd..eb1e736efeeb 100644
+--- a/drivers/bluetooth/hci_ll.c
++++ b/drivers/bluetooth/hci_ll.c
+@@ -626,6 +626,7 @@ static int ll_setup(struct hci_uart *hu)
+ 		gpiod_set_value_cansleep(lldev->enable_gpio, 0);
+ 		msleep(5);
+ 		gpiod_set_value_cansleep(lldev->enable_gpio, 1);
++		mdelay(100);
+ 		err = serdev_device_wait_for_cts(serdev, true, 200);
+ 		if (err) {
+ 			bt_dev_err(hu->hdev, "Failed to get CTS");
+diff --git a/drivers/bluetooth/hci_qca.c b/drivers/bluetooth/hci_qca.c
+index eea18aed17f8..de36af63e182 100644
+--- a/drivers/bluetooth/hci_qca.c
++++ b/drivers/bluetooth/hci_qca.c
+@@ -50,6 +50,9 @@
+ #define IBS_HOST_TX_IDLE_TIMEOUT_MS	2000
+ #define CMD_TRANS_TIMEOUT_MS		100
+ #define MEMDUMP_TIMEOUT_MS		8000
++#define IBS_DISABLE_SSR_TIMEOUT_MS \
++	(MEMDUMP_TIMEOUT_MS + FW_DOWNLOAD_TIMEOUT_MS)
++#define FW_DOWNLOAD_TIMEOUT_MS		3000
+ 
+ /* susclk rate */
+ #define SUSCLK_RATE_32KHZ	32768
+@@ -68,12 +71,14 @@
+ #define QCA_MEMDUMP_BYTE		0xFB
+ 
+ enum qca_flags {
+-	QCA_IBS_ENABLED,
++	QCA_IBS_DISABLED,
+ 	QCA_DROP_VENDOR_EVENT,
+ 	QCA_SUSPENDING,
+ 	QCA_MEMDUMP_COLLECTION,
+ 	QCA_HW_ERROR_EVENT,
+-	QCA_SSR_TRIGGERED
++	QCA_SSR_TRIGGERED,
++	QCA_BT_OFF,
++	QCA_ROM_FW
+ };
+ 
+ enum qca_capabilities {
+@@ -631,7 +636,7 @@ static void qca_debugfs_init(struct hci_dev *hdev)
+ 	ibs_dir = debugfs_create_dir("ibs", hdev->debugfs);
+ 
+ 	/* read only */
+-	mode = S_IRUGO;
++	mode = 0444;
+ 	debugfs_create_u8("tx_ibs_state", mode, ibs_dir, &qca->tx_ibs_state);
+ 	debugfs_create_u8("rx_ibs_state", mode, ibs_dir, &qca->rx_ibs_state);
+ 	debugfs_create_u64("ibs_sent_sleeps", mode, ibs_dir,
+@@ -658,7 +663,7 @@ static void qca_debugfs_init(struct hci_dev *hdev)
+ 	debugfs_create_u32("vote_off_ms", mode, ibs_dir, &qca->vote_off_ms);
+ 
+ 	/* read/write */
+-	mode = S_IRUGO | S_IWUSR;
++	mode = 0644;
+ 	debugfs_create_u32("wake_retrans", mode, ibs_dir, &qca->wake_retrans);
+ 	debugfs_create_u32("tx_idle_delay", mode, ibs_dir,
+ 			   &qca->tx_idle_delay);
+@@ -689,9 +694,9 @@ static int qca_close(struct hci_uart *hu)
+ 	skb_queue_purge(&qca->tx_wait_q);
+ 	skb_queue_purge(&qca->txq);
+ 	skb_queue_purge(&qca->rx_memdump_q);
++	del_timer(&qca->tx_idle_timer);
++	del_timer(&qca->wake_retrans_timer);
+ 	destroy_workqueue(qca->workqueue);
+-	del_timer_sync(&qca->tx_idle_timer);
+-	del_timer_sync(&qca->wake_retrans_timer);
+ 	qca->hu = NULL;
+ 
+ 	kfree_skb(qca->rx_skb);
+@@ -870,7 +875,7 @@ static int qca_enqueue(struct hci_uart *hu, struct sk_buff *skb)
+ 	 * Out-Of-Band(GPIOs control) sleep is selected.
+ 	 * Don't wake the device up when suspending.
+ 	 */
+-	if (!test_bit(QCA_IBS_ENABLED, &qca->flags) ||
++	if (test_bit(QCA_IBS_DISABLED, &qca->flags) ||
+ 	    test_bit(QCA_SUSPENDING, &qca->flags)) {
+ 		skb_queue_tail(&qca->txq, skb);
+ 		spin_unlock_irqrestore(&qca->hci_ibs_lock, flags);
+@@ -1015,7 +1020,7 @@ static void qca_controller_memdump(struct work_struct *work)
+ 			 * the controller to send the dump is 8 seconds. let us
+ 			 * start timer to handle this asynchronous activity.
+ 			 */
+-			clear_bit(QCA_IBS_ENABLED, &qca->flags);
++			set_bit(QCA_IBS_DISABLED, &qca->flags);
+ 			set_bit(QCA_MEMDUMP_COLLECTION, &qca->flags);
+ 			dump = (void *) skb->data;
+ 			dump_size = __le32_to_cpu(dump->dump_size);
+@@ -1304,7 +1309,7 @@ static int qca_set_baudrate(struct hci_dev *hdev, uint8_t baudrate)
+ 
+ 	/* Give the controller time to process the request */
+ 	if (qca_is_wcn399x(qca_soc_type(hu)))
+-		msleep(10);
++		usleep_range(1000, 10000);
+ 	else
+ 		msleep(300);
+ 
+@@ -1352,7 +1357,7 @@ static int qca_send_power_pulse(struct hci_uart *hu, bool on)
+ 	if (on)
+ 		msleep(100);
+ 	else
+-		msleep(10);
++		usleep_range(1000, 10000);
+ 
+ 	return 0;
+ }
+@@ -1621,6 +1626,7 @@ static int qca_power_on(struct hci_dev *hdev)
+ 	struct hci_uart *hu = hci_get_drvdata(hdev);
+ 	enum qca_btsoc_type soc_type = qca_soc_type(hu);
+ 	struct qca_serdev *qcadev;
++	struct qca_data *qca = hu->priv;
+ 	int ret = 0;
+ 
+ 	/* Non-serdev device usually is powered by external power
+@@ -1640,6 +1646,7 @@ static int qca_power_on(struct hci_dev *hdev)
+ 		}
+ 	}
+ 
++	clear_bit(QCA_BT_OFF, &qca->flags);
+ 	return ret;
+ }
+ 
+@@ -1652,14 +1659,15 @@ static int qca_setup(struct hci_uart *hu)
+ 	enum qca_btsoc_type soc_type = qca_soc_type(hu);
+ 	const char *firmware_name = qca_get_firmware_name(hu);
+ 	int ret;
+-	int soc_ver = 0;
++	struct qca_btsoc_version ver;
+ 
+ 	ret = qca_check_speeds(hu);
+ 	if (ret)
+ 		return ret;
+ 
++	clear_bit(QCA_ROM_FW, &qca->flags);
+ 	/* Patch downloading has to be done without IBS mode */
+-	clear_bit(QCA_IBS_ENABLED, &qca->flags);
++	set_bit(QCA_IBS_DISABLED, &qca->flags);
+ 
+ 	/* Enable controller to do both LE scan and BR/EDR inquiry
+ 	 * simultaneously.
+@@ -1674,16 +1682,16 @@ static int qca_setup(struct hci_uart *hu)
+ retry:
+ 	ret = qca_power_on(hdev);
+ 	if (ret)
+-		return ret;
++		goto out;
+ 
+ 	clear_bit(QCA_SSR_TRIGGERED, &qca->flags);
+ 
+ 	if (qca_is_wcn399x(soc_type)) {
+ 		set_bit(HCI_QUIRK_USE_BDADDR_PROPERTY, &hdev->quirks);
+ 
+-		ret = qca_read_soc_version(hdev, &soc_ver, soc_type);
++		ret = qca_read_soc_version(hdev, &ver, soc_type);
+ 		if (ret)
+-			return ret;
++			goto out;
+ 	} else {
+ 		qca_set_speed(hu, QCA_INIT_SPEED);
+ 	}
+@@ -1693,50 +1701,53 @@ static int qca_setup(struct hci_uart *hu)
+ 	if (speed) {
+ 		ret = qca_set_speed(hu, QCA_OPER_SPEED);
+ 		if (ret)
+-			return ret;
++			goto out;
+ 
+ 		qca_baudrate = qca_get_baudrate_value(speed);
+ 	}
+ 
+ 	if (!qca_is_wcn399x(soc_type)) {
+ 		/* Get QCA version information */
+-		ret = qca_read_soc_version(hdev, &soc_ver, soc_type);
++		ret = qca_read_soc_version(hdev, &ver, soc_type);
+ 		if (ret)
+-			return ret;
++			goto out;
+ 	}
+ 
+-	bt_dev_info(hdev, "QCA controller version 0x%08x", soc_ver);
+ 	/* Setup patch / NVM configurations */
+-	ret = qca_uart_setup(hdev, qca_baudrate, soc_type, soc_ver,
++	ret = qca_uart_setup(hdev, qca_baudrate, soc_type, ver,
+ 			firmware_name);
+ 	if (!ret) {
+-		set_bit(QCA_IBS_ENABLED, &qca->flags);
++		clear_bit(QCA_IBS_DISABLED, &qca->flags);
+ 		qca_debugfs_init(hdev);
+ 		hu->hdev->hw_error = qca_hw_error;
+ 		hu->hdev->cmd_timeout = qca_cmd_timeout;
+ 	} else if (ret == -ENOENT) {
+ 		/* No patch/nvm-config found, run with original fw/config */
++		set_bit(QCA_ROM_FW, &qca->flags);
+ 		ret = 0;
+ 	} else if (ret == -EAGAIN) {
+ 		/*
+ 		 * Userspace firmware loader will return -EAGAIN in case no
+ 		 * patch/nvm-config is found, so run with original fw/config.
+ 		 */
++		set_bit(QCA_ROM_FW, &qca->flags);
+ 		ret = 0;
+-	} else {
+-		if (retries < MAX_INIT_RETRIES) {
+-			qca_power_shutdown(hu);
+-			if (hu->serdev) {
+-				serdev_device_close(hu->serdev);
+-				ret = serdev_device_open(hu->serdev);
+-				if (ret) {
+-					bt_dev_err(hdev, "failed to open port");
+-					return ret;
+-				}
++	}
++
++out:
++	if (ret && retries < MAX_INIT_RETRIES) {
++		bt_dev_warn(hdev, "Retry BT power ON:%d", retries);
++		qca_power_shutdown(hu);
++		if (hu->serdev) {
++			serdev_device_close(hu->serdev);
++			ret = serdev_device_open(hu->serdev);
++			if (ret) {
++				bt_dev_err(hdev, "failed to open port");
++				return ret;
+ 			}
+-			retries++;
+-			goto retry;
+ 		}
++		retries++;
++		goto retry;
+ 	}
+ 
+ 	/* Setup bdaddr */
+@@ -1809,12 +1820,14 @@ static void qca_power_shutdown(struct hci_uart *hu)
+ 	unsigned long flags;
+ 	enum qca_btsoc_type soc_type = qca_soc_type(hu);
+ 
++	qcadev = serdev_device_get_drvdata(hu->serdev);
++
+ 	/* From this point we go into power off state. But serial port is
+ 	 * still open, stop queueing the IBS data and flush all the buffered
+ 	 * data in skb's.
+ 	 */
+ 	spin_lock_irqsave(&qca->hci_ibs_lock, flags);
+-	clear_bit(QCA_IBS_ENABLED, &qca->flags);
++	set_bit(QCA_IBS_DISABLED, &qca->flags);
+ 	qca_flush(hu);
+ 	spin_unlock_irqrestore(&qca->hci_ibs_lock, flags);
+ 
+@@ -1824,8 +1837,6 @@ static void qca_power_shutdown(struct hci_uart *hu)
+ 	if (!hu->serdev)
+ 		return;
+ 
+-	qcadev = serdev_device_get_drvdata(hu->serdev);
+-
+ 	if (qca_is_wcn399x(soc_type)) {
+ 		host_set_baudrate(hu, 2400);
+ 		qca_send_power_pulse(hu, false);
+@@ -1833,6 +1844,8 @@ static void qca_power_shutdown(struct hci_uart *hu)
+ 	} else if (qcadev->bt_en) {
+ 		gpiod_set_value_cansleep(qcadev->bt_en, 0);
+ 	}
++
++	set_bit(QCA_BT_OFF, &qca->flags);
+ }
+ 
+ static int qca_power_off(struct hci_dev *hdev)
+@@ -1844,9 +1857,6 @@ static int qca_power_off(struct hci_dev *hdev)
+ 	hu->hdev->hw_error = NULL;
+ 	hu->hdev->cmd_timeout = NULL;
+ 
+-	del_timer_sync(&qca->wake_retrans_timer);
+-	del_timer_sync(&qca->tx_idle_timer);
+-
+ 	/* Stop sending shutdown command if soc crashes. */
+ 	if (soc_type != QCA_ROME
+ 		&& qca->memdump_state == QCA_MEMDUMP_IDLE) {
+@@ -1990,7 +2000,7 @@ static int qca_serdev_probe(struct serdev_device *serdev)
+ 
+ 		qcadev->bt_en = devm_gpiod_get_optional(&serdev->dev, "enable",
+ 					       GPIOD_OUT_LOW);
+-		if (IS_ERR_OR_NULL(qcadev->bt_en)) {
++		if (!qcadev->bt_en) {
+ 			dev_warn(&serdev->dev, "failed to acquire enable gpio\n");
+ 			power_ctrl_enabled = false;
+ 		}
+@@ -2093,13 +2103,44 @@ static int __maybe_unused qca_suspend(struct device *dev)
+ 	bool tx_pending = false;
+ 	int ret = 0;
+ 	u8 cmd;
++	u32 wait_timeout = 0;
+ 
+ 	set_bit(QCA_SUSPENDING, &qca->flags);
+ 
+-	/* Device is downloading patch or doesn't support in-band sleep. */
+-	if (!test_bit(QCA_IBS_ENABLED, &qca->flags))
++	/* if BT SoC is running with default firmware then it does not
++	 * support in-band sleep
++	 */
++	if (test_bit(QCA_ROM_FW, &qca->flags))
++		return 0;
++
++	/* During SSR after memory dump collection, controller will be
++	 * powered off and then powered on.If controller is powered off
++	 * during SSR then we should wait until SSR is completed.
++	 */
++	if (test_bit(QCA_BT_OFF, &qca->flags) &&
++	    !test_bit(QCA_SSR_TRIGGERED, &qca->flags))
+ 		return 0;
+ 
++	if (test_bit(QCA_IBS_DISABLED, &qca->flags) ||
++	    test_bit(QCA_SSR_TRIGGERED, &qca->flags)) {
++		wait_timeout = test_bit(QCA_SSR_TRIGGERED, &qca->flags) ?
++					IBS_DISABLE_SSR_TIMEOUT_MS :
++					FW_DOWNLOAD_TIMEOUT_MS;
++
++		/* QCA_IBS_DISABLED flag is set to true, During FW download
++		 * and during memory dump collection. It is reset to false,
++		 * After FW download complete.
++		 */
++		wait_on_bit_timeout(&qca->flags, QCA_IBS_DISABLED,
++			    TASK_UNINTERRUPTIBLE, msecs_to_jiffies(wait_timeout));
++
++		if (test_bit(QCA_IBS_DISABLED, &qca->flags)) {
++			bt_dev_err(hu->hdev, "SSR or FW download time out");
++			ret = -ETIMEDOUT;
++			goto error;
++		}
++	}
++
+ 	cancel_work_sync(&qca->ws_awake_device);
+ 	cancel_work_sync(&qca->ws_awake_rx);
+ 
+diff --git a/drivers/bluetooth/hci_serdev.c b/drivers/bluetooth/hci_serdev.c
+index e9a44ab3812d..9e03402ef1b3 100644
+--- a/drivers/bluetooth/hci_serdev.c
++++ b/drivers/bluetooth/hci_serdev.c
+@@ -305,8 +305,6 @@ int hci_uart_register_device(struct hci_uart *hu,
+ 	if (err)
+ 		return err;
+ 
+-	percpu_init_rwsem(&hu->proto_lock);
+-
+ 	err = p->open(hu);
+ 	if (err)
+ 		goto err_open;
+@@ -329,6 +327,7 @@ int hci_uart_register_device(struct hci_uart *hu,
+ 
+ 	INIT_WORK(&hu->init_ready, hci_uart_init_work);
+ 	INIT_WORK(&hu->write_work, hci_uart_write_work);
++	percpu_init_rwsem(&hu->proto_lock);
+ 
+ 	/* Only when vendor specific setup callback is provided, consider
+ 	 * the manufacturer information valid. This avoids filling in the
+diff --git a/drivers/bluetooth/hci_vhci.c b/drivers/bluetooth/hci_vhci.c
+index 8469f9876dd2..8ab26dec5f6e 100644
+--- a/drivers/bluetooth/hci_vhci.c
++++ b/drivers/bluetooth/hci_vhci.c
+@@ -121,8 +121,6 @@ static int __vhci_create_device(struct vhci_data *data, __u8 opcode)
+ 	if (opcode & 0x80)
+ 		set_bit(HCI_QUIRK_RAW_DEVICE, &hdev->quirks);
+ 
+-	set_bit(HCI_QUIRK_VALID_LE_STATES, &hdev->quirks);
+-
+ 	if (hci_register_dev(hdev) < 0) {
+ 		BT_ERR("Can't register HCI device");
+ 		hci_free_dev(hdev);
+-- 
+2.30.2
+

@@ -1,0 +1,42 @@
+From bbd81033728f6c4a369fc7ef308412de68bb9b59 Mon Sep 17 00:00:00 2001
+From: Jerome Neanne <jneanne@baylibre.com>
+Date: Tue, 12 Jul 2022 13:27:41 -0500
+Subject: [PATCH 13/18] HACK: mfd: tps65219: Enable push button
+
+We need to enable the Pushbutton function by over-riding the default EN
+status from NVM. This is a hack because we are'nt considering the
+following:
+* regmap_irq needs to be such that we use the .mask_base to be able to
+  mask and unmask bits as needed
+* Consider enabling PB function only if PB function is desired.
+
+Signed-off-by: Jerome Neanne <jneanne@baylibre.com>
+[nm@ti.com: pretty  up, added the unmask logic which was missing]
+Signed-off-by: Nishanth Menon <nm@ti.com>
+---
+ drivers/mfd/tps65219.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/mfd/tps65219.c b/drivers/mfd/tps65219.c
+index 0e52a77fbbfb..82f6466ce3de 100644
+--- a/drivers/mfd/tps65219.c
++++ b/drivers/mfd/tps65219.c
+@@ -339,6 +339,15 @@ static int tps65219_probe(struct i2c_client *client,
+ 		return -ENODEV;
+ 	}
+ 
++	/* Configure PB mode (default is EN) */
++	ret =  regmap_update_bits(tps->regmap, TPS65219_REG_MFP_2_CONFIG,
++				  TPS65219_MFP_2_EN_PB_VSENSE_MASK,
++				  MFP_2_PB << MFP_2_EN_PB_VSENSE_SHIFT);
++
++	/* Clear the Mask bits to enable the IRQ */
++	ret =  regmap_clear_bits(tps->regmap, TPS65219_REG_MASK_CONFIG,
++				  0x80);
++
+ 	pm_off = of_device_is_system_power_controller(client->dev.of_node);
+ 	if (!pm_off)
+ 		return ret;
+-- 
+2.30.2
+
