@@ -1,9 +1,9 @@
-From c137c753e8f91c9186451d08611b182350aa8345 Mon Sep 17 00:00:00 2001
+From 20b4b31f19f2662692f1bf7b1eae7a4758dca734 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 2 Nov 2022 15:22:03 -0500
+Date: Fri, 4 Nov 2022 09:34:44 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.152
+Reference: v5.10.153
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/bma400.h         |  23 ++-
@@ -16,8 +16,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/dac/ad5593r.c          |  46 ++---
  drivers/iio/inkern.c               |   6 +-
  drivers/iio/light/isl29028.c       |   2 +-
+ drivers/iio/light/tsl2583.c        |   2 +-
  drivers/iio/pressure/dps310.c      | 262 ++++++++++++++++++-----------
- 11 files changed, 267 insertions(+), 144 deletions(-)
+ drivers/iio/temperature/ltc2983.c  |  13 +-
+ 13 files changed, 274 insertions(+), 152 deletions(-)
 
 diff --git a/drivers/iio/accel/bma400.h b/drivers/iio/accel/bma400.h
 index 5ad10db9819f..416090c6b1e8 100644
@@ -396,6 +398,19 @@ index 2f8b494f3e08..74e75477660a 100644
  	if (ret < 0) {
  		dev_err(&client->dev,
  			"%s(): iio registration failed with error %d\n",
+diff --git a/drivers/iio/light/tsl2583.c b/drivers/iio/light/tsl2583.c
+index 40b7dd266b31..e39d512145a6 100644
+--- a/drivers/iio/light/tsl2583.c
++++ b/drivers/iio/light/tsl2583.c
+@@ -856,7 +856,7 @@ static int tsl2583_probe(struct i2c_client *clientp,
+ 					 TSL2583_POWER_OFF_DELAY_MS);
+ 	pm_runtime_use_autosuspend(&clientp->dev);
+ 
+-	ret = devm_iio_device_register(indio_dev->dev.parent, indio_dev);
++	ret = iio_device_register(indio_dev);
+ 	if (ret) {
+ 		dev_err(&clientp->dev, "%s: iio registration failed\n",
+ 			__func__);
 diff --git a/drivers/iio/pressure/dps310.c b/drivers/iio/pressure/dps310.c
 index 0730380ceb69..cf8b92fae1b3 100644
 --- a/drivers/iio/pressure/dps310.c
@@ -734,6 +749,37 @@ index 0730380ceb69..cf8b92fae1b3 100644
  		return rc;
  
  	rc = devm_iio_device_register(&client->dev, iio);
+diff --git a/drivers/iio/temperature/ltc2983.c b/drivers/iio/temperature/ltc2983.c
+index 3b4a0e60e605..8306daa77908 100644
+--- a/drivers/iio/temperature/ltc2983.c
++++ b/drivers/iio/temperature/ltc2983.c
+@@ -1376,13 +1376,6 @@ static int ltc2983_setup(struct ltc2983_data *st, bool assign_iio)
+ 		return ret;
+ 	}
+ 
+-	st->iio_chan = devm_kzalloc(&st->spi->dev,
+-				    st->iio_channels * sizeof(*st->iio_chan),
+-				    GFP_KERNEL);
+-
+-	if (!st->iio_chan)
+-		return -ENOMEM;
+-
+ 	ret = regmap_update_bits(st->regmap, LTC2983_GLOBAL_CONFIG_REG,
+ 				 LTC2983_NOTCH_FREQ_MASK,
+ 				 LTC2983_NOTCH_FREQ(st->filter_notch_freq));
+@@ -1494,6 +1487,12 @@ static int ltc2983_probe(struct spi_device *spi)
+ 	if (ret)
+ 		return ret;
+ 
++	st->iio_chan = devm_kzalloc(&spi->dev,
++				    st->iio_channels * sizeof(*st->iio_chan),
++				    GFP_KERNEL);
++	if (!st->iio_chan)
++		return -ENOMEM;
++
+ 	ret = ltc2983_setup(st, true);
+ 	if (ret)
+ 		return ret;
 -- 
 2.30.2
 
