@@ -131,8 +131,6 @@ aufs_fail () {
 }
 
 aufs () {
-	#${git_bin} revert --no-edit e68b60ae29de10c7bd7636e227164a8dbe305a82
-
 	#https://github.com/sfjro/aufs-standalone/tree/aufs5.10.117
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
@@ -540,7 +538,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.152"
+	backport_tag="v5.10.153"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -561,7 +559,7 @@ backports () {
 		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
 
-	backport_tag="v5.15.76"
+	backport_tag="v5.15.77"
 
 	subsystem="pinmux"
 	#regenerate="enable"
