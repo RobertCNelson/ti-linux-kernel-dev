@@ -1,19 +1,19 @@
-From 74a594702b0fb07bc2ff771ad25aa7ee8a930ff5 Mon Sep 17 00:00:00 2001
+From 5566beaaa1ccd271583916a4a100928fef276822 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 4 Nov 2022 14:11:45 -0500
+Date: Fri, 4 Nov 2022 15:43:23 -0500
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v5.10.x-ti-arm64
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/b194df7fa75ebc298706850ab2536a5f03f30e3b
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/3e512e913ff3ae0d4741c81ad3fc5e50e86496a0
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm64/boot/dts/ti/Makefile               |    2 +
  .../k3-j721e-beagleboneai64-bone-buses.dtsi   | 1343 +++++++++++++++++
  .../k3-j721e-beagleboneai64-no-shared-mem.dts | 1124 ++++++++++++++
  .../boot/dts/ti/k3-j721e-beagleboneai64.dts   | 1124 ++++++++++++++
- .../dts/ti/k3-j721e-common-proc-board.dts     |  141 --
- arch/arm64/boot/dts/ti/k3-j721e-main.dtsi     |   41 +
+ .../dts/ti/k3-j721e-common-proc-board.dts     |  117 --
+ arch/arm64/boot/dts/ti/k3-j721e-main.dtsi     |   92 +-
  .../boot/dts/ti/k3-j721e-rtos-memory-map.dtsi |   12 +-
  .../boot/dts/ti/overlays/BB-I2C2-MPU6050.dts  |   39 +
  .../overlays/BBAI64-DSI-RPi-7inch-panel.dts   |  155 ++
@@ -36,7 +36,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../boot/dts/ti/overlays/robotics-cape.dts    |  264 ++++
  include/dt-bindings/board/am572x-bone-pins.h  |  179 +++
  .../dt-bindings/board/k3-j721e-bone-pins.h    |  242 +++
- 28 files changed, 5181 insertions(+), 147 deletions(-)
+ 28 files changed, 5231 insertions(+), 124 deletions(-)
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-bone-buses.dtsi
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-no-shared-mem.dts
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
@@ -63,10 +63,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 include/dt-bindings/board/k3-j721e-bone-pins.h
 
 diff --git a/arch/arm64/boot/dts/ti/Makefile b/arch/arm64/boot/dts/ti/Makefile
-index e553076f277d..61b9249732ba 100644
+index 20dd384398ea..613359e0f72a 100644
 --- a/arch/arm64/boot/dts/ti/Makefile
 +++ b/arch/arm64/boot/dts/ti/Makefile
-@@ -68,3 +68,5 @@ dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-0.dtbo
+@@ -74,3 +74,5 @@ dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-0.dtbo
  dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-1.dtbo
  dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-2.dtbo
  dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-3.dtbo
@@ -3682,7 +3682,7 @@ index 000000000000..8d315a9ca6cc
 +	status = "disabled";
 +};
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts b/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts
-index ef80fe26c62f..8f5942a50e4b 100644
+index 1c723e1d23d8..a066b4cc72fa 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts
 @@ -288,13 +288,6 @@ J721E_IOPAD(0x22c, PIN_INPUT_PULLUP, 0) /* (AA6) I2C1_SDA */
@@ -3823,57 +3823,80 @@ index ef80fe26c62f..8f5942a50e4b 100644
  &k3_clks {
  	/* Confiure AUDIO_EXT_REFCLK2 pin as output */
  	pinctrl-names = "default";
-@@ -1192,27 +1075,3 @@ &csi0_port3 {
- &csi0_port4 {
- 	status = "disabled";
- };
--
--&main_ehrpwm0 {
--	status = "disabled";
--};
--
--&main_ehrpwm1 {
--	status = "disabled";
--};
--
--&main_ehrpwm2 {
--	status = "disabled";
--};
--
--&main_ehrpwm3 {
--	status = "disabled";
--};
--
--&main_ehrpwm4 {
--	status = "disabled";
--};
--
--&main_ehrpwm5 {
--	status = "disabled";
--};
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi b/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
-index 59b1042c4726..8d676cf61d7f 100644
+index 37cec5ffe0de..df1cfb81e689 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
-@@ -1548,6 +1548,17 @@ main_i2c6: i2c@2060000 {
- 		power-domains = <&k3_pds 193 TI_SCI_PD_EXCLUSIVE>;
- 	};
- 
-+	main_spi6: spi@2160000 {
-+		compatible = "ti,omap4-mcspi";
-+		reg = <0x0 0x2160000 0x0 0x400>;
-+		interrupts = <GIC_SPI 190 IRQ_TYPE_LEVEL_HIGH>;
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+		clock-names = "fck";
-+		clocks = <&k3_clks 272 1>;
-+		power-domains = <&k3_pds 272 TI_SCI_PD_EXCLUSIVE>;
+@@ -72,7 +72,67 @@ usb_serdes_mux: mux-controller@4000 {
+ 			#mux-control-cells = <1>;
+ 			mux-reg-masks = <0x4000 0x8000000>, /* USB0 to SERDES0/3 mux */
+ 					<0x4010 0x8000000>; /* USB1 to SERDES1/2 mux */
+-	    };
++		};
++
++		ehrpwm_tbclk: clock@4140 {
++			compatible = "ti,am654-ehrpwm-tbclk", "syscon";
++			reg = <0x4140 0x18>;
++			#clock-cells = <1>;
++		};
 +	};
 +
- 	d5520: video-decoder@4300000 {
- 	       /* IMG D5520 driver configuration */
- 	       compatible = "img,d5500-vxd";
-@@ -1613,6 +1624,27 @@ dp0_ports: ports {
++	main_ehrpwm0: pwm@3000000 {
++		compatible = "ti,am654-ehrpwm", "ti,am3352-ehrpwm";
++		#pwm-cells = <3>;
++		reg = <0x0 0x3000000 0x0 0x100>;
++		power-domains = <&k3_pds 83 TI_SCI_PD_EXCLUSIVE>;
++		clocks = <&ehrpwm_tbclk 0>, <&k3_clks 83 0>;
++		clock-names = "tbclk", "fck";
++	};
++
++	main_ehrpwm1: pwm@3010000 {
++		compatible = "ti,am654-ehrpwm", "ti,am3352-ehrpwm";
++		#pwm-cells = <3>;
++		reg = <0x0 0x3010000 0x0 0x100>;
++		power-domains = <&k3_pds 84 TI_SCI_PD_EXCLUSIVE>;
++		clocks = <&ehrpwm_tbclk 1>, <&k3_clks 84 0>;
++		clock-names = "tbclk", "fck";
++	};
++
++	main_ehrpwm2: pwm@3020000 {
++		compatible = "ti,am654-ehrpwm", "ti,am3352-ehrpwm";
++		#pwm-cells = <3>;
++		reg = <0x0 0x3020000 0x0 0x100>;
++		power-domains = <&k3_pds 85 TI_SCI_PD_EXCLUSIVE>;
++		clocks = <&ehrpwm_tbclk 2>, <&k3_clks 85 0>;
++		clock-names = "tbclk", "fck";
++	};
++
++	main_ehrpwm3: pwm@3030000 {
++		compatible = "ti,am654-ehrpwm", "ti,am3352-ehrpwm";
++		#pwm-cells = <3>;
++		reg = <0x0 0x3030000 0x0 0x100>;
++		power-domains = <&k3_pds 86 TI_SCI_PD_EXCLUSIVE>;
++		clocks = <&ehrpwm_tbclk 3>, <&k3_clks 86 0>;
++		clock-names = "tbclk", "fck";
++	};
++
++	main_ehrpwm4: pwm@3040000 {
++		compatible = "ti,am654-ehrpwm", "ti,am3352-ehrpwm";
++		#pwm-cells = <3>;
++		reg = <0x0 0x3040000 0x0 0x100>;
++		power-domains = <&k3_pds 87 TI_SCI_PD_EXCLUSIVE>;
++		clocks = <&ehrpwm_tbclk 4>, <&k3_clks 87 0>;
++		clock-names = "tbclk", "fck";
++	};
++
++	main_ehrpwm5: pwm@3050000 {
++		compatible = "ti,am654-ehrpwm", "ti,am3352-ehrpwm";
++		#pwm-cells = <3>;
++		reg = <0x0 0x3050000 0x0 0x100>;
++		power-domains = <&k3_pds 88 TI_SCI_PD_EXCLUSIVE>;
++		clocks = <&ehrpwm_tbclk 5>, <&k3_clks 88 0>;
++		clock-names = "tbclk", "fck";
+ 	};
+ 
+ 	gic500: interrupt-controller@1800000 {
+@@ -1603,6 +1663,27 @@ dp0_ports: ports {
  		};
  	};
  
@@ -3901,7 +3924,7 @@ index 59b1042c4726..8d676cf61d7f 100644
  	dss: dss@4a00000 {
  		compatible = "ti,j721e-dss";
  		reg =
-@@ -2680,4 +2712,13 @@ dphy1: phy@4590000 {
+@@ -2750,4 +2831,13 @@ dphy1: phy@4590000 {
  		#phy-cells = <0>;
  		power-domains = <&k3_pds 148 TI_SCI_PD_EXCLUSIVE>;
  	};
