@@ -45,7 +45,7 @@ KERNEL_REL=5.10
 KERNEL_TAG=${KERNEL_REL}.140
 kernel_rt=".140-rt73"
 #Kernel Build
-BUILD=${build_prefix}68.1
+BUILD=${build_prefix}68.4
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -67,5 +67,4 @@ ti_git_new_release="40117751e2b743dc9657545e0619aa0d6b9b9568"
 
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.04.01.002
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=shortlog;h=2176e1735b744c2b002b8c86ca748483c5f7cf0c
-
 #
