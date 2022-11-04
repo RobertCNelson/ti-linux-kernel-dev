@@ -661,6 +661,7 @@ drivers () {
 
 	dir 'tiam62x'
 	dir 'android'
+	dir 'ti-edgeai'
 }
 
 ###
