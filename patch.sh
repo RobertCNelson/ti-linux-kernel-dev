@@ -131,11 +131,11 @@ aufs_fail () {
 }
 
 aufs () {
-	#https://github.com/sfjro/aufs-standalone/tree/aufs5.10.117
+	#https://github.com/sfjro/aufs-standalone/tree/aufs5.10.140
 	aufs_prefix="aufs5-"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=5.10.117
+		KERNEL_REL=5.10.140
 		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
 		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
 		rm -rf ${aufs_prefix}kbuild.patch
