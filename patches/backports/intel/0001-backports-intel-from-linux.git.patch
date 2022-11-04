@@ -1,12 +1,13 @@
-From a1511e0922ea00ef5c3199470d21f412eca59299 Mon Sep 17 00:00:00 2001
+From b02ba00a002fe5b0e04f8e0ab569208cd8302535 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 4 Nov 2022 09:38:00 -0500
+Date: Fri, 4 Nov 2022 10:28:58 -0500
 Subject: [PATCH] backports: intel: from: linux.git
 
 Reference: v5.11.22
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  .../net/wireless/intel/ipw2x00/libipw_tx.c    |   2 +-
+ drivers/net/wireless/intel/iwlegacy/4965-rs.c |   5 +-
  .../net/wireless/intel/iwlwifi/cfg/22000.c    |  77 ++--
  drivers/net/wireless/intel/iwlwifi/cfg/7000.c |  70 +--
  drivers/net/wireless/intel/iwlwifi/cfg/8000.c |  69 +--
@@ -124,7 +125,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/net/wireless/intel/iwlwifi/mvm/rxmq.c | 175 +++-----
  drivers/net/wireless/intel/iwlwifi/mvm/scan.c | 408 ++++++++++++++----
  drivers/net/wireless/intel/iwlwifi/mvm/sf.c   |  66 +--
- drivers/net/wireless/intel/iwlwifi/mvm/sta.c  | 116 ++---
+ drivers/net/wireless/intel/iwlwifi/mvm/sta.c  | 117 ++---
  drivers/net/wireless/intel/iwlwifi/mvm/sta.h  |  70 +--
  drivers/net/wireless/intel/iwlwifi/mvm/tdls.c |  68 +--
  .../wireless/intel/iwlwifi/mvm/time-event.c   |  99 +----
@@ -143,7 +144,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/net/wireless/intel/iwlwifi/pcie/tx.c  | 351 +--------------
  drivers/net/wireless/intel/iwlwifi/queue/tx.c | 364 ++++++++++++----
  drivers/net/wireless/intel/iwlwifi/queue/tx.h |  69 +--
- 137 files changed, 2204 insertions(+), 8717 deletions(-)
+ 138 files changed, 2205 insertions(+), 8722 deletions(-)
 
 diff --git a/drivers/net/wireless/intel/ipw2x00/libipw_tx.c b/drivers/net/wireless/intel/ipw2x00/libipw_tx.c
 index e4c60caa6543..d9baa2fa603b 100644
@@ -157,6 +158,36 @@ index e4c60caa6543..d9baa2fa603b 100644
 +		if (host_encrypt)
  			bytes_per_frag -= crypt->ops->extra_mpdu_prefix_len +
  			    crypt->ops->extra_mpdu_postfix_len;
+ 
+diff --git a/drivers/net/wireless/intel/iwlegacy/4965-rs.c b/drivers/net/wireless/intel/iwlegacy/4965-rs.c
+index 532e3b91777d..9a491e5db75b 100644
+--- a/drivers/net/wireless/intel/iwlegacy/4965-rs.c
++++ b/drivers/net/wireless/intel/iwlegacy/4965-rs.c
+@@ -2403,7 +2403,7 @@ il4965_rs_fill_link_cmd(struct il_priv *il, struct il_lq_sta *lq_sta,
+ 		/* Repeat initial/next rate.
+ 		 * For legacy IL_NUMBER_TRY == 1, this loop will not execute.
+ 		 * For HT IL_HT_NUMBER_TRY == 3, this executes twice. */
+-		while (repeat_rate > 0) {
++		while (repeat_rate > 0 && idx < LINK_QUAL_MAX_RETRY_NUM) {
+ 			if (is_legacy(tbl_type.lq_type)) {
+ 				if (ant_toggle_cnt < NUM_TRY_BEFORE_ANT_TOGGLE)
+ 					ant_toggle_cnt++;
+@@ -2422,8 +2422,6 @@ il4965_rs_fill_link_cmd(struct il_priv *il, struct il_lq_sta *lq_sta,
+ 			    cpu_to_le32(new_rate);
+ 			repeat_rate--;
+ 			idx++;
+-			if (idx >= LINK_QUAL_MAX_RETRY_NUM)
+-				goto out;
+ 		}
+ 
+ 		il4965_rs_get_tbl_info_from_mcs(new_rate, lq_sta->band,
+@@ -2468,7 +2466,6 @@ il4965_rs_fill_link_cmd(struct il_priv *il, struct il_lq_sta *lq_sta,
+ 		repeat_rate--;
+ 	}
+ 
+-out:
+ 	lq_cmd->agg_params.agg_frame_cnt_limit = LINK_QUAL_AGG_FRAME_LIMIT_DEF;
+ 	lq_cmd->agg_params.agg_dis_start_th = LINK_QUAL_AGG_DISABLE_START_DEF;
  
 diff --git a/drivers/net/wireless/intel/iwlwifi/cfg/22000.c b/drivers/net/wireless/intel/iwlwifi/cfg/22000.c
 index 39842bdef4b4..503d0feb6bbc 100644
@@ -11470,7 +11501,7 @@ index 368b9d117f73..655da8856c75 100644
  
  /* For counting bound interfaces */
 diff --git a/drivers/net/wireless/intel/iwlwifi/mvm/sta.c b/drivers/net/wireless/intel/iwlwifi/mvm/sta.c
-index ef62839894c7..578c353ae02c 100644
+index 09f870c48a4f..578c353ae02c 100644
 --- a/drivers/net/wireless/intel/iwlwifi/mvm/sta.c
 +++ b/drivers/net/wireless/intel/iwlwifi/mvm/sta.c
 @@ -1,64 +1,9 @@
@@ -11641,7 +11672,15 @@ index ef62839894c7..578c353ae02c 100644
  				    0);
  		mvm_sta->tid_data[i].txq_id = IWL_MVM_INVALID_QUEUE;
  	}
-@@ -2038,7 +1987,7 @@ static int iwl_mvm_add_int_sta_with_queue(struct iwl_mvm *mvm, int macidx,
+@@ -1840,7 +1789,6 @@ static void iwl_mvm_disable_sta_queues(struct iwl_mvm *mvm,
+ 			iwl_mvm_txq_from_mac80211(sta->txq[i]);
+ 
+ 		mvmtxq->txq_id = IWL_MVM_INVALID_QUEUE;
+-		list_del_init(&mvmtxq->list);
+ 	}
+ }
+ 
+@@ -2039,7 +1987,7 @@ static int iwl_mvm_add_int_sta_with_queue(struct iwl_mvm *mvm, int macidx,
  	ret = iwl_mvm_add_int_sta_common(mvm, sta, addr, macidx, maccolor);
  	if (ret) {
  		if (!iwl_mvm_has_new_tx_api(mvm))
@@ -11650,7 +11689,7 @@ index ef62839894c7..578c353ae02c 100644
  					    IWL_MAX_TID_COUNT, 0);
  		return ret;
  	}
-@@ -2111,7 +2060,7 @@ int iwl_mvm_rm_snif_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
+@@ -2112,7 +2060,7 @@ int iwl_mvm_rm_snif_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
  	if (WARN_ON_ONCE(mvm->snif_sta.sta_id == IWL_MVM_INVALID_STA))
  		return -EINVAL;
  
@@ -11659,7 +11698,7 @@ index ef62839894c7..578c353ae02c 100644
  	ret = iwl_mvm_rm_sta_common(mvm, mvm->snif_sta.sta_id);
  	if (ret)
  		IWL_WARN(mvm, "Failed sending remove station\n");
-@@ -2128,7 +2077,7 @@ int iwl_mvm_rm_aux_sta(struct iwl_mvm *mvm)
+@@ -2129,7 +2077,7 @@ int iwl_mvm_rm_aux_sta(struct iwl_mvm *mvm)
  	if (WARN_ON_ONCE(mvm->aux_sta.sta_id == IWL_MVM_INVALID_STA))
  		return -EINVAL;
  
@@ -11668,7 +11707,7 @@ index ef62839894c7..578c353ae02c 100644
  	ret = iwl_mvm_rm_sta_common(mvm, mvm->aux_sta.sta_id);
  	if (ret)
  		IWL_WARN(mvm, "Failed sending remove station\n");
-@@ -2224,7 +2173,7 @@ static void iwl_mvm_free_bcast_sta_queues(struct iwl_mvm *mvm,
+@@ -2225,7 +2173,7 @@ static void iwl_mvm_free_bcast_sta_queues(struct iwl_mvm *mvm,
  					  struct ieee80211_vif *vif)
  {
  	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
@@ -11677,7 +11716,7 @@ index ef62839894c7..578c353ae02c 100644
  
  	lockdep_assert_held(&mvm->mutex);
  
-@@ -2233,10 +2182,10 @@ static void iwl_mvm_free_bcast_sta_queues(struct iwl_mvm *mvm,
+@@ -2234,10 +2182,10 @@ static void iwl_mvm_free_bcast_sta_queues(struct iwl_mvm *mvm,
  	switch (vif->type) {
  	case NL80211_IFTYPE_AP:
  	case NL80211_IFTYPE_ADHOC:
@@ -11690,7 +11729,7 @@ index ef62839894c7..578c353ae02c 100644
  		break;
  	default:
  		WARN(1, "Can't free bcast queue on vif type %d\n",
-@@ -2244,8 +2193,7 @@ static void iwl_mvm_free_bcast_sta_queues(struct iwl_mvm *mvm,
+@@ -2245,8 +2193,7 @@ static void iwl_mvm_free_bcast_sta_queues(struct iwl_mvm *mvm,
  		return;
  	}
  
@@ -11700,7 +11739,7 @@ index ef62839894c7..578c353ae02c 100644
  	if (iwl_mvm_has_new_tx_api(mvm))
  		return;
  
-@@ -2480,7 +2428,7 @@ int iwl_mvm_rm_mcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
+@@ -2481,7 +2428,7 @@ int iwl_mvm_rm_mcast_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
  
  	iwl_mvm_flush_sta(mvm, &mvmvif->mcast_sta, true);
  
@@ -11709,7 +11748,7 @@ index ef62839894c7..578c353ae02c 100644
  
  	ret = iwl_mvm_rm_sta_common(mvm, mvmvif->mcast_sta.sta_id);
  	if (ret)
-@@ -3298,14 +3246,14 @@ static int iwl_mvm_send_sta_key(struct iwl_mvm *mvm,
+@@ -3299,14 +3246,14 @@ static int iwl_mvm_send_sta_key(struct iwl_mvm *mvm,
  		break;
  	case WLAN_CIPHER_SUITE_WEP104:
  		key_flags |= cpu_to_le16(STA_KEY_FLG_WEP_13BYTES);

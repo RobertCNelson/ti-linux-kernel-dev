@@ -1,11 +1,11 @@
-From 5f17de43ffaa8521c95efaed8e9e6690981992ea Mon Sep 17 00:00:00 2001
+From 904a625246cd6e035225a9c391e6c9e1e96d5cde Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 4 Nov 2022 09:33:27 -0500
+Date: Fri, 4 Nov 2022 10:24:08 -0500
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v5.10.x-ti-arm64
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v5.10.x-ti-unified-staging
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/a59ebe9d1164c4a30a09e5e8ef4b545f1124b615
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/24b3d1cc1901bdc13912fbdde5ba3be15521c14a
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm64/boot/dts/ti/Makefile               |    2 +
@@ -14,7 +14,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../boot/dts/ti/k3-j721e-beagleboneai64.dts   | 1124 ++++++++++++++
  .../dts/ti/k3-j721e-common-proc-board.dts     |  141 --
  arch/arm64/boot/dts/ti/k3-j721e-main.dtsi     |   41 +
- .../boot/dts/ti/k3-j721e-rtos-memory-map.dtsi |   10 +-
+ .../boot/dts/ti/k3-j721e-rtos-memory-map.dtsi |   12 +-
  .../boot/dts/ti/overlays/BB-I2C2-MPU6050.dts  |   39 +
  .../overlays/BBAI64-DSI-RPi-7inch-panel.dts   |  155 ++
  .../ti/overlays/BBAI64-P8_37-ehrpwm5_a.dts    |   20 +
@@ -34,9 +34,14 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm64/boot/dts/ti/overlays/Makefile      |   27 +
  ...3-j721e-beagleboneai64-RPi-7inch-panel.dts |  155 ++
  .../boot/dts/ti/overlays/robotics-cape.dts    |  264 ++++
+ .../dt-bindings/board/am335x-bbw-bbb-base.h   |  103 ++
+ include/dt-bindings/board/am335x-bone-pins.h  |  253 ++++
  include/dt-bindings/board/am572x-bone-pins.h  |  179 +++
  .../dt-bindings/board/k3-j721e-bone-pins.h    |  242 +++
- 28 files changed, 5180 insertions(+), 146 deletions(-)
+ include/dt-bindings/clock/dra7.h              |    4 +
+ include/dt-bindings/clock/omap5.h             |    2 +
+ include/dt-bindings/pinctrl/omap.h            |    4 +-
+ 33 files changed, 5545 insertions(+), 149 deletions(-)
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-bone-buses.dtsi
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-no-shared-mem.dts
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
@@ -59,6 +64,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 arch/arm64/boot/dts/ti/overlays/Makefile
  create mode 100644 arch/arm64/boot/dts/ti/overlays/k3-j721e-beagleboneai64-RPi-7inch-panel.dts
  create mode 100644 arch/arm64/boot/dts/ti/overlays/robotics-cape.dts
+ create mode 100644 include/dt-bindings/board/am335x-bbw-bbb-base.h
+ create mode 100644 include/dt-bindings/board/am335x-bone-pins.h
  create mode 100644 include/dt-bindings/board/am572x-bone-pins.h
  create mode 100644 include/dt-bindings/board/k3-j721e-bone-pins.h
 
@@ -3916,7 +3923,7 @@ index 59b1042c4726..8d676cf61d7f 100644
 +	};
  };
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-rtos-memory-map.dtsi b/arch/arm64/boot/dts/ti/k3-j721e-rtos-memory-map.dtsi
-index 3f5b7c4ca066..d097608c3ca9 100644
+index 3f5b7c4ca066..dd9ad05e7979 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-rtos-memory-map.dtsi
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-rtos-memory-map.dtsi
 @@ -7,9 +7,6 @@
@@ -3929,6 +3936,15 @@ index 3f5b7c4ca066..d097608c3ca9 100644
  / {
  	fragment@101 {
  		target-path = "/";
+@@ -17,7 +14,7 @@ fragment@101 {
+ 		__overlay__ {
+ 
+ 			dma_buf_phys {
+-				compatible = "ti,dma_buf_phys";
++				compatible = "ti,dma-buf-phys";
+ 			};
+ 		};
+ 	};
 @@ -252,11 +249,13 @@ &main_r5fss0_core0 {
  			<&vision_apps_main_r5fss0_core0_memory_region>,
  			<&vision_apps_main_r5fss0_core0_shared_memory_queue_region>,
@@ -5197,6 +5213,374 @@ index 000000000000..62808947a6a4
 +		compatible = "beagle,bcfserial";
 +	};
 +};
+diff --git a/include/dt-bindings/board/am335x-bbw-bbb-base.h b/include/dt-bindings/board/am335x-bbw-bbb-base.h
+new file mode 100644
+index 000000000000..35f6d57ef492
+--- /dev/null
++++ b/include/dt-bindings/board/am335x-bbw-bbb-base.h
+@@ -0,0 +1,103 @@
++/*
++ * This header provides constants for bbw/bbb pinctrl bindings.
++ *
++ * Copyright (C) 2014 Robert Nelson <robertcnelson@gmail.com>
++ *
++ * Numbers Based on: https://github.com/derekmolloy/boneDeviceTree/tree/master/docs
++ */
++
++#ifndef _DT_BINDINGS_BOARD_AM335X_BBW_BBB_BASE_H
++#define _DT_BINDINGS_BOARD_AM335X_BBW_BBB_BASE_H
++
++#define BONE_P8_03 0x018
++#define BONE_P8_04 0x01C
++
++#define BONE_P8_05 0x008
++#define BONE_P8_06 0x00C
++#define BONE_P8_07 0x090
++#define BONE_P8_08 0x094
++
++#define BONE_P8_09 0x09C
++#define BONE_P8_10 0x098
++#define BONE_P8_11 0x034
++#define BONE_P8_12 0x030
++
++#define BONE_P8_13 0x024
++#define BONE_P8_14 0x028
++#define BONE_P8_15 0x03C
++#define BONE_P8_16 0x038
++
++#define BONE_P8_17 0x02C
++#define BONE_P8_18 0x08C
++#define BONE_P8_19 0x020
++#define BONE_P8_20 0x084
++
++#define BONE_P8_21 0x080
++#define BONE_P8_22 0x014
++#define BONE_P8_23 0x010
++#define BONE_P8_24 0x004
++
++#define BONE_P8_25 0x000
++#define BONE_P8_26 0x07C
++#define BONE_P8_27 0x0E0
++#define BONE_P8_28 0x0E8
++
++#define BONE_P8_29 0x0E4
++#define BONE_P8_30 0x0EC
++#define BONE_P8_31 0x0D8
++#define BONE_P8_32 0x0DC
++
++#define BONE_P8_33 0x0D4
++#define BONE_P8_34 0x0CC
++#define BONE_P8_35 0x0D0
++#define BONE_P8_36 0x0C8
++
++#define BONE_P8_37 0x0C0
++#define BONE_P8_38 0x0C4
++#define BONE_P8_39 0x0B8
++#define BONE_P8_40 0x0BC
++
++#define BONE_P8_41 0x0B0
++#define BONE_P8_42 0x0B4
++#define BONE_P8_43 0x0A8
++#define BONE_P8_44 0x0AC
++
++#define BONE_P8_45 0x0A0
++#define BONE_P8_46 0x0A4
++
++#define BONE_P9_11 0x070
++#define BONE_P9_12 0x078
++
++#define BONE_P9_13 0x074
++#define BONE_P9_14 0x048
++#define BONE_P9_15 0x040
++#define BONE_P9_16 0x04C
++
++#define BONE_P9_17 0x15C
++#define BONE_P9_18 0x158
++#define BONE_P9_19 0x17C
++#define BONE_P9_20 0x178
++
++#define BONE_P9_21 0x154
++#define BONE_P9_22 0x150
++#define BONE_P9_23 0x044
++#define BONE_P9_24 0x184
++
++#define BONE_P9_25 0x1AC
++#define BONE_P9_26 0x180
++#define BONE_P9_27 0x1A4
++#define BONE_P9_28 0x19C
++
++#define BONE_P9_29 0x194
++#define BONE_P9_30 0x198
++#define BONE_P9_31 0x190
++
++/* Shared P21 of P11 */
++#define BONE_P9_41A 0x1B4
++#define BONE_P9_41B 0x1A8
++
++/* Shared P22 of P11 */
++#define BONE_P9_42A 0x164
++#define BONE_P9_42B 0x1A0
++
++#endif
+diff --git a/include/dt-bindings/board/am335x-bone-pins.h b/include/dt-bindings/board/am335x-bone-pins.h
+new file mode 100644
+index 000000000000..54e92664ba79
+--- /dev/null
++++ b/include/dt-bindings/board/am335x-bone-pins.h
+@@ -0,0 +1,253 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2020 Deepak Khatri <deepaklorkhatri7@gmail.com>
++ * See Cape Interface Spec page for more info on Bone Buses
++ * https://elinux.org/Beagleboard:BeagleBone_cape_interface_spec
++ */
++
++#ifndef _DT_BINDINGS_BOARD_AM335X_BONE_PINS_H
++#define _DT_BINDINGS_BOARD_AM335X_BONE_PINS_H
++
++#define bb_device 0
++#define board_soc AM335X
++
++#define gpio_P8_03 &gpio1 6
++#define gpio_P8_04 &gpio1 7
++#define gpio_P8_05 &gpio1 2
++#define gpio_P8_06 &gpio1 3
++#define gpio_P8_07 &gpio2 2
++#define gpio_P8_08 &gpio2 3
++#define gpio_P8_09 &gpio2 5
++#define gpio_P8_10 &gpio2 4
++#define gpio_P8_11 &gpio1 13
++#define gpio_P8_12 &gpio1 12
++#define gpio_P8_13 &gpio0 23
++#define gpio_P8_14 &gpio0 26
++#define gpio_P8_15 &gpio1 15
++#define gpio_P8_16 &gpio1 14
++#define gpio_P8_17 &gpio0 27
++#define gpio_P8_18 &gpio2 1
++#define gpio_P8_19 &gpio0 22
++#define gpio_P8_20 &gpio1 31
++#define gpio_P8_21 &gpio1 30
++#define gpio_P8_22 &gpio1 5
++#define gpio_P8_23 &gpio1 4
++#define gpio_P8_24 &gpio1 1
++#define gpio_P8_25 &gpio1 0
++#define gpio_P8_26 &gpio1 29
++#define gpio_P8_27 &gpio2 22
++#define gpio_P8_28 &gpio2 24
++#define gpio_P8_29 &gpio2 23
++#define gpio_P8_30 &gpio2 25
++#define gpio_P8_31 &gpio0 10
++#define gpio_P8_32 &gpio0 11
++#define gpio_P8_33 &gpio0 9
++#define gpio_P8_34 &gpio2 17
++#define gpio_P8_35 &gpio0 8
++#define gpio_P8_36 &gpio2 16
++#define gpio_P8_37 &gpio2 14
++#define gpio_P8_38 &gpio2 15
++#define gpio_P8_39 &gpio2 12
++#define gpio_P8_40 &gpio2 13
++#define gpio_P8_41 &gpio2 10
++#define gpio_P8_42 &gpio2 11
++#define gpio_P8_43 &gpio2 8
++#define gpio_P8_44 &gpio2 9
++#define gpio_P8_45 &gpio2 6
++#define gpio_P8_46 &gpio2 7
++#define gpio_P9_11 &gpio0 30
++#define gpio_P9_12 &gpio1 28
++#define gpio_P9_13 &gpio0 31
++#define gpio_P9_14 &gpio1 18
++#define gpio_P9_15 &gpio1 16
++#define gpio_P9_16 &gpio1 19
++#define gpio_P9_17 &gpio0 5
++#define gpio_P9_18 &gpio0 4
++#define gpio_P9_19 &gpio0 13
++#define gpio_P9_20 &gpio0 12
++#define gpio_P9_21 &gpio0 3
++#define gpio_P9_22 &gpio0 2
++#define gpio_P9_23 &gpio1 17
++#define gpio_P9_24 &gpio0 15
++#define gpio_P9_25 &gpio3 21
++#define gpio_P9_26 &gpio0 14
++#define gpio_P9_27 &gpio3 19
++#define gpio_P9_28 &gpio3 17
++#define gpio_P9_29 &gpio3 15
++#define gpio_P9_30 &gpio3 16
++#define gpio_P9_31 &gpio3 14
++#define gpio_P9_41 &gpio0 20
++#define gpio_P9_41A &gpio0 20
++#define gpio_P9_41B &gpio3 20
++#define gpio_P9_91 &gpio3 20
++#define gpio_P9_42 &gpio0 7
++#define gpio_P9_42A &gpio0 7
++#define gpio_P9_42B &gpio3 18
++#define gpio_P9_92 &gpio3 18
++#define gpio_A15 &gpio0 19
++
++#define P8_03(mode) AM33XX_IOPAD(0x0818, mode)  /* R9: gpmc_ad6 */
++#define P8_04(mode) AM33XX_IOPAD(0x081c, mode)  /* T9: gpmc_ad7 */
++#define P8_05(mode) AM33XX_IOPAD(0x0808, mode)  /* R8: gpmc_ad2 */
++#define P8_06(mode) AM33XX_IOPAD(0x080c, mode)  /* T8: gpmc_ad3 */
++#define P8_07(mode) AM33XX_IOPAD(0x0890, mode)  /* R7: gpmc_advn_ale */
++#define P8_08(mode) AM33XX_IOPAD(0x0894, mode)  /* T7: gpmc_oen_ren */
++#define P8_09(mode) AM33XX_IOPAD(0x089c, mode)  /* T6: gpmc_be0n_cle */
++#define P8_10(mode) AM33XX_IOPAD(0x0898, mode)  /* U6: gpmc_wen */
++#define P8_11(mode) AM33XX_IOPAD(0x0834, mode)  /* R12: gpmc_ad13 */
++#define P8_12(mode) AM33XX_IOPAD(0x0830, mode)  /* T12: gpmc_ad12 */
++#define P8_13(mode) AM33XX_IOPAD(0x0824, mode)  /* T10: gpmc_ad9 */
++#define P8_14(mode) AM33XX_IOPAD(0x0828, mode)  /* T11: gpmc_ad10 */
++#define P8_15(mode) AM33XX_IOPAD(0x083c, mode)  /* U13: gpmc_ad15 */
++#define P8_16(mode) AM33XX_IOPAD(0x0838, mode)  /* V13: gpmc_ad14 */
++#define P8_17(mode) AM33XX_IOPAD(0x082c, mode)  /* U12: gpmc_ad11 */
++#define P8_18(mode) AM33XX_IOPAD(0x088c, mode)  /* V12: gpmc_clk */
++#define P8_19(mode) AM33XX_IOPAD(0x0820, mode)  /* U10: gpmc_ad8 */
++#define P8_20(mode) AM33XX_IOPAD(0x0884, mode)  /* V9: gpmc_csn2 */
++#define P8_21(mode) AM33XX_IOPAD(0x0880, mode)  /* U9: gpmc_csn1 */
++#define P8_22(mode) AM33XX_IOPAD(0x0814, mode)  /* V8: gpmc_ad5 */
++#define P8_23(mode) AM33XX_IOPAD(0x0810, mode)  /* U8: gpmc_ad4 */
++#define P8_24(mode) AM33XX_IOPAD(0x0804, mode)  /* V7: gpmc_ad1 */
++#define P8_25(mode) AM33XX_IOPAD(0x0800, mode)  /* U7: gpmc_ad0 */
++#define P8_26(mode) AM33XX_IOPAD(0x087c, mode)  /* V6: gpmc_csn0 */
++#define P8_27(mode) AM33XX_IOPAD(0x08e0, mode)  /* U5: lcd_vsync */
++#define P8_28(mode) AM33XX_IOPAD(0x08e8, mode)  /* V5: lcd_pclk */
++#define P8_29(mode) AM33XX_IOPAD(0x08e4, mode)  /* R5: lcd_hsync */
++#define P8_30(mode) AM33XX_IOPAD(0x08ec, mode)  /* R6: lcd_ac_bias_en */
++#define P8_31(mode) AM33XX_IOPAD(0x08d8, mode)  /* V4: lcd_data14 */
++#define P8_32(mode) AM33XX_IOPAD(0x08dc, mode)  /* T5: lcd_data15 */
++#define P8_33(mode) AM33XX_IOPAD(0x08d4, mode)  /* V3: lcd_data13 */
++#define P8_34(mode) AM33XX_IOPAD(0x08cc, mode)  /* U4: lcd_data11 */
++#define P8_35(mode) AM33XX_IOPAD(0x08d0, mode)  /* V2: lcd_data12 */
++#define P8_36(mode) AM33XX_IOPAD(0x08c8, mode)  /* U3: lcd_data10 */
++#define P8_37(mode) AM33XX_IOPAD(0x08c0, mode)  /* U1: lcd_data8 */
++#define P8_38(mode) AM33XX_IOPAD(0x08c4, mode)  /* U2: lcd_data9 */
++#define P8_39(mode) AM33XX_IOPAD(0x08b8, mode)  /* T3: lcd_data6 */
++#define P8_40(mode) AM33XX_IOPAD(0x08bc, mode)  /* T4: lcd_data7 */
++#define P8_41(mode) AM33XX_IOPAD(0x08b0, mode)  /* T1: lcd_data4 */
++#define P8_42(mode) AM33XX_IOPAD(0x08b4, mode)  /* T2: lcd_data5 */
++#define P8_43(mode) AM33XX_IOPAD(0x08a8, mode)  /* R3: lcd_data2 */
++#define P8_44(mode) AM33XX_IOPAD(0x08ac, mode)  /* R4: lcd_data3 */
++#define P8_45(mode) AM33XX_IOPAD(0x08a0, mode)  /* R1: lcd_data0 */
++#define P8_46(mode) AM33XX_IOPAD(0x08a4, mode)  /* R2: lcd_data1 */
++#define P9_11(mode) AM33XX_IOPAD(0x0870, mode)  /* T17: gpmc_wait0 */
++#define P9_12(mode) AM33XX_IOPAD(0x0878, mode)  /* U18: gpmc_be1n */
++#define P9_13(mode) AM33XX_IOPAD(0x0874, mode)  /* U17: gpmc_wpn */
++#define P9_14(mode) AM33XX_IOPAD(0x0848, mode)  /* U14: gpmc_a2 */
++#define P9_15(mode) AM33XX_IOPAD(0x0840, mode)  /* R13: gpmc_a0 */
++#define P9_16(mode) AM33XX_IOPAD(0x084c, mode)  /* T14: gpmc_a3 */
++#define P9_17(mode) AM33XX_IOPAD(0x095c, mode)  /* A16: spi0_cs0 */
++#define P9_18(mode) AM33XX_IOPAD(0x0958, mode)  /* B16: spi0_d1 */
++#define P9_19(mode) AM33XX_IOPAD(0x097c, mode)  /* D17: uart1_rtsn */
++#define P9_20(mode) AM33XX_IOPAD(0x0978, mode)  /* D18: uart1_ctsn */
++#define P9_21(mode) AM33XX_IOPAD(0x0954, mode)  /* B17: spi0_d0 */
++#define P9_22(mode) AM33XX_IOPAD(0x0950, mode)  /* A17: spi0_sclk */
++#define P9_23(mode) AM33XX_IOPAD(0x0844, mode)  /* V14: gpmc_a1 */
++#define P9_24(mode) AM33XX_IOPAD(0x0984, mode)  /* D15: uart1_txd */
++#define P9_25(mode) AM33XX_IOPAD(0x09ac, mode)  /* A14: mcasp0_ahclkx */
++#define P9_26(mode) AM33XX_IOPAD(0x0980, mode)  /* D16: uart1_rxd */
++#define P9_27(mode) AM33XX_IOPAD(0x09a4, mode)  /* C13: mcasp0_fsr */
++#define P9_28(mode) AM33XX_IOPAD(0x099c, mode)  /* C12: mcasp0_ahclkr */
++#define P9_29(mode) AM33XX_IOPAD(0x0994, mode)  /* B13: mcasp0_fsx */
++#define P9_30(mode) AM33XX_IOPAD(0x0998, mode)  /* D12: mcasp0_axr0 */
++#define P9_31(mode) AM33XX_IOPAD(0x0990, mode)  /* A13: mcasp0_aclkx */
++#define P9_41(mode) AM33XX_IOPAD(0x09b4, mode)  /* D14: xdma_event_intr1 */
++#define P9_41A(mode) AM33XX_IOPAD(0x09b4, mode) /* D14: xdma_event_intr1 */
++#define P9_41B(mode) AM33XX_IOPAD(0x09a8, mode) /* D13: mcasp0_axr1 */
++#define P9_91(mode) AM33XX_IOPAD(0x09a8, mode) /* D13: mcasp0_axr1 */
++#define P9_42(mode) AM33XX_IOPAD(0x0964, mode) /* C18: P0_in_PWM0_out */
++#define P9_42A(mode) AM33XX_IOPAD(0x0964, mode) /* C18: P0_in_PWM0_out */
++#define P9_42B(mode) AM33XX_IOPAD(0x09a0, mode) /* B12: mcasp0_aclkr */
++#define P9_92(mode) AM33XX_IOPAD(0x09a0, mode) /* B12: mcasp0_aclkr */
++
++#define gpio_P1_02 &gpio2 23
++#define gpio_P1_04 &gpio2 25
++#define gpio_P1_06 &gpio0 5
++#define gpio_P1_08 &gpio0 2
++#define gpio_P1_10 &gpio0 3
++#define gpio_P1_12 &gpio0 4
++#define gpio_P1_20 &gpio0 20
++#define gpio_P1_26 &gpio0 12
++#define gpio_P1_28 &gpio0 13
++#define gpio_P1_29 &gpio3 21
++#define gpio_P1_30 &gpio1 11
++#define gpio_P1_31 &gpio3 18
++#define gpio_P1_32 &gpio1 10
++#define gpio_P1_33 &gpio3 15
++#define gpio_P1_34 &gpio0 26
++#define gpio_P1_35 &gpio2 24
++#define gpio_P1_36 &gpio3 14
++#define gpio_P2_01 &gpio1 18
++#define gpio_P2_02 &gpio1 27
++#define gpio_P2_03 &gpio0 23
++#define gpio_P2_04 &gpio1 26
++#define gpio_P2_05 &gpio0 30
++#define gpio_P2_06 &gpio1 25
++#define gpio_P2_07 &gpio0 31
++#define gpio_P2_08 &gpio1 28
++#define gpio_P2_09 &gpio0 15
++#define gpio_P2_10 &gpio1 20
++#define gpio_P2_11 &gpio0 14
++#define gpio_P2_17 &gpio2 1
++#define gpio_P2_18 &gpio1 15
++#define gpio_P2_19 &gpio0 27
++#define gpio_P2_20 &gpio2 0
++#define gpio_P2_22 &gpio1 14
++#define gpio_P2_24 &gpio1 12
++#define gpio_P2_25 &gpio1 9
++#define gpio_P2_27 &gpio1 8
++#define gpio_P2_28 &gpio3 20
++#define gpio_P2_29 &gpio0 7
++#define gpio_P2_30 &gpio3 17
++#define gpio_P2_31 &gpio0 19
++#define gpio_P2_32 &gpio3 16
++#define gpio_P2_33 &gpio1 13
++#define gpio_P2_34 &gpio3 19
++#define gpio_P2_35 &gpio2 22
++
++#define P1_02(mode) AM33XX_IOPAD(0x08e4, mode)  /* R5: lcd_hsync */
++#define P1_04(mode) AM33XX_IOPAD(0x08ec, mode)  /* R6: lcd_ac_bias_en */
++#define P1_06(mode) AM33XX_IOPAD(0x095c, mode)  /* A16: spi0_cs0 */
++#define P1_08(mode) AM33XX_IOPAD(0x0950, mode)  /* A17: spi0_sclk */
++#define P1_10(mode) AM33XX_IOPAD(0x0954, mode)  /* B17: spi0_d0 */
++#define P1_12(mode) AM33XX_IOPAD(0x0958, mode)  /* B16: spi0_d1 */
++#define P1_20(mode) AM33XX_IOPAD(0x09b4, mode)  /* D14: xdma_event_intr1 */
++#define P1_26(mode) AM33XX_IOPAD(0x0978, mode)  /* D18: uart1_ctsn */
++#define P1_28(mode) AM33XX_IOPAD(0x097c, mode)  /* D17: uart1_rtsn */
++#define P1_29(mode) AM33XX_IOPAD(0x09ac, mode)  /* A14: mcasp0_ahclkx */
++#define P1_30(mode) AM33XX_IOPAD(0x0974, mode)  /* E16: uart0_txd */
++#define P1_31(mode) AM33XX_IOPAD(0x09a0, mode)  /* B12: mcasp0_aclkr */
++#define P1_32(mode) AM33XX_IOPAD(0x0970, mode)  /* E15: uart0_rxd */
++#define P1_33(mode) AM33XX_IOPAD(0x0994, mode)  /* B13: mcasp0_fsx */
++#define P1_34(mode) AM33XX_IOPAD(0x0828, mode)  /* T11: gpmc_ad10 */
++#define P1_35(mode) AM33XX_IOPAD(0x08e8, mode)  /* V5: lcd_pclk */
++#define P1_36(mode) AM33XX_IOPAD(0x0990, mode)  /* A13: mcasp0_aclkx */
++#define P2_01(mode) AM33XX_IOPAD(0x0848, mode)  /* U14: gpmc_a2 */
++#define P2_02(mode) AM33XX_IOPAD(0x086c, mode)  /* V17: gpmc_a11 */
++#define P2_03(mode) AM33XX_IOPAD(0x0824, mode)  /* T10: gpmc_ad9 */
++#define P2_04(mode) AM33XX_IOPAD(0x0868, mode)  /* T16: gpmc_a10 */
++#define P2_05(mode) AM33XX_IOPAD(0x0870, mode)  /* T17: gpmc_wait0 */
++#define P2_06(mode) AM33XX_IOPAD(0x0864, mode)  /* U16: gpmc_a9 */
++#define P2_07(mode) AM33XX_IOPAD(0x0874, mode)  /* U17: gpmc_wpn */
++#define P2_08(mode) AM33XX_IOPAD(0x0878, mode)  /* U18: gpmc_be1n */
++#define P2_09(mode) AM33XX_IOPAD(0x0984, mode)  /* D15: uart1_txd */
++#define P2_10(mode) AM33XX_IOPAD(0x0850, mode)  /* R14: gpmc_a4 */
++#define P2_11(mode) AM33XX_IOPAD(0x0980, mode)  /* D16: uart1_rxd */
++#define P2_17(mode) AM33XX_IOPAD(0x088c, mode)  /* V12: gpmc_clk */
++#define P2_18(mode) AM33XX_IOPAD(0x083c, mode)  /* U13: gpmc_ad15 */
++#define P2_19(mode) AM33XX_IOPAD(0x082c, mode)  /* U12: gpmc_ad11 */
++#define P2_20(mode) AM33XX_IOPAD(0x0888, mode)  /* T13: gpmc_csn3 */
++#define P2_22(mode) AM33XX_IOPAD(0x0838, mode)  /* V13: gpmc_ad14 */
++#define P2_24(mode) AM33XX_IOPAD(0x0830, mode)  /* T12: gpmc_ad12 */
++#define P2_25(mode) AM33XX_IOPAD(0x096c, mode)  /* E17: uart0_rtsn */
++#define P2_27(mode) AM33XX_IOPAD(0x0968, mode)  /* E18: uart0_ctsn */
++#define P2_28(mode) AM33XX_IOPAD(0x09a8, mode)  /* D13: mcasp0_axr1 */
++#define P2_29(mode) AM33XX_IOPAD(0x0964, mode)  /* C18: eCAP0_in_PWM0_out */
++#define P2_30(mode) AM33XX_IOPAD(0x099c, mode)  /* C12: mcasp0_ahclkr */
++#define P2_31(mode) AM33XX_IOPAD(0x09b0, mode)  /* A15: xdma_event_intr0 */
++#define P2_32(mode) AM33XX_IOPAD(0x0998, mode)  /* D12: mcasp0_axr0 */
++#define P2_33(mode) AM33XX_IOPAD(0x0834, mode)  /* R12: gpmc_ad13 */
++#define P2_34(mode) AM33XX_IOPAD(0x09a4, mode)  /* C13: mcasp0_fsr */
++#define P2_35(mode) AM33XX_IOPAD(0x08e0, mode)  /* U5: lcd_vsync */
++
++#endif
 diff --git a/include/dt-bindings/board/am572x-bone-pins.h b/include/dt-bindings/board/am572x-bone-pins.h
 new file mode 100644
 index 000000000000..89f0704909a1
@@ -5630,6 +6014,49 @@ index 000000000000..12d772347911
 +#define P9_42B(mode, mux) J721E_IOPAD(0x4C, mode, mux)	/* AJ21: PRG1_PRU0_GPO17 AC2_AJ21 */
 +
 +#endif
+diff --git a/include/dt-bindings/clock/dra7.h b/include/dt-bindings/clock/dra7.h
+index 5ec4137231e3..7d57063b8a65 100644
+--- a/include/dt-bindings/clock/dra7.h
++++ b/include/dt-bindings/clock/dra7.h
+@@ -84,6 +84,10 @@
+ #define DRA7_L3_MAIN_2_CLKCTRL	DRA7_CLKCTRL_INDEX(0x20)
+ #define DRA7_L3_INSTR_CLKCTRL	DRA7_CLKCTRL_INDEX(0x28)
+ 
++/* iva clocks */
++#define DRA7_IVA_CLKCTRL	DRA7_CLKCTRL_INDEX(0x20)
++#define DRA7_SL2IF_CLKCTRL	DRA7_CLKCTRL_INDEX(0x28)
++
+ /* dss clocks */
+ #define DRA7_DSS_CORE_CLKCTRL	DRA7_CLKCTRL_INDEX(0x20)
+ #define DRA7_BB2D_CLKCTRL	DRA7_CLKCTRL_INDEX(0x30)
+diff --git a/include/dt-bindings/clock/omap5.h b/include/dt-bindings/clock/omap5.h
+index 41775272fd27..90e0d4b00127 100644
+--- a/include/dt-bindings/clock/omap5.h
++++ b/include/dt-bindings/clock/omap5.h
+@@ -32,6 +32,8 @@
+ 
+ /* l3main2 clocks */
+ #define OMAP5_L3_MAIN_2_CLKCTRL	OMAP5_CLKCTRL_INDEX(0x20)
++#define OMAP5_L3_MAIN_2_GPMC_CLKCTRL	OMAP5_CLKCTRL_INDEX(0x28)
++#define OMAP5_L3_MAIN_2_OCMC_RAM_CLKCTRL	OMAP5_CLKCTRL_INDEX(0x30)
+ 
+ /* ipu clocks */
+ #define OMAP5_MMU_IPU_CLKCTRL	OMAP5_CLKCTRL_INDEX(0x20)
+diff --git a/include/dt-bindings/pinctrl/omap.h b/include/dt-bindings/pinctrl/omap.h
+index f48245ff87e5..625718042413 100644
+--- a/include/dt-bindings/pinctrl/omap.h
++++ b/include/dt-bindings/pinctrl/omap.h
+@@ -64,8 +64,8 @@
+ #define OMAP3_WKUP_IOPAD(pa, val)	OMAP_IOPAD_OFFSET((pa), 0x2a00) (val)
+ #define DM814X_IOPAD(pa, val)		OMAP_IOPAD_OFFSET((pa), 0x0800) (val)
+ #define DM816X_IOPAD(pa, val)		OMAP_IOPAD_OFFSET((pa), 0x0800) (val)
+-#define AM33XX_IOPAD(pa, val)		OMAP_IOPAD_OFFSET((pa), 0x0800) (val) (0)
+-#define AM33XX_PADCONF(pa, conf, mux)	OMAP_IOPAD_OFFSET((pa), 0x0800) (conf) (mux)
++#define AM33XX_IOPAD(pa, val)		OMAP_IOPAD_OFFSET((pa), 0x0800) (val)
++#define AM33XX_PADCONF(pa, dir, mux)	OMAP_IOPAD_OFFSET((pa), 0x0800) ((dir) | (mux))
+ 
+ /*
+  * Macros to allow using the offset from the padconf physical address
 -- 
 2.30.2
 
