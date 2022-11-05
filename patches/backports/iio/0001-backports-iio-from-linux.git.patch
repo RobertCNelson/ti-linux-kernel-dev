@@ -1,39 +1,21 @@
-From 77456b5a00b673305a5a6e561374dc8125d46c24 Mon Sep 17 00:00:00 2001
+From 382f73d0739dd51976ad1fab1584095ce46188a7 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 4 Nov 2022 14:54:57 -0500
+Date: Sat, 5 Nov 2022 10:25:16 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
 Reference: v5.10.153
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/adc/ad7292.c           |   4 +-
  drivers/iio/adc/ad7923.c           |   4 +-
  drivers/iio/adc/at91-sama5d2_adc.c |  28 +--
  drivers/iio/adc/ltc2497.c          |  13 ++
- drivers/iio/adc/mcp3911.c          |  19 ++-
  drivers/iio/dac/ad5593r.c          |  46 ++---
  drivers/iio/inkern.c               |   6 +-
  drivers/iio/light/tsl2583.c        |   2 +-
  drivers/iio/pressure/dps310.c      | 262 ++++++++++++++++++-----------
  drivers/iio/temperature/ltc2983.c  |  13 +-
- 10 files changed, 250 insertions(+), 147 deletions(-)
+ 8 files changed, 235 insertions(+), 139 deletions(-)
 
-diff --git a/drivers/iio/adc/ad7292.c b/drivers/iio/adc/ad7292.c
-index ab204e9199e9..3e6ece05854d 100644
---- a/drivers/iio/adc/ad7292.c
-+++ b/drivers/iio/adc/ad7292.c
-@@ -289,10 +289,8 @@ static int ad7292_probe(struct spi_device *spi)
- 
- 		ret = devm_add_action_or_reset(&spi->dev,
- 					       ad7292_regulator_disable, st);
--		if (ret) {
--			regulator_disable(st->reg);
-+		if (ret)
- 			return ret;
--		}
- 
- 		ret = regulator_get_voltage(st->reg);
- 		if (ret < 0)
 diff --git a/drivers/iio/adc/ad7923.c b/drivers/iio/adc/ad7923.c
 index 8c1e866f72e8..96eeda433ad6 100644
 --- a/drivers/iio/adc/ad7923.c
@@ -171,52 +153,6 @@ index 1adddf5a88a9..61f373fab9a1 100644
  	}
  
  	ret = i2c_smbus_write_byte(st->client,
-diff --git a/drivers/iio/adc/mcp3911.c b/drivers/iio/adc/mcp3911.c
-index e573da5397bb..65278270a75c 100644
---- a/drivers/iio/adc/mcp3911.c
-+++ b/drivers/iio/adc/mcp3911.c
-@@ -38,8 +38,8 @@
- #define MCP3911_CHANNEL(x)		(MCP3911_REG_CHANNEL0 + x * 3)
- #define MCP3911_OFFCAL(x)		(MCP3911_REG_OFFCAL_CH0 + x * 6)
- 
--/* Internal voltage reference in uV */
--#define MCP3911_INT_VREF_UV		1200000
-+/* Internal voltage reference in mV */
-+#define MCP3911_INT_VREF_MV		1200
- 
- #define MCP3911_REG_READ(reg, id)	((((reg) << 1) | ((id) << 5) | (1 << 0)) & 0xff)
- #define MCP3911_REG_WRITE(reg, id)	((((reg) << 1) | ((id) << 5) | (0 << 0)) & 0xff)
-@@ -111,6 +111,8 @@ static int mcp3911_read_raw(struct iio_dev *indio_dev,
- 		if (ret)
- 			goto out;
- 
-+		*val = sign_extend32(*val, 23);
-+
- 		ret = IIO_VAL_INT;
- 		break;
- 
-@@ -135,11 +137,18 @@ static int mcp3911_read_raw(struct iio_dev *indio_dev,
- 
- 			*val = ret / 1000;
- 		} else {
--			*val = MCP3911_INT_VREF_UV;
-+			*val = MCP3911_INT_VREF_MV;
- 		}
- 
--		*val2 = 24;
--		ret = IIO_VAL_FRACTIONAL_LOG2;
-+		/*
-+		 * For 24bit Conversion
-+		 * Raw = ((Voltage)/(Vref) * 2^23 * Gain * 1.5
-+		 * Voltage = Raw * (Vref)/(2^23 * Gain * 1.5)
-+		 */
-+
-+		/* val2 = (2^23 * 1.5) */
-+		*val2 = 12582912;
-+		ret = IIO_VAL_FRACTIONAL;
- 		break;
- 	}
- 
 diff --git a/drivers/iio/dac/ad5593r.c b/drivers/iio/dac/ad5593r.c
 index 5b4df36fdc2a..4cc855c78121 100644
 --- a/drivers/iio/dac/ad5593r.c

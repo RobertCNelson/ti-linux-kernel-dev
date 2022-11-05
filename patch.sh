@@ -554,9 +554,9 @@ backports () {
 		exit 2
 	else
 		patch_backports
-		${git} "${DIR}/patches/backports/${subsystem}/0002-iio-adc-ti-adc128s052-Fix-number-of-channels-when-de.patch"
-		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
-		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
+		#${git} "${DIR}/patches/backports/${subsystem}/0002-iio-adc-ti-adc128s052-Fix-number-of-channels-when-de.patch"
+		#${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
+		#${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
 
 	backport_tag="v5.15.77"
@@ -660,7 +660,7 @@ drivers () {
 	dir 'drm-bridge'
 
 	dir 'tiam62x'
-	dir 'android'
+	#dir 'android'
 	dir 'ti-edgeai'
 }
 
@@ -721,3 +721,4 @@ readme () {
 packaging
 readme
 echo "patch.sh ran successfully"
+#
