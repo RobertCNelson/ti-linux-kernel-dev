@@ -42,10 +42,10 @@ toolchain="gcc_10_aarch64"
 
 #Kernel
 KERNEL_REL=5.10
-KERNEL_TAG=${KERNEL_REL}.140
-kernel_rt=".140-rt73"
+KERNEL_TAG=${KERNEL_REL}.145
+kernel_rt=".145-rt74"
 #Kernel Build
-BUILD=${build_prefix}70
+BUILD=${build_prefix}70.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -56,8 +56,11 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="40117751e2b743dc9657545e0619aa0d6b9b9568"
-ti_git_new_release="5e63ae91b2138efad3db617a0ecb5ff76c591131"
+ti_git_old_release="5e63ae91b2138efad3db617a0ecb5ff76c591131"
+ti_git_new_release="018bd5143155c70167c94d3c6c369b9651e00fd9"
+
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.05.00.001
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=shortlog;h=018bd5143155c70167c94d3c6c369b9651e00fd9
 
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.04.01.005
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=shortlog;h=5e63ae91b2138efad3db617a0ecb5ff76c591131
