@@ -42,10 +42,10 @@ toolchain="gcc_10_arm"
 
 #Kernel
 KERNEL_REL=5.10
-KERNEL_TAG=${KERNEL_REL}.140
-kernel_rt=".140-rt73"
+KERNEL_TAG=${KERNEL_REL}.145
+kernel_rt=".145-rt74"
 #Kernel Build
-BUILD=${build_prefix}52
+BUILD=${build_prefix}52.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -56,7 +56,9 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="0bf568276c5756fe4537bd6bd3277768d6ad2969"
-#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/cicd.2022.10.03.19.06.00
-ti_git_new_release="ceb5ccdfa5c6e70c25e9321025e9850ee2a81a93"
+ti_git_old_release="ceb5ccdfa5c6e70c25e9321025e9850ee2a81a93"
+ti_git_new_release="8b51d20b6e6e1b9277b59b7aaed8a97eff43097f"
+
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.05.00.003
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=shortlog;h=8b51d20b6e6e1b9277b59b7aaed8a97eff43097f
 #
