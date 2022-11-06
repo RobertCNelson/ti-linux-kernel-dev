@@ -1,6 +1,6 @@
-From 29eb77abc19299516fd79813e1e939d68c18fc73 Mon Sep 17 00:00:00 2001
+From a96fc800c169e7e99e9164762cc67abccd598ffb Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Sat, 8 Oct 2022 14:23:35 -0500
+Date: Sun, 6 Nov 2022 11:07:55 -0600
 Subject: [PATCH] backports: brcm80211: from: linux.git
 
 Reference: v5.10.9
@@ -28,7 +28,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/mac80211/debugfs.c                        |  44 +++--
  net/mac80211/driver-ops.c                     |   5 +-
  net/mac80211/driver-ops.h                     |   5 +-
- net/mac80211/ibss.c                           |   2 -
+ net/mac80211/ibss.c                           |   6 -
  net/mac80211/ieee80211_i.h                    |  48 ++---
  net/mac80211/iface.c                          |  28 +--
  net/mac80211/key.c                            |   7 -
@@ -40,9 +40,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/mac80211/mlme.c                           |  70 +++----
  net/mac80211/rate.c                           |   3 +-
  net/mac80211/rx.c                             | 174 +++++-------------
- net/mac80211/scan.c                           |  41 +----
+ net/mac80211/scan.c                           |  52 +-----
  net/mac80211/spectmgmt.c                      |  10 +-
- net/mac80211/sta_info.c                       |  28 +--
+ net/mac80211/sta_info.c                       |  36 ++--
  net/mac80211/sta_info.h                       |  34 +---
  net/mac80211/tx.c                             | 101 ++++------
  net/mac80211/util.c                           |  31 ++--
@@ -51,6 +51,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireless/Makefile                         |   2 +-
  net/wireless/core.c                           |  10 +-
  net/wireless/core.h                           |   2 -
+ net/wireless/debugfs.c                        |   3 +-
  net/wireless/mlme.c                           |  26 ++-
  net/wireless/nl80211.c                        |  56 ++----
  net/wireless/pmsr.c                           |  16 +-
@@ -60,7 +61,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  net/wireless/util.c                           |  25 +--
  net/wireless/wext-core.c                      |   5 +-
  net/wireless/wext-spy.c                       |  14 +-
- 54 files changed, 420 insertions(+), 810 deletions(-)
+ 55 files changed, 429 insertions(+), 827 deletions(-)
 
 diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
 index b6d0bc73923f..f9ebb98b0e3c 100644
@@ -1058,10 +1059,21 @@ index a172f69c7112..bcdfd19a596b 100644
  	if (!check_sdata_in_driver(sdata))
  		return;
 diff --git a/net/mac80211/ibss.c b/net/mac80211/ibss.c
-index a7ac53a2f00d..1f552f374e97 100644
+index 78ae58ec397a..1f552f374e97 100644
 --- a/net/mac80211/ibss.c
 +++ b/net/mac80211/ibss.c
-@@ -1874,8 +1874,6 @@ int ieee80211_ibss_leave(struct ieee80211_sub_if_data *sdata)
+@@ -541,10 +541,6 @@ int ieee80211_ibss_finish_csa(struct ieee80211_sub_if_data *sdata)
+ 
+ 	sdata_assert_lock(sdata);
+ 
+-	/* When not connected/joined, sending CSA doesn't make sense. */
+-	if (ifibss->state != IEEE80211_IBSS_MLME_JOINED)
+-		return -ENOLINK;
+-
+ 	/* update cfg80211 bss information with the new channel */
+ 	if (!is_zero_ether_addr(ifibss->bssid)) {
+ 		cbss = cfg80211_get_bss(sdata->local->hw.wiphy,
+@@ -1878,8 +1874,6 @@ int ieee80211_ibss_leave(struct ieee80211_sub_if_data *sdata)
  
  	/* remove beacon */
  	kfree(sdata->u.ibss.ie);
@@ -1989,7 +2001,7 @@ index e991abb45f68..2a5a11f92b03 100644
  				      status->nss > 8,
  				      "Rate marked as a VHT rate but data is invalid: MCS: %d, NSS: %d\n",
 diff --git a/net/mac80211/scan.c b/net/mac80211/scan.c
-index 887f945bb12d..d4cc9ac2d703 100644
+index d6afaacaf7ef..d4cc9ac2d703 100644
 --- a/net/mac80211/scan.c
 +++ b/net/mac80211/scan.c
 @@ -251,24 +251,13 @@ void ieee80211_scan_rx(struct ieee80211_local *local, struct sk_buff *skb)
@@ -2039,7 +2051,31 @@ index 887f945bb12d..d4cc9ac2d703 100644
  	if (ieee80211_is_probe_resp(mgmt->frame_control)) {
  		struct cfg80211_scan_request *scan_req;
  		struct cfg80211_sched_scan_request *sched_scan_req;
-@@ -793,8 +772,6 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
+@@ -461,19 +440,16 @@ static void __ieee80211_scan_completed(struct ieee80211_hw *hw, bool aborted)
+ 	scan_req = rcu_dereference_protected(local->scan_req,
+ 					     lockdep_is_held(&local->mtx));
+ 
++	if (scan_req != local->int_scan_req) {
++		local->scan_info.aborted = aborted;
++		cfg80211_scan_done(scan_req, &local->scan_info);
++	}
+ 	RCU_INIT_POINTER(local->scan_req, NULL);
+ 	RCU_INIT_POINTER(local->scan_sdata, NULL);
+ 
+ 	local->scanning = 0;
+ 	local->scan_chandef.chan = NULL;
+ 
+-	synchronize_rcu();
+-
+-	if (scan_req != local->int_scan_req) {
+-		local->scan_info.aborted = aborted;
+-		cfg80211_scan_done(scan_req, &local->scan_info);
+-	}
+-
+ 	/* Set power back to normal operating levels. */
+ 	ieee80211_hw_config(local, 0);
+ 
+@@ -796,8 +772,6 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
  						IEEE80211_CHAN_RADAR)) ||
  		    !req->n_ssids) {
  			next_delay = IEEE80211_PASSIVE_CHANNEL_TIME;
@@ -2048,7 +2084,7 @@ index 887f945bb12d..d4cc9ac2d703 100644
  		} else {
  			ieee80211_scan_state_send_probe(local, &next_delay);
  			next_delay = IEEE80211_CHANNEL_TIME;
-@@ -1006,8 +983,6 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
+@@ -1009,8 +983,6 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
  	    !scan_req->n_ssids) {
  		*next_delay = IEEE80211_PASSIVE_CHANNEL_TIME;
  		local->next_scan_state = SCAN_DECISION;
@@ -2057,7 +2093,7 @@ index 887f945bb12d..d4cc9ac2d703 100644
  		return;
  	}
  
-@@ -1100,8 +1075,6 @@ void ieee80211_scan_work(struct work_struct *work)
+@@ -1103,8 +1075,6 @@ void ieee80211_scan_work(struct work_struct *work)
  			goto out;
  	}
  
@@ -2066,7 +2102,7 @@ index 887f945bb12d..d4cc9ac2d703 100644
  	/*
  	 * as long as no delay is required advance immediately
  	 * without scheduling a new work
-@@ -1112,10 +1085,6 @@ void ieee80211_scan_work(struct work_struct *work)
+@@ -1115,10 +1085,6 @@ void ieee80211_scan_work(struct work_struct *work)
  			goto out_complete;
  		}
  
@@ -2106,7 +2142,7 @@ index 76747bfdaddd..ae1cb2c68722 100644
  		/* default, for the case of IEEE80211_VHT_CHANWIDTH_USE_HT,
  		 * to the previously parsed chandef
 diff --git a/net/mac80211/sta_info.c b/net/mac80211/sta_info.c
-index 461c03737da8..ec6973ee88ef 100644
+index cee39ae52245..ec6973ee88ef 100644
 --- a/net/mac80211/sta_info.c
 +++ b/net/mac80211/sta_info.c
 @@ -4,7 +4,7 @@
@@ -2186,6 +2222,18 @@ index 461c03737da8..ec6973ee88ef 100644
  		return stats;
  
  	for_each_possible_cpu(cpu) {
+@@ -2175,9 +2177,9 @@ static inline u64 sta_get_tidstats_msdu(struct ieee80211_sta_rx_stats *rxstats,
+ 	u64 value;
+ 
+ 	do {
+-		start = u64_stats_fetch_begin_irq(&rxstats->syncp);
++		start = u64_stats_fetch_begin(&rxstats->syncp);
+ 		value = rxstats->msdu[tid];
+-	} while (u64_stats_fetch_retry_irq(&rxstats->syncp, start));
++	} while (u64_stats_fetch_retry(&rxstats->syncp, start));
+ 
+ 	return value;
+ }
 @@ -2190,7 +2192,9 @@ static void sta_set_tidstats(struct sta_info *sta,
  	int cpu;
  
@@ -2197,6 +2245,18 @@ index 461c03737da8..ec6973ee88ef 100644
  
  		if (sta->pcpu_rx_stats) {
  			for_each_possible_cpu(cpu) {
+@@ -2241,9 +2245,9 @@ static inline u64 sta_get_stats_bytes(struct ieee80211_sta_rx_stats *rxstats)
+ 	u64 value;
+ 
+ 	do {
+-		start = u64_stats_fetch_begin_irq(&rxstats->syncp);
++		start = u64_stats_fetch_begin(&rxstats->syncp);
+ 		value = rxstats->bytes;
+-	} while (u64_stats_fetch_retry_irq(&rxstats->syncp, start));
++	} while (u64_stats_fetch_retry(&rxstats->syncp, start));
+ 
+ 	return value;
+ }
 @@ -2269,6 +2273,7 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
  		sinfo->rx_beacon = sdata->u.mgd.count_beacon_signal;
  
@@ -2783,6 +2843,22 @@ index a3362a32acb3..7df91f940212 100644
  
  	/* must be last because of the way we do wiphy_priv(),
  	 * and it should at least be aligned to NETDEV_ALIGN */
+diff --git a/net/wireless/debugfs.c b/net/wireless/debugfs.c
+index d80b06d66959..76b845f68ac8 100644
+--- a/net/wireless/debugfs.c
++++ b/net/wireless/debugfs.c
+@@ -65,10 +65,9 @@ static ssize_t ht40allow_map_read(struct file *file,
+ {
+ 	struct wiphy *wiphy = file->private_data;
+ 	char *buf;
+-	unsigned int offset = 0, buf_size = PAGE_SIZE, i;
++	unsigned int offset = 0, buf_size = PAGE_SIZE, i, r;
+ 	enum nl80211_band band;
+ 	struct ieee80211_supported_band *sband;
+-	ssize_t r;
+ 
+ 	buf = kzalloc(buf_size, GFP_KERNEL);
+ 	if (!buf)
 diff --git a/net/wireless/mlme.c b/net/wireless/mlme.c
 index 6dcfc5a34874..0ac820780437 100644
 --- a/net/wireless/mlme.c
