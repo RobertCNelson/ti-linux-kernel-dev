@@ -30,6 +30,14 @@ cat_files () {
 		cat ./patches/git/WIREGUARD >> ${wfile}
 	fi
 
+	if [ -f ./patches/git/WPANUSB ] ; then
+		cat ./patches/git/WPANUSB >> ${wfile}
+	fi
+
+	if [ -f ./patches/git/BCFSERIAL ] ; then
+		cat ./patches/git/BCFSERIAL >> ${wfile}
+	fi
+
 	if [ -f ./patches/git/WIRELESS_REGDB ] ; then
 		cat ./patches/git/WIRELESS_REGDB >> ${wfile}
 	fi
@@ -53,9 +61,9 @@ if [ -e ${DIR}/version.sh ]; then
 	fi
 
 	if [ -f ./patches/git/RT ] ; then
-		echo "kernel v${KERNEL_TAG} rebase with rt: v${KERNEL_REL}${kernel_rt} wireguard/can_isotp/device-tree/etc" > ${wfile}
+		echo "kernel v${KERNEL_TAG} rebase with rt: v${KERNEL_REL}${kernel_rt} device-tree/etc" > ${wfile}
 	else
-		echo "kernel v${KERNEL_TAG} rebase with: wireguard/can_isotp/device-tree/etc" > ${wfile}
+		echo "kernel v${KERNEL_TAG} rebase with: device-tree/etc" > ${wfile}
 	fi
 	cat_files
 
