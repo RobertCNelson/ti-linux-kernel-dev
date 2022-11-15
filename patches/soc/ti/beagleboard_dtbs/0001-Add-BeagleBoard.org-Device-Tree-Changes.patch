@@ -1,11 +1,11 @@
-From 3f1b066641280d4814e3b313ffc596c3737fdf90 Mon Sep 17 00:00:00 2001
+From a6db64c0442ac354d1fd2232545f8861b28f19e9 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 15 Nov 2022 09:53:06 -0600
+Date: Tue, 15 Nov 2022 11:29:02 -0600
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v5.10.x-ti-unified
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/a10c158e65e8d7162bd6bfd372bc8e4ac2660837
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/0104cefe6ed198b59b2117d9a9a25fe3f6243e32
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm64/boot/dts/ti/Makefile               |    2 +
@@ -13,11 +13,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../k3-j721e-beagleboneai64-no-shared-mem.dts | 1024 +++++++++++++
  .../boot/dts/ti/k3-j721e-beagleboneai64.dts   | 1024 +++++++++++++
  .../dts/ti/k3-j721e-common-proc-board.dts     |  117 --
- arch/arm64/boot/dts/ti/k3-j721e-main.dtsi     |   30 +
+ arch/arm64/boot/dts/ti/k3-j721e-main.dtsi     |   29 +
  .../boot/dts/ti/k3-j721e-rtos-memory-map.dtsi |   12 +-
  .../boot/dts/ti/overlays/BB-I2C2-MPU6050.dts  |   39 +
  .../dts/ti/overlays/BBAI64-CSI0-imx219.dts    |  107 ++
- .../overlays/BBAI64-DSI-RPi-7inch-panel.dts   |  155 ++
+ .../overlays/BBAI64-DSI-RPi-7inch-panel.dts   |  149 ++
  .../ti/overlays/BBAI64-P8_37-ehrpwm5_a.dts    |   20 +
  .../ti/overlays/BBAI64-P9_25-ehrpwm4_b.dts    |   20 +
  arch/arm64/boot/dts/ti/overlays/BONE-FAN.dts  |  139 ++
@@ -33,7 +33,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../boot/dts/ti/overlays/BONE-USB0-host.dts   |   20 +
  .../dts/ti/overlays/J721E-PRU-UIO-00A0.dts    |   42 +
  arch/arm64/boot/dts/ti/overlays/Makefile      |   28 +
- ...3-j721e-beagleboneai64-RPi-7inch-panel.dts |  155 ++
+ ...3-j721e-beagleboneai64-RPi-7inch-panel.dts |  149 ++
  .../boot/dts/ti/overlays/robotics-cape.dts    |  264 ++++
  .../dt-bindings/board/am335x-bbw-bbb-base.h   |  103 ++
  include/dt-bindings/board/am335x-bone-pins.h  |  253 ++++
@@ -42,7 +42,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/dt-bindings/clock/dra7.h              |    4 +
  include/dt-bindings/clock/omap5.h             |    2 +
  include/dt-bindings/pinctrl/omap.h            |    4 +-
- 34 files changed, 5442 insertions(+), 125 deletions(-)
+ 34 files changed, 5429 insertions(+), 125 deletions(-)
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-bone-buses.dtsi
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-no-shared-mem.dts
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
@@ -3633,27 +3633,23 @@ index d9fc06f398da..ead41fb2a928 100644
  	/* Confiure AUDIO_EXT_REFCLK2 pin as output */
  	pinctrl-names = "default";
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi b/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
-index a561e30fb148..cbcee870dd72 100644
+index a561e30fb148..41b41dfb548e 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
-@@ -1662,6 +1662,27 @@ dp0_ports: ports {
+@@ -1662,6 +1662,23 @@ dp0_ports: ports {
  		};
  	};
  
 +	dsi0: dsi@48000000 {
-+		compatible = "cdns,dsi";
++		compatible = "ti,j721e-dsi";
 +		reg = <0x0 0x04800000 0x0 0x100000>, <0x0 0x04710000 0x0 0x100>;
 +		clocks = <&k3_clks 150 1>, <&k3_clks 150 5>;
 +		clock-names = "dsi_p_clk", "dsi_sys_clk";
-+		resets = <&k3_reset 150 1>;
-+		reset-names = "dsi_p_rst";
 +		power-domains = <&k3_pds 150 TI_SCI_PD_EXCLUSIVE>;
 +		interrupt-parent = <&gic500>;
 +		interrupts = <GIC_SPI 600 IRQ_TYPE_LEVEL_HIGH>;
 +		phys = <&dphy2>;
 +		phy-names = "dphy";
-+		#address-cells = <1>;
-+		#size-cells = <0>;
 +
 +		dsi0_ports: ports {
 +			#address-cells = <1>;
@@ -3664,18 +3660,21 @@ index a561e30fb148..cbcee870dd72 100644
  	dss: dss@4a00000 {
  		compatible = "ti,j721e-dss";
  		reg =
-@@ -2809,4 +2830,13 @@ dphy1: phy@4590000 {
+@@ -2809,4 +2826,16 @@ dphy1: phy@4590000 {
  		#phy-cells = <0>;
  		power-domains = <&k3_pds 148 TI_SCI_PD_EXCLUSIVE>;
  	};
 +
 +	dphy2: phy@4480000 {
-+		compatible = "cdns,dphy";
-+		reg = <0x0 0x04480000 0x0 0x1100>;
++		compatible = "ti,j721e-dphy";
++		reg = <0x0 0x04480000 0x0 0x1000>;
 +		clocks = <&k3_clks 296 1>, <&k3_clks 296 3>;
 +		clock-names = "psm", "pll_ref";
 +		#phy-cells = <0>;
 +		power-domains = <&k3_pds 296 TI_SCI_PD_EXCLUSIVE>;
++		assigned-clocks = <&k3_clks 296 3>;
++		assigned-clock-parents = <&k3_clks 296 4>;
++		assigned-clock-rates = <19200000>;
 +	};
  };
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-rtos-memory-map.dtsi b/arch/arm64/boot/dts/ti/k3-j721e-rtos-memory-map.dtsi
@@ -3895,10 +3894,10 @@ index 000000000000..d2cba020de24
 +};
 diff --git a/arch/arm64/boot/dts/ti/overlays/BBAI64-DSI-RPi-7inch-panel.dts b/arch/arm64/boot/dts/ti/overlays/BBAI64-DSI-RPi-7inch-panel.dts
 new file mode 100644
-index 000000000000..127f8a767df1
+index 000000000000..6b159379001a
 --- /dev/null
 +++ b/arch/arm64/boot/dts/ti/overlays/BBAI64-DSI-RPi-7inch-panel.dts
-@@ -0,0 +1,155 @@
+@@ -0,0 +1,149 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/**
 + * DT Overlay for RPi 7inch touchscreen panel interfaced with DSI on
@@ -3963,10 +3962,10 @@ index 000000000000..127f8a767df1
 +};
 +
 +&main_i2c4 {
++	status = "okay";
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&main_i2c4_pins_default>;
 +	clock-frequency = <400000>;
-+	status = "okay";
 +
 +	reg_display: reg_display@45 {
 +		compatible = "raspberrypi,7inch-touchscreen-panel-regulator";
@@ -4047,12 +4046,6 @@ index 000000000000..127f8a767df1
 +		};
 +	};
 +
-+};
-+
-+&dphy2 {
-+	assigned-clocks = <&k3_clks 296 3>;
-+	assigned-clock-parents = <&k3_clks 296 4>;
-+	assigned-clock-rates = <19200000>;
 +};
 diff --git a/arch/arm64/boot/dts/ti/overlays/BBAI64-P8_37-ehrpwm5_a.dts b/arch/arm64/boot/dts/ti/overlays/BBAI64-P8_37-ehrpwm5_a.dts
 new file mode 100644
@@ -4654,10 +4647,10 @@ index 000000000000..4dd8724e97ab
 +clean-files	:= *.dtbo
 diff --git a/arch/arm64/boot/dts/ti/overlays/k3-j721e-beagleboneai64-RPi-7inch-panel.dts b/arch/arm64/boot/dts/ti/overlays/k3-j721e-beagleboneai64-RPi-7inch-panel.dts
 new file mode 100644
-index 000000000000..f73c3288e5a9
+index 000000000000..efd1237a5de1
 --- /dev/null
 +++ b/arch/arm64/boot/dts/ti/overlays/k3-j721e-beagleboneai64-RPi-7inch-panel.dts
-@@ -0,0 +1,155 @@
+@@ -0,0 +1,149 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/**
 + * DT Overlay for RPi 7inch touchscreen panel interfaced with DSI on
@@ -4722,10 +4715,10 @@ index 000000000000..f73c3288e5a9
 +};
 +
 +&main_i2c4 {
++	status = "okay";
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&main_i2c4_pins_default>;
 +	clock-frequency = <400000>;
-+	status = "okay";
 +
 +	reg_display: reg_display@45 {
 +		compatible = "raspberrypi,7inch-touchscreen-panel-regulator";
@@ -4806,12 +4799,6 @@ index 000000000000..f73c3288e5a9
 +		};
 +	};
 +
-+};
-+
-+&dphy2 {
-+	assigned-clocks = <&k3_clks 296 3>;
-+	assigned-clock-parents = <&k3_clks 296 4>;
-+	assigned-clock-rates = <19200000>;
 +};
 diff --git a/arch/arm64/boot/dts/ti/overlays/robotics-cape.dts b/arch/arm64/boot/dts/ti/overlays/robotics-cape.dts
 new file mode 100644

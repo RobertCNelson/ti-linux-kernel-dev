@@ -651,12 +651,6 @@ drivers () {
 	dir 'edt-ft'
 	dir 'panel-simple'
 
-	#git revert --no-edit 7879daab876bae9acc5468b6d9347b574ce178b6 -s
-	#git revert --no-edit 089a2a23c12d8940e8b0459ca473b28877c3f301 -s
-	#git revert --no-edit de3c3af242ae34519098deef095637cf138eb509 -s
-
-	dir 'drm-bridge-reverts'
-
 	dir 'drm-bridge'
 
 	dir 'tiam62x'
