@@ -538,7 +538,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.153"
+	backport_tag="v5.10.154"
 
 	subsystem="iio"
 	#regenerate="enable"
