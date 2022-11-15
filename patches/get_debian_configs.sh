@@ -2,8 +2,8 @@
 
 #https://packages.debian.org/source/bullseye/linux
 
-abi="5.10.0-16"
-kernel="5.10.127-1"
+abi="5.10.0-18"
+kernel="5.10.140-1"
 
 debian_site="http://ftp.de.debian.org/debian/pool/main/l/linux"
 incoming_site="http://incoming.debian.org/debian-buildd/pool/main/l/linux"
