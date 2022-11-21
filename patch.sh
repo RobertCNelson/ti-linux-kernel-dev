@@ -654,7 +654,7 @@ drivers () {
 	dir 'drm-bridge'
 
 	dir 'tiam62x'
-	#dir 'android'
+	dir 'android'
 	dir 'ti-edgeai'
 }
 
