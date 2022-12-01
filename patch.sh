@@ -575,7 +575,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.18.19"
+	backport_tag="v6.0.10"
 
 	subsystem="it66121"
 	#regenerate="enable"
@@ -589,6 +589,7 @@ backports () {
 	else
 		patch_backports
 		${git} "${DIR}/patches/backports/${subsystem}/0002-wire-up-it66121.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0003-ite-it66121.c-fixes.patch"
 	fi
 
 	backport_tag="v5.11.22"
@@ -656,6 +657,8 @@ drivers () {
 	dir 'tiam62x'
 	dir 'android'
 	dir 'ti-edgeai'
+	dir 'lincolntech'
+	dir 'tidss'
 }
 
 ###
