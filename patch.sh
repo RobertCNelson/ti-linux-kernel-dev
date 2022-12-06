@@ -658,7 +658,8 @@ drivers () {
 	dir 'android'
 	dir 'ti-edgeai'
 	dir 'lincolntech'
-	#dir 'tidss'
+	dir 'tidss_dispc'
+	dir 'tidss'
 }
 
 ###
