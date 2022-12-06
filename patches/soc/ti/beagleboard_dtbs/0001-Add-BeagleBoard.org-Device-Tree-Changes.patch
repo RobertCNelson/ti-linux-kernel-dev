@@ -1,11 +1,11 @@
-From 35385850c6c7f683be69b0b1ad53ebabdd6e1c94 Mon Sep 17 00:00:00 2001
+From 3ebe93e623410bfe7eca19b1c6edec04d0d1168b Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 21 Nov 2022 16:50:20 -0600
+Date: Tue, 6 Dec 2022 09:30:37 -0600
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v5.10.x-ti-unified
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/b90635aab72f81cdb77c8660688b557e0470c443
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/3385f4979289b1acd88b5b010c75303a1c985f1b
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm64/boot/dts/ti/Makefile               |    2 +
@@ -23,6 +23,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../ti/overlays/BBAI64-P9_25-ehrpwm4_b.dts    |   20 +
  .../boot/dts/ti/overlays/BBORG_LOAD-00A2.dts  |   85 ++
  .../boot/dts/ti/overlays/BBORG_RELAY-00A2.dts |   68 +
+ .../boot/dts/ti/overlays/BBORG_SERVO-00A2.dts |   59 +
  arch/arm64/boot/dts/ti/overlays/BONE-FAN.dts  |  139 ++
  arch/arm64/boot/dts/ti/overlays/BONE-I2C1.dts |   22 +
  arch/arm64/boot/dts/ti/overlays/BONE-I2C2.dts |   22 +
@@ -37,7 +38,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../arm64/boot/dts/ti/overlays/BONE-UART1.dts |   23 +
  .../boot/dts/ti/overlays/BONE-USB0-host.dts   |   20 +
  .../dts/ti/overlays/J721E-PRU-UIO-00A0.dts    |   42 +
- arch/arm64/boot/dts/ti/overlays/Makefile      |   34 +
+ arch/arm64/boot/dts/ti/overlays/Makefile      |   35 +
  ...3-j721e-beagleboneai64-RPi-7inch-panel.dts |  149 ++
  .../boot/dts/ti/overlays/robotics-cape.dts    |  264 ++++
  .../dt-bindings/board/am335x-bbw-bbb-base.h   |  103 ++
@@ -46,8 +47,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../dt-bindings/board/k3-j721e-bone-pins.h    |  242 ++++
  include/dt-bindings/clock/dra7.h              |    4 +
  include/dt-bindings/clock/omap5.h             |    2 +
+ include/dt-bindings/pinctrl/k3.h              |    9 +
  include/dt-bindings/pinctrl/omap.h            |    4 +-
- 39 files changed, 5780 insertions(+), 125 deletions(-)
+ 41 files changed, 5849 insertions(+), 125 deletions(-)
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-bone-buses.dtsi
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-no-shared-mem.dts
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
@@ -59,6 +61,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 arch/arm64/boot/dts/ti/overlays/BBAI64-P9_25-ehrpwm4_b.dts
  create mode 100644 arch/arm64/boot/dts/ti/overlays/BBORG_LOAD-00A2.dts
  create mode 100644 arch/arm64/boot/dts/ti/overlays/BBORG_RELAY-00A2.dts
+ create mode 100644 arch/arm64/boot/dts/ti/overlays/BBORG_SERVO-00A2.dts
  create mode 100644 arch/arm64/boot/dts/ti/overlays/BONE-FAN.dts
  create mode 100644 arch/arm64/boot/dts/ti/overlays/BONE-I2C1.dts
  create mode 100644 arch/arm64/boot/dts/ti/overlays/BONE-I2C2.dts
@@ -4393,6 +4396,72 @@ index 000000000000..a71fd48dd4ea
 +	label = "relay4";
 +	default-state = "keep";
 +};
+diff --git a/arch/arm64/boot/dts/ti/overlays/BBORG_SERVO-00A2.dts b/arch/arm64/boot/dts/ti/overlays/BBORG_SERVO-00A2.dts
+new file mode 100644
+index 000000000000..dadb44f2165b
+--- /dev/null
++++ b/arch/arm64/boot/dts/ti/overlays/BBORG_SERVO-00A2.dts
+@@ -0,0 +1,59 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2020 - 2022 Deepak Khatri <lorforlinux@beagleboard.org>
++ *
++ * See Cape Interface Spec page for more info on Bone Buses
++ * https://docs.beagleboard.org/0.0/boards/capes/cape-interface-spec.html#beaglebone-cape-interface-spec
++ *
++ */
++
++/dts-v1/;
++/plugin/;
++
++/*
++ * Helper to show loaded overlays under: /proc/device-tree/chosen/overlays/
++ */
++&{/chosen} {
++	overlays {
++		BBORG_SERVO-00A2 = __TIMESTAMP__;
++	};
++};
++
++/*
++ * Update the default pinmux of the pins.
++ */
++&ocp {
++    P8_12_pinmux { pinctrl-0 = <&P8_12_gpio_pd_pin>; }; /* IN1 */
++    P8_11_pinmux { pinctrl-0 = <&P8_11_gpio_pd_pin>; }; /* IN2 */
++    P9_30_pinmux { pinctrl-0 = <&P9_30_gpio_pd_pin>; }; /* IN3 */
++    P9_27_pinmux { pinctrl-0 = <&P9_27_gpio_pd_pin>; }; /* IN4 */
++    P9_41_pinmux { pinctrl-0 = <&P9_41_gpio_pd_pin>; }; /* IN5 */
++    P9_42_pinmux { pinctrl-0 = <&P9_42_gpio_pd_pin>; }; /* IN6 */
++
++    P9_19_pinmux { pinctrl-0 = <&P9_19_i2c_pin>; }; /* i2c_scl */
++    P9_20_pinmux { pinctrl-0 = <&P9_20_i2c_pin>; }; /* i2c_sda */
++    P8_10_pinmux { pinctrl-0 = <&P8_10_gpio_pin>; }; /* pca9685.enable */
++};
++
++/*
++ * Initiate buses
++ */
++&bone_i2c_2 {
++    status = "okay";
++    pca: pca@70 {
++        compatible = "nxp,pca9685-pwm";
++        #pwm-cells = <2>;
++        reg = <0x70>;
++        label = "pca9685_servo";
++        /* invert; */
++        /* open-drain; */
++    };
++};
++
++&bone_led_P8_10 {
++    status = "okay";
++    label = "pca9685-enable";
++    // pca9685 Chip enable is ACTIVE-LOW but LEDs are set to ACTIVE-HIGH
++    // Set default-state to "off" to enable the pca9685 chip by default.
++    default-state = "off";
++};
+\ No newline at end of file
 diff --git a/arch/arm64/boot/dts/ti/overlays/BONE-FAN.dts b/arch/arm64/boot/dts/ti/overlays/BONE-FAN.dts
 new file mode 100644
 index 000000000000..504524514ed2
@@ -5000,10 +5069,10 @@ index 000000000000..bd71b6f6099e
 +};
 diff --git a/arch/arm64/boot/dts/ti/overlays/Makefile b/arch/arm64/boot/dts/ti/overlays/Makefile
 new file mode 100644
-index 000000000000..c5185f068f0f
+index 000000000000..d45a211012d2
 --- /dev/null
 +++ b/arch/arm64/boot/dts/ti/overlays/Makefile
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,35 @@
 +# Overlays for the BeagleBone platform
 +
 +dtbo-$(CONFIG_ARCH_K3) += \
@@ -5015,6 +5084,7 @@ index 000000000000..c5185f068f0f
 +	BB-I2C2-MPU6050.dtbo \
 +	BBORG_LOAD-00A2.dtbo \
 +	BBORG_RELAY-00A2.dtbo \
++	BBORG_SERVO-00A2.dtbo \
 +	BONE-FAN.dtbo \
 +	BONE-I2C1.dtbo \
 +	BONE-I2C2.dtbo \
@@ -6292,6 +6362,33 @@ index 41775272fd27..90e0d4b00127 100644
  
  /* ipu clocks */
  #define OMAP5_MMU_IPU_CLKCTRL	OMAP5_CLKCTRL_INDEX(0x20)
+diff --git a/include/dt-bindings/pinctrl/k3.h b/include/dt-bindings/pinctrl/k3.h
+index 6bb9df1a264d..469bd29651db 100644
+--- a/include/dt-bindings/pinctrl/k3.h
++++ b/include/dt-bindings/pinctrl/k3.h
+@@ -11,6 +11,7 @@
+ #define PULLUDEN_SHIFT		(16)
+ #define PULLTYPESEL_SHIFT	(17)
+ #define RXACTIVE_SHIFT		(18)
++#define DEBOUNCE_SHIFT		(11)
+ 
+ #define PULL_DISABLE		(1 << PULLUDEN_SHIFT)
+ #define PULL_ENABLE		(0 << PULLUDEN_SHIFT)
+@@ -29,6 +30,14 @@
+ #define PIN_INPUT_PULLUP	(INPUT_EN | PULL_UP)
+ #define PIN_INPUT_PULLDOWN	(INPUT_EN | PULL_DOWN)
+ 
++#define PIN_DEBOUNCE_DISABLE	(0 << DEBOUNCE_SHIFT)
++#define PIN_DEBOUNCE_CONF1	(1 << DEBOUNCE_SHIFT)
++#define PIN_DEBOUNCE_CONF2	(2 << DEBOUNCE_SHIFT)
++#define PIN_DEBOUNCE_CONF3	(3 << DEBOUNCE_SHIFT)
++#define PIN_DEBOUNCE_CONF4	(4 << DEBOUNCE_SHIFT)
++#define PIN_DEBOUNCE_CONF5	(5 << DEBOUNCE_SHIFT)
++#define PIN_DEBOUNCE_CONF6	(6 << DEBOUNCE_SHIFT)
++
+ #define AM62AX_IOPAD(pa, val, muxmode)		(((pa) & 0x1fff)) ((val) | (muxmode))
+ #define AM62AX_MCU_IOPAD(pa, val, muxmode)	(((pa) & 0x1fff)) ((val) | (muxmode))
+ 
 diff --git a/include/dt-bindings/pinctrl/omap.h b/include/dt-bindings/pinctrl/omap.h
 index f48245ff87e5..625718042413 100644
 --- a/include/dt-bindings/pinctrl/omap.h
