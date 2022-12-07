@@ -1,6 +1,6 @@
-From 4983a8ded0dde36f2be15b8e566144adf442c833 Mon Sep 17 00:00:00 2001
+From bfea629fa1470efdc4f4ba9de29a229de305e419 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Sat, 5 Nov 2022 21:08:11 -0500
+Date: Wed, 7 Dec 2022 10:50:51 -0600
 Subject: [PATCH] backports: bluetooth: from: linux.git
 
 Reference: v5.11.22
@@ -12,18 +12,19 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/bluetooth/btintel.h    |   6 +
  drivers/bluetooth/btmtksdio.c  |   6 +-
  drivers/bluetooth/btmtkuart.c  |  13 +-
- drivers/bluetooth/btqca.c      |  63 ++---
+ drivers/bluetooth/btqca.c      |  63 ++--
  drivers/bluetooth/btqca.h      |  22 +-
- drivers/bluetooth/btrtl.c      | 123 +++++----
- drivers/bluetooth/btusb.c      | 478 ++++++++++++++++++++++++++++-----
+ drivers/bluetooth/btrtl.c      | 123 +++++---
+ drivers/bluetooth/btusb.c      | 525 ++++++++++++++++++++++++++-------
  drivers/bluetooth/hci_bcm.c    |   9 +-
  drivers/bluetooth/hci_h5.c     |   1 +
  drivers/bluetooth/hci_intel.c  |   6 +-
+ drivers/bluetooth/hci_ldisc.c  |   7 +-
  drivers/bluetooth/hci_ll.c     |   1 +
- drivers/bluetooth/hci_qca.c    | 125 ++++++---
- drivers/bluetooth/hci_serdev.c |   3 +-
+ drivers/bluetooth/hci_qca.c    | 125 +++++---
+ drivers/bluetooth/hci_serdev.c |   9 +-
  drivers/bluetooth/hci_vhci.c   |   2 -
- 17 files changed, 646 insertions(+), 238 deletions(-)
+ 18 files changed, 662 insertions(+), 282 deletions(-)
 
 diff --git a/drivers/bluetooth/bfusb.c b/drivers/bluetooth/bfusb.c
 index cab93935cc7f..5a321b4076aa 100644
@@ -661,7 +662,7 @@ index 3a9afc905f24..a4f7cace66b0 100644
 +MODULE_FIRMWARE("rtl_bt/rtl8852au_fw.bin");
 +MODULE_FIRMWARE("rtl_bt/rtl8852au_config.bin");
 diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
-index a699e6166aef..3620981e8b1c 100644
+index 6efd981979bd..3620981e8b1c 100644
 --- a/drivers/bluetooth/btusb.c
 +++ b/drivers/bluetooth/btusb.c
 @@ -60,6 +60,7 @@ static struct usb_driver btusb_driver;
@@ -1177,7 +1178,24 @@ index a699e6166aef..3620981e8b1c 100644
  static int btusb_shutdown_intel(struct hci_dev *hdev)
  {
  	struct sk_buff *skb;
-@@ -2877,7 +3197,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2816,7 +3136,6 @@ enum {
+ enum {
+ 	BTMTK_WMT_INVALID,
+ 	BTMTK_WMT_PATCH_UNDONE,
+-	BTMTK_WMT_PATCH_PROGRESS,
+ 	BTMTK_WMT_PATCH_DONE,
+ 	BTMTK_WMT_ON_UNDONE,
+ 	BTMTK_WMT_ON_DONE,
+@@ -2832,7 +3151,7 @@ struct btmtk_wmt_hdr {
+ 
+ struct btmtk_hci_wmt_cmd {
+ 	struct btmtk_wmt_hdr hdr;
+-	u8 data[];
++	u8 data[256];
+ } __packed;
+ 
+ struct btmtk_hci_wmt_evt {
+@@ -2878,7 +3197,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
  		skb = bt_skb_alloc(HCI_WMT_MAX_EVENT_SIZE, GFP_ATOMIC);
  		if (!skb) {
  			hdev->stat.err_rx++;
@@ -1185,7 +1203,7 @@ index a699e6166aef..3620981e8b1c 100644
  			return;
  		}
  
-@@ -2898,7 +3217,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2899,7 +3217,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
  			data->evt_skb = skb_clone(skb, GFP_ATOMIC);
  			if (!data->evt_skb) {
  				kfree_skb(skb);
@@ -1193,7 +1211,7 @@ index a699e6166aef..3620981e8b1c 100644
  				return;
  			}
  		}
-@@ -2907,7 +3225,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2908,7 +3225,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
  		if (err < 0) {
  			kfree_skb(data->evt_skb);
  			data->evt_skb = NULL;
@@ -1201,7 +1219,7 @@ index a699e6166aef..3620981e8b1c 100644
  			return;
  		}
  
-@@ -2918,7 +3235,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2919,7 +3235,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
  			wake_up_bit(&data->flags,
  				    BTUSB_TX_WAIT_VND_EVT);
  		}
@@ -1209,7 +1227,13 @@ index a699e6166aef..3620981e8b1c 100644
  		return;
  	} else if (urb->status == -ENOENT) {
  		/* Avoid suspend failed when usb_kill_urb */
-@@ -2939,7 +3255,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2935,12 +3250,11 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+ 	 * to generate the event. Otherwise, the WMT event cannot return from
+ 	 * the device successfully.
+ 	 */
+-	udelay(500);
++	udelay(100);
+ 
  	usb_anchor_urb(urb, &data->ctrl_anchor);
  	err = usb_submit_urb(urb, GFP_ATOMIC);
  	if (err < 0) {
@@ -1217,7 +1241,12 @@ index a699e6166aef..3620981e8b1c 100644
  		/* -EPERM: urb is being killed;
  		 * -ENODEV: device got disconnected
  		 */
-@@ -3014,6 +3329,11 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
+@@ -3011,53 +3325,35 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
+ 	struct btmtk_hci_wmt_evt_funcc *wmt_evt_funcc;
+ 	u32 hlen, status = BTMTK_WMT_INVALID;
+ 	struct btmtk_hci_wmt_evt *wmt_evt;
+-	struct btmtk_hci_wmt_cmd *wc;
++	struct btmtk_hci_wmt_cmd wc;
  	struct btmtk_wmt_hdr *hdr;
  	int err;
  
@@ -1229,19 +1258,102 @@ index a699e6166aef..3620981e8b1c 100644
  	/* Send the WMT command and wait until the WMT event returns */
  	hlen = sizeof(*hdr) + wmt_params->dlen;
  	if (hlen > 255)
-@@ -3035,11 +3355,6 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
- 		return err;
- 	}
+ 		return -EINVAL;
  
+-	wc = kzalloc(hlen, GFP_KERNEL);
+-	if (!wc)
+-		return -ENOMEM;
+-
+-	hdr = &wc->hdr;
++	hdr = (struct btmtk_wmt_hdr *)&wc;
+ 	hdr->dir = 1;
+ 	hdr->op = wmt_params->op;
+ 	hdr->dlen = cpu_to_le16(wmt_params->dlen + 1);
+ 	hdr->flag = wmt_params->flag;
+-	memcpy(wc->data, wmt_params->data, wmt_params->dlen);
++	memcpy(wc.data, wmt_params->data, wmt_params->dlen);
+ 
+ 	set_bit(BTUSB_TX_WAIT_VND_EVT, &data->flags);
+ 
+-	/* WMT cmd/event doesn't follow up the generic HCI cmd/event handling,
+-	 * it needs constantly polling control pipe until the host received the
+-	 * WMT event, thus, we should require to specifically acquire PM counter
+-	 * on the USB to prevent the interface from entering auto suspended
+-	 * while WMT cmd/event in progress.
+-	 */
+-	err = usb_autopm_get_interface(data->intf);
+-	if (err < 0)
+-		goto err_free_wc;
+-
+-	err = __hci_cmd_send(hdev, 0xfc6f, hlen, wc);
++	err = __hci_cmd_send(hdev, 0xfc6f, hlen, &wc);
+ 
+ 	if (err < 0) {
+ 		clear_bit(BTUSB_TX_WAIT_VND_EVT, &data->flags);
+-		usb_autopm_put_interface(data->intf);
+-		goto err_free_wc;
+-	}
+-
 -	/* Submit control IN URB on demand to process the WMT event */
 -	err = btusb_mtk_submit_wmt_recv_urb(hdev);
--	if (err < 0)
--		return err;
 -
+-	usb_autopm_put_interface(data->intf);
+-
+-	if (err < 0)
+ 		return err;
++	}
+ 
  	/* The vendor specific WMT commands are all answered by a vendor
  	 * specific event and will have the Command Status or Command
- 	 * Complete as with usual HCI command flow control.
-@@ -3503,12 +3818,14 @@ static int btusb_set_bdaddr_wcn6855(struct hci_dev *hdev,
+@@ -3073,14 +3369,13 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
+ 	if (err == -EINTR) {
+ 		bt_dev_err(hdev, "Execution of wmt command interrupted");
+ 		clear_bit(BTUSB_TX_WAIT_VND_EVT, &data->flags);
+-		goto err_free_wc;
++		return err;
+ 	}
+ 
+ 	if (err) {
+ 		bt_dev_err(hdev, "Execution of wmt command timed out");
+ 		clear_bit(BTUSB_TX_WAIT_VND_EVT, &data->flags);
+-		err = -ETIMEDOUT;
+-		goto err_free_wc;
++		return -ETIMEDOUT;
+ 	}
+ 
+ 	/* Parse and handle the return WMT event */
+@@ -3116,8 +3411,7 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
+ err_free_skb:
+ 	kfree_skb(data->evt_skb);
+ 	data->evt_skb = NULL;
+-err_free_wc:
+-	kfree(wc);
++
+ 	return err;
+ }
+ 
+@@ -3259,9 +3553,9 @@ static int btusb_mtk_reg_read(struct btusb_data *data, u32 reg, u32 *val)
+ 	return err;
+ }
+ 
+-static int btusb_mtk_id_get(struct btusb_data *data, u32 reg, u32 *id)
++static int btusb_mtk_id_get(struct btusb_data *data, u32 *id)
+ {
+-	return btusb_mtk_reg_read(data, reg, id);
++	return btusb_mtk_reg_read(data, 0x80000008, id);
+ }
+ 
+ static int btusb_mtk_setup(struct hci_dev *hdev)
+@@ -3279,7 +3573,7 @@ static int btusb_mtk_setup(struct hci_dev *hdev)
+ 
+ 	calltime = ktime_get();
+ 
+-	err = btusb_mtk_id_get(data, 0x80000008, &dev_id);
++	err = btusb_mtk_id_get(data, &dev_id);
+ 	if (err < 0) {
+ 		bt_dev_err(hdev, "Failed to get device id (%d)", err);
+ 		return err;
+@@ -3524,12 +3818,14 @@ static int btusb_set_bdaddr_wcn6855(struct hci_dev *hdev,
  #define QCA_SYSCFG_UPDATED	0x40
  #define QCA_PATCH_UPDATED	0x80
  #define QCA_DFU_TIMEOUT		3000
@@ -1257,7 +1369,7 @@ index a699e6166aef..3620981e8b1c 100644
  	__u8	reserved[4];
  } __packed;
  
-@@ -3600,11 +3917,6 @@ static int btusb_setup_qca_download_fw(struct hci_dev *hdev,
+@@ -3621,11 +3917,6 @@ static int btusb_setup_qca_download_fw(struct hci_dev *hdev,
  	sent += size;
  	count -= size;
  
@@ -1269,7 +1381,7 @@ index a699e6166aef..3620981e8b1c 100644
  	while (count) {
  		size = min_t(size_t, count, QCA_DFU_PACKET_LEN);
  
-@@ -3696,8 +4008,14 @@ static int btusb_setup_qca_load_nvm(struct hci_dev *hdev,
+@@ -3717,8 +4008,14 @@ static int btusb_setup_qca_load_nvm(struct hci_dev *hdev,
  	char fwname[64];
  	int err;
  
@@ -1286,7 +1398,7 @@ index a699e6166aef..3620981e8b1c 100644
  
  	err = request_firmware(&fw, fwname, &hdev->dev);
  	if (err) {
-@@ -3771,6 +4089,11 @@ static int btusb_setup_qca(struct hci_dev *hdev)
+@@ -3792,6 +4089,11 @@ static int btusb_setup_qca(struct hci_dev *hdev)
  			return err;
  	}
  
@@ -1298,7 +1410,7 @@ index a699e6166aef..3620981e8b1c 100644
  	if (!(status & QCA_SYSCFG_UPDATED)) {
  		err = btusb_setup_qca_load_nvm(hdev, &ver, info);
  		if (err < 0)
-@@ -4149,6 +4472,24 @@ static int btusb_probe(struct usb_interface *intf,
+@@ -4170,6 +4472,24 @@ static int btusb_probe(struct usb_interface *intf,
  		set_bit(HCI_QUIRK_NON_PERSISTENT_DIAG, &hdev->quirks);
  	}
  
@@ -1323,7 +1435,7 @@ index a699e6166aef..3620981e8b1c 100644
  	if (id->driver_info & BTUSB_MARVELL)
  		hdev->set_bdaddr = btusb_set_bdaddr_marvell;
  
-@@ -4212,7 +4553,6 @@ static int btusb_probe(struct usb_interface *intf,
+@@ -4233,7 +4553,6 @@ static int btusb_probe(struct usb_interface *intf,
  		 * (DEVICE_REMOTE_WAKEUP)
  		 */
  		set_bit(BTUSB_WAKEUP_DISABLE, &data->flags);
@@ -1389,6 +1501,31 @@ index d5d2feef6c52..b20a40fab83e 100644
  
  	return hci_uart_register_proto(&intel_proto);
  }
+diff --git a/drivers/bluetooth/hci_ldisc.c b/drivers/bluetooth/hci_ldisc.c
+index 726d5c83c550..637c5b8c2aa1 100644
+--- a/drivers/bluetooth/hci_ldisc.c
++++ b/drivers/bluetooth/hci_ldisc.c
+@@ -490,11 +490,6 @@ static int hci_uart_tty_open(struct tty_struct *tty)
+ 		BT_ERR("Can't allocate control structure");
+ 		return -ENFILE;
+ 	}
+-	if (percpu_init_rwsem(&hu->proto_lock)) {
+-		BT_ERR("Can't allocate semaphore structure");
+-		kfree(hu);
+-		return -ENOMEM;
+-	}
+ 
+ 	tty->disc_data = hu;
+ 	hu->tty = tty;
+@@ -507,6 +502,8 @@ static int hci_uart_tty_open(struct tty_struct *tty)
+ 	INIT_WORK(&hu->init_ready, hci_uart_init_work);
+ 	INIT_WORK(&hu->write_work, hci_uart_write_work);
+ 
++	percpu_init_rwsem(&hu->proto_lock);
++
+ 	/* Flush any pending characters in the driver */
+ 	tty_driver_flush_buffer(tty);
+ 
 diff --git a/drivers/bluetooth/hci_ll.c b/drivers/bluetooth/hci_ll.c
 index 8bfe024d1fcd..eb1e736efeeb 100644
 --- a/drivers/bluetooth/hci_ll.c
@@ -1725,19 +1862,24 @@ index eea18aed17f8..de36af63e182 100644
  	cancel_work_sync(&qca->ws_awake_rx);
  
 diff --git a/drivers/bluetooth/hci_serdev.c b/drivers/bluetooth/hci_serdev.c
-index e9a44ab3812d..9e03402ef1b3 100644
+index f2e2e553d4de..9e03402ef1b3 100644
 --- a/drivers/bluetooth/hci_serdev.c
 +++ b/drivers/bluetooth/hci_serdev.c
-@@ -305,8 +305,6 @@ int hci_uart_register_device(struct hci_uart *hu,
- 	if (err)
- 		return err;
+@@ -301,12 +301,9 @@ int hci_uart_register_device(struct hci_uart *hu,
  
--	percpu_init_rwsem(&hu->proto_lock);
+ 	serdev_device_set_client_ops(hu->serdev, &hci_serdev_client_ops);
+ 
+-	if (percpu_init_rwsem(&hu->proto_lock))
+-		return -ENOMEM;
 -
+ 	err = serdev_device_open(hu->serdev);
+ 	if (err)
+-		goto err_rwsem;
++		return err;
+ 
  	err = p->open(hu);
  	if (err)
- 		goto err_open;
-@@ -329,6 +327,7 @@ int hci_uart_register_device(struct hci_uart *hu,
+@@ -330,6 +327,7 @@ int hci_uart_register_device(struct hci_uart *hu,
  
  	INIT_WORK(&hu->init_ready, hci_uart_init_work);
  	INIT_WORK(&hu->write_work, hci_uart_write_work);
@@ -1745,6 +1887,22 @@ index e9a44ab3812d..9e03402ef1b3 100644
  
  	/* Only when vendor specific setup callback is provided, consider
  	 * the manufacturer information valid. This avoids filling in the
+@@ -376,8 +374,6 @@ int hci_uart_register_device(struct hci_uart *hu,
+ 	p->close(hu);
+ err_open:
+ 	serdev_device_close(hu->serdev);
+-err_rwsem:
+-	percpu_free_rwsem(&hu->proto_lock);
+ 	return err;
+ }
+ EXPORT_SYMBOL_GPL(hci_uart_register_device);
+@@ -399,6 +395,5 @@ void hci_uart_unregister_device(struct hci_uart *hu)
+ 		clear_bit(HCI_UART_PROTO_READY, &hu->flags);
+ 		serdev_device_close(hu->serdev);
+ 	}
+-	percpu_free_rwsem(&hu->proto_lock);
+ }
+ EXPORT_SYMBOL_GPL(hci_uart_unregister_device);
 diff --git a/drivers/bluetooth/hci_vhci.c b/drivers/bluetooth/hci_vhci.c
 index 8469f9876dd2..8ab26dec5f6e 100644
 --- a/drivers/bluetooth/hci_vhci.c

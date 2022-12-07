@@ -1,11 +1,11 @@
-From 3ebe93e623410bfe7eca19b1c6edec04d0d1168b Mon Sep 17 00:00:00 2001
+From b6394e7b5cbfacc3dcb837091015316d659c0a81 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 6 Dec 2022 09:30:37 -0600
+Date: Wed, 7 Dec 2022 10:39:35 -0600
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v5.10.x-ti-unified
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v5.10.x-ti-unified-staging
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/3385f4979289b1acd88b5b010c75303a1c985f1b
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/96f0b006e869da9eaa55a3b81dc3c44a021b85ab
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm64/boot/dts/ti/Makefile               |    2 +
@@ -47,9 +47,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../dt-bindings/board/k3-j721e-bone-pins.h    |  242 ++++
  include/dt-bindings/clock/dra7.h              |    4 +
  include/dt-bindings/clock/omap5.h             |    2 +
- include/dt-bindings/pinctrl/k3.h              |    9 +
  include/dt-bindings/pinctrl/omap.h            |    4 +-
- 41 files changed, 5849 insertions(+), 125 deletions(-)
+ 40 files changed, 5840 insertions(+), 125 deletions(-)
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-bone-buses.dtsi
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-no-shared-mem.dts
  create mode 100644 arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
@@ -85,10 +84,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 include/dt-bindings/board/k3-j721e-bone-pins.h
 
 diff --git a/arch/arm64/boot/dts/ti/Makefile b/arch/arm64/boot/dts/ti/Makefile
-index 457b5275b1e2..072aca03b911 100644
+index 4ede8b55249b..d77d9e6f906e 100644
 --- a/arch/arm64/boot/dts/ti/Makefile
 +++ b/arch/arm64/boot/dts/ti/Makefile
-@@ -80,3 +80,5 @@ dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-2.dtbo
+@@ -88,3 +88,5 @@ dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-2.dtbo
  dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-3.dtbo
  
  dtb-$(CONFIG_ARCH_K3) += k3-am62a7-sk.dtb
@@ -3519,7 +3518,7 @@ index 000000000000..e55303c93d78
 +	status = "disabled";
 +};
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts b/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts
-index d9fc06f398da..ead41fb2a928 100644
+index 72f37f447f78..77d6f18f8687 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-common-proc-board.dts
 @@ -288,13 +288,6 @@ J721E_IOPAD(0x22c, PIN_INPUT_PULLUP, 0) /* (AA6) I2C1_SDA */
@@ -3661,10 +3660,10 @@ index d9fc06f398da..ead41fb2a928 100644
  	/* Confiure AUDIO_EXT_REFCLK2 pin as output */
  	pinctrl-names = "default";
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi b/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
-index a561e30fb148..41b41dfb548e 100644
+index 6e1229e1a51b..71e207abb178 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-main.dtsi
-@@ -1662,6 +1662,23 @@ dp0_ports: ports {
+@@ -1661,6 +1661,23 @@ dp0_ports: ports {
  		};
  	};
  
@@ -3688,7 +3687,7 @@ index a561e30fb148..41b41dfb548e 100644
  	dss: dss@4a00000 {
  		compatible = "ti,j721e-dss";
  		reg =
-@@ -2809,4 +2826,16 @@ dphy1: phy@4590000 {
+@@ -2808,4 +2825,16 @@ dphy1: phy@4590000 {
  		#phy-cells = <0>;
  		power-domains = <&k3_pds 148 TI_SCI_PD_EXCLUSIVE>;
  	};
@@ -6362,33 +6361,6 @@ index 41775272fd27..90e0d4b00127 100644
  
  /* ipu clocks */
  #define OMAP5_MMU_IPU_CLKCTRL	OMAP5_CLKCTRL_INDEX(0x20)
-diff --git a/include/dt-bindings/pinctrl/k3.h b/include/dt-bindings/pinctrl/k3.h
-index 6bb9df1a264d..469bd29651db 100644
---- a/include/dt-bindings/pinctrl/k3.h
-+++ b/include/dt-bindings/pinctrl/k3.h
-@@ -11,6 +11,7 @@
- #define PULLUDEN_SHIFT		(16)
- #define PULLTYPESEL_SHIFT	(17)
- #define RXACTIVE_SHIFT		(18)
-+#define DEBOUNCE_SHIFT		(11)
- 
- #define PULL_DISABLE		(1 << PULLUDEN_SHIFT)
- #define PULL_ENABLE		(0 << PULLUDEN_SHIFT)
-@@ -29,6 +30,14 @@
- #define PIN_INPUT_PULLUP	(INPUT_EN | PULL_UP)
- #define PIN_INPUT_PULLDOWN	(INPUT_EN | PULL_DOWN)
- 
-+#define PIN_DEBOUNCE_DISABLE	(0 << DEBOUNCE_SHIFT)
-+#define PIN_DEBOUNCE_CONF1	(1 << DEBOUNCE_SHIFT)
-+#define PIN_DEBOUNCE_CONF2	(2 << DEBOUNCE_SHIFT)
-+#define PIN_DEBOUNCE_CONF3	(3 << DEBOUNCE_SHIFT)
-+#define PIN_DEBOUNCE_CONF4	(4 << DEBOUNCE_SHIFT)
-+#define PIN_DEBOUNCE_CONF5	(5 << DEBOUNCE_SHIFT)
-+#define PIN_DEBOUNCE_CONF6	(6 << DEBOUNCE_SHIFT)
-+
- #define AM62AX_IOPAD(pa, val, muxmode)		(((pa) & 0x1fff)) ((val) | (muxmode))
- #define AM62AX_MCU_IOPAD(pa, val, muxmode)	(((pa) & 0x1fff)) ((val) | (muxmode))
- 
 diff --git a/include/dt-bindings/pinctrl/omap.h b/include/dt-bindings/pinctrl/omap.h
 index f48245ff87e5..625718042413 100644
 --- a/include/dt-bindings/pinctrl/omap.h
