@@ -538,7 +538,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.155"
+	backport_tag="v5.10.157"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -559,7 +559,7 @@ backports () {
 		#${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
 
-	backport_tag="v5.15.77"
+	backport_tag="v5.15.81"
 
 	subsystem="pinmux"
 	#regenerate="enable"
@@ -575,7 +575,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v6.0.10"
+	backport_tag="v6.0.11"
 
 	subsystem="it66121"
 	#regenerate="enable"
@@ -669,7 +669,7 @@ drivers
 packaging () {
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.19.17"
+		backport_tag="v6.0.11"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
