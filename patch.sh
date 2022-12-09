@@ -660,6 +660,7 @@ drivers () {
 	dir 'lincolntech'
 	dir 'tidss_dispc'
 	dir 'tidss'
+	dir 'tidss_wip'
 }
 
 ###

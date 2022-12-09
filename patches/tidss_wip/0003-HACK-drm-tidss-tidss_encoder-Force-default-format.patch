@@ -1,0 +1,55 @@
+From d9b18fbb504a7875ce18ed7cc33efd9a6c02d1cb Mon Sep 17 00:00:00 2001
+From: Nishanth Menon <nm@ti.com>
+Date: Thu, 13 Oct 2022 03:17:14 -0500
+Subject: [PATCH 3/4] HACK: drm/tidss: tidss_encoder: Force default format
+
+This takes a leaf from drivers/gpu/drm/rockchip/rockchip_rgb.c
+
+This is a bit of a chicken or hen issue at this point. when the call chain
+looks like this:
+tidss_atomic_check
+drm_atomic_check_only
+drm_atomic_commit
+drm_client_modeset_commit_atomic
+drm_client_modeset_commit_locked
+drm_client_modeset_commit
+drm_fb_helper_set_par
+fbcon_init
+visual_init
+
+The bridge_attach is invoked, but bridge_enable is NOT invoked yet, at
+this stage, we cannot really confirm the display format.
+
+So, it begs the question - what do others do? why do they work?
+
+Signed-off-by: Nishanth Menon <nm@ti.com>
+---
+ drivers/gpu/drm/tidss/tidss_encoder.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/gpu/drm/tidss/tidss_encoder.c b/drivers/gpu/drm/tidss/tidss_encoder.c
+index d51f842917af..e549c0653c17 100644
+--- a/drivers/gpu/drm/tidss/tidss_encoder.c
++++ b/drivers/gpu/drm/tidss/tidss_encoder.c
+@@ -43,13 +43,13 @@ static int tidss_encoder_atomic_check(struct drm_encoder *encoder,
+ 	}
+ 
+ 	if (!di->bus_formats || di->num_bus_formats == 0)  {
+-		dev_err(ddev->dev, "%s: No bus_formats in connected display\n",
++		dev_err(ddev->dev, "%s: No bus_formats in connected display - force RGB888_1X24\n",
+ 			__func__);
+-		return -EINVAL;
++		tcrtc_state->bus_format = MEDIA_BUS_FMT_RGB888_1X24;
++	} else {
++		// XXX any cleaner way to set bus format and flags?
++		tcrtc_state->bus_format = di->bus_formats[0];
+ 	}
+-
+-	// XXX any cleaner way to set bus format and flags?
+-	tcrtc_state->bus_format = di->bus_formats[0];
+ 	if (!bus_flags_set)
+ 		tcrtc_state->bus_flags = di->bus_flags;
+ 
+-- 
+2.30.2
+

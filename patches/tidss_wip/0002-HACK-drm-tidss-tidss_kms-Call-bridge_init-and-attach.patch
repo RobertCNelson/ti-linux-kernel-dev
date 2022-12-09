@@ -1,0 +1,55 @@
+From 034896fedb4846bd5e0dcb00c9632fdbecdc1fe7 Mon Sep 17 00:00:00 2001
+From: Nishanth Menon <nm@ti.com>
+Date: Thu, 13 Oct 2022 03:22:11 -0500
+Subject: [PATCH 2/4] HACK: drm/tidss: tidss_kms: Call bridge_init and attach
+ encoder
+
+This takes a leaf from drivers/gpu/drm/rockchip/rockchip_rgb.c
+
+Most of the bridge drivers seem to invoke connector_init and
+attach_encoder in the modeset_init function. this seems to let the DRM
+framework call the necessary hooks to get the bridges to probe
+successfully.
+
+This might imply our DSS drivers are'nt compatible with quite a many
+bridges out there.. this needs to be dug in deeper.
+
+The current hack is introduced solely for AM625 - unfortunately, that
+also means that drivers like SK Sii9022 wont work.
+
+Signed-off-by: Nishanth Menon <nm@ti.com>
+---
+ drivers/gpu/drm/tidss/tidss_kms.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/drivers/gpu/drm/tidss/tidss_kms.c b/drivers/gpu/drm/tidss/tidss_kms.c
+index 5962d1388e03..6189005a12c5 100644
+--- a/drivers/gpu/drm/tidss/tidss_kms.c
++++ b/drivers/gpu/drm/tidss/tidss_kms.c
+@@ -234,6 +234,23 @@ static int tidss_dispc_modeset_init(struct tidss_device *tidss)
+ 			dev_err(tidss->dev, "bridge attach failed: %d\n", ret);
+ 			return ret;
+ 		}
++
++		if (dispc_get_subrev(tidss->dispc) == DISPC_AM625) {
++			connector = drm_bridge_connector_init(ddev, enc);
++			if (IS_ERR(connector)) {
++				dev_err(tidss->dev,
++					"failed to initialize bridge connector: %pe\n",
++					connector);
++				return PTR_ERR(connector);
++			}
++
++			ret = drm_connector_attach_encoder(connector, enc);
++			if (ret < 0) {
++				dev_err(tidss->dev,
++					"failed to attach encoder: %d\n", ret);
++				return ret;
++			}
++		}
+ 	}
+ 
+ 	/* create overlay planes of the leftover planes */
+-- 
+2.30.2
+
