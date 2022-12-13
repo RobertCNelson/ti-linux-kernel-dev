@@ -661,6 +661,7 @@ drivers () {
 	dir 'tidss_dispc'
 	dir 'tidss'
 	dir 'tidss_wip'
+	dir 'led'
 }
 
 ###
