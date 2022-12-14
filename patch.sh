@@ -662,6 +662,7 @@ drivers () {
 	dir 'tidss'
 	dir 'tidss_wip'
 	dir 'led'
+	dir 'ov5640'
 }
 
 ###
