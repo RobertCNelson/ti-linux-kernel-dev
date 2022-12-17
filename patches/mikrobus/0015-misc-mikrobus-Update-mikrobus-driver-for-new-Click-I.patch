@@ -1,0 +1,618 @@
+From 0fcdef1dd83141cf6d3922e94f1f492b42f9088f Mon Sep 17 00:00:00 2001
+From: Vaishnav Achath <vaishnav@beagleboard.org>
+Date: Sat, 17 Dec 2022 17:25:20 +0530
+Subject: [PATCH 15/15] misc: mikrobus: Update mikrobus driver for new Click ID
+ EEPROM
+
+The latest mikrobus Click ID EEPROM has custome family code DS28E36
+EEPROMs, this commit adds support for that and also fixes the following
+issues:
+* Failing to get gpio array (due -EPROBEDEFER was logged as error, but is
+not fatal)
+* W1 master continously performs W1 search which causes stray W1 devices
+to be detected due to noise, fix that by decreasing the search count.
+
+Signed-off-by: Vaishnav Achath <vaishnav.a@ti.com>
+---
+ drivers/misc/mikrobus/mikrobus_core.c     | 125 ++---------
+ drivers/misc/mikrobus/mikrobus_id.c       | 260 ++++++++++++----------
+ drivers/misc/mikrobus/mikrobus_manifest.c |   8 +-
+ 3 files changed, 163 insertions(+), 230 deletions(-)
+
+diff --git a/drivers/misc/mikrobus/mikrobus_core.c b/drivers/misc/mikrobus/mikrobus_core.c
+index f69176fc5d4e..ac9d7ff5d5bd 100644
+--- a/drivers/misc/mikrobus/mikrobus_core.c
++++ b/drivers/misc/mikrobus/mikrobus_core.c
+@@ -45,6 +45,8 @@
+ 
+ #include "mikrobus_manifest.h"
+ 
++#define MIKROBUS_ID_EEPROM_MANIFEST_ADDR	0x20
++
+ static DEFINE_MUTEX(core_lock);
+ static DEFINE_IDR(mikrobus_port_idr);
+ static struct class_compat *mikrobus_port_compat_class;
+@@ -65,12 +67,13 @@ int mikrobus_port_scan_eeprom(struct mikrobus_port *port)
+ 	int manifest_size;
+ 	char header[12];
+ 	int retval;
++	uint16_t manifest_start_addr = MIKROBUS_ID_EEPROM_MANIFEST_ADDR;
+ 	char *buf;
+ 
+ 	if(port->skip_scan)
+ 		return -EINVAL;
+ 
+-	retval = nvmem_device_read(port->eeprom, 0, 12, header);
++	retval = nvmem_device_read(port->eeprom, manifest_start_addr, 12, header);
+ 	if (retval != 12) {
+ 		dev_err(&port->dev, "failed to fetch manifest header %d\n",
+ 			retval);
+@@ -85,7 +88,7 @@ int mikrobus_port_scan_eeprom(struct mikrobus_port *port)
+ 	buf = kzalloc(manifest_size, GFP_KERNEL);
+ 	if (!buf)
+ 		return -ENOMEM;
+-	retval = nvmem_device_read(port->eeprom, 0, manifest_size, buf);
++	retval = nvmem_device_read(port->eeprom, manifest_start_addr, manifest_size, buf);
+ 	if (retval != manifest_size) {
+ 		dev_err(&port->dev, "failed to fetch manifest %d\n", retval);
+ 		retval = -EINVAL;
+@@ -97,7 +100,8 @@ int mikrobus_port_scan_eeprom(struct mikrobus_port *port)
+ 		goto err_free_buf;
+ 	}
+ 	w1_reset_bus(port->w1_master);
+-	w1_write_8(port->w1_master, MIKROBUS_EEPROM_EXIT_ID_CMD);
++	/* set RST HIGH */
++	gpiod_direction_output(port->gpios->desc[MIKROBUS_PIN_RST], 1);
+ 	set_bit(W1_ABORT_SEARCH, &port->w1_master->flags);
+ 	INIT_LIST_HEAD(&board->manifest_descs);
+ 	INIT_LIST_HEAD(&board->devices);
+@@ -167,94 +171,6 @@ static ssize_t new_device_store(struct device *dev, struct device_attribute *att
+ }
+ static DEVICE_ATTR_WO(new_device);
+ 
+-static ssize_t rescan_store(struct device *dev, struct device_attribute *attr,
+-							const char *buf, size_t count)
+-{
+-	struct mikrobus_port *port = to_mikrobus_port(dev);
+-	unsigned long id;
+-	int retval;
+-	int i;
+-
+-	if (kstrtoul(buf, 0, &id)) {
+-		dev_err(dev, "cannot parse trigger\n");
+-		return -EINVAL;
+-	}
+-	if (port->board) {
+-		dev_err(dev, "already has board registered\n");
+-		return -EBUSY;
+-	}
+-
+-	if (!port->w1_master){
+-		return mikrobus_port_id_eeprom_probe(port);
+-	}
+-	/* Enter ID Mode */
+-	sprintf(port->pinctrl_selected[MIKROBUS_PINCTRL_SPI], "%s_%s",
+-			MIKROBUS_PINCTRL_STR[MIKROBUS_PINCTRL_SPI], MIKROBUS_PINCTRL_STATE_GPIO);
+-
+-	retval = mikrobus_port_pinctrl_select(port);
+-	/* set MOSI LOW, SCK HIGH */
+-	gpiod_direction_output(port->gpios->desc[MIKROBUS_PIN_MOSI], 0);
+-	gpiod_direction_output(port->gpios->desc[MIKROBUS_PIN_SCK], 1);
+-	msleep(100);
+-	for( i = 0; i < 4; i++){
+-		gpiod_set_value(port->gpios->desc[MIKROBUS_PIN_MOSI] , 1);
+-		udelay(1000);
+-		gpiod_set_value(port->gpios->desc[MIKROBUS_PIN_MOSI] , 0);
+-		udelay(1000);
+-	}
+-	msleep(100); /* temporary delay to fix ROM ID copy */
+-
+-	port->skip_scan = 0;
+-	retval = mikrobus_port_scan_eeprom(port);
+-	if (retval) {
+-		dev_err(dev, "board register from manifest failed\n");
+-		return -EINVAL;
+-	}
+-	return count;
+-}
+-static DEVICE_ATTR_WO(rescan);
+-
+-static ssize_t idmode_store(struct device *dev, struct device_attribute *attr,
+-							const char *buf, size_t count)
+-{
+-	struct mikrobus_port *port = to_mikrobus_port(dev);
+-	unsigned long id;
+-	int retval;
+-	int i;
+-
+-	if (kstrtoul(buf, 0, &id)) {
+-		dev_err(dev, "cannot parse trigger\n");
+-		return -EINVAL;
+-	}
+-	if (port->board) {
+-		dev_err(dev, "already has board registered\n");
+-		return -EBUSY;
+-	}
+-
+-	if (!port->w1_master){
+-		return mikrobus_port_id_eeprom_probe(port);
+-	}
+-	/* Enter ID Mode */
+-	sprintf(port->pinctrl_selected[MIKROBUS_PINCTRL_SPI], "%s_%s",
+-			MIKROBUS_PINCTRL_STR[MIKROBUS_PINCTRL_SPI], MIKROBUS_PINCTRL_STATE_GPIO);
+-
+-	retval = mikrobus_port_pinctrl_select(port);
+-	/* set MOSI LOW, SCK HIGH */
+-	gpiod_direction_output(port->gpios->desc[MIKROBUS_PIN_MOSI], 0);
+-	gpiod_direction_output(port->gpios->desc[MIKROBUS_PIN_SCK], 1);
+-	msleep(100);
+-	for( i = 0; i < 4; i++){
+-		gpiod_set_value(port->gpios->desc[MIKROBUS_PIN_MOSI] , 1);
+-		udelay(1000);
+-		gpiod_set_value(port->gpios->desc[MIKROBUS_PIN_MOSI] , 0);
+-		udelay(1000);
+-	}
+-	msleep(100); /* temporary delay to fix ROM ID copy */
+-	port->skip_scan = 1;
+-	return count;
+-}
+-static DEVICE_ATTR_WO(idmode);
+-
+ static ssize_t delete_device_store(struct device *dev, struct device_attribute *attr,
+ 							const char *buf, size_t count)
+ {
+@@ -275,8 +191,7 @@ static ssize_t delete_device_store(struct device *dev, struct device_attribute *
+ static DEVICE_ATTR_IGNORE_LOCKDEP(delete_device, 0200, NULL, delete_device_store);
+ 
+ static struct attribute *mikrobus_port_attrs[] = {
+-	&dev_attr_new_device.attr, &dev_attr_rescan.attr, &dev_attr_idmode.attr,
+-	&dev_attr_delete_device.attr, &dev_attr_name.attr, NULL};
++	&dev_attr_new_device.attr, &dev_attr_delete_device.attr, &dev_attr_name.attr, NULL};
+ ATTRIBUTE_GROUPS(mikrobus_port);
+ 
+ static void mikrobus_port_release(struct device *dev)
+@@ -330,7 +245,7 @@ int mikrobus_port_pinctrl_select(struct mikrobus_port *port)
+ 						port->pinctrl_selected[i]);
+ 		if (!IS_ERR(state)) {
+ 			retval = pinctrl_select_state(port->pinctrl, state);
+-			pr_info("setting pinctrl %s\n",
++			pr_debug("setting pinctrl %s\n",
+ 					port->pinctrl_selected[i]);
+ 			if (retval != 0) {
+ 				dev_err(&port->dev, "failed to select state %s\n",
+@@ -646,6 +561,7 @@ int mikrobus_board_register(struct mikrobus_port *port,	struct addon_board_info
+ 			if (retval)
+ 				dev_err(&port->dev, "failed to setup gpio %d, state %d",
+ 									i, board->pin_state[i]);
++			gpiochip_free_own_desc(port->gpios->desc[i]);
+ 		}
+ 	}
+ 	list_for_each_entry_safe(devinfo, next, &board->devices, links)
+@@ -680,7 +596,6 @@ static int mikrobus_port_id_eeprom_probe(struct mikrobus_port *port)
+ 	char devname[MIKROBUS_NAME_SIZE];
+ 	char drvname[MIKROBUS_NAME_SIZE] = "w1-gpio";
+ 	int retval;
+-	int i;
+ 
+ 	mikrobus_id_eeprom_w1_device = kzalloc(sizeof(*mikrobus_id_eeprom_w1_device), GFP_KERNEL);
+ 	if (!mikrobus_id_eeprom_w1_device)
+@@ -698,17 +613,8 @@ static int mikrobus_port_id_eeprom_probe(struct mikrobus_port *port)
+ 			MIKROBUS_PINCTRL_STR[MIKROBUS_PINCTRL_SPI], MIKROBUS_PINCTRL_STATE_GPIO);
+ 
+ 	retval = mikrobus_port_pinctrl_select(port);
+-	/* set MOSI LOW, SCK HIGH */
+-	gpiod_direction_output(port->gpios->desc[MIKROBUS_PIN_MOSI], 0);
+-	gpiod_direction_output(port->gpios->desc[MIKROBUS_PIN_SCK], 1);
+-	msleep(100);
+-	for( i = 0; i < 4; i++){
+-		gpiod_set_value(port->gpios->desc[MIKROBUS_PIN_MOSI] , 1);
+-		udelay(1000);
+-		gpiod_set_value(port->gpios->desc[MIKROBUS_PIN_MOSI] , 0);
+-		udelay(1000);
+-	}
+-	msleep(100); /* temporary delay to fix ROM ID copy */
++	/* set RST LOW */
++	gpiod_direction_output(port->gpios->desc[MIKROBUS_PIN_RST], 0);
+ 
+ 	lookup = kzalloc(struct_size(lookup, table, 1),
+ 					GFP_KERNEL);
+@@ -724,6 +630,7 @@ static int mikrobus_port_id_eeprom_probe(struct mikrobus_port *port)
+ 	lookup->table[0].flags = GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN;
+ 	lookup->table[0].chip_hwnum = mikrobus_gpio_hwnum_get(port,
+ 						MIKROBUS_PIN_CS);
++	gpiochip_free_own_desc(port->gpios->desc[MIKROBUS_PIN_CS]);
+ 	gpiod_add_lookup_table(lookup);
+ 	platform_device_register(mikrobus_id_eeprom_w1_device);
+ 	port->w1_gpio = mikrobus_id_eeprom_w1_device;
+@@ -737,6 +644,7 @@ static int mikrobus_port_id_eeprom_probe(struct mikrobus_port *port)
+ 			kfree(lookup);
+ 			return -ENODEV;
+ 		}
++		port->w1_master->search_count = 4;
+ 	}
+ 	return 0;
+ }
+@@ -837,7 +745,6 @@ int mikrobus_port_gb_register(struct gbphy_host *host, void *manifest_blob, size
+ 	struct gb_connection *spi_connection;
+ 	struct gb_gpio_controller *ggc;
+ 	struct mikrobus_port *port;
+-	struct gpio_desc *desc;
+ 	struct gpio_descs *descs;
+ 	int retval;
+ 
+@@ -848,7 +755,7 @@ int mikrobus_port_gb_register(struct gbphy_host *host, void *manifest_blob, size
+ 	if (!port)
+ 		return -ENOMEM;
+ 
+-	pr_info("mikrobus gb_probe , num cports= %zu, manifest_size %u \n", bundle->num_cports, manifest_size);
++	pr_info("mikrobus gb_probe , num cports= %zu, manifest_size %lu \n", bundle->num_cports, manifest_size);
+ 	list_for_each_entry_safe(gbphy_dev, temp, &host->devices, list) {
+ 		pr_info("protocol added %d", gbphy_dev->cport_desc->protocol_id);
+ 		if(gbphy_dev->cport_desc->protocol_id != GREYBUS_PROTOCOL_I2C && 
+@@ -996,7 +903,7 @@ static int mikrobus_port_probe(struct platform_device *pdev)
+ 	port->gpios = gpiod_get_array(dev, "mikrobus", GPIOD_OUT_LOW);
+ 	if (IS_ERR(port->gpios)) {
+ 		retval = PTR_ERR(port->gpios);
+-		dev_err(dev, "failed to get gpio array [%d]\n", retval);
++		dev_dbg(dev, "failed to get gpio array [%d]\n", retval);
+ 		goto err_port;
+ 	}
+ 	port->pinctrl = devm_pinctrl_get(dev);
+diff --git a/drivers/misc/mikrobus/mikrobus_id.c b/drivers/misc/mikrobus/mikrobus_id.c
+index 183de02cd74f..6feb992a5bad 100644
+--- a/drivers/misc/mikrobus/mikrobus_id.c
++++ b/drivers/misc/mikrobus/mikrobus_id.c
+@@ -6,158 +6,166 @@
+ 
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+-#include <linux/moduleparam.h>
+ #include <linux/device.h>
+ #include <linux/types.h>
+ #include <linux/delay.h>
+-
++#include <linux/crc16.h>
+ #include <linux/w1.h>
+ #include <linux/nvmem-provider.h>
+ 
+ #include <linux/mikrobus.h>
+ 
+-#define W1_EEPROM_MIKROBUS_ID	0xAC
+-
+-#define W1_MIKROBUS_ID_EEPROM_SIZE	1536
+-#define W1_MIKROBUS_ID_EEPROM_SCRATCH_SIZE	32
+-#define W1_MIKROBUS_ID_EEPROM_VERIFY_SCRATCH_SIZE	35
+-#define W1_MIKROBUS_ID_READ_EEPROM	0xF0
++#define W1_EEPROM_MIKROBUS_ID				0xCC
++#define W1_MIKROBUS_ID_EEPROM_SIZE	 		0x0200
++#define W1_MIKROBUS_ID_EEPROM_PAGE_SIZE		32
++#define W1_MIKROBUS_ID_READ_EEPROM 			0x69
++#define W1_MIKROBUS_ID_WRITE_EEPROM 		0x96
++#define W1_MIKROBUS_ID_RELEASE_EEPROM 		0xAA
+ #define W1_MIKROBUS_ID_EEPROM_READ_RETRIES	10
+-#define W1_MIKROBUS_ID_EEPROM_WRITE_RETRIES	5
+-#define W1_MIKROBUS_ID_EEPROM_WRITE_SCRATCH	0x0F
+-#define W1_MIKROBUS_ID_EEPROM_READ_SCRATCH	0xAA
+-#define W1_MIKROBUS_ID_EEPROM_COPY_SCRATCH	0x55
+-#define W1_MIKROBUS_ID_EEPROM_COPY_SCRATCH_ES	0x40
+-#define W1_MIKROBUS_ID_EEPROM_TPROG_MS		20
+ 
+-static int w1_mikrobus_id_readblock(struct w1_slave *sl, int off, int count, char *buf)
++#define W1_MIKROBUS_EEPROM_MANIFEST_START_PAGE	1
++
++static ssize_t mikrobus_manifest_store(struct device *device,
++			    				 struct device_attribute *attr,
++			    				 const char *buf, size_t count)
+ {
+-	u8 wrbuf[3];
+-	u8 *cmp;
+-	int tries = W1_MIKROBUS_ID_EEPROM_READ_RETRIES;
+-	
+-	do {
+-		wrbuf[0] = W1_MIKROBUS_ID_READ_EEPROM;
+-		wrbuf[1] = count >> 8;
+-		wrbuf[2] = count & 0xFF;
++	u8 status = 0;
++	u16 pos = 0, crc, crc_read;
++	int cnt;
+ 
+-		if (w1_reset_select_slave(sl))
+-				return -1;
+-		w1_write_block(sl->master, wrbuf, 3);
+-		w1_read_block(sl->master, buf, count);
++	u8  write_request[] = { W1_MIKROBUS_ID_WRITE_EEPROM,
++	 						W1_MIKROBUS_EEPROM_MANIFEST_START_PAGE};
++	u8  release_command = W1_MIKROBUS_ID_RELEASE_EEPROM;
++
++	struct w1_slave *sl = dev_to_w1_slave(device);
+ 
++	if (count > W1_MIKROBUS_ID_EEPROM_SIZE)
++		return -ENOMEM;
++
++	mutex_lock(&sl->master->bus_mutex);
++
++	pr_info("mikrobus_id: writing manifest size = %lu bytes", count);
++	while (pos < count)
++	{		
+ 		if (w1_reset_select_slave(sl))
+-				return -1;
+-		cmp = kzalloc(count, GFP_KERNEL);
+-		if (!cmp)
+-			return -ENOMEM;
+-		w1_write_block(sl->master, wrbuf, 3);
+-		w1_read_block(sl->master, cmp, count);
+-		if (!memcmp(cmp, buf, count)){
+-			kfree(cmp);
+-			return 0;
++			break;
++		
++		w1_write_block(sl->master, write_request, sizeof(write_request));
++		crc = crc16(0, write_request, sizeof(write_request)) ^ 0xFFFF;
++		w1_read_block(sl->master, (u8*)&crc_read, sizeof(crc_read));
++
++		if (crc != crc_read)
++			break;
++
++		for (cnt = 0; cnt < W1_MIKROBUS_ID_EEPROM_PAGE_SIZE; cnt++)
++		{
++			w1_write_8(sl->master, (u8)buf[cnt]);
+ 		}
+-	} while (--tries);
++		crc = crc16(0, buf, W1_MIKROBUS_ID_EEPROM_PAGE_SIZE) ^ 0xFFFF;
++		msleep(1);
++		w1_read_block(sl->master, (u8*)&crc_read, sizeof(crc_read));
+ 
+-	dev_err(&sl->dev, "proof reading failed %d times\n",
+-			W1_MIKROBUS_ID_EEPROM_READ_RETRIES);
+-	kfree(cmp);
+-	return -EIO;
++		if (crc != crc_read)
++			break;
++
++		w1_write_8(sl->master, release_command);
++
++		msleep(10);
++
++		status = w1_read_8(sl->master);
++		w1_read_block(sl->master, (u8*)&crc_read, sizeof(crc_read));
++		crc = crc16(0, (u8*)&release_command, sizeof(release_command)) ^ 0xFFFF;
++
++		if (status != W1_MIKROBUS_ID_RELEASE_EEPROM)
++			break;
++
++		if (crc != crc_read)
++			break;	
++		
++		buf += W1_MIKROBUS_ID_EEPROM_PAGE_SIZE;
++		pos += W1_MIKROBUS_ID_EEPROM_PAGE_SIZE;
++		write_request[1]++;
++	}
++	pr_info("mikrobus_id: manifest written bytes: %d", pos);
++	mutex_unlock(&sl->master->bus_mutex);
++	
++	return count > pos ? count : pos;
+ }
++static DEVICE_ATTR_WO(mikrobus_manifest);
++
++static struct attribute *w1_mikrobus_attrs[] = {
++	&dev_attr_mikrobus_manifest.attr,
++	NULL
++};
++
++ATTRIBUTE_GROUPS(w1_mikrobus);
+ 
+-static int w1_mikrobus_id_movescratch(struct w1_slave *sl, int addr, char *buf)
++static int w1_mikrobus_id_readpage(struct w1_slave *sl, int pageaddr, char *buf)
+ {
+-	u8 wrbuf[4];
+-	u8 scratchpad_verify[W1_MIKROBUS_ID_EEPROM_VERIFY_SCRATCH_SIZE];
+-	u8 write_scratchpad_crc[2];
+-	int verify_status;
+-	int tries;
+-
+-	wrbuf[0] = W1_MIKROBUS_ID_EEPROM_WRITE_SCRATCH;
+-	wrbuf[1] = addr >> 8;
+-	wrbuf[2] = addr & 0xFF;
+-
+-	tries = W1_MIKROBUS_ID_EEPROM_WRITE_RETRIES;
+-	do {
+-		if (w1_reset_select_slave(sl))
+-			return -1;
+-		w1_write_block(sl->master, wrbuf, 3);
+-		w1_write_block(sl->master, buf, W1_MIKROBUS_ID_EEPROM_SCRATCH_SIZE);
+-		udelay(100); /* delay for CRC calculation at slave */
+-		w1_read_block(sl->master, write_scratchpad_crc, 2);
+-		if (w1_reset_select_slave(sl))
+-			return -1;
+-		w1_write_8(sl->master, W1_MIKROBUS_ID_EEPROM_READ_SCRATCH);
+-		w1_read_block(sl->master, scratchpad_verify, W1_MIKROBUS_ID_EEPROM_VERIFY_SCRATCH_SIZE);
+-		verify_status = memcmp(buf, scratchpad_verify + 3, W1_MIKROBUS_ID_EEPROM_SCRATCH_SIZE);
+-	} while(verify_status && --tries);
+-
+-	if(!tries && verify_status){
+-		dev_err(&sl->dev, "verify scratchpad failed %d times\n",
+-			W1_MIKROBUS_ID_EEPROM_WRITE_RETRIES);
+-		return -EIO;
+-	}
+-		
+-	wrbuf[0] = W1_MIKROBUS_ID_EEPROM_COPY_SCRATCH;
+-	wrbuf[1] = addr >> 8;
+-	wrbuf[2] = addr & 0xFF;
+-	wrbuf[3] = W1_MIKROBUS_ID_EEPROM_COPY_SCRATCH_ES;
++	u8 crc_rdbuf[2];
++
+ 	if (w1_reset_select_slave(sl))
+-			return -1;
+-	w1_write_block(sl->master, wrbuf, 4);
+-	msleep(W1_MIKROBUS_ID_EEPROM_TPROG_MS);
++				return -1;
++	w1_write_8(sl->master, W1_MIKROBUS_ID_READ_EEPROM);
++	w1_write_8(sl->master, pageaddr);
++	w1_read_block(sl->master, crc_rdbuf, 2);
++	w1_write_8(sl->master, W1_MIKROBUS_ID_RELEASE_EEPROM);
++	msleep(10);
++	w1_read_block(sl->master, crc_rdbuf, 1);
++	w1_read_block(sl->master, buf, W1_MIKROBUS_ID_EEPROM_PAGE_SIZE);
++	w1_read_block(sl->master, crc_rdbuf, 2);
+ 	return 0;
+ }
+ 
+-static int w1_mikrobus_id_writeblock(struct w1_slave *sl, int off, int count, char *buf)
++static int w1_mikrobus_id_readbuf(struct w1_slave *sl, int count, int off, char *buf)
+ {
+-	u16 wraddr = 0;
+-	u16 len = count - (count % W1_MIKROBUS_ID_EEPROM_SCRATCH_SIZE);
+-	u8 scratchpad_write[W1_MIKROBUS_ID_EEPROM_SCRATCH_SIZE];
+-
+-	while(len > 0) {
+-		w1_mikrobus_id_movescratch(sl, wraddr, buf + wraddr);
+-		wraddr += W1_MIKROBUS_ID_EEPROM_SCRATCH_SIZE;
+-		len -= W1_MIKROBUS_ID_EEPROM_SCRATCH_SIZE;
++	u8 pageaddr = off/W1_MIKROBUS_ID_EEPROM_PAGE_SIZE;
++	int iter, index, ret;
++	int	len = count - (count % W1_MIKROBUS_ID_EEPROM_PAGE_SIZE);
++	u8 temp_rdbuf[W1_MIKROBUS_ID_EEPROM_PAGE_SIZE];
++
++	while(len > 0) {			
++			ret = w1_mikrobus_id_readpage(sl, pageaddr, buf + (W1_MIKROBUS_ID_EEPROM_PAGE_SIZE*pageaddr - off));
++			pageaddr += 1;
++			len -= W1_MIKROBUS_ID_EEPROM_PAGE_SIZE;
+ 	}
+ 
+-	if(count % W1_MIKROBUS_ID_EEPROM_SCRATCH_SIZE){
+-		memcpy(scratchpad_write, buf + wraddr, count % W1_MIKROBUS_ID_EEPROM_SCRATCH_SIZE);
+-		w1_mikrobus_id_movescratch(sl, wraddr, scratchpad_write);
++	if(count % W1_MIKROBUS_ID_EEPROM_PAGE_SIZE){
++			ret = w1_mikrobus_id_readpage(sl, pageaddr, temp_rdbuf);
++			for(iter = W1_MIKROBUS_ID_EEPROM_PAGE_SIZE*pageaddr - off, index=0; iter < count; iter++, index++)
++				buf[iter] = temp_rdbuf[index];
+ 	}
+-
+-	return 0;
++	return ret;
+ }
+ 
+-static int w1_mikrobus_id_nvmem_read(void *priv, unsigned int off, void *buf, size_t count)
++static int w1_mikrobus_id_readblock(struct w1_slave *sl, int off, int count, char *buf)
+ {
+-	struct w1_slave *sl = priv;
+-	int ret;
+-
+-	/* mikroBUS ID EEPROM does not support reading from offsets */
+-	if (off)
+-		return -EINVAL;
++	u8 *cmp;
++	int tries = W1_MIKROBUS_ID_EEPROM_READ_RETRIES;
+ 
+-	if (count > W1_MIKROBUS_ID_EEPROM_SIZE)
+-		return -EINVAL;
++	do {	
++		w1_mikrobus_id_readbuf(sl, count, off, buf);
++		cmp = kzalloc(count, GFP_KERNEL);
++		if (!cmp)
++			return -ENOMEM;		
++		w1_mikrobus_id_readbuf(sl, count, off, cmp);
++		if (!memcmp(cmp, buf, count)){
++			kfree(cmp);
++			return 0;
++		}
++	} while (--tries);
+ 
+-	mutex_lock(&sl->master->bus_mutex);
+-	ret = w1_mikrobus_id_readblock(sl, off, count, buf);
+-	mutex_unlock(&sl->master->bus_mutex);
+-	
+-	return ret;
++	kfree(cmp);
++	return -EINVAL;
+ }
+ 
+-static int w1_mikrobus_id_nvmem_write(void *priv, unsigned int off, void *buf, size_t count)
++static int w1_mikrobus_id_nvmem_read(void *priv, unsigned int off, void *buf, size_t count)
+ {
+ 	struct w1_slave *sl = priv;
+ 	int ret;
+ 
+-	if ((off + count) > W1_MIKROBUS_ID_EEPROM_SIZE)
+-		return -EINVAL;
+-
+ 	mutex_lock(&sl->master->bus_mutex);
+-	ret = w1_mikrobus_id_writeblock(sl, off, count, buf);
++	ret = w1_mikrobus_id_readblock(sl, off, count, buf);
+ 	mutex_unlock(&sl->master->bus_mutex);
+ 	
+ 	return ret;
+@@ -170,9 +178,8 @@ static int w1_mikrobus_id_add_slave(struct w1_slave *sl)
+ 	struct nvmem_config nvmem_cfg = {
+ 		.dev = &sl->dev,
+ 		.reg_read = w1_mikrobus_id_nvmem_read,
+-		.reg_write = w1_mikrobus_id_nvmem_write,
+ 		.type = NVMEM_TYPE_EEPROM,
+-		.read_only = false,
++		.read_only = true,
+ 		.word_size = 1,
+ 		.stride = 1,
+ 		.size = W1_MIKROBUS_ID_EEPROM_SIZE,
+@@ -191,17 +198,34 @@ static int w1_mikrobus_id_add_slave(struct w1_slave *sl)
+ 	return PTR_ERR_OR_ZERO(nvmem);
+ }
+ 
+-static const struct w1_family_ops w1_family_mikrobus_id_fops = {
++static struct w1_family_ops w1_family_mikrobus_id_fops = {
+ 	.add_slave		= w1_mikrobus_id_add_slave,
++	.groups 	= w1_mikrobus_groups
+ };
+ 
+ static struct w1_family w1_family_mikrobus_id = {
+ 	.fid = W1_EEPROM_MIKROBUS_ID,
+ 	.fops = &w1_family_mikrobus_id_fops,
+ };
+-module_w1_family(w1_family_mikrobus_id);
++
++static int __init w1_mikrobusid_init(void)
++{
++	int err;
++
++	err = w1_register_family(&w1_family_mikrobus_id);
++
++	return err;
++}
++
++static void __exit w1_mikrobusid_exit(void)
++{
++	w1_unregister_family(&w1_family_mikrobus_id);
++}
++
++module_init(w1_mikrobusid_init);
++module_exit(w1_mikrobusid_exit);
+ 
+ MODULE_AUTHOR("Vaishnav M A <vaishnav@beagleboard.org>");
+-MODULE_DESCRIPTION("w1 family ac driver for mikroBUS ID EEPROM");
++MODULE_DESCRIPTION("w1 family CC driver for mikroBUS ID EEPROM");
+ MODULE_LICENSE("GPL");
+ MODULE_ALIAS("w1-family-" __stringify(W1_EEPROM_MIKROBUS_ID));
+diff --git a/drivers/misc/mikrobus/mikrobus_manifest.c b/drivers/misc/mikrobus/mikrobus_manifest.c
+index a5faa8bfcdbc..bd945110ba8c 100644
+--- a/drivers/misc/mikrobus/mikrobus_manifest.c
++++ b/drivers/misc/mikrobus/mikrobus_manifest.c
+@@ -458,12 +458,14 @@ size_t mikrobus_manifest_header_validate(void *data, size_t size)
+ 	struct greybus_manifest_header *header;
+ 	u16 manifest_size;
+ 
+-	if (size < sizeof(*header)) {
++	header = data;
++	manifest_size = le16_to_cpu(header->size);
++	
++	if (manifest_size < sizeof(*header)) {
+ 		pr_err("short manifest (%zu < %zu)", size, sizeof(*header));
+ 		return -EINVAL;
+ 	}
+-	header = data;
+-	manifest_size = le16_to_cpu(header->size);
++
+ 	if (header->version_major > MIKROBUS_VERSION_MAJOR) {
+ 		pr_err("manifest version too new (%u.%u > %u.%u)",
+ 		header->version_major, header->version_minor,
+-- 
+2.30.2
+
