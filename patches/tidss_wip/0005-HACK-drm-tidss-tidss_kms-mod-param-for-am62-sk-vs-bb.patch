@@ -1,0 +1,90 @@
+From 4ebd666a57ba50dde8da6c2713c9e96d99cdb750 Mon Sep 17 00:00:00 2001
+From: Dhruva Gole <d-gole@ti.com>
+Date: Mon, 2 Jan 2023 10:58:16 +0530
+Subject: [PATCH 5/5] HACK: drm/tidss: tidss_kms: mod param for am62 sk vs bb
+
+So far tidss Driver only had support for display panels and bridges
+that are compatible with connector framework. However, there are
+drivers that aren't compatible with the same. TIDSS traditionally has
+only supported the standard connector framework oriented drivers. Now,
+using a module parameter that can be set to select between the bridge
+drivers that need a bit of a "support".
+
+This is still a hack, since this approach still applies the hack to
+all bridges and panel instead of selectively applying the hack just to
+the bridges that need this workaround.
+
+Due to the nature of this workaround - the workaround is ONLY applied
+for AM62x platform - leaving all other platforms as they stand.
+
+For example: bootargs (via uEnv.txt or extlinux.conf) can be modified by
+setting: tidss.no_connector_hack=0
+
+Signed-off-by: Dhruva Gole <d-gole@ti.com>
+Tested-by: Aradhya Bhatia <a-bhatia1@ti.com>
+Cc: Nishanth Menon <nm@ti.com>
+Signed-off-by: Nishanth Menon <nm@ti.com>
+---
+ drivers/gpu/drm/tidss/tidss_kms.c | 35 ++++++++++++++++++++++++++++++-
+ 1 file changed, 34 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/tidss/tidss_kms.c b/drivers/gpu/drm/tidss/tidss_kms.c
+index 6189005a12c5..c495c37cc3b8 100644
+--- a/drivers/gpu/drm/tidss/tidss_kms.c
++++ b/drivers/gpu/drm/tidss/tidss_kms.c
+@@ -108,6 +108,9 @@ static const struct drm_mode_config_funcs mode_config_funcs = {
+ 	.atomic_commit = drm_atomic_helper_commit,
+ };
+ 
++/* HACK: set this variable to 1 if using bridges which need no_connector */
++static unsigned long tidss_no_connector_hack = 1;
++
+ static int tidss_dispc_modeset_init(struct tidss_device *tidss)
+ {
+ 	struct device *dev = tidss->dev;
+@@ -235,7 +238,10 @@ static int tidss_dispc_modeset_init(struct tidss_device *tidss)
+ 			return ret;
+ 		}
+ 
+-		if (dispc_get_subrev(tidss->dispc) == DISPC_AM625) {
++		/*
++		 * If the bridge driver has no support for standard connector
++		 */
++		if ((dispc_get_subrev(tidss->dispc) == DISPC_AM625) && tidss_no_connector_hack) {
+ 			connector = drm_bridge_connector_init(ddev, enc);
+ 			if (IS_ERR(connector)) {
+ 				dev_err(tidss->dev,
+@@ -307,3 +313,30 @@ int tidss_modeset_init(struct tidss_device *tidss)
+ 
+ 	return 0;
+ }
++
++static int tidss_no_connector_flag_set(const char *arg, const struct kernel_param *kp)
++{
++	int ret;
++
++	ret = kstrtoul(arg, 10, &tidss_no_connector_hack);
++
++	if (ret)
++		return ret;
++
++	if (tidss_no_connector_hack > 1) {
++		pr_err("Invalid parameter!\n");
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static const struct kernel_param_ops tidss_no_connector_hack_ops = {
++		.set = tidss_no_connector_flag_set,
++		.get = param_get_int,
++};
++
++module_param_cb(no_connector_hack, &tidss_no_connector_hack_ops,
++		&tidss_no_connector_hack, 0664);
++MODULE_PARM_DESC(no_connector_hack,
++		 "Hack support for non-connector framework: 0 (Disable), 1 (Enable");
+-- 
+2.30.2
+
