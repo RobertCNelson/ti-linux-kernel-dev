@@ -41,12 +41,6 @@ patch_kernel () {
 	cd "${DIR}/" || exit
 }
 
-flash_kernel_db () {
-	cat ./KERNEL/arch/${KERNEL_ARCH}/boot/dts/*.dts | grep 'model =' | grep -v ',model' | grep -v 'audio' | grep -v 'sgtl5000' | grep -v 'n-board' | awk -F'"' '{print $2}' | sort -u > /tmp/pre.db
-	sed -i -e 's/^/Machine: /' /tmp/pre.db
-	awk '{print $0 "\nMethod: generic\n"}' /tmp/pre.db > patches/all.db
-}
-
 copy_defconfig () {
 	cd "${DIR}/KERNEL" || exit
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
@@ -228,9 +222,6 @@ if [ "${FULL_REBUILD}" ] ; then
 	fi
 
 	patch_kernel
-	if [ ! "${AUTO_BUILD}" ] ; then
-		flash_kernel_db
-	fi
 	copy_defconfig
 fi
 if [ ! "${AUTO_BUILD}" ] ; then
