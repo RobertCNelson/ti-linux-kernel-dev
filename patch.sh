@@ -596,6 +596,21 @@ backports () {
 		patch_backports
 	fi
 
+	backport_tag="v5.10.162"
+
+	subsystem="spi"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/spi/spi-omap2-mcspi.c ./drivers/spi/spi-omap2-mcspi.c
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
 	backport_tag="v5.10.166"
 
 	subsystem="iio"
