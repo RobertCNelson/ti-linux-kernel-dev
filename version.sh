@@ -42,10 +42,10 @@ toolchain="gcc_10_arm"
 
 #Kernel
 KERNEL_REL=5.10
-KERNEL_TAG=${KERNEL_REL}.145
-kernel_rt=".145-rt74"
+KERNEL_TAG=${KERNEL_REL}.162
+kernel_rt=".162-rt79"
 #Kernel Build
-BUILD=${build_prefix}55
+BUILD=${build_prefix}55.7
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -56,9 +56,21 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="ceb5ccdfa5c6e70c25e9321025e9850ee2a81a93"
-ti_git_new_release="8b51d20b6e6e1b9277b59b7aaed8a97eff43097f"
+ti_git_old_release="06bd1d157b9b43163c1a2184e4a0c92f98656dd0"
+ti_git_new_release="2927372e2c7cc3782c07b1896757962bc346d4c5"
 
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.06.00.004
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=2927372e2c7cc3782c07b1896757962bc346d4c5
+#
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.06.00.003
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=06bd1d157b9b43163c1a2184e4a0c92f98656dd0
+#
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.06.00.002
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=d948fe1239aa0c754e2fb25e23bb112e29679ba3
+#
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.06.00.001
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=shortlog;h=58c3afb61814c1271156d6ace8d0550475268d3f
+#
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.05.00.003
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=shortlog;h=8b51d20b6e6e1b9277b59b7aaed8a97eff43097f
 #

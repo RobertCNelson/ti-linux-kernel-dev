@@ -159,18 +159,15 @@ aufs () {
 		${git_bin} format-patch -4 -o ../patches/aufs/
 
 		cd ../
-		if [ ! -d ./aufs-standalone ] ; then
-			${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/aufs-standalone --depth=1
-			cd ./aufs-standalone/
-				aufs_hash=$(git rev-parse HEAD)
-			cd -
-		else
+		if [ -d ./aufs-standalone ] ; then
 			rm -rf ./aufs-standalone || true
-			${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/aufs-standalone --depth=1
-			cd ./aufs-standalone/
-				aufs_hash=$(git rev-parse HEAD)
-			cd -
 		fi
+
+		${git_bin} clone -b aufs${KERNEL_REL} https://github.com/sfjro/aufs-standalone --depth=1
+		cd ./aufs-standalone/
+			aufs_hash=$(git rev-parse HEAD)
+		cd -
+
 		cd ./KERNEL/
 		KERNEL_REL=5.10
 
@@ -218,18 +215,14 @@ wpanusb () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
-		if [ ! -d ./wpanusb ] ; then
-			${git_bin} clone https://github.com/statropy/wpanusb --depth=1
-			cd ./wpanusb
-				wpanusb_hash=$(git rev-parse HEAD)
-			cd -
-		else
+		if [ -d ./wpanusb ] ; then
 			rm -rf ./wpanusb || true
-			${git_bin} clone https://github.com/statropy/wpanusb --depth=1
-			cd ./wpanusb
-				wpanusb_hash=$(git rev-parse HEAD)
-			cd -
 		fi
+
+		${git_bin} clone https://git.beagleboard.org/beagleconnect/linux/wpanusb --depth=1
+		cd ./wpanusb
+			wpanusb_hash=$(git rev-parse HEAD)
+		cd -
 
 		cd ./KERNEL/
 
@@ -237,9 +230,9 @@ wpanusb () {
 		cp -v ../wpanusb/wpanusb.c drivers/net/ieee802154/
 
 		${git_bin} add .
-		${git_bin} commit -a -m 'merge: wpanusb: https://github.com/statropy/wpanusb' -m "https://github.com/statropy/wpanusb/commit/${wpanusb_hash}" -s
+		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://git.beagleboard.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/wpanusb/
-		echo "WPANUSB: https://github.com/statropy/wpanusb/commit/${wpanusb_hash}" > ../patches/git/WPANUSB
+		echo "WPANUSB: https://git.beagleboard.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/git/WPANUSB
 
 		rm -rf ../wpanusb/ || true
 
@@ -247,7 +240,7 @@ wpanusb () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/wpanusb/0001-merge-wpanusb-https-github.com-statropy-wpanusb.patch"
+		${git} "${DIR}/patches/wpanusb/0001-merge-wpanusb-https-git.beagleboard.org-beagleconnec.patch"
 
 		wdir="wpanusb"
 		number=1
@@ -262,27 +255,23 @@ bcfserial () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
-		if [ ! -d ./bcfserial ] ; then
-			${git_bin} clone https://github.com/statropy/bcfserial --depth=1
-			cd ./bcfserial
-				bcfserial_hash=$(git rev-parse HEAD)
-			cd -
-		else
+		if [ -d ./bcfserial ] ; then
 			rm -rf ./bcfserial || true
-			${git_bin} clone https://github.com/statropy/bcfserial --depth=1
-			cd ./wpanusb
-				bcfserial_hash=$(git rev-parse HEAD)
-			cd -
 		fi
+
+		${git_bin} clone https://git.beagleboard.org/beagleconnect/linux/bcfserial.git --depth=1
+		cd ./bcfserial
+			bcfserial_hash=$(git rev-parse HEAD)
+		cd -
 
 		cd ./KERNEL/
 
 		cp -v ../bcfserial/bcfserial.c drivers/net/ieee802154/
 
 		${git_bin} add .
-		${git_bin} commit -a -m 'merge: bcfserial: https://github.com/statropy/bcfserial' -m "https://github.com/statropy/bcfserial/commit/${bcfserial_hash}" -s
+		${git_bin} commit -a -m 'merge: bcfserial: https://git.beagleboard.org/beagleconnect/linux/bcfserial.git' -m "https://git.beagleboard.org/beagleconnect/linux/bcfserial/-/commit/${bcfserial_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/bcfserial/
-		echo "BCFSERIAL: https://github.com/statropy/bcfserial/commit/${bcfserial_hash}" > ../patches/git/BCFSERIAL
+		echo "BCFSERIAL: https://git.beagleboard.org/beagleconnect/linux/bcfserial/-/commit/${bcfserial_hash}" > ../patches/git/BCFSERIAL
 
 		rm -rf ../bcfserial/ || true
 
@@ -290,7 +279,7 @@ bcfserial () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/bcfserial/0001-merge-bcfserial-https-github.com-statropy-bcfserial.patch"
+		${git} "${DIR}/patches/bcfserial/0001-merge-bcfserial-https-git.beagleboard.org-beagleconn.patch"
 
 		wdir="bcfserial"
 		number=1
@@ -305,20 +294,15 @@ ksmbd () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
-		if [ ! -d ./ksmbd ] ; then
-			${git_bin} clone https://github.com/cifsd-team/ksmbd --depth=1
-			cd ./ksmbd
-				ksmbd_hash=$(git rev-parse HEAD)
-				rm -rf .git || true
-			cd -
-		else
+		if [ -d ./ksmbd ] ; then
 			rm -rf ./ksmbd || true
-			${git_bin} clone https://github.com/cifsd-team/ksmbd --depth=1
-			cd ./ksmbd
-				ksmbd_hash=$(git rev-parse HEAD)
-				rm -rf .git || true
-			cd -
 		fi
+
+		${git_bin} clone https://github.com/cifsd-team/ksmbd --depth=1
+		cd ./ksmbd
+			ksmbd_hash=$(git rev-parse HEAD)
+			rm -rf .git || true
+		cd -
 
 		cd ./KERNEL/
 
@@ -378,20 +362,16 @@ wireless_regdb () {
 	#https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
 		cd ../
-		if [ ! -d ./wireless-regdb ] ; then
-			${git_bin} clone git://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git --depth=1
-			cd ./wireless-regdb
-				wireless_regdb_hash=$(git rev-parse HEAD)
-			cd -
-		else
+		if [ -d ./wireless-regdb ] ; then
 			rm -rf ./wireless-regdb || true
-			${git_bin} clone git://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git --depth=1
-			cd ./wireless-regdb
-				wireless_regdb_hash=$(git rev-parse HEAD)
-			cd -
 		fi
+
+		${git_bin} clone git://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git --depth=1
+		cd ./wireless-regdb
+			wireless_regdb_hash=$(git rev-parse HEAD)
+		cd -
+
 		cd ./KERNEL/
 
 		mkdir -p ./firmware/ || true
@@ -423,20 +403,16 @@ ti_pm_firmware () {
 	#https://git.ti.com/gitweb?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=shortlog;h=refs/heads/ti-v4.1.y
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-
 		cd ../
-		if [ ! -d ./ti-amx3-cm3-pm-firmware ] ; then
-			${git_bin} clone -b ti-v4.1.y git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git --depth=1
-			cd ./ti-amx3-cm3-pm-firmware
-				ti_amx3_cm3_hash=$(git rev-parse HEAD)
-			cd -
-		else
+		if [ -d ./ti-amx3-cm3-pm-firmware ] ; then
 			rm -rf ./ti-amx3-cm3-pm-firmware || true
-			${git_bin} clone -b ti-v4.1.y git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git --depth=1
-			cd ./ti-amx3-cm3-pm-firmware
-				ti_amx3_cm3_hash=$(git rev-parse HEAD)
-			cd -
 		fi
+
+		${git_bin} clone -b ti-v4.1.y git://git.ti.com/processor-firmware/ti-amx3-cm3-pm-firmware.git --depth=1
+		cd ./ti-amx3-cm3-pm-firmware
+			ti_amx3_cm3_hash=$(git rev-parse HEAD)
+		cd -
+
 		cd ./KERNEL/
 
 		mkdir -p ./firmware/ || true
@@ -481,18 +457,15 @@ beagleboard_dtbs () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
-		if [ ! -d ./${work_dir} ] ; then
-			${git_bin} clone -b ${branch} ${https_repo} --depth=1
-			cd ./${work_dir}
-				git_hash=$(git rev-parse HEAD)
-			cd -
-		else
+		if [ -d ./${work_dir} ] ; then
 			rm -rf ./${work_dir} || true
-			${git_bin} clone -b ${branch} ${https_repo} --depth=1
-			cd ./${work_dir}
-				git_hash=$(git rev-parse HEAD)
-			cd -
 		fi
+
+		${git_bin} clone -b ${branch} ${https_repo} --depth=1
+		cd ./${work_dir}
+			git_hash=$(git rev-parse HEAD)
+		cd -
+
 		cd ./KERNEL/
 
 		cleanup_dts_builds
@@ -623,7 +596,22 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.153"
+	backport_tag="v5.10.162"
+
+	subsystem="spi"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/spi/spi-omap2-mcspi.c ./drivers/spi/spi-omap2-mcspi.c
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+	fi
+
+	backport_tag="v5.10.166"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -634,22 +622,7 @@ backports () {
 		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
 		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
 		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	backport_tag="v5.15.72"
-
-	subsystem="pinmux"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/pinctrl/pinmux.c ./drivers/pinctrl/
-		cp -v ~/linux-src/drivers/pinctrl/pinmux.h ./drivers/pinctrl/
+		cp -v ~/linux-src/include/linux/interrupt.h ./include/linux/
 
 		post_backports
 		exit 2
