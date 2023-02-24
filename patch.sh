@@ -624,6 +624,7 @@ drivers () {
 	dir 'tidss_wip'
 	dir 'led'
 	dir 'ov5640'
+	dir 'greybus'
 }
 
 ###

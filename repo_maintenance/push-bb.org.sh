@@ -1,24 +1,4 @@
 #!/bin/sh -e
-#
-# Copyright (c) 2009-2019 Robert Nelson <robertcnelson@gmail.com>
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
 
 #yeah, i'm getting lazy..
 
@@ -85,11 +65,17 @@ if [ -e ${DIR}/version.sh ]; then
 	if [ "x${ti_git_old_release}" = "x${ti_git_new_release}" ] ; then
 		echo "${KERNEL_TAG}${BUILD}" > ${wfile}
 		echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" >> ${wfile}
+		if [ "${TISDK}" ] ; then
+			echo "TI: ${TISDK}" >> ${wfile}
+		fi
 		cat_files
 	else
 		echo "${KERNEL_TAG}${BUILD}" > ${wfile}
 		echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" >> ${wfile}
 		echo "${KERNEL_REL} TI Delta: ${compare}/${ti_git_old_release}...${ti_git_new_release}" >> ${wfile}
+		if [ "${TISDK}" ] ; then
+			echo "TI: ${TISDK}" >> ${wfile}
+		fi
 		cat_files
 	fi
 	${git_bin} commit -a -F ${wfile} -s
