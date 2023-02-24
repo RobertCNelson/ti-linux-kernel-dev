@@ -1,9 +1,9 @@
-From 8e2d4b2688b61ea16912f32b7f70de885833005d Mon Sep 17 00:00:00 2001
+From e008d1cd21a29f694b8b94f0eac7b6eea910eccd Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 3 Feb 2023 19:23:24 -0600
+Date: Fri, 24 Feb 2023 16:42:13 -0600
 Subject: [PATCH] merge: ksmbd: https://github.com/cifsd-team/ksmbd
 
-https://github.com/cifsd-team/ksmbd/commit/9912f7960ee50fdb42daa28d198dc214fb92983f
+https://github.com/cifsd-team/ksmbd/commit/54879ebf845342e206418dcc213e3ca4b9264d95
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  fs/ksmbd/Kconfig                        |   79 +
@@ -51,9 +51,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/smb1ops.c                      |   93 +
  fs/ksmbd/smb1pdu.c                      | 8511 ++++++++++++++++++++++
  fs/ksmbd/smb1pdu.h                      | 1600 +++++
- fs/ksmbd/smb2misc.c                     |  450 ++
+ fs/ksmbd/smb2misc.c                     |  445 ++
  fs/ksmbd/smb2ops.c                      |  367 +
- fs/ksmbd/smb2pdu.c                      | 8799 +++++++++++++++++++++++
+ fs/ksmbd/smb2pdu.c                      | 8796 +++++++++++++++++++++++
  fs/ksmbd/smb2pdu.h                      | 1712 +++++
  fs/ksmbd/smb_common.c                   |  746 ++
  fs/ksmbd/smb_common.h                   |  534 ++
@@ -73,10 +73,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/uniupr.h                       |  268 +
  fs/ksmbd/vfs.c                          | 2531 +++++++
  fs/ksmbd/vfs.h                          |  243 +
- fs/ksmbd/vfs_cache.c                    |  763 ++
+ fs/ksmbd/vfs_cache.c                    |  762 ++
  fs/ksmbd/vfs_cache.h                    |  184 +
  fs/ksmbd/xattr.h                        |  122 +
- 70 files changed, 46836 insertions(+)
+ 70 files changed, 46827 insertions(+)
  create mode 100644 fs/ksmbd/Kconfig
  create mode 100644 fs/ksmbd/Makefile
  create mode 100644 fs/ksmbd/README.md
@@ -21849,10 +21849,10 @@ index 000000000000..fb6c3959abcd
 +#endif /* __SMB1PDU_H */
 diff --git a/fs/ksmbd/smb2misc.c b/fs/ksmbd/smb2misc.c
 new file mode 100644
-index 000000000000..de500b2a5422
+index 000000000000..3fbea2164f86
 --- /dev/null
 +++ b/fs/ksmbd/smb2misc.c
-@@ -0,0 +1,450 @@
+@@ -0,0 +1,445 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -22005,15 +22005,11 @@ index 000000000000..de500b2a5422
 +		break;
 +	case SMB2_LOCK:
 +	{
-+		int lock_count;
++		unsigned short lock_count;
 +
-+		/*
-+		 * smb2_lock request size is 48 included single
-+		 * smb2_lock_element structure size.
-+		 */
-+		lock_count = le16_to_cpu(((struct smb2_lock_req *)hdr)->LockCount) - 1;
++		lock_count = le16_to_cpu(((struct smb2_lock_req *)hdr)->LockCount);
 +		if (lock_count > 0) {
-+			*off = __SMB2_HEADER_STRUCTURE_SIZE + 48;
++			*off = offsetof(struct smb2_lock_req, locks);
 +			*len = sizeof(struct smb2_lock_element) * lock_count;
 +		}
 +		break;
@@ -22268,20 +22264,19 @@ index 000000000000..de500b2a5422
 +			goto validate_credit;
 +
 +		/*
-+		 * windows client also pad up to 8 bytes when compounding.
-+		 * If pad is longer than eight bytes, log the server behavior
-+		 * (once), since may indicate a problem but allow it and
-+		 * continue since the frame is parseable.
++		 * SMB2 NEGOTIATE request will be validated when message
++		 * handling proceeds.
 +		 */
-+		if (clc_len < len) {
-+			ksmbd_debug(SMB,
-+				    "cli req padded more than expected. Length %d not %d for cmd:%d mid:%llu\n",
-+				    len, clc_len, command,
-+				    le64_to_cpu(hdr->MessageId));
++		if (command == SMB2_NEGOTIATE_HE)
 +			goto validate_credit;
-+		}
 +
-+		ksmbd_debug(SMB,
++		/*
++		 * Allow a message that padded to 8byte boundary.
++		 */
++		if (clc_len < len && (len - clc_len) < 8)
++			goto validate_credit;
++
++		pr_err_ratelimited(
 +			    "cli req too short, len %d not %d. cmd:%d mid:%llu\n",
 +			    len, clc_len, command,
 +			    le64_to_cpu(hdr->MessageId));
@@ -22678,10 +22673,10 @@ index 000000000000..8c26b11c33bb
 +}
 diff --git a/fs/ksmbd/smb2pdu.c b/fs/ksmbd/smb2pdu.c
 new file mode 100644
-index 000000000000..82c20bce6101
+index 000000000000..d3095d3c5b7e
 --- /dev/null
 +++ b/fs/ksmbd/smb2pdu.c
-@@ -0,0 +1,8799 @@
+@@ -0,0 +1,8796 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -26556,7 +26551,7 @@ index 000000000000..82c20bce6101
 +	if (d_info->flags & SMB2_RETURN_SINGLE_ENTRY) {
 +		d_info->out_buf_len = 0;
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-+		return false;
++		return true;
 +#else
 +		return 0;
 +#endif
@@ -29452,8 +29447,7 @@ index 000000000000..82c20bce6101
 +	struct ksmbd_conn *conn = work->conn;
 +	struct smb2_hdr *hdr = smb2_get_msg(work->request_buf);
 +	struct smb2_hdr *chdr;
-+	struct ksmbd_work *cancel_work = NULL;
-+	int canceled = 0;
++	struct ksmbd_work *iter;
 +	struct list_head *command_list;
 +
 +	ksmbd_debug(SMB, "smb2 cancel called on mid %llu, async flags 0x%x\n",
@@ -29463,11 +29457,11 @@ index 000000000000..82c20bce6101
 +		command_list = &conn->async_requests;
 +
 +		spin_lock(&conn->request_lock);
-+		list_for_each_entry(cancel_work, command_list,
++		list_for_each_entry(iter, command_list,
 +				    async_request_entry) {
-+			chdr = smb2_get_msg(cancel_work->request_buf);
++			chdr = smb2_get_msg(iter->request_buf);
 +
-+			if (cancel_work->async_id !=
++			if (iter->async_id !=
 +			    le64_to_cpu(hdr->Id.AsyncId))
 +				continue;
 +
@@ -29475,7 +29469,9 @@ index 000000000000..82c20bce6101
 +				    "smb2 with AsyncId %llu cancelled command = 0x%x\n",
 +				    le64_to_cpu(hdr->Id.AsyncId),
 +				    le16_to_cpu(chdr->Command));
-+			canceled = 1;
++			iter->state = KSMBD_WORK_CANCELLED;
++			if (iter->cancel_fn)
++				iter->cancel_fn(iter->cancel_argv);
 +			break;
 +		}
 +		spin_unlock(&conn->request_lock);
@@ -29483,27 +29479,21 @@ index 000000000000..82c20bce6101
 +		command_list = &conn->requests;
 +
 +		spin_lock(&conn->request_lock);
-+		list_for_each_entry(cancel_work, command_list, request_entry) {
-+			chdr = smb2_get_msg(cancel_work->request_buf);
++		list_for_each_entry(iter, command_list, request_entry) {
++			chdr = smb2_get_msg(iter->request_buf);
 +
 +			if (chdr->MessageId != hdr->MessageId ||
-+			    cancel_work == work)
++			    iter == work)
 +				continue;
 +
 +			ksmbd_debug(SMB,
 +				    "smb2 with mid %llu cancelled command = 0x%x\n",
 +				    le64_to_cpu(hdr->MessageId),
 +				    le16_to_cpu(chdr->Command));
-+			canceled = 1;
++			iter->state = KSMBD_WORK_CANCELLED;
 +			break;
 +		}
 +		spin_unlock(&conn->request_lock);
-+	}
-+
-+	if (canceled) {
-+		cancel_work->state = KSMBD_WORK_CANCELLED;
-+		if (cancel_work->cancel_fn)
-+			cancel_work->cancel_fn(cancel_work->cancel_argv);
 +	}
 +
 +	/* For SMB2_CANCEL command itself send no response*/
@@ -29870,6 +29860,14 @@ index 000000000000..82c20bce6101
 +
 +				ksmbd_vfs_posix_lock_wait(flock);
 +
++				spin_lock(&work->conn->request_lock);
++				spin_lock(&fp->f_lock);
++				list_del(&work->fp_entry);
++				work->cancel_fn = NULL;
++				kfree(argv);
++				spin_unlock(&fp->f_lock);
++				spin_unlock(&work->conn->request_lock);
++
 +				if (work->state != KSMBD_WORK_ACTIVE) {
 +					list_del(&smb_lock->llist);
 +					spin_lock(&work->conn->llist_lock);
@@ -29878,9 +29876,6 @@ index 000000000000..82c20bce6101
 +					locks_free_lock(flock);
 +
 +					if (work->state == KSMBD_WORK_CANCELLED) {
-+						spin_lock(&fp->f_lock);
-+						list_del(&work->fp_entry);
-+						spin_unlock(&fp->f_lock);
 +						rsp->hdr.Status =
 +							STATUS_CANCELLED;
 +						kfree(smb_lock);
@@ -29902,9 +29897,6 @@ index 000000000000..82c20bce6101
 +				list_del(&smb_lock->clist);
 +				spin_unlock(&work->conn->llist_lock);
 +
-+				spin_lock(&fp->f_lock);
-+				list_del(&work->fp_entry);
-+				spin_unlock(&fp->f_lock);
 +				goto retry;
 +			} else if (!rc) {
 +				spin_lock(&work->conn->llist_lock);
@@ -46319,10 +46311,10 @@ index 000000000000..24f483ad4c6a
 +#endif /* __KSMBD_VFS_H__ */
 diff --git a/fs/ksmbd/vfs_cache.c b/fs/ksmbd/vfs_cache.c
 new file mode 100644
-index 000000000000..74433e386122
+index 000000000000..90a56f8147f3
 --- /dev/null
 +++ b/fs/ksmbd/vfs_cache.c
-@@ -0,0 +1,763 @@
+@@ -0,0 +1,762 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -46691,12 +46683,11 @@ index 000000000000..74433e386122
 +
 +static void set_close_state_blocked_works(struct ksmbd_file *fp)
 +{
-+	struct ksmbd_work *cancel_work, *ctmp;
++	struct ksmbd_work *cancel_work;
 +
 +	spin_lock(&fp->f_lock);
-+	list_for_each_entry_safe(cancel_work, ctmp, &fp->blocked_works,
++	list_for_each_entry(cancel_work, &fp->blocked_works,
 +				 fp_entry) {
-+		list_del(&cancel_work->fp_entry);
 +		cancel_work->state = KSMBD_WORK_CLOSED;
 +		cancel_work->cancel_fn(cancel_work->cancel_argv);
 +	}

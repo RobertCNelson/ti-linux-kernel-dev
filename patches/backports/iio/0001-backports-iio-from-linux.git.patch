@@ -1,30 +1,35 @@
-From 8b929ed24c9d916122cb808744674e18e884bd06 Mon Sep 17 00:00:00 2001
+From c1c2d68d84d6376b241529f12f3f7f34518a6ed7 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 3 Feb 2023 19:26:28 -0600
+Date: Fri, 24 Feb 2023 16:58:06 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.166
+Reference: v5.10.169
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/accel/adis16201.c         |  1 +
- drivers/iio/accel/adis16209.c         |  1 +
- drivers/iio/adc/ad_sigma_delta.c      |  8 +--
- drivers/iio/adc/ti-adc128s052.c       | 14 ++--
- drivers/iio/gyro/adis16136.c          |  1 +
- drivers/iio/gyro/adis16260.c          |  1 +
- drivers/iio/imu/adis.c                | 98 +++++++++++++++------------
- drivers/iio/imu/adis16400.c           |  1 +
- drivers/iio/imu/adis16460.c           |  5 +-
- drivers/iio/imu/adis16475.c           |  6 +-
- drivers/iio/imu/adis16480.c           |  1 +
- drivers/iio/imu/adis_buffer.c         | 10 +--
- drivers/iio/imu/adis_trigger.c        | 20 +++---
- drivers/iio/temperature/ltc2983.c     | 10 +--
- drivers/staging/iio/accel/adis16203.c |  1 +
- drivers/staging/iio/accel/adis16240.c |  1 +
- include/linux/iio/imu/adis.h          | 63 ++++++++++-------
- include/linux/interrupt.h             |  4 ++
- 18 files changed, 144 insertions(+), 102 deletions(-)
+ drivers/iio/accel/adis16201.c           |   1 +
+ drivers/iio/accel/adis16209.c           |   1 +
+ drivers/iio/accel/hid-sensor-accel-3d.c |   1 +
+ drivers/iio/adc/ad_sigma_delta.c        |   8 +-
+ drivers/iio/adc/berlin2-adc.c           |   4 +-
+ drivers/iio/adc/stm32-dfsdm-adc.c       |   1 +
+ drivers/iio/adc/ti-adc128s052.c         |  14 +--
+ drivers/iio/adc/twl6030-gpadc.c         |  32 +++++++
+ drivers/iio/gyro/adis16136.c            |   1 +
+ drivers/iio/gyro/adis16260.c            |   1 +
+ drivers/iio/imu/adis.c                  |  98 +++++++++++----------
+ drivers/iio/imu/adis16400.c             |   1 +
+ drivers/iio/imu/adis16460.c             |   5 +-
+ drivers/iio/imu/adis16475.c             |   6 +-
+ drivers/iio/imu/adis16480.c             |   1 +
+ drivers/iio/imu/adis_buffer.c           |  10 +--
+ drivers/iio/imu/adis_trigger.c          |  20 +++--
+ drivers/iio/imu/fxos8700_core.c         | 111 +++++++++++++++++++-----
+ drivers/iio/temperature/ltc2983.c       |  10 +--
+ drivers/staging/iio/accel/adis16203.c   |   1 +
+ drivers/staging/iio/accel/adis16240.c   |   1 +
+ include/linux/iio/imu/adis.h            |  63 +++++++++-----
+ include/linux/interrupt.h               |   4 +
+ 23 files changed, 270 insertions(+), 125 deletions(-)
 
 diff --git a/drivers/iio/accel/adis16201.c b/drivers/iio/accel/adis16201.c
 index 84bbdfd2f2ba..b4ae4f86da3e 100644
@@ -44,6 +49,18 @@ index 4a841aec6268..e6e465f397d9 100644
  MODULE_LICENSE("GPL v2");
  MODULE_ALIAS("spi:adis16209");
 +MODULE_IMPORT_NS(IIO_ADISLIB);
+diff --git a/drivers/iio/accel/hid-sensor-accel-3d.c b/drivers/iio/accel/hid-sensor-accel-3d.c
+index f05840d17fb7..8d929a4f9110 100644
+--- a/drivers/iio/accel/hid-sensor-accel-3d.c
++++ b/drivers/iio/accel/hid-sensor-accel-3d.c
+@@ -277,6 +277,7 @@ static int accel_3d_capture_sample(struct hid_sensor_hub_device *hsdev,
+ 			hid_sensor_convert_timestamp(
+ 					&accel_state->common_attributes,
+ 					*(int64_t *)raw_data);
++		ret = 0;
+ 	break;
+ 	default:
+ 		break;
 diff --git a/drivers/iio/adc/ad_sigma_delta.c b/drivers/iio/adc/ad_sigma_delta.c
 index 3a6f239d4acc..496cb2b26bfd 100644
 --- a/drivers/iio/adc/ad_sigma_delta.c
@@ -71,6 +88,34 @@ index 3a6f239d4acc..496cb2b26bfd 100644
  
  	if (ret)
  		return ret;
+diff --git a/drivers/iio/adc/berlin2-adc.c b/drivers/iio/adc/berlin2-adc.c
+index 8b04b95b7b7a..fa2c87946e16 100644
+--- a/drivers/iio/adc/berlin2-adc.c
++++ b/drivers/iio/adc/berlin2-adc.c
+@@ -289,8 +289,10 @@ static int berlin2_adc_probe(struct platform_device *pdev)
+ 	int ret;
+ 
+ 	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*priv));
+-	if (!indio_dev)
++	if (!indio_dev) {
++		of_node_put(parent_np);
+ 		return -ENOMEM;
++	}
+ 
+ 	priv = iio_priv(indio_dev);
+ 	platform_set_drvdata(pdev, indio_dev);
+diff --git a/drivers/iio/adc/stm32-dfsdm-adc.c b/drivers/iio/adc/stm32-dfsdm-adc.c
+index 9234f14167b7..171d73efb2f8 100644
+--- a/drivers/iio/adc/stm32-dfsdm-adc.c
++++ b/drivers/iio/adc/stm32-dfsdm-adc.c
+@@ -1521,6 +1521,7 @@ static const struct of_device_id stm32_dfsdm_adc_match[] = {
+ 	},
+ 	{}
+ };
++MODULE_DEVICE_TABLE(of, stm32_dfsdm_adc_match);
+ 
+ static int stm32_dfsdm_adc_probe(struct platform_device *pdev)
+ {
 diff --git a/drivers/iio/adc/ti-adc128s052.c b/drivers/iio/adc/ti-adc128s052.c
 index 83c1ae07b3e9..8618ae7bc067 100644
 --- a/drivers/iio/adc/ti-adc128s052.c
@@ -96,6 +141,56 @@ index 83c1ae07b3e9..8618ae7bc067 100644
  	{ /* sentinel */ },
  };
  MODULE_DEVICE_TABLE(of, adc128_of_match);
+diff --git a/drivers/iio/adc/twl6030-gpadc.c b/drivers/iio/adc/twl6030-gpadc.c
+index 256177b15c51..024bdc1ef77e 100644
+--- a/drivers/iio/adc/twl6030-gpadc.c
++++ b/drivers/iio/adc/twl6030-gpadc.c
+@@ -57,6 +57,18 @@
+ #define TWL6030_GPADCS				BIT(1)
+ #define TWL6030_GPADCR				BIT(0)
+ 
++#define USB_VBUS_CTRL_SET			0x04
++#define USB_ID_CTRL_SET				0x06
++
++#define TWL6030_MISC1				0xE4
++#define VBUS_MEAS				0x01
++#define ID_MEAS					0x01
++
++#define VAC_MEAS                0x04
++#define VBAT_MEAS               0x02
++#define BB_MEAS                 0x01
++
++
+ /**
+  * struct twl6030_chnl_calib - channel calibration
+  * @gain:		slope coefficient for ideal curve
+@@ -927,6 +939,26 @@ static int twl6030_gpadc_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
++	ret = twl_i2c_write_u8(TWL_MODULE_USB, VBUS_MEAS, USB_VBUS_CTRL_SET);
++	if (ret < 0) {
++		dev_err(dev, "failed to wire up inputs\n");
++		return ret;
++	}
++
++	ret = twl_i2c_write_u8(TWL_MODULE_USB, ID_MEAS, USB_ID_CTRL_SET);
++	if (ret < 0) {
++		dev_err(dev, "failed to wire up inputs\n");
++		return ret;
++	}
++
++	ret = twl_i2c_write_u8(TWL6030_MODULE_ID0,
++				VBAT_MEAS | BB_MEAS | VAC_MEAS,
++				TWL6030_MISC1);
++	if (ret < 0) {
++		dev_err(dev, "failed to wire up inputs\n");
++		return ret;
++	}
++
+ 	indio_dev->name = DRIVER_NAME;
+ 	indio_dev->info = &twl6030_gpadc_iio_info;
+ 	indio_dev->modes = INDIO_DIRECT_MODE;
 diff --git a/drivers/iio/gyro/adis16136.c b/drivers/iio/gyro/adis16136.c
 index a11ae9db0d11..74db8edb4283 100644
 --- a/drivers/iio/gyro/adis16136.c
@@ -565,6 +660,222 @@ index 64e0ba51cb18..80adfa58e50c 100644
 -EXPORT_SYMBOL_GPL(devm_adis_probe_trigger);
 +EXPORT_SYMBOL_NS_GPL(devm_adis_probe_trigger, IIO_ADISLIB);
  
+diff --git a/drivers/iio/imu/fxos8700_core.c b/drivers/iio/imu/fxos8700_core.c
+index ab288186f36e..04d3778fcc15 100644
+--- a/drivers/iio/imu/fxos8700_core.c
++++ b/drivers/iio/imu/fxos8700_core.c
+@@ -10,6 +10,7 @@
+ #include <linux/regmap.h>
+ #include <linux/acpi.h>
+ #include <linux/bitops.h>
++#include <linux/bitfield.h>
+ 
+ #include <linux/iio/iio.h>
+ #include <linux/iio/sysfs.h>
+@@ -144,9 +145,8 @@
+ #define FXOS8700_NVM_DATA_BNK0      0xa7
+ 
+ /* Bit definitions for FXOS8700_CTRL_REG1 */
+-#define FXOS8700_CTRL_ODR_MSK       0x38
+ #define FXOS8700_CTRL_ODR_MAX       0x00
+-#define FXOS8700_CTRL_ODR_MIN       GENMASK(4, 3)
++#define FXOS8700_CTRL_ODR_MSK       GENMASK(5, 3)
+ 
+ /* Bit definitions for FXOS8700_M_CTRL_REG1 */
+ #define FXOS8700_HMS_MASK           GENMASK(1, 0)
+@@ -320,7 +320,7 @@ static enum fxos8700_sensor fxos8700_to_sensor(enum iio_chan_type iio_type)
+ 	switch (iio_type) {
+ 	case IIO_ACCEL:
+ 		return FXOS8700_ACCEL;
+-	case IIO_ANGL_VEL:
++	case IIO_MAGN:
+ 		return FXOS8700_MAGN;
+ 	default:
+ 		return -EINVAL;
+@@ -345,15 +345,35 @@ static int fxos8700_set_active_mode(struct fxos8700_data *data,
+ static int fxos8700_set_scale(struct fxos8700_data *data,
+ 			      enum fxos8700_sensor t, int uscale)
+ {
+-	int i;
++	int i, ret, val;
++	bool active_mode;
+ 	static const int scale_num = ARRAY_SIZE(fxos8700_accel_scale);
+ 	struct device *dev = regmap_get_device(data->regmap);
+ 
+ 	if (t == FXOS8700_MAGN) {
+-		dev_err(dev, "Magnetometer scale is locked at 1200uT\n");
++		dev_err(dev, "Magnetometer scale is locked at 0.001Gs\n");
+ 		return -EINVAL;
+ 	}
+ 
++	/*
++	 * When device is in active mode, it failed to set an ACCEL
++	 * full-scale range(2g/4g/8g) in FXOS8700_XYZ_DATA_CFG.
++	 * This is not align with the datasheet, but it is a fxos8700
++	 * chip behavier. Set the device in standby mode before setting
++	 * an ACCEL full-scale range.
++	 */
++	ret = regmap_read(data->regmap, FXOS8700_CTRL_REG1, &val);
++	if (ret)
++		return ret;
++
++	active_mode = val & FXOS8700_ACTIVE;
++	if (active_mode) {
++		ret = regmap_write(data->regmap, FXOS8700_CTRL_REG1,
++				   val & ~FXOS8700_ACTIVE);
++		if (ret)
++			return ret;
++	}
++
+ 	for (i = 0; i < scale_num; i++)
+ 		if (fxos8700_accel_scale[i].uscale == uscale)
+ 			break;
+@@ -361,8 +381,12 @@ static int fxos8700_set_scale(struct fxos8700_data *data,
+ 	if (i == scale_num)
+ 		return -EINVAL;
+ 
+-	return regmap_write(data->regmap, FXOS8700_XYZ_DATA_CFG,
++	ret = regmap_write(data->regmap, FXOS8700_XYZ_DATA_CFG,
+ 			    fxos8700_accel_scale[i].bits);
++	if (ret)
++		return ret;
++	return regmap_write(data->regmap, FXOS8700_CTRL_REG1,
++				  active_mode);
+ }
+ 
+ static int fxos8700_get_scale(struct fxos8700_data *data,
+@@ -372,7 +396,7 @@ static int fxos8700_get_scale(struct fxos8700_data *data,
+ 	static const int scale_num = ARRAY_SIZE(fxos8700_accel_scale);
+ 
+ 	if (t == FXOS8700_MAGN) {
+-		*uscale = 1200; /* Magnetometer is locked at 1200uT */
++		*uscale = 1000; /* Magnetometer is locked at 0.001Gs */
+ 		return 0;
+ 	}
+ 
+@@ -394,22 +418,61 @@ static int fxos8700_get_data(struct fxos8700_data *data, int chan_type,
+ 			     int axis, int *val)
+ {
+ 	u8 base, reg;
++	s16 tmp;
+ 	int ret;
+-	enum fxos8700_sensor type = fxos8700_to_sensor(chan_type);
+ 
+-	base = type ? FXOS8700_OUT_X_MSB : FXOS8700_M_OUT_X_MSB;
++	/*
++	 * Different register base addresses varies with channel types.
++	 * This bug hasn't been noticed before because using an enum is
++	 * really hard to read. Use an a switch statement to take over that.
++	 */
++	switch (chan_type) {
++	case IIO_ACCEL:
++		base = FXOS8700_OUT_X_MSB;
++		break;
++	case IIO_MAGN:
++		base = FXOS8700_M_OUT_X_MSB;
++		break;
++	default:
++		return -EINVAL;
++	}
+ 
+ 	/* Block read 6 bytes of device output registers to avoid data loss */
+ 	ret = regmap_bulk_read(data->regmap, base, data->buf,
+-			       FXOS8700_DATA_BUF_SIZE);
++			       sizeof(data->buf));
+ 	if (ret)
+ 		return ret;
+ 
+ 	/* Convert axis to buffer index */
+ 	reg = axis - IIO_MOD_X;
+ 
++	/*
++	 * Convert to native endianness. The accel data and magn data
++	 * are signed, so a forced type conversion is needed.
++	 */
++	tmp = be16_to_cpu(data->buf[reg]);
++
++	/*
++	 * ACCEL output data registers contain the X-axis, Y-axis, and Z-axis
++	 * 14-bit left-justified sample data and MAGN output data registers
++	 * contain the X-axis, Y-axis, and Z-axis 16-bit sample data. Apply
++	 * a signed 2 bits right shift to the readback raw data from ACCEL
++	 * output data register and keep that from MAGN sensor as the origin.
++	 * Value should be extended to 32 bit.
++	 */
++	switch (chan_type) {
++	case IIO_ACCEL:
++		tmp = tmp >> 2;
++		break;
++	case IIO_MAGN:
++		/* Nothing to do */
++		break;
++	default:
++		return -EINVAL;
++	}
++
+ 	/* Convert to native endianness */
+-	*val = sign_extend32(be16_to_cpu(data->buf[reg]), 15);
++	*val = sign_extend32(tmp, 15);
+ 
+ 	return 0;
+ }
+@@ -445,10 +508,9 @@ static int fxos8700_set_odr(struct fxos8700_data *data, enum fxos8700_sensor t,
+ 	if (i >= odr_num)
+ 		return -EINVAL;
+ 
+-	return regmap_update_bits(data->regmap,
+-				  FXOS8700_CTRL_REG1,
+-				  FXOS8700_CTRL_ODR_MSK + FXOS8700_ACTIVE,
+-				  fxos8700_odr[i].bits << 3 | active_mode);
++	val &= ~FXOS8700_CTRL_ODR_MSK;
++	val |= FIELD_PREP(FXOS8700_CTRL_ODR_MSK, fxos8700_odr[i].bits) | FXOS8700_ACTIVE;
++	return regmap_write(data->regmap, FXOS8700_CTRL_REG1, val);
+ }
+ 
+ static int fxos8700_get_odr(struct fxos8700_data *data, enum fxos8700_sensor t,
+@@ -461,7 +523,7 @@ static int fxos8700_get_odr(struct fxos8700_data *data, enum fxos8700_sensor t,
+ 	if (ret)
+ 		return ret;
+ 
+-	val &= FXOS8700_CTRL_ODR_MSK;
++	val = FIELD_GET(FXOS8700_CTRL_ODR_MSK, val);
+ 
+ 	for (i = 0; i < odr_num; i++)
+ 		if (val == fxos8700_odr[i].bits)
+@@ -526,7 +588,7 @@ static IIO_CONST_ATTR(in_accel_sampling_frequency_available,
+ static IIO_CONST_ATTR(in_magn_sampling_frequency_available,
+ 		      "1.5625 6.25 12.5 50 100 200 400 800");
+ static IIO_CONST_ATTR(in_accel_scale_available, "0.000244 0.000488 0.000976");
+-static IIO_CONST_ATTR(in_magn_scale_available, "0.000001200");
++static IIO_CONST_ATTR(in_magn_scale_available, "0.001000");
+ 
+ static struct attribute *fxos8700_attrs[] = {
+ 	&iio_const_attr_in_accel_sampling_frequency_available.dev_attr.attr,
+@@ -592,14 +654,19 @@ static int fxos8700_chip_init(struct fxos8700_data *data, bool use_spi)
+ 	if (ret)
+ 		return ret;
+ 
+-	/* Max ODR (800Hz individual or 400Hz hybrid), active mode */
+-	ret = regmap_write(data->regmap, FXOS8700_CTRL_REG1,
+-			   FXOS8700_CTRL_ODR_MAX | FXOS8700_ACTIVE);
++	/*
++	 * Set max full-scale range (+/-8G) for ACCEL sensor in chip
++	 * initialization then activate the device.
++	 */
++	ret = regmap_write(data->regmap, FXOS8700_XYZ_DATA_CFG, MODE_8G);
+ 	if (ret)
+ 		return ret;
+ 
+-	/* Set for max full-scale range (+/-8G) */
+-	return regmap_write(data->regmap, FXOS8700_XYZ_DATA_CFG, MODE_8G);
++	/* Max ODR (800Hz individual or 400Hz hybrid), active mode */
++	return regmap_update_bits(data->regmap, FXOS8700_CTRL_REG1,
++				FXOS8700_CTRL_ODR_MSK | FXOS8700_ACTIVE,
++				FIELD_PREP(FXOS8700_CTRL_ODR_MSK, FXOS8700_CTRL_ODR_MAX) |
++				FXOS8700_ACTIVE);
+ }
+ 
+ static void fxos8700_chip_uninit(void *data)
 diff --git a/drivers/iio/temperature/ltc2983.c b/drivers/iio/temperature/ltc2983.c
 index 8306daa77908..b2ae2d2c7eef 100644
 --- a/drivers/iio/temperature/ltc2983.c

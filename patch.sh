@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2022 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2023 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -596,7 +596,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.162"
+	backport_tag="v5.10.169"
 
 	subsystem="spi"
 	#regenerate="enable"
@@ -611,7 +611,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.166"
+	backport_tag="v5.10.169"
 
 	subsystem="iio"
 	#regenerate="enable"
