@@ -45,7 +45,7 @@ KERNEL_REL=5.10
 KERNEL_TAG=${KERNEL_REL}.153
 kernel_rt=".153-rt76"
 #Kernel Build
-BUILD=${build_prefix}86
+BUILD=${build_prefix}86.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -58,6 +58,7 @@ DISTRO=xross
 
 ti_git_old_release="3eee621d164a02048ba26ca1342cba9c8d913d46"
 ti_git_new_release="3eee621d164a02048ba26ca1342cba9c8d913d46"
+TISDK="08.05.00.007"
 
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.05.00.007
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=shortlog;h=3eee621d164a02048ba26ca1342cba9c8d913d46
