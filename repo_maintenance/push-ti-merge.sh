@@ -53,6 +53,9 @@ if [ -e ${DIR}/version.sh ]; then
 	fi
 
 	echo "merge ti: ${repo}/${ti_git_old_release}...${ti_git_new_release}" > ${wfile}
+	if [ "${TISDK}" ] ; then
+		echo "TI SDK: ${TISDK}" >> ${wfile}
+	fi
 	cat_files
 
 	${git_bin} commit -a -F ${wfile} -s
