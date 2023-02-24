@@ -526,7 +526,7 @@ backports () {
 		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
 		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
 		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
-		cp -rv ~/linux-src/include/linux/interrupt.h ./include/linux/interrupt.h
+		cp -v ~/linux-src/include/linux/interrupt.h ./include/linux/
 
 		post_backports
 		exit 2

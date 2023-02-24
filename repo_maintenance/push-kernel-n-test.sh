@@ -70,7 +70,7 @@ if [ -e ${DIR}/version.sh ]; then
 		echo "kernel v${KERNEL_TAG} rebase" > ${wfile}
 	fi
 	if [ "${TISDK}" ] ; then
-		echo "TI: ${TISDK}" >> ${wfile}
+		echo "TI SDK: ${TISDK}" >> ${wfile}
 	fi
 	cat_files
 

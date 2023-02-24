@@ -66,7 +66,7 @@ if [ -e ${DIR}/version.sh ]; then
 		echo "${KERNEL_TAG}${BUILD}" > ${wfile}
 		echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" >> ${wfile}
 		if [ "${TISDK}" ] ; then
-			echo "TI: ${TISDK}" >> ${wfile}
+			echo "TI SDK: ${TISDK}" >> ${wfile}
 		fi
 		cat_files
 	else
@@ -74,7 +74,7 @@ if [ -e ${DIR}/version.sh ]; then
 		echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" >> ${wfile}
 		echo "${KERNEL_REL} TI Delta: ${compare}/${ti_git_old_release}...${ti_git_new_release}" >> ${wfile}
 		if [ "${TISDK}" ] ; then
-			echo "TI: ${TISDK}" >> ${wfile}
+			echo "TI SDK: ${TISDK}" >> ${wfile}
 		fi
 		cat_files
 	fi
