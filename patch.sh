@@ -619,11 +619,9 @@ drivers () {
 	dir 'android'
 	dir 'ti-edgeai'
 	dir 'lincolntech'
-	dir 'tidss_dispc'
 	dir 'tidss'
 	dir 'tidss_wip'
 	dir 'led'
-	dir 'ov5640'
 	dir 'greybus'
 }
 

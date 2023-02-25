@@ -1,6 +1,6 @@
-From 37502f35b854186be1fbb7220f164231f9af4ab7 Mon Sep 17 00:00:00 2001
+From 67c6dcb7e083e24a9a37b955d188c44f76521dc5 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 24 Feb 2023 16:09:47 -0600
+Date: Sat, 25 Feb 2023 13:32:26 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
 Reference: v5.10.169
@@ -10,16 +10,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/accel/adis16209.c           |   1 +
  drivers/iio/accel/hid-sensor-accel-3d.c |   1 +
  drivers/iio/adc/ad_sigma_delta.c        |   8 +-
- drivers/iio/adc/at91_adc.c              |   4 +-
  drivers/iio/adc/berlin2-adc.c           |   4 +-
- drivers/iio/adc/mp2629_adc.c            |   5 +-
  drivers/iio/adc/stm32-dfsdm-adc.c       |   1 +
  drivers/iio/adc/ti-adc128s052.c         |  14 +--
  drivers/iio/adc/twl6030-gpadc.c         |  32 +++++++
  drivers/iio/gyro/adis16136.c            |   1 +
  drivers/iio/gyro/adis16260.c            |   1 +
- drivers/iio/health/afe4403.c            |   5 +-
- drivers/iio/health/afe4404.c            |  12 +--
  drivers/iio/imu/adis.c                  |  98 +++++++++++----------
  drivers/iio/imu/adis16400.c             |   1 +
  drivers/iio/imu/adis16460.c             |   5 +-
@@ -28,20 +24,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/imu/adis_buffer.c           |  10 +--
  drivers/iio/imu/adis_trigger.c          |  20 +++--
  drivers/iio/imu/fxos8700_core.c         | 111 +++++++++++++++++++-----
- drivers/iio/industrialio-sw-trigger.c   |   6 +-
- drivers/iio/light/Kconfig               |   2 +
- drivers/iio/light/apds9960.c            |  12 +--
- drivers/iio/pressure/ms5611.h           |  18 ++--
- drivers/iio/pressure/ms5611_core.c      |  56 ++++++------
- drivers/iio/pressure/ms5611_i2c.c       |  11 +--
- drivers/iio/pressure/ms5611_spi.c       |  19 ++--
  drivers/iio/temperature/ltc2983.c       |  10 +--
- drivers/iio/trigger/iio-trig-sysfs.c    |   6 +-
  drivers/staging/iio/accel/adis16203.c   |   1 +
  drivers/staging/iio/accel/adis16240.c   |   1 +
  include/linux/iio/imu/adis.h            |  63 +++++++++-----
  include/linux/interrupt.h               |   4 +
- 35 files changed, 352 insertions(+), 199 deletions(-)
+ 23 files changed, 270 insertions(+), 125 deletions(-)
 
 diff --git a/drivers/iio/accel/adis16201.c b/drivers/iio/accel/adis16201.c
 index 84bbdfd2f2ba..b4ae4f86da3e 100644
@@ -100,22 +88,6 @@ index 3a6f239d4acc..496cb2b26bfd 100644
  
  	if (ret)
  		return ret;
-diff --git a/drivers/iio/adc/at91_adc.c b/drivers/iio/adc/at91_adc.c
-index 0a793e7cd53e..38d4a910bc52 100644
---- a/drivers/iio/adc/at91_adc.c
-+++ b/drivers/iio/adc/at91_adc.c
-@@ -616,8 +616,10 @@ static struct iio_trigger *at91_adc_allocate_trigger(struct iio_dev *idev,
- 	trig->ops = &at91_adc_trigger_ops;
- 
- 	ret = iio_trigger_register(trig);
--	if (ret)
-+	if (ret) {
-+		iio_trigger_free(trig);
- 		return NULL;
-+	}
- 
- 	return trig;
- }
 diff --git a/drivers/iio/adc/berlin2-adc.c b/drivers/iio/adc/berlin2-adc.c
 index 8b04b95b7b7a..fa2c87946e16 100644
 --- a/drivers/iio/adc/berlin2-adc.c
@@ -132,29 +104,6 @@ index 8b04b95b7b7a..fa2c87946e16 100644
  
  	priv = iio_priv(indio_dev);
  	platform_set_drvdata(pdev, indio_dev);
-diff --git a/drivers/iio/adc/mp2629_adc.c b/drivers/iio/adc/mp2629_adc.c
-index 331a9a728217..acd9420c0416 100644
---- a/drivers/iio/adc/mp2629_adc.c
-+++ b/drivers/iio/adc/mp2629_adc.c
-@@ -56,7 +56,8 @@ static struct iio_map mp2629_adc_maps[] = {
- 	MP2629_MAP(SYSTEM_VOLT, "system-volt"),
- 	MP2629_MAP(INPUT_VOLT, "input-volt"),
- 	MP2629_MAP(BATT_CURRENT, "batt-current"),
--	MP2629_MAP(INPUT_CURRENT, "input-current")
-+	MP2629_MAP(INPUT_CURRENT, "input-current"),
-+	{ }
- };
- 
- static int mp2629_read_raw(struct iio_dev *indio_dev,
-@@ -73,7 +74,7 @@ static int mp2629_read_raw(struct iio_dev *indio_dev,
- 		if (ret)
- 			return ret;
- 
--		if (chan->address == MP2629_INPUT_VOLT)
-+		if (chan->channel == MP2629_INPUT_VOLT)
- 			rval &= GENMASK(6, 0);
- 		*val = rval;
- 		return IIO_VAL_INT;
 diff --git a/drivers/iio/adc/stm32-dfsdm-adc.c b/drivers/iio/adc/stm32-dfsdm-adc.c
 index 9234f14167b7..171d73efb2f8 100644
 --- a/drivers/iio/adc/stm32-dfsdm-adc.c
@@ -260,94 +209,6 @@ index e7c9a3e31c45..1e45d93de5b7 100644
  MODULE_DESCRIPTION("Analog Devices ADIS16260/5 Digital Gyroscope Sensor");
  MODULE_LICENSE("GPL v2");
 +MODULE_IMPORT_NS(IIO_ADISLIB);
-diff --git a/drivers/iio/health/afe4403.c b/drivers/iio/health/afe4403.c
-index 38734e4ce360..82d01ac36128 100644
---- a/drivers/iio/health/afe4403.c
-+++ b/drivers/iio/health/afe4403.c
-@@ -245,14 +245,14 @@ static int afe4403_read_raw(struct iio_dev *indio_dev,
- 			    int *val, int *val2, long mask)
- {
- 	struct afe4403_data *afe = iio_priv(indio_dev);
--	unsigned int reg = afe4403_channel_values[chan->address];
--	unsigned int field = afe4403_channel_leds[chan->address];
-+	unsigned int reg, field;
- 	int ret;
- 
- 	switch (chan->type) {
- 	case IIO_INTENSITY:
- 		switch (mask) {
- 		case IIO_CHAN_INFO_RAW:
-+			reg = afe4403_channel_values[chan->address];
- 			ret = afe4403_read(afe, reg, val);
- 			if (ret)
- 				return ret;
-@@ -262,6 +262,7 @@ static int afe4403_read_raw(struct iio_dev *indio_dev,
- 	case IIO_CURRENT:
- 		switch (mask) {
- 		case IIO_CHAN_INFO_RAW:
-+			field = afe4403_channel_leds[chan->address];
- 			ret = regmap_field_read(afe->fields[field], val);
- 			if (ret)
- 				return ret;
-diff --git a/drivers/iio/health/afe4404.c b/drivers/iio/health/afe4404.c
-index 61fe4932d81d..0eaa34da59a8 100644
---- a/drivers/iio/health/afe4404.c
-+++ b/drivers/iio/health/afe4404.c
-@@ -250,20 +250,20 @@ static int afe4404_read_raw(struct iio_dev *indio_dev,
- 			    int *val, int *val2, long mask)
- {
- 	struct afe4404_data *afe = iio_priv(indio_dev);
--	unsigned int value_reg = afe4404_channel_values[chan->address];
--	unsigned int led_field = afe4404_channel_leds[chan->address];
--	unsigned int offdac_field = afe4404_channel_offdacs[chan->address];
-+	unsigned int value_reg, led_field, offdac_field;
- 	int ret;
- 
- 	switch (chan->type) {
- 	case IIO_INTENSITY:
- 		switch (mask) {
- 		case IIO_CHAN_INFO_RAW:
-+			value_reg = afe4404_channel_values[chan->address];
- 			ret = regmap_read(afe->regmap, value_reg, val);
- 			if (ret)
- 				return ret;
- 			return IIO_VAL_INT;
- 		case IIO_CHAN_INFO_OFFSET:
-+			offdac_field = afe4404_channel_offdacs[chan->address];
- 			ret = regmap_field_read(afe->fields[offdac_field], val);
- 			if (ret)
- 				return ret;
-@@ -273,6 +273,7 @@ static int afe4404_read_raw(struct iio_dev *indio_dev,
- 	case IIO_CURRENT:
- 		switch (mask) {
- 		case IIO_CHAN_INFO_RAW:
-+			led_field = afe4404_channel_leds[chan->address];
- 			ret = regmap_field_read(afe->fields[led_field], val);
- 			if (ret)
- 				return ret;
-@@ -295,19 +296,20 @@ static int afe4404_write_raw(struct iio_dev *indio_dev,
- 			     int val, int val2, long mask)
- {
- 	struct afe4404_data *afe = iio_priv(indio_dev);
--	unsigned int led_field = afe4404_channel_leds[chan->address];
--	unsigned int offdac_field = afe4404_channel_offdacs[chan->address];
-+	unsigned int led_field, offdac_field;
- 
- 	switch (chan->type) {
- 	case IIO_INTENSITY:
- 		switch (mask) {
- 		case IIO_CHAN_INFO_OFFSET:
-+			offdac_field = afe4404_channel_offdacs[chan->address];
- 			return regmap_field_write(afe->fields[offdac_field], val);
- 		}
- 		break;
- 	case IIO_CURRENT:
- 		switch (mask) {
- 		case IIO_CHAN_INFO_RAW:
-+			led_field = afe4404_channel_leds[chan->address];
- 			return regmap_field_write(afe->fields[led_field], val);
- 		}
- 		break;
 diff --git a/drivers/iio/imu/adis.c b/drivers/iio/imu/adis.c
 index 715eef81bc24..e9821814afec 100644
 --- a/drivers/iio/imu/adis.c
@@ -1015,358 +876,6 @@ index ab288186f36e..04d3778fcc15 100644
  }
  
  static void fxos8700_chip_uninit(void *data)
-diff --git a/drivers/iio/industrialio-sw-trigger.c b/drivers/iio/industrialio-sw-trigger.c
-index 9ae793a70b8b..a7714d32a641 100644
---- a/drivers/iio/industrialio-sw-trigger.c
-+++ b/drivers/iio/industrialio-sw-trigger.c
-@@ -58,8 +58,12 @@ int iio_register_sw_trigger_type(struct iio_sw_trigger_type *t)
- 
- 	t->group = configfs_register_default_group(iio_triggers_group, t->name,
- 						&iio_trigger_type_group_type);
--	if (IS_ERR(t->group))
-+	if (IS_ERR(t->group)) {
-+		mutex_lock(&iio_trigger_types_lock);
-+		list_del(&t->list);
-+		mutex_unlock(&iio_trigger_types_lock);
- 		ret = PTR_ERR(t->group);
-+	}
- 
- 	return ret;
- }
-diff --git a/drivers/iio/light/Kconfig b/drivers/iio/light/Kconfig
-index 917f9becf9c7..dd52eff9ba2a 100644
---- a/drivers/iio/light/Kconfig
-+++ b/drivers/iio/light/Kconfig
-@@ -294,6 +294,8 @@ config RPR0521
- 	tristate "ROHM RPR0521 ALS and proximity sensor driver"
- 	depends on I2C
- 	select REGMAP_I2C
-+	select IIO_BUFFER
-+	select IIO_TRIGGERED_BUFFER
- 	help
- 	  Say Y here if you want to build support for ROHM's RPR0521
- 	  ambient light and proximity sensor device.
-diff --git a/drivers/iio/light/apds9960.c b/drivers/iio/light/apds9960.c
-index 9afb3fcc74e6..4a7ccf268ebf 100644
---- a/drivers/iio/light/apds9960.c
-+++ b/drivers/iio/light/apds9960.c
-@@ -53,9 +53,6 @@
- #define APDS9960_REG_CONTROL_PGAIN_MASK_SHIFT	2
- 
- #define APDS9960_REG_CONFIG_2	0x90
--#define APDS9960_REG_CONFIG_2_GGAIN_MASK	0x60
--#define APDS9960_REG_CONFIG_2_GGAIN_MASK_SHIFT	5
--
- #define APDS9960_REG_ID		0x92
- 
- #define APDS9960_REG_STATUS	0x93
-@@ -76,6 +73,9 @@
- #define APDS9960_REG_GCONF_1_GFIFO_THRES_MASK_SHIFT	6
- 
- #define APDS9960_REG_GCONF_2	0xa3
-+#define APDS9960_REG_GCONF_2_GGAIN_MASK			0x60
-+#define APDS9960_REG_GCONF_2_GGAIN_MASK_SHIFT		5
-+
- #define APDS9960_REG_GOFFSET_U	0xa4
- #define APDS9960_REG_GOFFSET_D	0xa5
- #define APDS9960_REG_GPULSE	0xa6
-@@ -395,9 +395,9 @@ static int apds9960_set_pxs_gain(struct apds9960_data *data, int val)
- 			}
- 
- 			ret = regmap_update_bits(data->regmap,
--				APDS9960_REG_CONFIG_2,
--				APDS9960_REG_CONFIG_2_GGAIN_MASK,
--				idx << APDS9960_REG_CONFIG_2_GGAIN_MASK_SHIFT);
-+				APDS9960_REG_GCONF_2,
-+				APDS9960_REG_GCONF_2_GGAIN_MASK,
-+				idx << APDS9960_REG_GCONF_2_GGAIN_MASK_SHIFT);
- 			if (!ret)
- 				data->pxs_gain = idx;
- 			mutex_unlock(&data->lock);
-diff --git a/drivers/iio/pressure/ms5611.h b/drivers/iio/pressure/ms5611.h
-index bc06271fa38b..5e2d2d4d87b5 100644
---- a/drivers/iio/pressure/ms5611.h
-+++ b/drivers/iio/pressure/ms5611.h
-@@ -25,13 +25,6 @@ enum {
- 	MS5607,
- };
- 
--struct ms5611_chip_info {
--	u16 prom[MS5611_PROM_WORDS_NB];
--
--	int (*temp_and_pressure_compensate)(struct ms5611_chip_info *chip_info,
--					    s32 *temp, s32 *pressure);
--};
--
- /*
-  * OverSampling Rate descriptor.
-  * Warning: cmd MUST be kept aligned on a word boundary (see
-@@ -50,12 +43,15 @@ struct ms5611_state {
- 	const struct ms5611_osr *pressure_osr;
- 	const struct ms5611_osr *temp_osr;
- 
--	int (*reset)(struct device *dev);
--	int (*read_prom_word)(struct device *dev, int index, u16 *word);
--	int (*read_adc_temp_and_pressure)(struct device *dev,
-+	u16 prom[MS5611_PROM_WORDS_NB];
-+
-+	int (*reset)(struct ms5611_state *st);
-+	int (*read_prom_word)(struct ms5611_state *st, int index, u16 *word);
-+	int (*read_adc_temp_and_pressure)(struct ms5611_state *st,
- 					  s32 *temp, s32 *pressure);
- 
--	struct ms5611_chip_info *chip_info;
-+	int (*compensate_temp_and_pressure)(struct ms5611_state *st, s32 *temp,
-+					  s32 *pressure);
- 	struct regulator *vdd;
- };
- 
-diff --git a/drivers/iio/pressure/ms5611_core.c b/drivers/iio/pressure/ms5611_core.c
-index 214b0d25f598..874a73b3ea9d 100644
---- a/drivers/iio/pressure/ms5611_core.c
-+++ b/drivers/iio/pressure/ms5611_core.c
-@@ -85,8 +85,7 @@ static int ms5611_read_prom(struct iio_dev *indio_dev)
- 	struct ms5611_state *st = iio_priv(indio_dev);
- 
- 	for (i = 0; i < MS5611_PROM_WORDS_NB; i++) {
--		ret = st->read_prom_word(&indio_dev->dev,
--					 i, &st->chip_info->prom[i]);
-+		ret = st->read_prom_word(st, i, &st->prom[i]);
- 		if (ret < 0) {
- 			dev_err(&indio_dev->dev,
- 				"failed to read prom at %d\n", i);
-@@ -94,7 +93,7 @@ static int ms5611_read_prom(struct iio_dev *indio_dev)
- 		}
- 	}
- 
--	if (!ms5611_prom_is_valid(st->chip_info->prom, MS5611_PROM_WORDS_NB)) {
-+	if (!ms5611_prom_is_valid(st->prom, MS5611_PROM_WORDS_NB)) {
- 		dev_err(&indio_dev->dev, "PROM integrity check failed\n");
- 		return -ENODEV;
- 	}
-@@ -108,28 +107,27 @@ static int ms5611_read_temp_and_pressure(struct iio_dev *indio_dev,
- 	int ret;
- 	struct ms5611_state *st = iio_priv(indio_dev);
- 
--	ret = st->read_adc_temp_and_pressure(&indio_dev->dev, temp, pressure);
-+	ret = st->read_adc_temp_and_pressure(st, temp, pressure);
- 	if (ret < 0) {
- 		dev_err(&indio_dev->dev,
- 			"failed to read temperature and pressure\n");
- 		return ret;
- 	}
- 
--	return st->chip_info->temp_and_pressure_compensate(st->chip_info,
--							   temp, pressure);
-+	return st->compensate_temp_and_pressure(st, temp, pressure);
- }
- 
--static int ms5611_temp_and_pressure_compensate(struct ms5611_chip_info *chip_info,
-+static int ms5611_temp_and_pressure_compensate(struct ms5611_state *st,
- 					       s32 *temp, s32 *pressure)
- {
- 	s32 t = *temp, p = *pressure;
- 	s64 off, sens, dt;
- 
--	dt = t - (chip_info->prom[5] << 8);
--	off = ((s64)chip_info->prom[2] << 16) + ((chip_info->prom[4] * dt) >> 7);
--	sens = ((s64)chip_info->prom[1] << 15) + ((chip_info->prom[3] * dt) >> 8);
-+	dt = t - (st->prom[5] << 8);
-+	off = ((s64)st->prom[2] << 16) + ((st->prom[4] * dt) >> 7);
-+	sens = ((s64)st->prom[1] << 15) + ((st->prom[3] * dt) >> 8);
- 
--	t = 2000 + ((chip_info->prom[6] * dt) >> 23);
-+	t = 2000 + ((st->prom[6] * dt) >> 23);
- 	if (t < 2000) {
- 		s64 off2, sens2, t2;
- 
-@@ -155,17 +153,17 @@ static int ms5611_temp_and_pressure_compensate(struct ms5611_chip_info *chip_inf
- 	return 0;
- }
- 
--static int ms5607_temp_and_pressure_compensate(struct ms5611_chip_info *chip_info,
-+static int ms5607_temp_and_pressure_compensate(struct ms5611_state *st,
- 					       s32 *temp, s32 *pressure)
- {
- 	s32 t = *temp, p = *pressure;
- 	s64 off, sens, dt;
- 
--	dt = t - (chip_info->prom[5] << 8);
--	off = ((s64)chip_info->prom[2] << 17) + ((chip_info->prom[4] * dt) >> 6);
--	sens = ((s64)chip_info->prom[1] << 16) + ((chip_info->prom[3] * dt) >> 7);
-+	dt = t - (st->prom[5] << 8);
-+	off = ((s64)st->prom[2] << 17) + ((st->prom[4] * dt) >> 6);
-+	sens = ((s64)st->prom[1] << 16) + ((st->prom[3] * dt) >> 7);
- 
--	t = 2000 + ((chip_info->prom[6] * dt) >> 23);
-+	t = 2000 + ((st->prom[6] * dt) >> 23);
- 	if (t < 2000) {
- 		s64 off2, sens2, t2, tmp;
- 
-@@ -196,7 +194,7 @@ static int ms5611_reset(struct iio_dev *indio_dev)
- 	int ret;
- 	struct ms5611_state *st = iio_priv(indio_dev);
- 
--	ret = st->reset(&indio_dev->dev);
-+	ret = st->reset(st);
- 	if (ret < 0) {
- 		dev_err(&indio_dev->dev, "failed to reset device\n");
- 		return ret;
-@@ -343,15 +341,6 @@ static int ms5611_write_raw(struct iio_dev *indio_dev,
- 
- static const unsigned long ms5611_scan_masks[] = {0x3, 0};
- 
--static struct ms5611_chip_info chip_info_tbl[] = {
--	[MS5611] = {
--		.temp_and_pressure_compensate = ms5611_temp_and_pressure_compensate,
--	},
--	[MS5607] = {
--		.temp_and_pressure_compensate = ms5607_temp_and_pressure_compensate,
--	}
--};
--
- static const struct iio_chan_spec ms5611_channels[] = {
- 	{
- 		.type = IIO_PRESSURE,
-@@ -434,7 +423,20 @@ int ms5611_probe(struct iio_dev *indio_dev, struct device *dev,
- 	struct ms5611_state *st = iio_priv(indio_dev);
- 
- 	mutex_init(&st->lock);
--	st->chip_info = &chip_info_tbl[type];
-+
-+	switch (type) {
-+	case MS5611:
-+		st->compensate_temp_and_pressure =
-+			ms5611_temp_and_pressure_compensate;
-+		break;
-+	case MS5607:
-+		st->compensate_temp_and_pressure =
-+			ms5607_temp_and_pressure_compensate;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
- 	st->temp_osr =
- 		&ms5611_avail_temp_osr[ARRAY_SIZE(ms5611_avail_temp_osr) - 1];
- 	st->pressure_osr =
-diff --git a/drivers/iio/pressure/ms5611_i2c.c b/drivers/iio/pressure/ms5611_i2c.c
-index 7c04f730430c..cccc40f7df0b 100644
---- a/drivers/iio/pressure/ms5611_i2c.c
-+++ b/drivers/iio/pressure/ms5611_i2c.c
-@@ -20,17 +20,15 @@
- 
- #include "ms5611.h"
- 
--static int ms5611_i2c_reset(struct device *dev)
-+static int ms5611_i2c_reset(struct ms5611_state *st)
- {
--	struct ms5611_state *st = iio_priv(dev_to_iio_dev(dev));
--
- 	return i2c_smbus_write_byte(st->client, MS5611_RESET);
- }
- 
--static int ms5611_i2c_read_prom_word(struct device *dev, int index, u16 *word)
-+static int ms5611_i2c_read_prom_word(struct ms5611_state *st, int index,
-+				     u16 *word)
- {
- 	int ret;
--	struct ms5611_state *st = iio_priv(dev_to_iio_dev(dev));
- 
- 	ret = i2c_smbus_read_word_swapped(st->client,
- 			MS5611_READ_PROM_WORD + (index << 1));
-@@ -57,11 +55,10 @@ static int ms5611_i2c_read_adc(struct ms5611_state *st, s32 *val)
- 	return 0;
- }
- 
--static int ms5611_i2c_read_adc_temp_and_pressure(struct device *dev,
-+static int ms5611_i2c_read_adc_temp_and_pressure(struct ms5611_state *st,
- 						 s32 *temp, s32 *pressure)
- {
- 	int ret;
--	struct ms5611_state *st = iio_priv(dev_to_iio_dev(dev));
- 	const struct ms5611_osr *osr = st->temp_osr;
- 
- 	ret = i2c_smbus_write_byte(st->client, osr->cmd);
-diff --git a/drivers/iio/pressure/ms5611_spi.c b/drivers/iio/pressure/ms5611_spi.c
-index 45d3a7d5be8e..3039fe8aa2a2 100644
---- a/drivers/iio/pressure/ms5611_spi.c
-+++ b/drivers/iio/pressure/ms5611_spi.c
-@@ -15,18 +15,17 @@
- 
- #include "ms5611.h"
- 
--static int ms5611_spi_reset(struct device *dev)
-+static int ms5611_spi_reset(struct ms5611_state *st)
- {
- 	u8 cmd = MS5611_RESET;
--	struct ms5611_state *st = iio_priv(dev_to_iio_dev(dev));
- 
- 	return spi_write_then_read(st->client, &cmd, 1, NULL, 0);
- }
- 
--static int ms5611_spi_read_prom_word(struct device *dev, int index, u16 *word)
-+static int ms5611_spi_read_prom_word(struct ms5611_state *st, int index,
-+				     u16 *word)
- {
- 	int ret;
--	struct ms5611_state *st = iio_priv(dev_to_iio_dev(dev));
- 
- 	ret = spi_w8r16be(st->client, MS5611_READ_PROM_WORD + (index << 1));
- 	if (ret < 0)
-@@ -37,11 +36,10 @@ static int ms5611_spi_read_prom_word(struct device *dev, int index, u16 *word)
- 	return 0;
- }
- 
--static int ms5611_spi_read_adc(struct device *dev, s32 *val)
-+static int ms5611_spi_read_adc(struct ms5611_state *st, s32 *val)
- {
- 	int ret;
- 	u8 buf[3] = { MS5611_READ_ADC };
--	struct ms5611_state *st = iio_priv(dev_to_iio_dev(dev));
- 
- 	ret = spi_write_then_read(st->client, buf, 1, buf, 3);
- 	if (ret < 0)
-@@ -52,11 +50,10 @@ static int ms5611_spi_read_adc(struct device *dev, s32 *val)
- 	return 0;
- }
- 
--static int ms5611_spi_read_adc_temp_and_pressure(struct device *dev,
-+static int ms5611_spi_read_adc_temp_and_pressure(struct ms5611_state *st,
- 						 s32 *temp, s32 *pressure)
- {
- 	int ret;
--	struct ms5611_state *st = iio_priv(dev_to_iio_dev(dev));
- 	const struct ms5611_osr *osr = st->temp_osr;
- 
- 	/*
-@@ -68,7 +65,7 @@ static int ms5611_spi_read_adc_temp_and_pressure(struct device *dev,
- 		return ret;
- 
- 	usleep_range(osr->conv_usec, osr->conv_usec + (osr->conv_usec / 10UL));
--	ret = ms5611_spi_read_adc(dev, temp);
-+	ret = ms5611_spi_read_adc(st, temp);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -78,7 +75,7 @@ static int ms5611_spi_read_adc_temp_and_pressure(struct device *dev,
- 		return ret;
- 
- 	usleep_range(osr->conv_usec, osr->conv_usec + (osr->conv_usec / 10UL));
--	return ms5611_spi_read_adc(dev, pressure);
-+	return ms5611_spi_read_adc(st, pressure);
- }
- 
- static int ms5611_spi_probe(struct spi_device *spi)
-@@ -94,7 +91,7 @@ static int ms5611_spi_probe(struct spi_device *spi)
- 	spi_set_drvdata(spi, indio_dev);
- 
- 	spi->mode = SPI_MODE_0;
--	spi->max_speed_hz = 20000000;
-+	spi->max_speed_hz = min(spi->max_speed_hz, 20000000U);
- 	spi->bits_per_word = 8;
- 	ret = spi_setup(spi);
- 	if (ret < 0)
 diff --git a/drivers/iio/temperature/ltc2983.c b/drivers/iio/temperature/ltc2983.c
 index 8306daa77908..b2ae2d2c7eef 100644
 --- a/drivers/iio/temperature/ltc2983.c
@@ -1403,25 +912,6 @@ index 8306daa77908..b2ae2d2c7eef 100644
  }
  
  static int __ltc2983_chan_custom_sensor_assign(struct ltc2983_data *st,
-diff --git a/drivers/iio/trigger/iio-trig-sysfs.c b/drivers/iio/trigger/iio-trig-sysfs.c
-index 2277d6336ac0..9ed5b9405ade 100644
---- a/drivers/iio/trigger/iio-trig-sysfs.c
-+++ b/drivers/iio/trigger/iio-trig-sysfs.c
-@@ -209,9 +209,13 @@ static int iio_sysfs_trigger_remove(int id)
- 
- static int __init iio_sysfs_trig_init(void)
- {
-+	int ret;
- 	device_initialize(&iio_sysfs_trig_dev);
- 	dev_set_name(&iio_sysfs_trig_dev, "iio_sysfs_trigger");
--	return device_add(&iio_sysfs_trig_dev);
-+	ret = device_add(&iio_sysfs_trig_dev);
-+	if (ret)
-+		put_device(&iio_sysfs_trig_dev);
-+	return ret;
- }
- module_init(iio_sysfs_trig_init);
- 
 diff --git a/drivers/staging/iio/accel/adis16203.c b/drivers/staging/iio/accel/adis16203.c
 index b68304da288b..7be44ff2c943 100644
 --- a/drivers/staging/iio/accel/adis16203.c
