@@ -72,10 +72,10 @@ if [ -e ${DIR}/version.sh ]; then
 	else
 		echo "${KERNEL_TAG}${BUILD}" > ${wfile}
 		echo "${KERNEL_TAG}${BUILD} ${example}_defconfig" >> ${wfile}
-		echo "${KERNEL_REL} TI Delta: ${compare}/${ti_git_old_release}...${ti_git_new_release}" >> ${wfile}
 		if [ "${TISDK}" ] ; then
 			echo "TI SDK: ${TISDK}" >> ${wfile}
 		fi
+		echo "${KERNEL_REL} TI Delta: ${compare}/${ti_git_old_release}...${ti_git_new_release}" >> ${wfile}
 		cat_files
 	fi
 	${git_bin} commit -a -F ${wfile} -s
