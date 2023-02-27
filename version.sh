@@ -45,7 +45,7 @@ KERNEL_REL=5.10
 KERNEL_TAG=${KERNEL_REL}.158
 kernel_rt=".153-rt76"
 #Kernel Build
-BUILD=${build_prefix}90
+BUILD=${build_prefix}90.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -56,10 +56,14 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="58c3afb61814c1271156d6ace8d0550475268d3f"
-ti_git_new_release="d948fe1239aa0c754e2fb25e23bb112e29679ba3"
-TISDK="08.06.00.002"
+ti_git_old_release="d948fe1239aa0c754e2fb25e23bb112e29679ba3"
+ti_git_new_release="06bd1d157b9b43163c1a2184e4a0c92f98656dd0"
+TISDK="08.06.00.003"
 
+#
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.06.00.003
+#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=06bd1d157b9b43163c1a2184e4a0c92f98656dd0
+#
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.06.00.002
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=d948fe1239aa0c754e2fb25e23bb112e29679ba3
 #
