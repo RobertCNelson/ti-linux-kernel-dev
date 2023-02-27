@@ -1,6 +1,6 @@
-From 78f19cfd5d4685fa2c164bb17ebeebc44fc1612f Mon Sep 17 00:00:00 2001
+From cd12be11387340ba80b87230b98270d0acb2d797 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Sat, 25 Feb 2023 13:34:14 -0600
+Date: Mon, 27 Feb 2023 13:43:45 -0600
 Subject: [PATCH] backports: bluetooth: from: linux.git
 
 Reference: v5.11.22
@@ -15,7 +15,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/bluetooth/btqca.c      |  63 ++--
  drivers/bluetooth/btqca.h      |  22 +-
  drivers/bluetooth/btrtl.c      | 123 +++++---
- drivers/bluetooth/btusb.c      | 525 ++++++++++++++++++++++++++-------
+ drivers/bluetooth/btusb.c      | 530 ++++++++++++++++++++++++++-------
  drivers/bluetooth/hci_bcm.c    |   9 +-
  drivers/bluetooth/hci_h5.c     |   1 +
  drivers/bluetooth/hci_intel.c  |   6 +-
@@ -24,7 +24,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/bluetooth/hci_qca.c    | 125 +++++---
  drivers/bluetooth/hci_serdev.c |   9 +-
  drivers/bluetooth/hci_vhci.c   |   2 -
- 18 files changed, 662 insertions(+), 282 deletions(-)
+ 18 files changed, 662 insertions(+), 287 deletions(-)
 
 diff --git a/drivers/bluetooth/bfusb.c b/drivers/bluetooth/bfusb.c
 index cab93935cc7f..5a321b4076aa 100644
@@ -662,7 +662,7 @@ index 3a9afc905f24..a4f7cace66b0 100644
 +MODULE_FIRMWARE("rtl_bt/rtl8852au_fw.bin");
 +MODULE_FIRMWARE("rtl_bt/rtl8852au_config.bin");
 diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
-index 6efd981979bd..3620981e8b1c 100644
+index 54001ad5de9f..3620981e8b1c 100644
 --- a/drivers/bluetooth/btusb.c
 +++ b/drivers/bluetooth/btusb.c
 @@ -60,6 +60,7 @@ static struct usb_driver btusb_driver;
@@ -816,7 +816,19 @@ index 6efd981979bd..3620981e8b1c 100644
  
  	BT_DBG("%s", hdev->name);
  
-@@ -1902,6 +1881,43 @@ static int btusb_setup_csr(struct hci_dev *hdev)
+@@ -1833,11 +1812,6 @@ static int btusb_setup_csr(struct hci_dev *hdev)
+ 
+ 	rp = (struct hci_rp_read_local_version *)skb->data;
+ 
+-	bt_dev_info(hdev, "CSR: Setting up dongle with HCI ver=%u rev=%04x; LMP ver=%u subver=%04x; manufacturer=%u",
+-		le16_to_cpu(rp->hci_ver), le16_to_cpu(rp->hci_rev),
+-		le16_to_cpu(rp->lmp_ver), le16_to_cpu(rp->lmp_subver),
+-		le16_to_cpu(rp->manufacturer));
+-
+ 	/* Detect a wide host of Chinese controllers that aren't CSR.
+ 	 *
+ 	 * Known fake bcdDevices: 0x0100, 0x0134, 0x1915, 0x2520, 0x7558, 0x8891
+@@ -1907,6 +1881,43 @@ static int btusb_setup_csr(struct hci_dev *hdev)
  		 */
  		clear_bit(HCI_QUIRK_RESET_ON_CLOSE, &hdev->quirks);
  		clear_bit(HCI_QUIRK_SIMULTANEOUS_DISCOVERY, &hdev->quirks);
@@ -860,7 +872,7 @@ index 6efd981979bd..3620981e8b1c 100644
  	}
  
  	kfree_skb(skb);
-@@ -2413,6 +2429,182 @@ static bool btusb_setup_intel_new_get_fw_name(struct intel_version *ver,
+@@ -2418,6 +2429,182 @@ static bool btusb_setup_intel_new_get_fw_name(struct intel_version *ver,
  	return true;
  }
  
@@ -1043,7 +1055,7 @@ index 6efd981979bd..3620981e8b1c 100644
  static int btusb_intel_download_firmware(struct hci_dev *hdev,
  					 struct intel_version *ver,
  					 struct intel_boot_params *params,
-@@ -2747,6 +2939,134 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
+@@ -2752,6 +2939,134 @@ static int btusb_setup_intel_new(struct hci_dev *hdev)
  	return 0;
  }
  
@@ -1178,7 +1190,7 @@ index 6efd981979bd..3620981e8b1c 100644
  static int btusb_shutdown_intel(struct hci_dev *hdev)
  {
  	struct sk_buff *skb;
-@@ -2816,7 +3136,6 @@ enum {
+@@ -2821,7 +3136,6 @@ enum {
  enum {
  	BTMTK_WMT_INVALID,
  	BTMTK_WMT_PATCH_UNDONE,
@@ -1186,7 +1198,7 @@ index 6efd981979bd..3620981e8b1c 100644
  	BTMTK_WMT_PATCH_DONE,
  	BTMTK_WMT_ON_UNDONE,
  	BTMTK_WMT_ON_DONE,
-@@ -2832,7 +3151,7 @@ struct btmtk_wmt_hdr {
+@@ -2837,7 +3151,7 @@ struct btmtk_wmt_hdr {
  
  struct btmtk_hci_wmt_cmd {
  	struct btmtk_wmt_hdr hdr;
@@ -1195,7 +1207,7 @@ index 6efd981979bd..3620981e8b1c 100644
  } __packed;
  
  struct btmtk_hci_wmt_evt {
-@@ -2878,7 +3197,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2883,7 +3197,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
  		skb = bt_skb_alloc(HCI_WMT_MAX_EVENT_SIZE, GFP_ATOMIC);
  		if (!skb) {
  			hdev->stat.err_rx++;
@@ -1203,7 +1215,7 @@ index 6efd981979bd..3620981e8b1c 100644
  			return;
  		}
  
-@@ -2899,7 +3217,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2904,7 +3217,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
  			data->evt_skb = skb_clone(skb, GFP_ATOMIC);
  			if (!data->evt_skb) {
  				kfree_skb(skb);
@@ -1211,7 +1223,7 @@ index 6efd981979bd..3620981e8b1c 100644
  				return;
  			}
  		}
-@@ -2908,7 +3225,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2913,7 +3225,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
  		if (err < 0) {
  			kfree_skb(data->evt_skb);
  			data->evt_skb = NULL;
@@ -1219,7 +1231,7 @@ index 6efd981979bd..3620981e8b1c 100644
  			return;
  		}
  
-@@ -2919,7 +3235,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2924,7 +3235,6 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
  			wake_up_bit(&data->flags,
  				    BTUSB_TX_WAIT_VND_EVT);
  		}
@@ -1227,7 +1239,7 @@ index 6efd981979bd..3620981e8b1c 100644
  		return;
  	} else if (urb->status == -ENOENT) {
  		/* Avoid suspend failed when usb_kill_urb */
-@@ -2935,12 +3250,11 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
+@@ -2940,12 +3250,11 @@ static void btusb_mtk_wmt_recv(struct urb *urb)
  	 * to generate the event. Otherwise, the WMT event cannot return from
  	 * the device successfully.
  	 */
@@ -1241,7 +1253,7 @@ index 6efd981979bd..3620981e8b1c 100644
  		/* -EPERM: urb is being killed;
  		 * -ENODEV: device got disconnected
  		 */
-@@ -3011,53 +3325,35 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
+@@ -3016,53 +3325,35 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
  	struct btmtk_hci_wmt_evt_funcc *wmt_evt_funcc;
  	u32 hlen, status = BTMTK_WMT_INVALID;
  	struct btmtk_hci_wmt_evt *wmt_evt;
@@ -1305,7 +1317,7 @@ index 6efd981979bd..3620981e8b1c 100644
  
  	/* The vendor specific WMT commands are all answered by a vendor
  	 * specific event and will have the Command Status or Command
-@@ -3073,14 +3369,13 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
+@@ -3078,14 +3369,13 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
  	if (err == -EINTR) {
  		bt_dev_err(hdev, "Execution of wmt command interrupted");
  		clear_bit(BTUSB_TX_WAIT_VND_EVT, &data->flags);
@@ -1322,7 +1334,7 @@ index 6efd981979bd..3620981e8b1c 100644
  	}
  
  	/* Parse and handle the return WMT event */
-@@ -3116,8 +3411,7 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
+@@ -3121,8 +3411,7 @@ static int btusb_mtk_hci_wmt_sync(struct hci_dev *hdev,
  err_free_skb:
  	kfree_skb(data->evt_skb);
  	data->evt_skb = NULL;
@@ -1332,7 +1344,7 @@ index 6efd981979bd..3620981e8b1c 100644
  	return err;
  }
  
-@@ -3259,9 +3553,9 @@ static int btusb_mtk_reg_read(struct btusb_data *data, u32 reg, u32 *val)
+@@ -3264,9 +3553,9 @@ static int btusb_mtk_reg_read(struct btusb_data *data, u32 reg, u32 *val)
  	return err;
  }
  
@@ -1344,7 +1356,7 @@ index 6efd981979bd..3620981e8b1c 100644
  }
  
  static int btusb_mtk_setup(struct hci_dev *hdev)
-@@ -3279,7 +3573,7 @@ static int btusb_mtk_setup(struct hci_dev *hdev)
+@@ -3284,7 +3573,7 @@ static int btusb_mtk_setup(struct hci_dev *hdev)
  
  	calltime = ktime_get();
  
@@ -1353,7 +1365,7 @@ index 6efd981979bd..3620981e8b1c 100644
  	if (err < 0) {
  		bt_dev_err(hdev, "Failed to get device id (%d)", err);
  		return err;
-@@ -3524,12 +3818,14 @@ static int btusb_set_bdaddr_wcn6855(struct hci_dev *hdev,
+@@ -3529,12 +3818,14 @@ static int btusb_set_bdaddr_wcn6855(struct hci_dev *hdev,
  #define QCA_SYSCFG_UPDATED	0x40
  #define QCA_PATCH_UPDATED	0x80
  #define QCA_DFU_TIMEOUT		3000
@@ -1369,7 +1381,7 @@ index 6efd981979bd..3620981e8b1c 100644
  	__u8	reserved[4];
  } __packed;
  
-@@ -3621,11 +3917,6 @@ static int btusb_setup_qca_download_fw(struct hci_dev *hdev,
+@@ -3626,11 +3917,6 @@ static int btusb_setup_qca_download_fw(struct hci_dev *hdev,
  	sent += size;
  	count -= size;
  
@@ -1381,7 +1393,7 @@ index 6efd981979bd..3620981e8b1c 100644
  	while (count) {
  		size = min_t(size_t, count, QCA_DFU_PACKET_LEN);
  
-@@ -3717,8 +4008,14 @@ static int btusb_setup_qca_load_nvm(struct hci_dev *hdev,
+@@ -3722,8 +4008,14 @@ static int btusb_setup_qca_load_nvm(struct hci_dev *hdev,
  	char fwname[64];
  	int err;
  
@@ -1398,7 +1410,7 @@ index 6efd981979bd..3620981e8b1c 100644
  
  	err = request_firmware(&fw, fwname, &hdev->dev);
  	if (err) {
-@@ -3792,6 +4089,11 @@ static int btusb_setup_qca(struct hci_dev *hdev)
+@@ -3797,6 +4089,11 @@ static int btusb_setup_qca(struct hci_dev *hdev)
  			return err;
  	}
  
@@ -1410,7 +1422,7 @@ index 6efd981979bd..3620981e8b1c 100644
  	if (!(status & QCA_SYSCFG_UPDATED)) {
  		err = btusb_setup_qca_load_nvm(hdev, &ver, info);
  		if (err < 0)
-@@ -4170,6 +4472,24 @@ static int btusb_probe(struct usb_interface *intf,
+@@ -4175,6 +4472,24 @@ static int btusb_probe(struct usb_interface *intf,
  		set_bit(HCI_QUIRK_NON_PERSISTENT_DIAG, &hdev->quirks);
  	}
  
@@ -1435,7 +1447,7 @@ index 6efd981979bd..3620981e8b1c 100644
  	if (id->driver_info & BTUSB_MARVELL)
  		hdev->set_bdaddr = btusb_set_bdaddr_marvell;
  
-@@ -4233,7 +4553,6 @@ static int btusb_probe(struct usb_interface *intf,
+@@ -4238,7 +4553,6 @@ static int btusb_probe(struct usb_interface *intf,
  		 * (DEVICE_REMOTE_WAKEUP)
  		 */
  		set_bit(BTUSB_WAKEUP_DISABLE, &data->flags);
@@ -1917,5 +1929,5 @@ index 8469f9876dd2..8ab26dec5f6e 100644
  		BT_ERR("Can't register HCI device");
  		hci_free_dev(hdev);
 -- 
-2.39.1
+2.39.2
 
