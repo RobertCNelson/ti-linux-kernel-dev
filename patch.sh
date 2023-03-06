@@ -623,6 +623,7 @@ drivers () {
 	dir 'tidss_wip'
 	dir 'led'
 	dir 'greybus'
+	dir 'nfc'
 }
 
 ###
