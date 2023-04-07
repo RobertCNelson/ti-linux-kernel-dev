@@ -1,9 +1,9 @@
-From 18051d51d77a06128c50be342726e83d77070279 Mon Sep 17 00:00:00 2001
+From 8b630e4854a5c307caf2454237f8c369a61a8e43 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Sat, 25 Feb 2023 12:43:39 -0600
+Date: Thu, 6 Apr 2023 19:05:48 -0500
 Subject: [PATCH] merge: ksmbd: https://github.com/cifsd-team/ksmbd
 
-https://github.com/cifsd-team/ksmbd/commit/54879ebf845342e206418dcc213e3ca4b9264d95
+https://github.com/cifsd-team/ksmbd/commit/9699755c5b6fac62168318932e57e50ba5fbcdca
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  fs/ksmbd/Kconfig                        |   79 +
@@ -11,11 +11,11 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/README.md                      |  170 +
  fs/ksmbd/asn1.c                         |  342 +
  fs/ksmbd/asn1.h                         |   21 +
- fs/ksmbd/auth.c                         | 1541 ++++
+ fs/ksmbd/auth.c                         | 1542 ++++
  fs/ksmbd/auth.h                         |   85 +
  fs/ksmbd/build_ksmbd.sh                 |  177 +
- fs/ksmbd/connection.c                   |  470 ++
- fs/ksmbd/connection.h                   |  210 +
+ fs/ksmbd/connection.c                   |  463 ++
+ fs/ksmbd/connection.h                   |  211 +
  fs/ksmbd/crypto_ctx.c                   |  282 +
  fs/ksmbd/crypto_ctx.h                   |   74 +
  fs/ksmbd/dkms.conf                      |    6 +
@@ -49,14 +49,14 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/server.h                       |   71 +
  fs/ksmbd/smb1misc.c                     |  297 +
  fs/ksmbd/smb1ops.c                      |   93 +
- fs/ksmbd/smb1pdu.c                      | 8511 ++++++++++++++++++++++
- fs/ksmbd/smb1pdu.h                      | 1600 +++++
+ fs/ksmbd/smb1pdu.c                      | 8519 ++++++++++++++++++++++
+ fs/ksmbd/smb1pdu.h                      | 1629 +++++
  fs/ksmbd/smb2misc.c                     |  445 ++
  fs/ksmbd/smb2ops.c                      |  367 +
- fs/ksmbd/smb2pdu.c                      | 8796 +++++++++++++++++++++++
+ fs/ksmbd/smb2pdu.c                      | 8806 +++++++++++++++++++++++
  fs/ksmbd/smb2pdu.h                      | 1712 +++++
- fs/ksmbd/smb_common.c                   |  746 ++
- fs/ksmbd/smb_common.h                   |  534 ++
+ fs/ksmbd/smb_common.c                   |  756 ++
+ fs/ksmbd/smb_common.h                   |  513 ++
  fs/ksmbd/smbacl.c                       | 1505 ++++
  fs/ksmbd/smbacl.h                       |  283 +
  fs/ksmbd/smberr.h                       |  235 +
@@ -66,17 +66,17 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/transport_ipc.h                |   47 +
  fs/ksmbd/transport_rdma.c               | 2297 ++++++
  fs/ksmbd/transport_rdma.h               |   69 +
- fs/ksmbd/transport_tcp.c                |  678 ++
+ fs/ksmbd/transport_tcp.c                |  689 ++
  fs/ksmbd/transport_tcp.h                |   13 +
  fs/ksmbd/unicode.c                      |  402 ++
  fs/ksmbd/unicode.h                      |  361 +
  fs/ksmbd/uniupr.h                       |  268 +
- fs/ksmbd/vfs.c                          | 2531 +++++++
+ fs/ksmbd/vfs.c                          | 2537 +++++++
  fs/ksmbd/vfs.h                          |  243 +
  fs/ksmbd/vfs_cache.c                    |  762 ++
  fs/ksmbd/vfs_cache.h                    |  184 +
  fs/ksmbd/xattr.h                        |  122 +
- 70 files changed, 46827 insertions(+)
+ 70 files changed, 46875 insertions(+)
  create mode 100644 fs/ksmbd/Kconfig
  create mode 100644 fs/ksmbd/Makefile
  create mode 100644 fs/ksmbd/README.md
@@ -867,10 +867,10 @@ index 000000000000..ce105f4ce305
 +#endif /* __ASN1_H__ */
 diff --git a/fs/ksmbd/auth.c b/fs/ksmbd/auth.c
 new file mode 100644
-index 000000000000..ef620452f83a
+index 000000000000..221f646828b7
 --- /dev/null
 +++ b/fs/ksmbd/auth.c
-@@ -0,0 +1,1541 @@
+@@ -0,0 +1,1542 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -1939,8 +1939,9 @@ index 000000000000..ef620452f83a
 +		goto smb3signkey_ret;
 +	}
 +
-+	if (conn->cipher_type == SMB2_ENCRYPTION_AES256_CCM ||
-+	    conn->cipher_type == SMB2_ENCRYPTION_AES256_GCM)
++	if (key_size == SMB3_ENC_DEC_KEY_SIZE &&
++	    (conn->cipher_type == SMB2_ENCRYPTION_AES256_CCM ||
++	     conn->cipher_type == SMB2_ENCRYPTION_AES256_GCM))
 +		rc = crypto_shash_update(CRYPTO_HMACSHA256(ctx), L256, 4);
 +	else
 +		rc = crypto_shash_update(CRYPTO_HMACSHA256(ctx), L128, 4);
@@ -2688,10 +2689,10 @@ index 000000000000..4b10f0417d84
 +main $1
 diff --git a/fs/ksmbd/connection.c b/fs/ksmbd/connection.c
 new file mode 100644
-index 000000000000..5962bbddf6e2
+index 000000000000..8be6ec0aa21c
 --- /dev/null
 +++ b/fs/ksmbd/connection.c
-@@ -0,0 +1,470 @@
+@@ -0,0 +1,463 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <namjae.jeon@protocolfreedom.org>
@@ -3012,19 +3013,12 @@ index 000000000000..5962bbddf6e2
 +		kvfree(conn->request_buf);
 +		conn->request_buf = NULL;
 +
-+		size = t->ops->read(t, hdr_buf, sizeof(hdr_buf));
++		size = t->ops->read(t, hdr_buf, sizeof(hdr_buf), -1);
 +		if (size != sizeof(hdr_buf))
 +			break;
 +
 +		pdu_size = get_rfc1002_len(hdr_buf);
 +		ksmbd_debug(CONN, "RFC1002 header %u bytes\n", pdu_size);
-+
-+		/* make sure we have enough to get to SMB header end */
-+		if (!ksmbd_pdu_size_has_room(pdu_size)) {
-+			ksmbd_debug(CONN, "SMB request too short (%u bytes)\n",
-+				    pdu_size);
-+			break;
-+		}
 +
 +		if (conn->status == KSMBD_SESS_GOOD)
 +			max_allowed_pdu_size =
@@ -3039,15 +3033,15 @@ index 000000000000..5962bbddf6e2
 +			break;
 +		}
 +
++		/*
++		 * Check maximum pdu size(0x00FFFFFF).
++		 */
 +		if (pdu_size > MAX_STREAM_PROT_LEN)
 +			break;
 +
 +		/* 4 for rfc1002 length field */
 +		size = pdu_size + 4;
-+		conn->request_buf = kvmalloc(size,
-+					     GFP_KERNEL |
-+					     __GFP_NOWARN |
-+					     __GFP_NORETRY);
++		conn->request_buf = kvmalloc(size, GFP_KERNEL);
 +		if (!conn->request_buf)
 +			break;
 +
@@ -3059,7 +3053,7 @@ index 000000000000..5962bbddf6e2
 +		 * We already read 4 bytes to find out PDU size, now
 +		 * read in PDU
 +		 */
-+		size = t->ops->read(t, conn->request_buf + 4, pdu_size);
++		size = t->ops->read(t, conn->request_buf + 4, pdu_size, 2);
 +		if (size < 0) {
 +			pr_err("sock_read failed: %d\n", size);
 +			break;
@@ -3164,10 +3158,10 @@ index 000000000000..5962bbddf6e2
 +}
 diff --git a/fs/ksmbd/connection.h b/fs/ksmbd/connection.h
 new file mode 100644
-index 000000000000..3643354a3fa7
+index 000000000000..0e3a848defaf
 --- /dev/null
 +++ b/fs/ksmbd/connection.h
-@@ -0,0 +1,210 @@
+@@ -0,0 +1,211 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/*
 + *   Copyright (C) 2018 Samsung Electronics Co., Ltd.
@@ -3284,7 +3278,8 @@ index 000000000000..3643354a3fa7
 +	int (*prepare)(struct ksmbd_transport *t);
 +	void (*disconnect)(struct ksmbd_transport *t);
 +	void (*shutdown)(struct ksmbd_transport *t);
-+	int (*read)(struct ksmbd_transport *t, char *buf, unsigned int size);
++	int (*read)(struct ksmbd_transport *t, char *buf,
++		    unsigned int size, int max_retries);
 +	int (*writev)(struct ksmbd_transport *t, struct kvec *iovs, int niov,
 +		      int size, bool need_invalidate_rkey,
 +		      unsigned int remote_key);
@@ -8467,7 +8462,7 @@ index 000000000000..adaf4c0cbe8f
 +#endif /* __KSMBD_NTLMSSP_H */
 diff --git a/fs/ksmbd/oplock.c b/fs/ksmbd/oplock.c
 new file mode 100644
-index 000000000000..c0361670574c
+index 000000000000..1a12aa36e43a
 --- /dev/null
 +++ b/fs/ksmbd/oplock.c
 @@ -0,0 +1,1994 @@
@@ -9335,8 +9330,8 @@ index 000000000000..c0361670574c
 +		rsp->OplockLevel = SMB2_OPLOCK_LEVEL_NONE;
 +	rsp->Reserved = 0;
 +	rsp->Reserved2 = 0;
-+	rsp->PersistentFid = cpu_to_le64(fp->persistent_id);
-+	rsp->VolatileFid = cpu_to_le64(fp->volatile_id);
++	rsp->PersistentFid = fp->persistent_id;
++	rsp->VolatileFid = fp->volatile_id;
 +
 +	inc_rfc1001_len(work->response_buf, 24);
 +
@@ -11726,10 +11721,10 @@ index 000000000000..b1e2aac1c140
 +}
 diff --git a/fs/ksmbd/smb1pdu.c b/fs/ksmbd/smb1pdu.c
 new file mode 100644
-index 000000000000..ea1203304226
+index 000000000000..8610e58f34f3
 --- /dev/null
 +++ b/fs/ksmbd/smb1pdu.c
-@@ -0,0 +1,8511 @@
+@@ -0,0 +1,8519 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -17623,7 +17618,11 @@ index 000000000000..ea1203304226
 +
 +	reclen = ALIGN(sizeof(struct ksmbd_dirent) + namlen, sizeof(u64));
 +	if (buf->used + reclen > PAGE_SIZE)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
++		return false;
++#else
 +		return -EINVAL;
++#endif
 +
 +	de->namelen = namlen;
 +	de->offset = offset;
@@ -17632,7 +17631,11 @@ index 000000000000..ea1203304226
 +	memcpy(de->name, name, namlen);
 +	buf->used += reclen;
 +
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
++	return true;
++#else
 +	return 0;
++#endif
 +}
 +
 +/**
@@ -20243,10 +20246,10 @@ index 000000000000..ea1203304226
 +}
 diff --git a/fs/ksmbd/smb1pdu.h b/fs/ksmbd/smb1pdu.h
 new file mode 100644
-index 000000000000..fb6c3959abcd
+index 000000000000..e2bba1f0f324
 --- /dev/null
 +++ b/fs/ksmbd/smb1pdu.h
-@@ -0,0 +1,1600 @@
+@@ -0,0 +1,1629 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -20426,6 +20429,33 @@ index 000000000000..fb6c3959abcd
 +
 +/* Action bits */
 +#define GUEST_LOGIN 1
++
++struct smb_negotiate_rsp {
++	struct smb_hdr hdr;     /* wct = 17 */
++	__le16 DialectIndex; /* 0xFFFF = no dialect acceptable */
++	__u8 SecurityMode;
++	__le16 MaxMpxCount;
++	__le16 MaxNumberVcs;
++	__le32 MaxBufferSize;
++	__le32 MaxRawSize;
++	__le32 SessionKey;
++	__le32 Capabilities;    /* see below */
++	__le32 SystemTimeLow;
++	__le32 SystemTimeHigh;
++	__le16 ServerTimeZone;
++	__u8 EncryptionKeyLength;
++	__le16 ByteCount;
++	union {
++		unsigned char EncryptionKey[8]; /* cap extended security off */
++		/* followed by Domain name - if extended security is off */
++		/* followed by 16 bytes of server GUID */
++		/* then security blob if cap_extended_security negotiated */
++		struct {
++			unsigned char GUID[SMB1_CLIENT_GUID_SIZE];
++			unsigned char SecurityBlob[1];
++		} __packed extended_response;
++	} __packed u;
++} __packed;
 +
 +struct smb_com_read_req {
 +	struct smb_hdr hdr;     /* wct = 12 */
@@ -21820,7 +21850,9 @@ index 000000000000..fb6c3959abcd
 +/* smb1 command handlers */
 +extern int smb_rename(struct ksmbd_work *work);
 +extern int smb_negotiate_request(struct ksmbd_work *work);
++#ifdef CONFIG_SMB_INSECURE_SERVER
 +extern int smb_handle_negotiate(struct ksmbd_work *work);
++#endif
 +extern int smb_session_setup_andx(struct ksmbd_work *work);
 +extern int smb_tree_connect_andx(struct ksmbd_work *work);
 +extern int smb_trans2(struct ksmbd_work *work);
@@ -22673,10 +22705,10 @@ index 000000000000..8c26b11c33bb
 +}
 diff --git a/fs/ksmbd/smb2pdu.c b/fs/ksmbd/smb2pdu.c
 new file mode 100644
-index 000000000000..d3095d3c5b7e
+index 000000000000..0527ae73c0a4
 --- /dev/null
 +++ b/fs/ksmbd/smb2pdu.c
-@@ -0,0 +1,8796 @@
+@@ -0,0 +1,8806 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -25704,8 +25736,11 @@ index 000000000000..d3095d3c5b7e
 +							sizeof(struct smb_acl) +
 +							sizeof(struct smb_ace) * ace_num * 2,
 +							GFP_KERNEL);
-+					if (!pntsd)
++					if (!pntsd) {
++						posix_acl_release(fattr.cf_acls);
++						posix_acl_release(fattr.cf_dacls);
 +						goto err_out;
++					}
 +
 +					rc = build_sec_desc(user_ns,
 +							    pntsd, NULL, 0,
@@ -27745,6 +27780,10 @@ index 000000000000..d3095d3c5b7e
 +					       FILE_SUPPORTS_BLOCK_REFCOUNTING);
 +
 +		info->Attributes |= cpu_to_le32(server_conf.share_fake_fscaps);
++
++		if (test_share_config_flag(work->tcon->share_conf,
++		    KSMBD_SHARE_FLAG_STREAMS))
++			info->Attributes |= cpu_to_le32(FILE_NAMED_STREAMS);
 +
 +		info->MaxPathNameComponentLength = cpu_to_le32(stfs.f_namelen);
 +		len = smbConvertToUTF16((__le16 *)info->FileSystemName,
@@ -30266,12 +30305,15 @@ index 000000000000..d3095d3c5b7e
 +	if (in_count == 0)
 +		return -EINVAL;
 +
++	start = le64_to_cpu(qar_req->file_offset);
++	length = le64_to_cpu(qar_req->length);
++
++	if (start < 0 || length < 0)
++		return -EINVAL;
++
 +	fp = ksmbd_lookup_fd_fast(work, id);
 +	if (!fp)
 +		return -ENOENT;
-+
-+	start = le64_to_cpu(qar_req->file_offset);
-+	length = le64_to_cpu(qar_req->length);
 +
 +	ret = ksmbd_vfs_fqar_lseek(fp, start, length,
 +				   qar_rsp, in_count, out_count);
@@ -30573,7 +30615,7 @@ index 000000000000..d3095d3c5b7e
 +
 +		off = le64_to_cpu(zero_data->FileOffset);
 +		bfz = le64_to_cpu(zero_data->BeyondFinalZero);
-+		if (off > bfz) {
++		if (off < 0 || bfz < 0 || off > bfz) {
 +			ret = -EINVAL;
 +			goto out;
 +		}
@@ -30750,8 +30792,8 @@ index 000000000000..d3095d3c5b7e
 +	char req_oplevel = 0, rsp_oplevel = 0;
 +	unsigned int oplock_change_type;
 +
-+	volatile_id = le64_to_cpu(req->VolatileFid);
-+	persistent_id = le64_to_cpu(req->PersistentFid);
++	volatile_id = req->VolatileFid;
++	persistent_id = req->PersistentFid;
 +	req_oplevel = req->OplockLevel;
 +	ksmbd_debug(OPLOCK, "v_id %llu, p_id %llu request oplock level %d\n",
 +		    volatile_id, persistent_id, req_oplevel);
@@ -30846,8 +30888,8 @@ index 000000000000..d3095d3c5b7e
 +	rsp->OplockLevel = rsp_oplevel;
 +	rsp->Reserved = 0;
 +	rsp->Reserved2 = 0;
-+	rsp->VolatileFid = cpu_to_le64(volatile_id);
-+	rsp->PersistentFid = cpu_to_le64(persistent_id);
++	rsp->VolatileFid = volatile_id;
++	rsp->PersistentFid = persistent_id;
 +	inc_rfc1001_len(work->response_buf, 24);
 +	return;
 +
@@ -33193,10 +33235,10 @@ index 000000000000..7a380d1eeafe
 +#endif	/* _SMB2PDU_H */
 diff --git a/fs/ksmbd/smb_common.c b/fs/ksmbd/smb_common.c
 new file mode 100644
-index 000000000000..df2fbe4763e4
+index 000000000000..d279ab716ff8
 --- /dev/null
 +++ b/fs/ksmbd/smb_common.c
-@@ -0,0 +1,746 @@
+@@ -0,0 +1,756 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2018 Samsung Electronics Co., Ltd.
@@ -33206,9 +33248,7 @@ index 000000000000..df2fbe4763e4
 +#include <linux/user_namespace.h>
 +
 +#include "smb_common.h"
-+#ifdef CONFIG_SMB_INSECURE_SERVER
 +#include "smb1pdu.h"
-+#endif
 +#include "server.h"
 +#include "misc.h"
 +#include "smbstatus.h"
@@ -33547,11 +33587,6 @@ index 000000000000..df2fbe4763e4
 +	return 0;
 +}
 +
-+bool ksmbd_pdu_size_has_room(unsigned int pdu)
-+{
-+	return (pdu >= KSMBD_MIN_SUPPORTED_HEADER_SIZE - 4);
-+}
-+
 +int ksmbd_populate_dot_dotdot_entries(struct ksmbd_work *work, int info_level,
 +				      struct ksmbd_file *dir,
 +				      struct ksmbd_dir_info *d_info,
@@ -33696,11 +33731,28 @@ index 000000000000..df2fbe4763e4
 +#ifndef CONFIG_SMB_INSECURE_SERVER
 +static int smb_handle_negotiate(struct ksmbd_work *work)
 +{
-+	struct smb_negotiate_rsp *neg_rsp = work->response_buf;
++	struct smb_negotiate_unsupported_rsp *neg_rsp = work->response_buf;
 +
-+	ksmbd_debug(SMB, "Unsupported SMB protocol\n");
-+	neg_rsp->hdr.Status.CifsError = STATUS_INVALID_LOGON_TYPE;
-+	return -EINVAL;
++	ksmbd_debug(SMB, "Unsupported SMB1 protocol\n");
++
++	/*
++	 * Remove 4 byte direct TCP header, add 1 byte wc, 2 byte bcc
++	 * and 2 byte DialectIndex.
++	 */
++	*(__be32 *)work->response_buf =
++		cpu_to_be32(sizeof(struct smb_hdr) - 4 + 2 + 2);
++	neg_rsp->hdr.Status.CifsError = STATUS_SUCCESS;
++
++	neg_rsp->hdr.Command = SMB_COM_NEGOTIATE;
++	*(__le32 *)neg_rsp->hdr.Protocol = SMB1_PROTO_NUMBER;
++	neg_rsp->hdr.Flags = SMBFLG_RESPONSE;
++	neg_rsp->hdr.Flags2 = SMBFLG2_UNICODE | SMBFLG2_ERR_STATUS |
++		SMBFLG2_EXT_SEC | SMBFLG2_IS_LONG_NAME;
++
++	neg_rsp->hdr.WordCount = 1;
++	neg_rsp->DialectIndex = cpu_to_le16(work->conn->dialect);
++	neg_rsp->ByteCount = 0;
++	return 0;
 +}
 +#endif
 +
@@ -33945,10 +33997,10 @@ index 000000000000..df2fbe4763e4
 +}
 diff --git a/fs/ksmbd/smb_common.h b/fs/ksmbd/smb_common.h
 new file mode 100644
-index 000000000000..fe5dfc856aae
+index 000000000000..9542eb769d85
 --- /dev/null
 +++ b/fs/ksmbd/smb_common.h
-@@ -0,0 +1,534 @@
+@@ -0,0 +1,513 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/*
 + *   Copyright (C) 2018 Samsung Electronics Co., Ltd.
@@ -34197,31 +34249,10 @@ index 000000000000..fe5dfc856aae
 +	unsigned char DialectsArray[1];
 +} __packed;
 +
-+struct smb_negotiate_rsp {
++struct smb_negotiate_unsupported_rsp {
 +	struct smb_hdr hdr;     /* wct = 17 */
 +	__le16 DialectIndex; /* 0xFFFF = no dialect acceptable */
-+	__u8 SecurityMode;
-+	__le16 MaxMpxCount;
-+	__le16 MaxNumberVcs;
-+	__le32 MaxBufferSize;
-+	__le32 MaxRawSize;
-+	__le32 SessionKey;
-+	__le32 Capabilities;    /* see below */
-+	__le32 SystemTimeLow;
-+	__le32 SystemTimeHigh;
-+	__le16 ServerTimeZone;
-+	__u8 EncryptionKeyLength;
 +	__le16 ByteCount;
-+	union {
-+		unsigned char EncryptionKey[8]; /* cap extended security off */
-+		/* followed by Domain name - if extended security is off */
-+		/* followed by 16 bytes of server GUID */
-+		/* then security blob if cap_extended_security negotiated */
-+		struct {
-+			unsigned char GUID[SMB1_CLIENT_GUID_SIZE];
-+			unsigned char SecurityBlob[1];
-+		} __packed extended_response;
-+	} __packed u;
 +} __packed;
 +
 +struct filesystem_attribute_info {
@@ -39395,7 +39426,7 @@ index 000000000000..5e5b90a0c187
 +#endif /* __KSMBD_TRANSPORT_IPC_H__ */
 diff --git a/fs/ksmbd/transport_rdma.c b/fs/ksmbd/transport_rdma.c
 new file mode 100644
-index 000000000000..c34c85ba2d2f
+index 000000000000..6ca0be788386
 --- /dev/null
 +++ b/fs/ksmbd/transport_rdma.c
 @@ -0,0 +1,2297 @@
@@ -40071,7 +40102,7 @@ index 000000000000..c34c85ba2d2f
 +}
 +
 +static int smb_direct_read(struct ksmbd_transport *t, char *buf,
-+			   unsigned int size)
++			   unsigned int size, int unused)
 +{
 +	struct smb_direct_recvmsg *recvmsg;
 +	struct smb_direct_data_transfer *data_transfer;
@@ -41773,10 +41804,10 @@ index 000000000000..77aee4e5c9dc
 +#endif /* __KSMBD_TRANSPORT_RDMA_H__ */
 diff --git a/fs/ksmbd/transport_tcp.c b/fs/ksmbd/transport_tcp.c
 new file mode 100644
-index 000000000000..a82b6c2d9cd4
+index 000000000000..95d96a4353fa
 --- /dev/null
 +++ b/fs/ksmbd/transport_tcp.c
-@@ -0,0 +1,678 @@
+@@ -0,0 +1,689 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -42098,16 +42129,18 @@ index 000000000000..a82b6c2d9cd4
 +
 +/**
 + * ksmbd_tcp_readv() - read data from socket in given iovec
-+ * @t:		TCP transport instance
-+ * @iov_orig:	base IO vector
-+ * @nr_segs:	number of segments in base iov
-+ * @to_read:	number of bytes to read from socket
++ * @t:			TCP transport instance
++ * @iov_orig:		base IO vector
++ * @nr_segs:		number of segments in base iov
++ * @to_read:		number of bytes to read from socket
++ * @max_retries:	maximum retry count
 + *
 + * Return:	on success return number of bytes read from socket,
 + *		otherwise return error number
 + */
 +static int ksmbd_tcp_readv(struct tcp_transport *t, struct kvec *iov_orig,
-+			   unsigned int nr_segs, unsigned int to_read)
++			   unsigned int nr_segs, unsigned int to_read,
++			   int max_retries)
 +{
 +	int length = 0;
 +	int total_read;
@@ -42115,7 +42148,6 @@ index 000000000000..a82b6c2d9cd4
 +	struct msghdr ksmbd_msg;
 +	struct kvec *iov;
 +	struct ksmbd_conn *conn = KSMBD_TRANS(t)->conn;
-+	int max_retry = 2;
 +
 +	iov = get_conn_iovec(t, nr_segs);
 +	if (!iov)
@@ -42142,14 +42174,23 @@ index 000000000000..a82b6c2d9cd4
 +		} else if (conn->status == KSMBD_SESS_NEED_RECONNECT) {
 +			total_read = -EAGAIN;
 +			break;
-+		} else if ((length == -ERESTARTSYS || length == -EAGAIN) &&
-+			   max_retry) {
++		} else if (length == -ERESTARTSYS || length == -EAGAIN) {
++			/*
++			 * If max_retries is negative, Allow unlimited
++			 * retries to keep connection with inactive sessions.
++			 */
++			if (max_retries == 0) {
++				total_read = length;
++				break;
++			} else if (max_retries > 0) {
++				max_retries--;
++			}
++
 +			usleep_range(1000, 2000);
 +			length = 0;
-+			max_retry--;
 +			continue;
 +		} else if (length <= 0) {
-+			total_read = -EAGAIN;
++			total_read = length;
 +			break;
 +		}
 +	}
@@ -42165,14 +42206,15 @@ index 000000000000..a82b6c2d9cd4
 + * Return:	on success return number of bytes read from socket,
 + *		otherwise return error number
 + */
-+static int ksmbd_tcp_read(struct ksmbd_transport *t, char *buf, unsigned int to_read)
++static int ksmbd_tcp_read(struct ksmbd_transport *t, char *buf,
++			  unsigned int to_read, int max_retries)
 +{
 +	struct kvec iov;
 +
 +	iov.iov_base = buf;
 +	iov.iov_len = to_read;
 +
-+	return ksmbd_tcp_readv(TCP_TRANS(t), &iov, 1, to_read);
++	return ksmbd_tcp_readv(TCP_TRANS(t), &iov, 1, to_read, max_retries);
 +}
 +
 +static int ksmbd_tcp_writev(struct ksmbd_transport *t, struct kvec *iov,
@@ -43525,10 +43567,10 @@ index 000000000000..26583b776897
 +#endif /* __KSMBD_UNIUPR_H */
 diff --git a/fs/ksmbd/vfs.c b/fs/ksmbd/vfs.c
 new file mode 100644
-index 000000000000..17f3806d43c8
+index 000000000000..4115b3c8f688
 --- /dev/null
 +++ b/fs/ksmbd/vfs.c
-@@ -0,0 +1,2531 @@
+@@ -0,0 +1,2537 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -45451,7 +45493,13 @@ index 000000000000..17f3806d43c8
 +	buf = container_of(ctx, struct ksmbd_readdir_data, ctx);
 +	buf->dirent_count++;
 +
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 +	return buf->dirent_count <= 2;
++#else
++	if (buf->dirent_count > 2)
++		return -ENOTEMPTY;
++	return 0;
++#endif
 +}
 +
 +/**
@@ -47396,5 +47444,5 @@ index 000000000000..8857c01093d9
 +
 +#endif /* __XATTR_H__ */
 -- 
-2.39.1
+2.39.2
 
