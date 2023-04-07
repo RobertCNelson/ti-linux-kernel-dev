@@ -91,20 +91,20 @@ if [ -e ${DIR}/version.sh ]; then
 	echo "log: git push -f ${repo_gitlab} ${KERNEL_TAG}${BUILD}"
 	${git_bin} push -f ${repo_gitlab} "${KERNEL_TAG}${BUILD}"
 
-	echo "debug: pushing ${bborg_branch}"
+	echo "debug: creating branch v${KERNEL_TAG}${BUILD}"
 
-	${git_bin} branch -D ${bborg_branch} || true
+	${git_bin} branch -D v${KERNEL_TAG}${BUILD} || true
 
-	${git_bin} branch -m v${KERNEL_TAG}${BUILD} ${bborg_branch}
+	${git_bin} branch -m v${KERNEL_TAG}${BUILD} v${KERNEL_TAG}${BUILD}
 
 	#push branch
-	echo "log: git: pushing branch..."
+	echo "log: git: pushing branch v${KERNEL_TAG}${BUILD}..."
 
-	echo "log: git push -f ${repo_github} ${bborg_branch}"
-	${git_bin} push -f ${repo_github} ${bborg_branch}
+	echo "log: git push -f ${repo_github} v${KERNEL_TAG}${BUILD}"
+	${git_bin} push -f ${repo_github} v${KERNEL_TAG}${BUILD}
 
-	echo "log: git push -f ${repo_gitlab} ${bborg_branch}"
-	${git_bin} push -f ${repo_gitlab} ${bborg_branch}
+	echo "log: git push -f ${repo_gitlab} v${KERNEL_TAG}${BUILD}"
+	${git_bin} push -f ${repo_gitlab} v${KERNEL_TAG}${BUILD}
 
 	cd ${DIR}/
 fi
