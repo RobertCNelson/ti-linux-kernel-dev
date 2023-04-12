@@ -6,8 +6,8 @@ wfile=$(mktemp /tmp/builder.XXXXXXXXX)
 echo "Working on temp $wfile ..."
 
 cat_files () {
-	if [ -f ./patches/git/AUFS ] ; then
-		cat ./patches/git/AUFS >> ${wfile}
+	if [ -f ./patches/external/git/AUFS ] ; then
+		cat ./patches/external/git/AUFS >> ${wfile}
 	fi
 
 	if [ -f ./patches/git/BBDTBS ] ; then
