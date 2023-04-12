@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#git clone -b 5.10 https://github.com/beagleboard/linux --depth=10
+#git clone -b 6.1 https://github.com/beagleboard/linux --depth=10
 #cd ./linux
 
 CORES=$(getconf _NPROCESSORS_ONLN)

@@ -367,7 +367,7 @@ wireless_regdb () {
 			rm -rf ./wireless-regdb || true
 		fi
 
-		${git_bin} clone git://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git --depth=1
+		${git_bin} clone https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git --depth=1
 		cd ./wireless-regdb
 			wireless_regdb_hash=$(git rev-parse HEAD)
 		cd -
@@ -380,7 +380,7 @@ wireless_regdb () {
 		${git_bin} add -f ./firmware/regulatory.*
 		${git_bin} commit -a -m 'Add wireless-regdb regulatory database file' -m "https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/commit/?id=${wireless_regdb_hash}" -s
 
-		${git_bin} format-patch -1 -o ../patches/wireless_regdb/
+		${git_bin} format-patch -1 -o ../patches/external/wireless_regdb/
 		echo "WIRELESS_REGDB: https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/commit/?id=${wireless_regdb_hash}" > ../patches/git/WIRELESS_REGDB
 
 		rm -rf ../wireless-regdb/ || true
@@ -389,9 +389,9 @@ wireless_regdb () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/wireless_regdb/0001-Add-wireless-regdb-regulatory-database-file.patch"
+		${git} "${DIR}/patches/external/wireless_regdb/0001-Add-wireless-regdb-regulatory-database-file.patch"
 
-		wdir="wireless_regdb"
+		wdir="external/wireless_regdb"
 		number=1
 		cleanup
 	fi
@@ -521,14 +521,14 @@ local_patch () {
 }
 
 external_git
-aufs
-wpanusb
-bcfserial
-ksmbd
+#aufs
+#wpanusb
+#bcfserial
+#ksmbd
 #rt
-wireless_regdb
-ti_pm_firmware
-beagleboard_dtbs
+#wireless_regdb
+#ti_pm_firmware
+#beagleboard_dtbs
 #local_patch
 
 pre_backports () {
@@ -886,17 +886,17 @@ fixes () {
 }
 
 ###
-backports
-brcmfmac
-reverts
-drivers
-soc
-fixes
+#backports
+#brcmfmac
+#reverts
+#drivers
+#soc
+#fixes
 
 packaging () {
-	do_backport="enable"
+	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v5.19.17"
+		backport_tag="v6.1.23"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
