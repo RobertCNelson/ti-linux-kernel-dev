@@ -38,8 +38,8 @@ cat_files () {
 		cat ./patches/git/BCFSERIAL >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/WIRELESS_REGDB ] ; then
-		cat ./patches/git/WIRELESS_REGDB >> ${wfile}
+	if [ -f ./patches/external/git/WIRELESS_REGDB ] ; then
+		cat ./patches/external/git/WIRELESS_REGDB >> ${wfile}
 	fi
 
 	if [ -f ./patches/git/KSMBD ] ; then
@@ -65,9 +65,9 @@ if [ -e ${DIR}/version.sh ]; then
 	fi
 
 	if [ -f ./patches/git/RT ] ; then
-		echo "kernel v${KERNEL_TAG} rebase with rt: v${KERNEL_REL}${kernel_rt}" > ${wfile}
+		echo "kernel v${KERNEL_TAG}${BUILD} rebase external git projects and rt: v${KERNEL_REL}${kernel_rt}" > ${wfile}
 	else
-		echo "kernel v${KERNEL_TAG} rebase" > ${wfile}
+		echo "kernel v${KERNEL_TAG}${BUILD} rebase external git projects" > ${wfile}
 	fi
 	if [ "${TISDK}" ] ; then
 		echo "TI SDK: ${TISDK}" >> ${wfile}

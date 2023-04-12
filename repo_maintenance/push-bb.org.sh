@@ -30,8 +30,8 @@ cat_files () {
 		cat ../patches/git/BCFSERIAL >> ${wfile}
 	fi
 
-	if [ -f ../patches/git/WIRELESS_REGDB ] ; then
-		cat ../patches/git/WIRELESS_REGDB >> ${wfile}
+	if [ -f ../patches/external/git/WIRELESS_REGDB ] ; then
+		cat ../patches/external/git/WIRELESS_REGDB >> ${wfile}
 	fi
 
 	if [ -f ../patches/git/KSMBD ] ; then
@@ -58,8 +58,8 @@ if [ -e ${DIR}/version.sh ]; then
 	make ARCH=${KERNEL_ARCH} savedefconfig
 	cp ${DIR}/KERNEL/defconfig ${DIR}/KERNEL/arch/${KERNEL_ARCH}/configs/${example}_defconfig
 	${git_bin} add arch/${KERNEL_ARCH}/configs/${example}_defconfig
-	${git_bin} add arch/${KERNEL_ARCH}/configs/ti_sdk_am3x_release_defconfig
-	${git_bin} add arch/${KERNEL_ARCH}/configs/ti_sdk_dra7x_release_defconfig
+	#${git_bin} add arch/${KERNEL_ARCH}/configs/ti_sdk_am3x_release_defconfig
+	#${git_bin} add arch/${KERNEL_ARCH}/configs/ti_sdk_dra7x_release_defconfig
 	#${git_bin} add arch/${KERNEL_ARCH}/configs/ti_sdk_arm64_release_defconfig
 
 	if [ "x${ti_git_old_release}" = "x${ti_git_new_release}" ] ; then
