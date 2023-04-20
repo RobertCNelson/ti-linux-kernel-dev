@@ -34,8 +34,8 @@ cat_files () {
 		cat ./patches/external/git/WIRELESS_REGDB >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/KSMBD ] ; then
-		cat ./patches/git/KSMBD >> ${wfile}
+	if [ -f ./patches/external/git/KSMBD ] ; then
+		cat ./patches/external/git/KSMBD >> ${wfile}
 	fi
 }
 

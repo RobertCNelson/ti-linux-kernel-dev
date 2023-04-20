@@ -303,8 +303,8 @@ ksmbd () {
 
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: ksmbd: https://github.com/cifsd-team/ksmbd' -m "https://github.com/cifsd-team/ksmbd/commit/${ksmbd_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/ksmbd/
-		echo "KSMBD: https://github.com/cifsd-team/ksmbd/commit/${ksmbd_hash}" > ../patches/git/KSMBD
+		${git_bin} format-patch -1 -o ../patches/external/ksmbd/
+		echo "KSMBD: https://github.com/cifsd-team/ksmbd/commit/${ksmbd_hash}" > ../patches/external/git/KSMBD
 
 		rm -rf ../ksmbd/ || true
 
@@ -312,15 +312,15 @@ ksmbd () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/ksmbd/0001-merge-ksmbd-https-github.com-cifsd-team-ksmbd.patch"
+		${git} "${DIR}/patches/external/ksmbd/0001-merge-ksmbd-https-github.com-cifsd-team-ksmbd.patch"
 
-		wdir="ksmbd"
+		wdir="external/ksmbd"
 		number=1
 		cleanup
 
 		exit 2
 	fi
-	dir 'ksmbd'
+	dir 'external/ksmbd'
 }
 
 rt_cleanup () {
@@ -341,13 +341,13 @@ rt () {
 		rm -f localversion-rt
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -m "patch-${rt_patch}.patch.xz" -s
-		${git_bin} format-patch -1 -o ../patches/rt/
-		echo "RT: patch-${rt_patch}.patch.xz" > ../patches/git/RT
+		${git_bin} format-patch -1 -o ../patches/external/rt/
+		echo "RT: patch-${rt_patch}.patch.xz" > ../patches/external/git/RT
 
 		exit 2
 	fi
 
-	dir 'rt'
+	dir 'external/rt'
 }
 
 wireless_regdb () {
@@ -516,7 +516,7 @@ external_git
 aufs
 #wpanusb
 #bcfserial
-#ksmbd
+ksmbd
 #rt
 wireless_regdb
 #ti_pm_firmware

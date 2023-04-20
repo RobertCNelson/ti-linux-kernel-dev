@@ -18,8 +18,8 @@ cat_files () {
 		cat ./patches/git/CAN-ISOTP >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/RT ] ; then
-		cat ./patches/git/RT >> ${wfile}
+	if [ -f ./patches/external/git/RT ] ; then
+		cat ./patches/external/git/RT >> ${wfile}
 	fi
 
 	if [ -f ./patches/git/TI_AMX3_CM3 ] ; then
@@ -42,8 +42,8 @@ cat_files () {
 		cat ./patches/external/git/WIRELESS_REGDB >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/KSMBD ] ; then
-		cat ./patches/git/KSMBD >> ${wfile}
+	if [ -f ./patches/external/git/KSMBD ] ; then
+		cat ./patches/external/git/KSMBD >> ${wfile}
 	fi
 }
 
@@ -64,7 +64,7 @@ if [ -e ${DIR}/version.sh ]; then
 		exit
 	fi
 
-	if [ -f ./patches/git/RT ] ; then
+	if [ -f ./patches/external/git/RT ] ; then
 		echo "kernel v${KERNEL_TAG}${BUILD} rebase external git projects and rt: v${KERNEL_REL}${kernel_rt}" > ${wfile}
 	else
 		echo "kernel v${KERNEL_TAG}${BUILD} rebase external git projects" > ${wfile}
