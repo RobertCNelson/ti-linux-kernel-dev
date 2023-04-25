@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#git clone -b 5.10-arm64 https://github.com/beagleboard/linux --depth=10
-#cd ./linux
-
 CORES=$(getconf _NPROCESSORS_ONLN)
 
 export CC=/usr/bin/aarch64-linux-gnu-

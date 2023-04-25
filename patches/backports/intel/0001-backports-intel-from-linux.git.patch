@@ -1,6 +1,6 @@
-From ccc97183a8a0a35117f26f950810beb64c6436da Mon Sep 17 00:00:00 2001
+From ae4a425fa38142efa7f474647c6b6ba7e95fba60 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 28 Feb 2023 15:36:57 -0600
+Date: Tue, 25 Apr 2023 14:43:15 -0500
 Subject: [PATCH] backports: intel: from: linux.git
 
 Reference: v5.11.22
@@ -131,7 +131,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../wireless/intel/iwlwifi/mvm/time-event.c   |  99 +----
  .../wireless/intel/iwlwifi/mvm/time-event.h   |  67 +--
  drivers/net/wireless/intel/iwlwifi/mvm/tt.c   |  70 +--
- drivers/net/wireless/intel/iwlwifi/mvm/tx.c   |  83 +---
+ drivers/net/wireless/intel/iwlwifi/mvm/tx.c   |  95 +---
  .../net/wireless/intel/iwlwifi/mvm/utils.c    |  74 +---
  .../intel/iwlwifi/pcie/ctxt-info-gen3.c       |  72 +---
  .../wireless/intel/iwlwifi/pcie/ctxt-info.c   |  60 +--
@@ -144,7 +144,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/net/wireless/intel/iwlwifi/pcie/tx.c  | 351 +--------------
  drivers/net/wireless/intel/iwlwifi/queue/tx.c | 364 ++++++++++++----
  drivers/net/wireless/intel/iwlwifi/queue/tx.h |  69 +--
- 138 files changed, 2205 insertions(+), 8719 deletions(-)
+ 138 files changed, 2206 insertions(+), 8730 deletions(-)
 
 diff --git a/drivers/net/wireless/intel/ipw2x00/libipw_tx.c b/drivers/net/wireless/intel/ipw2x00/libipw_tx.c
 index e4c60caa6543..d9baa2fa603b 100644
@@ -12216,7 +12216,7 @@ index 340c892b30ff..507625f96dd7 100644
  
  #include "mvm.h"
 diff --git a/drivers/net/wireless/intel/iwlwifi/mvm/tx.c b/drivers/net/wireless/intel/iwlwifi/mvm/tx.c
-index 7186e1dbbd6b..3712adc3ccc2 100644
+index d310337b1625..3712adc3ccc2 100644
 --- a/drivers/net/wireless/intel/iwlwifi/mvm/tx.c
 +++ b/drivers/net/wireless/intel/iwlwifi/mvm/tx.c
 @@ -1,66 +1,9 @@
@@ -12333,6 +12333,33 @@ index 7186e1dbbd6b..3712adc3ccc2 100644
 -
  	if (unlikely(ieee80211_is_probe_resp(fc)))
  		iwl_mvm_probe_resp_set_noa(mvm, skb);
+ 
+@@ -1203,7 +1140,6 @@ int iwl_mvm_tx_skb_sta(struct iwl_mvm *mvm, struct sk_buff *skb,
+ 	struct sk_buff_head mpdus_skbs;
+ 	unsigned int payload_len;
+ 	int ret;
+-	struct sk_buff *orig_skb = skb;
+ 
+ 	if (WARN_ON_ONCE(!mvmsta))
+ 		return -1;
+@@ -1236,17 +1172,8 @@ int iwl_mvm_tx_skb_sta(struct iwl_mvm *mvm, struct sk_buff *skb,
+ 
+ 		ret = iwl_mvm_tx_mpdu(mvm, skb, &info, sta);
+ 		if (ret) {
+-			/* Free skbs created as part of TSO logic that have not yet been dequeued */
+ 			__skb_queue_purge(&mpdus_skbs);
+-			/* skb here is not necessarily same as skb that entered this method,
+-			 * so free it explicitly.
+-			 */
+-			if (skb == orig_skb)
+-				ieee80211_free_txskb(mvm->hw, skb);
+-			else
+-				kfree_skb(skb);
+-			/* there was error, but we consumed skb one way or another, so return 0 */
+-			return 0;
++			return ret;
+ 		}
+ 	}
  
 diff --git a/drivers/net/wireless/intel/iwlwifi/mvm/utils.c b/drivers/net/wireless/intel/iwlwifi/mvm/utils.c
 index caf38ef64d3c..ee2e0cb47584 100644

@@ -6,36 +6,36 @@ wfile=$(mktemp /tmp/builder.XXXXXXXXX)
 echo "Working on temp $wfile ..."
 
 cat_files () {
-	if [ -f ./patches/git/AUFS ] ; then
-		cat ./patches/git/AUFS >> ${wfile}
+	if [ -f ./patches/external/git/BBDTBS ] ; then
+		cat ./patches/external/git/BBDTBS >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/BBDTBS ] ; then
-		cat ./patches/git/BBDTBS >> ${wfile}
+	if [ -f ./patches/external/git/RT ] ; then
+		cat ./patches/external/git/RT >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/RT ] ; then
-		cat ./patches/git/RT >> ${wfile}
+	if [ -f ./patches/external/git/AUFS ] ; then
+		cat ./patches/external/git/AUFS >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/TI_AMX3_CM3 ] ; then
-		cat ./patches/git/TI_AMX3_CM3 >> ${wfile}
+	if [ -f ./patches/external/git/WIRELESS_REGDB ] ; then
+		cat ./patches/external/git/WIRELESS_REGDB >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/WPANUSB ] ; then
-		cat ./patches/git/WPANUSB >> ${wfile}
+	if [ -f ./patches/external/git/KSMBD ] ; then
+		cat ./patches/external/git/KSMBD >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/BCFSERIAL ] ; then
-		cat ./patches/git/BCFSERIAL >> ${wfile}
+	if [ -f ./patches/external/git/TI_AMX3_CM3 ] ; then
+		cat ./patches/external/git/TI_AMX3_CM3 >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/WIRELESS_REGDB ] ; then
-		cat ./patches/git/WIRELESS_REGDB >> ${wfile}
+	if [ -f ./patches/external/git/WPANUSB ] ; then
+		cat ./patches/external/git/WPANUSB >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/KSMBD ] ; then
-		cat ./patches/git/KSMBD >> ${wfile}
+	if [ -f ./patches/external/git/BCFSERIAL ] ; then
+		cat ./patches/external/git/BCFSERIAL >> ${wfile}
 	fi
 }
 
@@ -52,7 +52,10 @@ if [ -e ${DIR}/version.sh ]; then
 		BRANCH="master"
 	fi
 
-	echo "merge ti: ${repo}/${ti_git_old_release}...${ti_git_new_release}" > ${wfile}
+	if [ "${TISDK}" ] ; then
+		echo "Merge TI Branch; TI SDK: ${TISDK}" >> ${wfile}
+	fi
+	echo "Merge TI Branch; ${repo}/${ti_git_old_release}...${ti_git_new_release}" > ${wfile}
 	if [ "${TISDK}" ] ; then
 		echo "TI SDK: ${TISDK}" >> ${wfile}
 	fi
