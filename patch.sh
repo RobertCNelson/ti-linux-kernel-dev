@@ -624,6 +624,7 @@ drivers () {
 	dir 'led'
 	dir 'greybus'
 	dir 'nfc'
+	dir 'cc33xx'
 }
 
 ###
