@@ -26,8 +26,8 @@ cat_files () {
 		cat ./patches/external/git/KSMBD >> ${wfile}
 	fi
 
-	if [ -f ./patches/externalgit/TI_AMX3_CM3 ] ; then
-		cat ./patches/externalgit/TI_AMX3_CM3 >> ${wfile}
+	if [ -f ./patches/external/git/TI_AMX3_CM3 ] ; then
+		cat ./patches/external/git/TI_AMX3_CM3 >> ${wfile}
 	fi
 
 	if [ -f ./patches/external/git/WPANUSB ] ; then

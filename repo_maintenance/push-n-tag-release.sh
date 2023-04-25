@@ -47,7 +47,7 @@ cat_files () {
 	fi
 
 	if [ -f ./patches/external/git/TI_AMX3_CM3 ] ; then
-		cat ./patches/git/external/TI_AMX3_CM3 >> ${wfile}
+		cat ./patches/external/git/TI_AMX3_CM3 >> ${wfile}
 	fi
 
 	if [ -f ./patches/external/git/WPANUSB ] ; then

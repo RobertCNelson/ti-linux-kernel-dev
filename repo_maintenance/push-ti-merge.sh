@@ -26,8 +26,8 @@ cat_files () {
 		cat ./patches/external/git/KSMBD >> ${wfile}
 	fi
 
-	if [ -f ./patches/externalgit/TI_AMX3_CM3 ] ; then
-		cat ./patches/externalgit/TI_AMX3_CM3 >> ${wfile}
+	if [ -f ./patches/external/git/TI_AMX3_CM3 ] ; then
+		cat ./patches/external/git/TI_AMX3_CM3 >> ${wfile}
 	fi
 
 	if [ -f ./patches/external/git/WPANUSB ] ; then
@@ -52,7 +52,10 @@ if [ -e ${DIR}/version.sh ]; then
 		BRANCH="master"
 	fi
 
-	echo "merge ti: ${repo}/${ti_git_old_release}...${ti_git_new_release}" > ${wfile}
+	if [ "${TISDK}" ] ; then
+		echo "Merge TI Branch; TI SDK: ${TISDK}" >> ${wfile}
+	fi
+	echo "Merge TI Branch; ${repo}/${ti_git_old_release}...${ti_git_new_release}" > ${wfile}
 	if [ "${TISDK}" ] ; then
 		echo "TI SDK: ${TISDK}" >> ${wfile}
 	fi
