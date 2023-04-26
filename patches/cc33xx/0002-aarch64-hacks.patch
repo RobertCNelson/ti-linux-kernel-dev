@@ -1,0 +1,121 @@
+From 88148e04cc716395030d6c2239183f42ede3e9ca Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Tue, 25 Apr 2023 19:10:50 -0500
+Subject: [PATCH 2/2] aarch64 hacks
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/net/wireless/ti/cc33xx/boot.c   |  5 +++++
+ drivers/net/wireless/ti/cc33xx/sdio.c   |  4 ++--
+ drivers/net/wireless/ti/cc33xx/tx.c     | 22 ++++++++++++----------
+ drivers/net/wireless/ti/cc33xx/wlcore.h |  6 +++---
+ 4 files changed, 22 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/net/wireless/ti/cc33xx/boot.c b/drivers/net/wireless/ti/cc33xx/boot.c
+index 414bd789271b..c71c76b4a023 100644
+--- a/drivers/net/wireless/ti/cc33xx/boot.c
++++ b/drivers/net/wireless/ti/cc33xx/boot.c
+@@ -167,9 +167,14 @@ static int wait_for_boot_irq(struct wl1271 *wl,
+ 	int ret; 
+ 	u32 pending_irqs;
+ 	struct cc33xx_fw_download *fw_download;
++	struct platform_device *pdev = wl->pdev;
++	struct wlcore_platdev_data *pdev_data = dev_get_platdata(&pdev->dev);
+ 
+ 	fw_download = wl->fw_download;
+ 
++	msleep(100);
++	pdev_data->irq_handler(pdev);
++
+ 	ret = wait_for_completion_interruptible_timeout(
+ 			&fw_download->wait_on_irq, msecs_to_jiffies(timeout));
+ 
+diff --git a/drivers/net/wireless/ti/cc33xx/sdio.c b/drivers/net/wireless/ti/cc33xx/sdio.c
+index 2dc9363f03f3..722980c82ba5 100644
+--- a/drivers/net/wireless/ti/cc33xx/sdio.c
++++ b/drivers/net/wireless/ti/cc33xx/sdio.c
+@@ -476,13 +476,13 @@ static int wl1271_probe(struct sdio_func *func,
+ 		dev_info(glue->dev, "Using GPIO as IRQ\n");
+ 
+ 		BUG_ON(irqd_get_trigger_type(irq_get_irq_data(gpio_irq))
+-			 != IRQF_TRIGGER_HIGH);
++			 != IRQF_TRIGGER_RISING);
+ 
+ 		irq_set_status_flags(gpio_irq, IRQ_NOAUTOEN);
+ 
+ 		ret = request_threaded_irq(
+ 			gpio_irq, gpio_irq_hard_handler, gpio_irq_thread_handler,
+-			IRQF_TRIGGER_HIGH|IRQF_ONESHOT, glue->core->name, func);
++			IRQF_TRIGGER_RISING, glue->core->name, func);
+ 		if (ret) {
+ 			dev_err(glue->dev, "can't register GPIO IRQ handler\n");
+ 			goto out_dev_put;
+diff --git a/drivers/net/wireless/ti/cc33xx/tx.c b/drivers/net/wireless/ti/cc33xx/tx.c
+index ae4197b46474..ea21cc7c8649 100644
+--- a/drivers/net/wireless/ti/cc33xx/tx.c
++++ b/drivers/net/wireless/ti/cc33xx/tx.c
+@@ -618,18 +618,18 @@ static bool wl18xx_lnk_high_prio(struct wl1271 *wl, u8 hlid,
+ 
+ 	u8 thold;
+ 	struct core_fw_status * core_fw_status = &wl->core_status->fwInfo;
+-	unsigned long suspend_bitmap;
+-
+-
++	unsigned long suspend_bitmap, fast_bitmap, ps_bitmap;
++	suspend_bitmap = le32_to_cpu((unsigned long) core_fw_status->link_suspend_bitmap);
++	fast_bitmap = le32_to_cpu((unsigned long) core_fw_status->link_fast_bitmap);
++	ps_bitmap = le32_to_cpu((unsigned long) core_fw_status->link_ps_bitmap);
+ 
+ 	    /* suspended links are never high priority */
+-	    suspend_bitmap = le32_to_cpu(core_fw_status->link_suspend_bitmap);
+ 	    if (test_bit(hlid, &suspend_bitmap))
+ 	        return false;
+ 
+ 	    /* the priority thresholds are taken from FW */
+-	    if (test_bit(hlid, &core_fw_status->link_fast_bitmap) &&
+-	        !test_bit(hlid, &core_fw_status->link_ps_bitmap))
++		if (test_bit(hlid, &fast_bitmap) &&
++		 !test_bit(hlid, &ps_bitmap))
+ 	        thold = core_fw_status->tx_fast_link_prio_threshold;
+ 	    else
+ 	        thold = core_fw_status->tx_slow_link_prio_threshold;
+@@ -642,13 +642,15 @@ static bool wl18xx_lnk_low_prio(struct wl1271 *wl, u8 hlid,
+ {
+ 	u8 thold;
+ 	struct core_fw_status *core_fw_status = &wl->core_status->fwInfo;
+-	unsigned long suspend_bitmap;
++	unsigned long suspend_bitmap, fast_bitmap, ps_bitmap;
++	suspend_bitmap = le32_to_cpu((unsigned long) core_fw_status->link_suspend_bitmap);
++	fast_bitmap = le32_to_cpu((unsigned long) core_fw_status->link_fast_bitmap);
++	ps_bitmap = le32_to_cpu((unsigned long) core_fw_status->link_ps_bitmap);
+ 
+-	suspend_bitmap = le32_to_cpu(core_fw_status->link_suspend_bitmap);
+ 	if (test_bit(hlid, &suspend_bitmap))
+ 		thold = core_fw_status->tx_suspend_threshold;
+-	else if (test_bit(hlid, &core_fw_status->link_fast_bitmap) &&
+-		 !test_bit(hlid, &core_fw_status->link_ps_bitmap))
++	else if (test_bit(hlid, &fast_bitmap) &&
++		 !test_bit(hlid, &ps_bitmap))
+ 		thold = core_fw_status->tx_fast_stop_threshold;
+ 	else
+ 		thold = core_fw_status->tx_slow_stop_threshold;
+diff --git a/drivers/net/wireless/ti/cc33xx/wlcore.h b/drivers/net/wireless/ti/cc33xx/wlcore.h
+index ae970971e920..9f41e5113076 100644
+--- a/drivers/net/wireless/ti/cc33xx/wlcore.h
++++ b/drivers/net/wireless/ti/cc33xx/wlcore.h
+@@ -552,9 +552,9 @@ struct core_fw_status
+     u8   txResultQueueIndex;
+     u8   reserved1[3];
+     u8   txResultQueue[TX_RESULT_QUEUE_SIZE];
+-    unsigned long  link_ps_bitmap;                     /* A bitmap (where each bit represents a single HLID) to indicate PS/Active mode of the link */
+-    unsigned long  link_fast_bitmap;                   /* A bitmap (where each bit represents a single HLID) to indicate if the station is in Fast mode */
+-    unsigned long  link_suspend_bitmap;                /* A bitmap (where each bit represents a single HLID) to indicate if a links is suspended/aboout to be suspended*/
++    u32  link_ps_bitmap;                     /* A bitmap (where each bit represents a single HLID) to indicate PS/Active mode of the link */
++    u32  link_fast_bitmap;                   /* A bitmap (where each bit represents a single HLID) to indicate if the station is in Fast mode */
++    u32  link_suspend_bitmap;                /* A bitmap (where each bit represents a single HLID) to indicate if a links is suspended/aboout to be suspended*/
+     u8      TxFlowControlAcThreshold;           /* Host TX Flow Control descriptor per AC threshold */
+     u8      tx_ps_threshold;                    /* Host TX Flow Control descriptor PS link threshold */
+     u8      tx_suspend_threshold;               /* Host TX Flow Control descriptor Suspended link threshold */
+-- 
+2.39.2
+
