@@ -6,7 +6,7 @@ config="defconfig"
 
 build_prefix="-ti-arm64-r"
 branch_prefix="ti-linux-arm64-"
-branch_postfix=".y"
+branch_postfix=".y-cc33xx"
 bborg_branch="5.10-arm64"
 
 #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v5.10-rc1
@@ -45,7 +45,7 @@ KERNEL_REL=5.10
 KERNEL_TAG=${KERNEL_REL}.168
 kernel_rt=".168-rt83"
 #Kernel Build
-BUILD=${build_prefix}101
+BUILD=${build_prefix}101.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
