@@ -443,7 +443,7 @@ dtb_makefile_append () {
 }
 
 beagleboard_dtbs () {
-	branch="v5.10.x-ti-unified"
+	branch="v6.1.x-ti"
 	https_repo="https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
@@ -467,29 +467,29 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
-		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-lite.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-extended-wifi.dtb" ; dtb_makefile_append
+#		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
+#		device="am335x-sancloud-bbe-lite.dtb" ; dtb_makefile_append
+#		device="am335x-sancloud-bbe-extended-wifi.dtb" ; dtb_makefile_append
 
-		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
+#		device="am335x-boneblack-uboot.dtb" ; dtb_makefile_append
 
-		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-lite-uboot.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; dtb_makefile_append
+#		device="am335x-sancloud-bbe-uboot.dtb" ; dtb_makefile_append
+#		device="am335x-sancloud-bbe-lite-uboot.dtb" ; dtb_makefile_append
+#		device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; dtb_makefile_append
 
-		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
-		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
-		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
+#		device="am335x-bone-uboot-univ.dtb" ; dtb_makefile_append
+#		device="am335x-boneblack-uboot-univ.dtb" ; dtb_makefile_append
+#		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; dtb_makefile_append
 
-		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-lite-uboot-univ.dtb" ; dtb_makefile_append
-		device="am335x-sancloud-bbe-extended-wifi-uboot-univ.dtb" ; dtb_makefile_append
+#		device="am335x-sancloud-bbe-uboot-univ.dtb" ; dtb_makefile_append
+#		device="am335x-sancloud-bbe-lite-uboot-univ.dtb" ; dtb_makefile_append
+#		device="am335x-sancloud-bbe-extended-wifi-uboot-univ.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${branch}" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
-		echo "BBDTBS: https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" > ../patches/git/BBDTBS
+		echo "BBDTBS: https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" > ../patches/external/git/BBDTBS
 
 		rm -rf ../${work_dir}/ || true
 
@@ -520,7 +520,7 @@ ksmbd
 #rt
 wireless_regdb
 ti_pm_firmware
-#beagleboard_dtbs
+beagleboard_dtbs
 #local_patch
 
 pre_backports () {
