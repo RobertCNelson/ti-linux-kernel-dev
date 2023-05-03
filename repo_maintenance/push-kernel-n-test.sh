@@ -6,12 +6,8 @@ wfile=$(mktemp /tmp/builder.XXXXXXXXX)
 echo "Working on temp $wfile ..."
 
 cat_files () {
-	if [ -f ./patches/git/BBDTBS ] ; then
-		cat ./patches/git/BBDTBS >> ${wfile}
-	fi
-
-	if [ -f ./patches/git/CAN-ISOTP ] ; then
-		cat ./patches/git/CAN-ISOTP >> ${wfile}
+	if [ -f ./patches/external/git/BBDTBS ] ; then
+		cat ./patches/external/git/BBDTBS >> ${wfile}
 	fi
 
 	if [ -f ./patches/external/git/RT ] ; then
@@ -30,12 +26,8 @@ cat_files () {
 		cat ./patches/external/git/KSMBD >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/TI_AMX3_CM3 ] ; then
-		cat ./patches/git/TI_AMX3_CM3 >> ${wfile}
-	fi
-
-	if [ -f ./patches/git/WIREGUARD ] ; then
-		cat ./patches/git/WIREGUARD >> ${wfile}
+	if [ -f ./patches/external/git/TI_AMX3_CM3 ] ; then
+		cat ./patches/external/git/TI_AMX3_CM3 >> ${wfile}
 	fi
 
 	if [ -f ./patches/external/git/WPANUSB ] ; then

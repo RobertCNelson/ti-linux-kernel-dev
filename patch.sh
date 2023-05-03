@@ -412,8 +412,8 @@ ti_pm_firmware () {
 
 		${git_bin} add -f ./firmware/am*
 		${git_bin} commit -a -m 'Add AM335x CM3 Power Managment Firmware' -m "http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=commit;h=${ti_amx3_cm3_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/drivers/ti/firmware/
-		echo "TI_AMX3_CM3: http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=commit;h=${ti_amx3_cm3_hash}" > ../patches/git/TI_AMX3_CM3
+		${git_bin} format-patch -1 -o ../patches/external/ti-amx3-cm3-pm-firmware/
+		echo "TI_AMX3_CM3: http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=commit;h=${ti_amx3_cm3_hash}" > ../patches/external/git/TI_AMX3_CM3
 
 		rm -rf ../ti-amx3-cm3-pm-firmware/ || true
 
@@ -421,14 +421,14 @@ ti_pm_firmware () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/drivers/ti/firmware/0001-Add-AM335x-CM3-Power-Managment-Firmware.patch"
+		${git} "${DIR}/patches/external/ti-amx3-cm3-pm-firmware/0001-Add-AM335x-CM3-Power-Managment-Firmware.patch"
 
-		wdir="drivers/ti/firmware"
+		wdir="external/ti-amx3-cm3-pm-firmware"
 		number=1
 		cleanup
 	fi
 
-	dir 'drivers/ti/firmware'
+	dir 'external/ti-amx3-cm3-pm-firmware'
 }
 
 cleanup_dts_builds () {
@@ -519,7 +519,7 @@ bcfserial
 ksmbd
 #rt
 wireless_regdb
-#ti_pm_firmware
+ti_pm_firmware
 #beagleboard_dtbs
 #local_patch
 
