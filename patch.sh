@@ -626,6 +626,7 @@ drivers () {
 	dir 'greybus'
 	dir 'nfc'
 #	dir 'cc33xx'
+	dir 'i2c'
 }
 
 ###
