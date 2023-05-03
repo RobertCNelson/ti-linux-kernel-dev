@@ -558,52 +558,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.13.19"
-
-	subsystem="wlcore"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/net/wireless/ti/* ./drivers/net/wireless/ti/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	backport_tag="v5.13.19"
-
-	subsystem="spidev"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/spi/spidev.c ./drivers/spi/spidev.c
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	backport_tag="v5.10.169"
-
-	subsystem="spi"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/spi/spi-omap2-mcspi.c ./drivers/spi/spi-omap2-mcspi.c
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-	fi
-
-	backport_tag="v5.10.177"
+	backport_tag="v6.1.27"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -620,22 +575,6 @@ backports () {
 		exit 2
 	else
 		patch_backports
-	fi
-
-	backport_tag="v5.19.17"
-
-	subsystem="it66121"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/gpu/drm/bridge/ite-it66121.c ./drivers/gpu/drm/bridge/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-		${git} "${DIR}/patches/backports/${subsystem}/0002-wire-up-it66121.patch"
 	fi
 }
 
@@ -878,7 +817,7 @@ fixes () {
 }
 
 ###
-#backports
+backports
 #brcmfmac
 #reverts
 #drivers
@@ -888,7 +827,7 @@ fixes () {
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.23"
+		backport_tag="v6.1.27"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
