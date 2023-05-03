@@ -262,8 +262,8 @@ bcfserial () {
 
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: bcfserial: https://git.beagleboard.org/beagleconnect/linux/bcfserial.git' -m "https://git.beagleboard.org/beagleconnect/linux/bcfserial/-/commit/${bcfserial_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/bcfserial/
-		echo "BCFSERIAL: https://git.beagleboard.org/beagleconnect/linux/bcfserial/-/commit/${bcfserial_hash}" > ../patches/git/BCFSERIAL
+		${git_bin} format-patch -1 -o ../patches/external/bcfserial/
+		echo "BCFSERIAL: https://git.beagleboard.org/beagleconnect/linux/bcfserial/-/commit/${bcfserial_hash}" > ../patches/external/git/BCFSERIAL
 
 		rm -rf ../bcfserial/ || true
 
@@ -271,15 +271,15 @@ bcfserial () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/bcfserial/0001-merge-bcfserial-https-git.beagleboard.org-beagleconn.patch"
+		${git} "${DIR}/patches/external/bcfserial/0001-merge-bcfserial-https-git.beagleboard.org-beagleconn.patch"
 
-		wdir="bcfserial"
+		wdir="external/bcfserial"
 		number=1
 		cleanup
 
 		exit 2
 	fi
-	dir 'bcfserial'
+	dir 'external/bcfserial'
 }
 
 ksmbd () {
@@ -515,7 +515,7 @@ local_patch () {
 external_git
 aufs
 wpanusb
-#bcfserial
+bcfserial
 ksmbd
 #rt
 wireless_regdb

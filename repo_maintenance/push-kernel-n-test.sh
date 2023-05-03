@@ -34,8 +34,8 @@ cat_files () {
 		cat ./patches/external/git/WPANUSB >> ${wfile}
 	fi
 
-	if [ -f ./patches/git/BCFSERIAL ] ; then
-		cat ./patches/git/BCFSERIAL >> ${wfile}
+	if [ -f ./patches/external/git/BCFSERIAL ] ; then
+		cat ./patches/external/git/BCFSERIAL >> ${wfile}
 	fi
 
 	if [ -f ./patches/external/git/WIRELESS_REGDB ] ; then
