@@ -223,8 +223,8 @@ wpanusb () {
 
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://git.beagleboard.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/wpanusb/
-		echo "WPANUSB: https://git.beagleboard.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/git/WPANUSB
+		${git_bin} format-patch -1 -o ../patches/external/wpanusb/
+		echo "WPANUSB: https://git.beagleboard.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/external/git/WPANUSB
 
 		rm -rf ../wpanusb/ || true
 
@@ -232,15 +232,15 @@ wpanusb () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/wpanusb/0001-merge-wpanusb-https-git.beagleboard.org-beagleconnec.patch"
+		${git} "${DIR}/patches/external/wpanusb/0001-merge-wpanusb-https-git.beagleboard.org-beagleconnec.patch"
 
-		wdir="wpanusb"
+		wdir="external/wpanusb"
 		number=1
 		cleanup
 
 		exit 2
 	fi
-	dir 'wpanusb'
+	dir 'external/wpanusb'
 }
 
 bcfserial () {
@@ -514,7 +514,7 @@ local_patch () {
 
 external_git
 aufs
-#wpanusb
+wpanusb
 #bcfserial
 ksmbd
 #rt
