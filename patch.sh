@@ -795,9 +795,8 @@ drivers () {
 	dir 'drivers/ti/serial'
 	dir 'drivers/ti/tsc'
 	dir 'drivers/ti/gpio'
-	#dir 'drivers/greybus'
-	#dir 'drivers/fb_ssd1306'
-	#dir 'drivers/hackaday'
+	dir 'drivers/fb_ssd1306'
+	dir 'drivers/hackaday'
 	#dir 'drivers/qcacld'
 	##dir 'android'
 }
