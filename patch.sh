@@ -778,7 +778,7 @@ reverts () {
 
 drivers () {
 	#https://github.com/raspberrypi/linux/branches
-	#exit 2
+	#git clone -b rpi-6.1.y https://github.com/raspberrypi/linux.git --reference ~/linux-src/
 	dir 'RPi'
 
 	#cd KERNEL/
@@ -788,22 +788,22 @@ drivers () {
 	#git format-patch -12 -o ../patches/overlays/
 	#https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git/log/?h=topic/overlays-v5.10-rc1
 	#../
-	dir 'overlays'
+	#dir 'overlays'
 
-	dir 'drivers/ar1021_i2c'
-	dir 'drivers/sound'
-	dir 'drivers/spi'
-	dir 'drivers/tps65217'
+	#dir 'drivers/ar1021_i2c'
+	#dir 'drivers/sound'
+	#dir 'drivers/spi'
+	#dir 'drivers/tps65217'
 
-	dir 'drivers/ti/cpsw'
-	dir 'drivers/ti/serial'
-	dir 'drivers/ti/tsc'
-	dir 'drivers/ti/gpio'
-	dir 'drivers/greybus'
-	dir 'drivers/fb_ssd1306'
-	dir 'drivers/hackaday'
-	dir 'drivers/qcacld'
-	#dir 'android'
+	#dir 'drivers/ti/cpsw'
+	#dir 'drivers/ti/serial'
+	#dir 'drivers/ti/tsc'
+	#dir 'drivers/ti/gpio'
+	#dir 'drivers/greybus'
+	#dir 'drivers/fb_ssd1306'
+	#dir 'drivers/hackaday'
+	#dir 'drivers/qcacld'
+	##dir 'android'
 }
 
 soc () {
@@ -820,7 +820,7 @@ fixes () {
 backports
 #brcmfmac
 #reverts
-#drivers
+drivers
 #soc
 #fixes
 
