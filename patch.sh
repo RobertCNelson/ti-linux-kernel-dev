@@ -790,15 +790,11 @@ drivers () {
 	#../
 	#dir 'overlays'
 
-	#dir 'drivers/ar1021_i2c'
-	#dir 'drivers/sound'
-	#dir 'drivers/spi'
-	#dir 'drivers/tps65217'
+	dir 'drivers/ar1021_i2c'
 
-	#dir 'drivers/ti/cpsw'
-	#dir 'drivers/ti/serial'
-	#dir 'drivers/ti/tsc'
-	#dir 'drivers/ti/gpio'
+	dir 'drivers/ti/serial'
+	dir 'drivers/ti/tsc'
+	dir 'drivers/ti/gpio'
 	#dir 'drivers/greybus'
 	#dir 'drivers/fb_ssd1306'
 	#dir 'drivers/hackaday'
