@@ -558,6 +558,22 @@ patch_backports (){
 }
 
 backports () {
+	backport_tag="v5.10.179"
+
+	subsystem="uio"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/uio/uio_pruss.c ./drivers/uio/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+		dir 'drivers/ti/uio'
+	fi
+
 	backport_tag="v6.1.27"
 
 	subsystem="iio"
@@ -799,11 +815,8 @@ drivers () {
 	dir 'drivers/hackaday'
 	#dir 'drivers/qcacld'
 	##dir 'android'
-}
 
-soc () {
 	dir 'bootup_hacks'
-	dir 'drivers/ti/uio'
 	dir 'boris'
 }
 
@@ -816,7 +829,6 @@ backports
 #brcmfmac
 #reverts
 drivers
-#soc
 #fixes
 
 packaging () {
