@@ -656,11 +656,9 @@ packaging () {
 }
 
 readme () {
-	#regenerate="enable"
+	regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
-		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
-		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
 		cp -v "${DIR}/3rdparty/readme/.gitlab-ci.yml" "${DIR}/KERNEL/.gitlab-ci.yml"
 
 		mkdir -p "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
@@ -668,14 +666,12 @@ readme () {
 		cp -v "${DIR}/3rdparty/readme/FUNDING.yml" "${DIR}/KERNEL/.github/"
 
 		git add -f README.md
-		git add -f jenkins_build.sh
-		git add -f Jenkinsfile
 		git add -f .gitlab-ci.yml
 
 		git add -f .github/ISSUE_TEMPLATE/bug_report.md
 		git add -f .github/FUNDING.yml
 
-		git commit -a -m 'enable: Jenkins/gitlab-ci' -s
+		git commit -a -m 'enable: gitlab-ci' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
 	else

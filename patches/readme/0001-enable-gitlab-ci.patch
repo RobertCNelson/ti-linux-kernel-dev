@@ -1,23 +1,19 @@
-From 8f1add9e0a10868544371b7f3af2e84dfa57b5a3 Mon Sep 17 00:00:00 2001
+From 306b4b76999cdb59f7f1ee86578bef8508ac2154 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 25 Apr 2023 15:40:53 -0500
-Subject: [PATCH] enable: Jenkins/gitlab-ci
+Date: Fri, 12 May 2023 17:19:55 -0500
+Subject: [PATCH] enable: gitlab-ci
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  .github/FUNDING.yml                  | 12 ++++++++++++
  .github/ISSUE_TEMPLATE/bug_report.md | 20 ++++++++++++++++++++
- .gitlab-ci.yml                       | 13 +++++++++++++
- Jenkinsfile                          | 11 +++++++++++
+ .gitlab-ci.yml                       | 19 +++++++++++++++++++
  README.md                            |  3 +++
- jenkins_build.sh                     | 12 ++++++++++++
- 6 files changed, 71 insertions(+)
+ 4 files changed, 54 insertions(+)
  create mode 100644 .github/FUNDING.yml
  create mode 100644 .github/ISSUE_TEMPLATE/bug_report.md
  create mode 100644 .gitlab-ci.yml
- create mode 100644 Jenkinsfile
  create mode 100644 README.md
- create mode 100755 jenkins_build.sh
 
 diff --git a/.github/FUNDING.yml b/.github/FUNDING.yml
 new file mode 100644
@@ -65,10 +61,10 @@ index 000000000000..94be17e338b3
 +```
 diff --git a/.gitlab-ci.yml b/.gitlab-ci.yml
 new file mode 100644
-index 000000000000..0b37f860d683
+index 000000000000..25b049a6552c
 --- /dev/null
 +++ b/.gitlab-ci.yml
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,19 @@
 +image: robertcnelson/debian-bullseye-slim-linux-compile:latest
 +
 +build:
@@ -76,29 +72,18 @@ index 000000000000..0b37f860d683
 +    - docker-amd64
 +  stage: build
 +  script:
-+    - ./jenkins_build.sh
++    - CORES=$(getconf _NPROCESSORS_ONLN)
++    - export CC=/usr/bin/aarch64-linux-gnu-
++    - make ARCH=arm64 CROSS_COMPILE=${CC} clean
++    - make ARCH=arm64 CROSS_COMPILE=${CC} bb.org_defconfig
++    - echo "make -j${CORES} ARCH=arm64 KBUILD_DEBARCH=arm64 CROSS_COMPILE=${CC} KDEB_SOURCENAME=linux-upstream KDEB_COMPRESS=xz bindeb-pkg"
++    - make -j${CORES} ARCH=arm64 KBUILD_DEBARCH=arm64 KDEB_PKGVERSION=1xross CROSS_COMPILE=${CC} KDEB_SOURCENAME=linux-upstream KDEB_COMPRESS=xz bindeb-pkg
++    - mv ../*.deb ./
 +  artifacts:
 +    expire_in: 5 days
 +    name: "$CI_PROJECT_NAME-$CI_COMMIT_BRANCH-$CI_JOB_ID"
 +    paths:
 +      - "linux-image*.deb"
-diff --git a/Jenkinsfile b/Jenkinsfile
-new file mode 100644
-index 000000000000..5d5776ff0e8b
---- /dev/null
-+++ b/Jenkinsfile
-@@ -0,0 +1,11 @@
-+pipeline {
-+    agent { label 'amd64'}
-+
-+    stages {
-+        stage('Build') {
-+            steps {
-+                sh '/bin/bash ./jenkins_build.sh'
-+            }
-+        }
-+    }
-+}
 diff --git a/README.md b/README.md
 new file mode 100644
 index 000000000000..35f4caf8a15a
@@ -108,24 +93,6 @@ index 000000000000..35f4caf8a15a
 +# Gitlab CI
 +
 +Job Status: https://git.beagleboard.org/beagleboard/linux/-/jobs
-diff --git a/jenkins_build.sh b/jenkins_build.sh
-new file mode 100755
-index 000000000000..b82d3e026088
---- /dev/null
-+++ b/jenkins_build.sh
-@@ -0,0 +1,12 @@
-+#!/bin/bash
-+
-+CORES=$(getconf _NPROCESSORS_ONLN)
-+
-+export CC=/usr/bin/aarch64-linux-gnu-
-+
-+make ARCH=arm64 CROSS_COMPILE=${CC} clean
-+make ARCH=arm64 CROSS_COMPILE=${CC} bb.org_defconfig
-+
-+echo "make -j${CORES} ARCH=arm64 KBUILD_DEBARCH=arm64 CROSS_COMPILE=${CC} bindeb-pkg"
-+make -j${CORES} ARCH=arm64 KBUILD_DEBARCH=arm64 KDEB_PKGVERSION=1xross CROSS_COMPILE=${CC} bindeb-pkg
-+mv ../*.deb ./
 -- 
 2.39.2
 
