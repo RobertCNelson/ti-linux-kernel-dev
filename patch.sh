@@ -627,6 +627,7 @@ drivers () {
 	dir 'nfc'
 #	dir 'cc33xx'
 	dir 'i2c'
+	dir 'meta-ti'
 }
 
 ###
