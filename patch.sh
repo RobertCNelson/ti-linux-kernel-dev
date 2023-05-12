@@ -211,7 +211,6 @@ aufs () {
 		number=6
 		cleanup
 	fi
-
 	dir 'external/aufs'
 }
 
@@ -358,7 +357,6 @@ rt () {
 
 		exit 2
 	fi
-
 	dir 'external/rt'
 }
 
@@ -399,7 +397,6 @@ wireless_regdb () {
 		number=1
 		cleanup
 	fi
-
 	dir 'external/wireless_regdb'
 }
 
@@ -464,7 +461,6 @@ beagleboard_dtbs () {
 		number=1
 		cleanup
 	fi
-
 	dir 'soc/ti/beagleboard_dtbs'
 }
 
@@ -518,7 +514,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.178"
+	backport_tag="v5.10.179"
 
 	subsystem="iio"
 	#regenerate="enable"
