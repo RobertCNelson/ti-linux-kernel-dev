@@ -441,6 +441,7 @@ beagleboard_dtbs () {
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
 		device="k3-am625-beagleplay-cc33xx.dtb" ; dtb_makefile_append
+		device="k3-am625-pocketbeagle2.dtb" ; dtb_makefile_append
 		device="k3-j721e-beagleboneai64.dtb" ; dtb_makefile_append
 		device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; dtb_makefile_append
 		device="k3-am625-beagleplay.dtb" ; dtb_makefile_append
