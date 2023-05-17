@@ -558,7 +558,7 @@ patch_backports (){
 }
 
 backports () {
-	backport_tag="v5.10.179"
+	backport_tag="v5.10.180"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -574,7 +574,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.27"
+	backport_tag="v6.1.29"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -585,7 +585,6 @@ backports () {
 		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
 		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
 		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
-		cp -v ~/linux-src/include/linux/interrupt.h ./include/linux/
 
 		post_backports
 		exit 2

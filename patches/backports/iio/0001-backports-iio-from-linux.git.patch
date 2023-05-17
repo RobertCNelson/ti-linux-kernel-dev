@@ -1,306 +1,145 @@
-From 17b68ed5d56b809914984cfc2bf93037bd0a8d5a Mon Sep 17 00:00:00 2001
+From e61ca0aaae95a8aeccbab634da9cfe6440175f5a Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 3 May 2023 16:34:43 -0500
+Date: Wed, 17 May 2023 17:06:16 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v6.1.27
+Reference: v6.1.29
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/accel/mma9551_core.c   | 10 ++++++++--
- drivers/iio/adc/ad7791.c           |  2 +-
- drivers/iio/adc/at91-sama5d2_adc.c |  2 +-
- drivers/iio/adc/ltc2497.c          |  6 ++----
- drivers/iio/adc/qcom-spmi-adc5.c   | 10 +++++++++-
- drivers/iio/adc/ti-ads7950.c       |  1 +
- drivers/iio/dac/ad5755.c           |  1 +
- drivers/iio/dac/cio-dac.c          |  4 ++--
- drivers/iio/imu/Kconfig            |  1 +
- drivers/iio/industrialio-buffer.c  | 21 ++++++++++++---------
- drivers/iio/light/cm32181.c        | 12 ++++++++++++
- drivers/iio/light/tsl2563.c        |  8 +++++++-
- drivers/iio/light/tsl2772.c        |  1 +
- 13 files changed, 58 insertions(+), 21 deletions(-)
+ drivers/iio/adc/palmas_gpadc.c          |  2 +-
+ drivers/iio/addac/stx104.c              | 12 ++++++++++++
+ drivers/iio/light/max44009.c            | 13 +++++++------
+ drivers/staging/iio/resolver/ad2s1210.c |  2 +-
+ 4 files changed, 21 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/iio/accel/mma9551_core.c b/drivers/iio/accel/mma9551_core.c
-index 64ca7d7a9673..b898f865fb87 100644
---- a/drivers/iio/accel/mma9551_core.c
-+++ b/drivers/iio/accel/mma9551_core.c
-@@ -296,9 +296,12 @@ int mma9551_read_config_word(struct i2c_client *client, u8 app_id,
+diff --git a/drivers/iio/adc/palmas_gpadc.c b/drivers/iio/adc/palmas_gpadc.c
+index fd000345ec5c..849a697a467e 100644
+--- a/drivers/iio/adc/palmas_gpadc.c
++++ b/drivers/iio/adc/palmas_gpadc.c
+@@ -639,7 +639,7 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
  
- 	ret = mma9551_transfer(client, app_id, MMA9551_CMD_READ_CONFIG,
- 			       reg, NULL, 0, (u8 *)&v, 2);
-+	if (ret < 0)
-+		return ret;
-+
- 	*val = be16_to_cpu(v);
- 
--	return ret;
-+	return 0;
- }
- EXPORT_SYMBOL_NS(mma9551_read_config_word, IIO_MMA9551);
- 
-@@ -354,9 +357,12 @@ int mma9551_read_status_word(struct i2c_client *client, u8 app_id,
- 
- 	ret = mma9551_transfer(client, app_id, MMA9551_CMD_READ_STATUS,
- 			       reg, NULL, 0, (u8 *)&v, 2);
-+	if (ret < 0)
-+		return ret;
-+
- 	*val = be16_to_cpu(v);
- 
--	return ret;
-+	return 0;
- }
- EXPORT_SYMBOL_NS(mma9551_read_status_word, IIO_MMA9551);
- 
-diff --git a/drivers/iio/adc/ad7791.c b/drivers/iio/adc/ad7791.c
-index fee8d129a5f0..86effe8501b4 100644
---- a/drivers/iio/adc/ad7791.c
-+++ b/drivers/iio/adc/ad7791.c
-@@ -253,7 +253,7 @@ static const struct ad_sigma_delta_info ad7791_sigma_delta_info = {
- 	.has_registers = true,
- 	.addr_shift = 4,
- 	.read_mask = BIT(3),
--	.irq_flags = IRQF_TRIGGER_LOW,
-+	.irq_flags = IRQF_TRIGGER_FALLING,
- };
- 
- static int ad7791_read_raw(struct iio_dev *indio_dev,
-diff --git a/drivers/iio/adc/at91-sama5d2_adc.c b/drivers/iio/adc/at91-sama5d2_adc.c
-index 870f4cb60923..3ad5678f2613 100644
---- a/drivers/iio/adc/at91-sama5d2_adc.c
-+++ b/drivers/iio/adc/at91-sama5d2_adc.c
-@@ -1409,7 +1409,7 @@ static struct iio_trigger *at91_adc_allocate_trigger(struct iio_dev *indio,
- 	trig = devm_iio_trigger_alloc(&indio->dev, "%s-dev%d-%s", indio->name,
- 				iio_device_id(indio), trigger_name);
- 	if (!trig)
--		return NULL;
-+		return ERR_PTR(-ENOMEM);
- 
- 	trig->dev.parent = indio->dev.parent;
- 	iio_trigger_set_drvdata(trig, indio);
-diff --git a/drivers/iio/adc/ltc2497.c b/drivers/iio/adc/ltc2497.c
-index 556f10dfb502..e1e14f5d237d 100644
---- a/drivers/iio/adc/ltc2497.c
-+++ b/drivers/iio/adc/ltc2497.c
-@@ -28,7 +28,6 @@ struct ltc2497_driverdata {
- 	struct ltc2497core_driverdata common_ddata;
- 	struct i2c_client *client;
- 	u32 recv_size;
--	u32 sub_lsb;
- 	/*
- 	 * DMA (thus cache coherency maintenance) may require the
- 	 * transfer buffers to live in their own cache lines.
-@@ -65,10 +64,10 @@ static int ltc2497_result_and_measure(struct ltc2497core_driverdata *ddata,
- 		 * equivalent to a sign extension.
- 		 */
- 		if (st->recv_size == 3) {
--			*val = (get_unaligned_be24(st->data.d8) >> st->sub_lsb)
-+			*val = (get_unaligned_be24(st->data.d8) >> 6)
- 				- BIT(ddata->chip_info->resolution + 1);
- 		} else {
--			*val = (be32_to_cpu(st->data.d32) >> st->sub_lsb)
-+			*val = (be32_to_cpu(st->data.d32) >> 6)
- 				- BIT(ddata->chip_info->resolution + 1);
- 		}
- 
-@@ -122,7 +121,6 @@ static int ltc2497_probe(struct i2c_client *client,
- 	st->common_ddata.chip_info = chip_info;
- 
- 	resolution = chip_info->resolution;
--	st->sub_lsb = 31 - (resolution + 1);
- 	st->recv_size = BITS_TO_BYTES(resolution) + 1;
- 
- 	return ltc2497core_probe(dev, indio_dev);
-diff --git a/drivers/iio/adc/qcom-spmi-adc5.c b/drivers/iio/adc/qcom-spmi-adc5.c
-index 821fee60a765..d1b86570768a 100644
---- a/drivers/iio/adc/qcom-spmi-adc5.c
-+++ b/drivers/iio/adc/qcom-spmi-adc5.c
-@@ -626,12 +626,20 @@ static int adc5_get_fw_channel_data(struct adc5_chip *adc,
- 				    struct fwnode_handle *fwnode,
- 				    const struct adc5_data *data)
+ static int palmas_gpadc_remove(struct platform_device *pdev)
  {
--	const char *name = fwnode_get_name(fwnode), *channel_name;
-+	const char *channel_name;
-+	char *name;
- 	u32 chan, value, varr[2];
- 	u32 sid = 0;
- 	int ret;
- 	struct device *dev = adc->dev;
+-	struct iio_dev *indio_dev = dev_to_iio_dev(&pdev->dev);
++	struct iio_dev *indio_dev = dev_get_drvdata(&pdev->dev);
+ 	struct palmas_gpadc *adc = iio_priv(indio_dev);
  
-+	name = devm_kasprintf(dev, GFP_KERNEL, "%pfwP", fwnode);
-+	if (!name)
-+		return -ENOMEM;
-+
-+	/* Cut the address part */
-+	name[strchrnul(name, '@') - name] = '\0';
-+
- 	ret = fwnode_property_read_u32(fwnode, "reg", &chan);
- 	if (ret) {
- 		dev_err(dev, "invalid channel number %s\n", name);
-diff --git a/drivers/iio/adc/ti-ads7950.c b/drivers/iio/adc/ti-ads7950.c
-index 2cc9a9bd9db6..263fc3a1b87e 100644
---- a/drivers/iio/adc/ti-ads7950.c
-+++ b/drivers/iio/adc/ti-ads7950.c
-@@ -634,6 +634,7 @@ static int ti_ads7950_probe(struct spi_device *spi)
- 	st->chip.label = dev_name(&st->spi->dev);
- 	st->chip.parent = &st->spi->dev;
- 	st->chip.owner = THIS_MODULE;
-+	st->chip.can_sleep = true;
- 	st->chip.base = -1;
- 	st->chip.ngpio = TI_ADS7950_NUM_GPIOS;
- 	st->chip.get_direction = ti_ads7950_get_direction;
-diff --git a/drivers/iio/dac/ad5755.c b/drivers/iio/dac/ad5755.c
-index beadfa938d2d..404865e35460 100644
---- a/drivers/iio/dac/ad5755.c
-+++ b/drivers/iio/dac/ad5755.c
-@@ -802,6 +802,7 @@ static struct ad5755_platform_data *ad5755_parse_fw(struct device *dev)
- 	return pdata;
+ 	if (adc->wakeup1_enable || adc->wakeup2_enable)
+diff --git a/drivers/iio/addac/stx104.c b/drivers/iio/addac/stx104.c
+index 48a91a95e597..b658a75d4e3a 100644
+--- a/drivers/iio/addac/stx104.c
++++ b/drivers/iio/addac/stx104.c
+@@ -15,6 +15,7 @@
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
++#include <linux/mutex.h>
+ #include <linux/spinlock.h>
+ #include <linux/types.h>
  
-  error_out:
-+	fwnode_handle_put(pp);
- 	devm_kfree(dev, pdata);
- 	return NULL;
- }
-diff --git a/drivers/iio/dac/cio-dac.c b/drivers/iio/dac/cio-dac.c
-index 791dd999cf29..18a64f72fc18 100644
---- a/drivers/iio/dac/cio-dac.c
-+++ b/drivers/iio/dac/cio-dac.c
-@@ -66,8 +66,8 @@ static int cio_dac_write_raw(struct iio_dev *indio_dev,
- 	if (mask != IIO_CHAN_INFO_RAW)
- 		return -EINVAL;
- 
--	/* DAC can only accept up to a 16-bit value */
--	if ((unsigned int)val > 65535)
-+	/* DAC can only accept up to a 12-bit value */
-+	if ((unsigned int)val > 4095)
- 		return -EINVAL;
- 
- 	priv->chan_out_states[chan->channel] = val;
-diff --git a/drivers/iio/imu/Kconfig b/drivers/iio/imu/Kconfig
-index f1d7d4b5e222..c2f97629e9cd 100644
---- a/drivers/iio/imu/Kconfig
-+++ b/drivers/iio/imu/Kconfig
-@@ -47,6 +47,7 @@ config ADIS16480
- 	depends on SPI
- 	select IIO_ADIS_LIB
- 	select IIO_ADIS_LIB_BUFFER if IIO_BUFFER
-+	select CRC32
- 	help
- 	  Say yes here to build support for Analog Devices ADIS16375, ADIS16480,
- 	  ADIS16485, ADIS16488 inertial sensors.
-diff --git a/drivers/iio/industrialio-buffer.c b/drivers/iio/industrialio-buffer.c
-index 228598b82a2f..7e7ee307a3f7 100644
---- a/drivers/iio/industrialio-buffer.c
-+++ b/drivers/iio/industrialio-buffer.c
-@@ -203,24 +203,27 @@ static ssize_t iio_buffer_write(struct file *filp, const char __user *buf,
- 				break;
- 			}
- 
-+			if (filp->f_flags & O_NONBLOCK) {
-+				if (!written)
-+					ret = -EAGAIN;
-+				break;
-+			}
-+
- 			wait_woken(&wait, TASK_INTERRUPTIBLE,
- 					MAX_SCHEDULE_TIMEOUT);
- 			continue;
- 		}
- 
- 		ret = rb->access->write(rb, n - written, buf + written);
--		if (ret == 0 && (filp->f_flags & O_NONBLOCK))
--			ret = -EAGAIN;
-+		if (ret < 0)
-+			break;
- 
--		if (ret > 0) {
--			written += ret;
--			if (written != n && !(filp->f_flags & O_NONBLOCK))
--				continue;
--		}
--	} while (ret == 0);
-+		written += ret;
-+
-+	} while (written != n);
- 	remove_wait_queue(&rb->pollq, &wait);
- 
--	return ret < 0 ? ret : n;
-+	return ret < 0 ? ret : written;
- }
+@@ -69,10 +70,12 @@ struct stx104_reg {
  
  /**
-diff --git a/drivers/iio/light/cm32181.c b/drivers/iio/light/cm32181.c
-index b1674a5bfa36..d4a34a3bf00d 100644
---- a/drivers/iio/light/cm32181.c
-+++ b/drivers/iio/light/cm32181.c
-@@ -429,6 +429,14 @@ static const struct iio_info cm32181_info = {
- 	.attrs			= &cm32181_attribute_group,
+  * struct stx104_iio - IIO device private data structure
++ * @lock: synchronization lock to prevent I/O race conditions
+  * @chan_out_states:	channels' output states
+  * @reg:		I/O address offset for the device registers
+  */
+ struct stx104_iio {
++	struct mutex lock;
+ 	unsigned int chan_out_states[STX104_NUM_OUT_CHAN];
+ 	struct stx104_reg __iomem *reg;
+ };
+@@ -114,6 +117,8 @@ static int stx104_read_raw(struct iio_dev *indio_dev,
+ 			return IIO_VAL_INT;
+ 		}
+ 
++		mutex_lock(&priv->lock);
++
+ 		/* select ADC channel */
+ 		iowrite8(chan->channel | (chan->channel << 4), &reg->achan);
+ 
+@@ -124,6 +129,8 @@ static int stx104_read_raw(struct iio_dev *indio_dev,
+ 		while (ioread8(&reg->cir_asr) & BIT(7));
+ 
+ 		*val = ioread16(&reg->ssr_ad);
++
++		mutex_unlock(&priv->lock);
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_OFFSET:
+ 		/* get ADC bipolar/unipolar configuration */
+@@ -178,9 +185,12 @@ static int stx104_write_raw(struct iio_dev *indio_dev,
+ 			if ((unsigned int)val > 65535)
+ 				return -EINVAL;
+ 
++			mutex_lock(&priv->lock);
++
+ 			priv->chan_out_states[chan->channel] = val;
+ 			iowrite16(val, &priv->reg->dac[chan->channel]);
+ 
++			mutex_unlock(&priv->lock);
+ 			return 0;
+ 		}
+ 		return -EINVAL;
+@@ -351,6 +361,8 @@ static int stx104_probe(struct device *dev, unsigned int id)
+ 
+ 	indio_dev->name = dev_name(dev);
+ 
++	mutex_init(&priv->lock);
++
+ 	/* configure device for software trigger operation */
+ 	iowrite8(0, &priv->reg->acr);
+ 
+diff --git a/drivers/iio/light/max44009.c b/drivers/iio/light/max44009.c
+index 801e5a0ad496..f3648f20ef2c 100644
+--- a/drivers/iio/light/max44009.c
++++ b/drivers/iio/light/max44009.c
+@@ -528,6 +528,12 @@ static int max44009_probe(struct i2c_client *client,
+ 	return devm_iio_device_register(&client->dev, indio_dev);
+ }
+ 
++static const struct of_device_id max44009_of_match[] = {
++	{ .compatible = "maxim,max44009" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, max44009_of_match);
++
+ static const struct i2c_device_id max44009_id[] = {
+ 	{ "max44009", 0 },
+ 	{ }
+@@ -537,18 +543,13 @@ MODULE_DEVICE_TABLE(i2c, max44009_id);
+ static struct i2c_driver max44009_driver = {
+ 	.driver = {
+ 		.name = MAX44009_DRV_NAME,
++		.of_match_table = max44009_of_match,
+ 	},
+ 	.probe = max44009_probe,
+ 	.id_table = max44009_id,
+ };
+ module_i2c_driver(max44009_driver);
+ 
+-static const struct of_device_id max44009_of_match[] = {
+-	{ .compatible = "maxim,max44009" },
+-	{ }
+-};
+-MODULE_DEVICE_TABLE(of, max44009_of_match);
+-
+ MODULE_AUTHOR("Robert Eshleman <bobbyeshleman@gmail.com>");
+ MODULE_LICENSE("GPL v2");
+ MODULE_DESCRIPTION("MAX44009 ambient light sensor driver");
+diff --git a/drivers/staging/iio/resolver/ad2s1210.c b/drivers/staging/iio/resolver/ad2s1210.c
+index e4cf42438487..636c45b12843 100644
+--- a/drivers/staging/iio/resolver/ad2s1210.c
++++ b/drivers/staging/iio/resolver/ad2s1210.c
+@@ -101,7 +101,7 @@ struct ad2s1210_state {
+ static const int ad2s1210_mode_vals[4][2] = {
+ 	[MOD_POS] = { 0, 0 },
+ 	[MOD_VEL] = { 0, 1 },
+-	[MOD_CONFIG] = { 1, 0 },
++	[MOD_CONFIG] = { 1, 1 },
  };
  
-+static void cm32181_unregister_dummy_client(void *data)
-+{
-+	struct i2c_client *client = data;
-+
-+	/* Unregister the dummy client */
-+	i2c_unregister_device(client);
-+}
-+
- static int cm32181_probe(struct i2c_client *client)
- {
- 	struct device *dev = &client->dev;
-@@ -460,6 +468,10 @@ static int cm32181_probe(struct i2c_client *client)
- 		client = i2c_acpi_new_device(dev, 1, &board_info);
- 		if (IS_ERR(client))
- 			return PTR_ERR(client);
-+
-+		ret = devm_add_action_or_reset(dev, cm32181_unregister_dummy_client, client);
-+		if (ret)
-+			return ret;
- 	}
- 
- 	cm32181 = iio_priv(indio_dev);
-diff --git a/drivers/iio/light/tsl2563.c b/drivers/iio/light/tsl2563.c
-index 951f35ef3f41..47a4626e9461 100644
---- a/drivers/iio/light/tsl2563.c
-+++ b/drivers/iio/light/tsl2563.c
-@@ -705,6 +705,7 @@ static int tsl2563_probe(struct i2c_client *client,
- 	struct iio_dev *indio_dev;
- 	struct tsl2563_chip *chip;
- 	struct tsl2563_platform_data *pdata = client->dev.platform_data;
-+	unsigned long irq_flags;
- 	int err = 0;
- 	u8 id = 0;
- 
-@@ -760,10 +761,15 @@ static int tsl2563_probe(struct i2c_client *client,
- 		indio_dev->info = &tsl2563_info_no_irq;
- 
- 	if (client->irq) {
-+		irq_flags = irq_get_trigger_type(client->irq);
-+		if (irq_flags == IRQF_TRIGGER_NONE)
-+			irq_flags = IRQF_TRIGGER_RISING;
-+		irq_flags |= IRQF_ONESHOT;
-+
- 		err = devm_request_threaded_irq(&client->dev, client->irq,
- 					   NULL,
- 					   &tsl2563_event_handler,
--					   IRQF_TRIGGER_RISING | IRQF_ONESHOT,
-+					   irq_flags,
- 					   "tsl2563_event",
- 					   indio_dev);
- 		if (err) {
-diff --git a/drivers/iio/light/tsl2772.c b/drivers/iio/light/tsl2772.c
-index dd9051f1cc1a..13a6c3d07861 100644
---- a/drivers/iio/light/tsl2772.c
-+++ b/drivers/iio/light/tsl2772.c
-@@ -601,6 +601,7 @@ static int tsl2772_read_prox_diodes(struct tsl2772_chip *chip)
- 			return -EINVAL;
- 		}
- 	}
-+	chip->settings.prox_diode = prox_diode_mask;
- 
- 	return 0;
- }
+ static inline void ad2s1210_set_mode(enum ad2s1210_mode mode,
 -- 
 2.39.2
 

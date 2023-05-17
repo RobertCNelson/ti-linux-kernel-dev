@@ -45,10 +45,10 @@ toolchain="gcc_12_arm"
 
 #Kernel
 KERNEL_REL=6.1
-KERNEL_TAG=${KERNEL_REL}.12
-kernel_rt=".12-rt7"
+KERNEL_TAG=${KERNEL_REL}.26
+kernel_rt=".26-rt8"
 #Kernel Build
-BUILD=${build_prefix}1
+BUILD=${build_prefix}1.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -60,7 +60,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 
 ti_git_old_release="78816b00ff46ccb75f8d9676a716bf7e07541d54"
-ti_git_new_release="78816b00ff46ccb75f8d9676a716bf7e07541d54"
+ti_git_new_release="5618571dbfea8f91cafc5595ec360037da9fd5ac"
 #TISDK="08.06.00.006"
 
 #
