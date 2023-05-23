@@ -96,7 +96,7 @@ gcc_toolchain () {
 	gcc9="9.5.0"
 	gcc10="10.4.0"
 	gcc11="11.3.0"
-	gcc12="12.2.0"
+	gcc12="12.3.0"
 	gcc13="13.1.0"
 
 	case "${toolchain}" in

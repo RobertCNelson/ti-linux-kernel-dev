@@ -61,6 +61,6 @@ DISTRO=xross
 
 ti_git_old_release="78816b00ff46ccb75f8d9676a716bf7e07541d54"
 ti_git_new_release="5618571dbfea8f91cafc5595ec360037da9fd5ac"
-#TISDK="08.06.00.006"
+#TISDK="08.06.00.007"
 
 #
