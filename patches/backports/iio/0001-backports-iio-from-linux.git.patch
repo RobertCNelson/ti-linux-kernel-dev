@@ -1,17 +1,22 @@
-From 17316688df9e6960c40a7d52f1092e81ab51a35a Mon Sep 17 00:00:00 2001
+From e653deb04e44a9cd51651befcfd80382837db98c Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 25 Apr 2023 11:31:41 -0500
+Date: Tue, 23 May 2023 13:38:49 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.178
+Reference: v5.10.180
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/accel/mma9551_core.c | 10 ++++++++--
- drivers/iio/adc/ad7791.c         |  2 +-
- drivers/iio/adc/ti-ads7950.c     |  1 +
- drivers/iio/dac/cio-dac.c        |  4 ++--
- drivers/iio/light/cm32181.c      | 12 ++++++++++++
- 5 files changed, 24 insertions(+), 5 deletions(-)
+ drivers/iio/accel/mma9551_core.c        | 10 ++++++++--
+ drivers/iio/adc/ad7791.c                |  2 +-
+ drivers/iio/adc/at91-sama5d2_adc.c      |  2 +-
+ drivers/iio/adc/palmas_gpadc.c          |  2 +-
+ drivers/iio/adc/ti-ads7950.c            |  1 +
+ drivers/iio/dac/cio-dac.c               |  4 ++--
+ drivers/iio/light/cm32181.c             | 12 ++++++++++++
+ drivers/iio/light/max44009.c            | 13 +++++++------
+ drivers/iio/light/tsl2772.c             |  1 +
+ drivers/staging/iio/resolver/ad2s1210.c |  2 +-
+ 10 files changed, 35 insertions(+), 14 deletions(-)
 
 diff --git a/drivers/iio/accel/mma9551_core.c b/drivers/iio/accel/mma9551_core.c
 index 666e7a04a7d7..9bb5c2fea08c 100644
@@ -58,6 +63,32 @@ index d57ad966e17c..f3502f12653b 100644
  };
  
  static int ad7791_read_raw(struct iio_dev *indio_dev,
+diff --git a/drivers/iio/adc/at91-sama5d2_adc.c b/drivers/iio/adc/at91-sama5d2_adc.c
+index 250b78ee1625..b806c1ab9b61 100644
+--- a/drivers/iio/adc/at91-sama5d2_adc.c
++++ b/drivers/iio/adc/at91-sama5d2_adc.c
+@@ -1002,7 +1002,7 @@ static struct iio_trigger *at91_adc_allocate_trigger(struct iio_dev *indio,
+ 	trig = devm_iio_trigger_alloc(&indio->dev, "%s-dev%d-%s", indio->name,
+ 				      indio->id, trigger_name);
+ 	if (!trig)
+-		return NULL;
++		return ERR_PTR(-ENOMEM);
+ 
+ 	trig->dev.parent = indio->dev.parent;
+ 	iio_trigger_set_drvdata(trig, indio);
+diff --git a/drivers/iio/adc/palmas_gpadc.c b/drivers/iio/adc/palmas_gpadc.c
+index f4756671cddb..6ed0d151ad21 100644
+--- a/drivers/iio/adc/palmas_gpadc.c
++++ b/drivers/iio/adc/palmas_gpadc.c
+@@ -628,7 +628,7 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
+ 
+ static int palmas_gpadc_remove(struct platform_device *pdev)
+ {
+-	struct iio_dev *indio_dev = dev_to_iio_dev(&pdev->dev);
++	struct iio_dev *indio_dev = dev_get_drvdata(&pdev->dev);
+ 	struct palmas_gpadc *adc = iio_priv(indio_dev);
+ 
+ 	if (adc->wakeup1_enable || adc->wakeup2_enable)
 diff --git a/drivers/iio/adc/ti-ads7950.c b/drivers/iio/adc/ti-ads7950.c
 index a2b83f0bd526..d4583b76f1fe 100644
 --- a/drivers/iio/adc/ti-ads7950.c
@@ -115,6 +146,68 @@ index 97649944f1df..c14a630dd683 100644
  	}
  
  	cm32181 = iio_priv(indio_dev);
+diff --git a/drivers/iio/light/max44009.c b/drivers/iio/light/max44009.c
+index 801e5a0ad496..f3648f20ef2c 100644
+--- a/drivers/iio/light/max44009.c
++++ b/drivers/iio/light/max44009.c
+@@ -528,6 +528,12 @@ static int max44009_probe(struct i2c_client *client,
+ 	return devm_iio_device_register(&client->dev, indio_dev);
+ }
+ 
++static const struct of_device_id max44009_of_match[] = {
++	{ .compatible = "maxim,max44009" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, max44009_of_match);
++
+ static const struct i2c_device_id max44009_id[] = {
+ 	{ "max44009", 0 },
+ 	{ }
+@@ -537,18 +543,13 @@ MODULE_DEVICE_TABLE(i2c, max44009_id);
+ static struct i2c_driver max44009_driver = {
+ 	.driver = {
+ 		.name = MAX44009_DRV_NAME,
++		.of_match_table = max44009_of_match,
+ 	},
+ 	.probe = max44009_probe,
+ 	.id_table = max44009_id,
+ };
+ module_i2c_driver(max44009_driver);
+ 
+-static const struct of_device_id max44009_of_match[] = {
+-	{ .compatible = "maxim,max44009" },
+-	{ }
+-};
+-MODULE_DEVICE_TABLE(of, max44009_of_match);
+-
+ MODULE_AUTHOR("Robert Eshleman <bobbyeshleman@gmail.com>");
+ MODULE_LICENSE("GPL v2");
+ MODULE_DESCRIPTION("MAX44009 ambient light sensor driver");
+diff --git a/drivers/iio/light/tsl2772.c b/drivers/iio/light/tsl2772.c
+index d79205361dfa..ff33ad371420 100644
+--- a/drivers/iio/light/tsl2772.c
++++ b/drivers/iio/light/tsl2772.c
+@@ -606,6 +606,7 @@ static int tsl2772_read_prox_diodes(struct tsl2772_chip *chip)
+ 			return -EINVAL;
+ 		}
+ 	}
++	chip->settings.prox_diode = prox_diode_mask;
+ 
+ 	return 0;
+ }
+diff --git a/drivers/staging/iio/resolver/ad2s1210.c b/drivers/staging/iio/resolver/ad2s1210.c
+index 74adb82f37c3..a19cfb2998c9 100644
+--- a/drivers/staging/iio/resolver/ad2s1210.c
++++ b/drivers/staging/iio/resolver/ad2s1210.c
+@@ -101,7 +101,7 @@ struct ad2s1210_state {
+ static const int ad2s1210_mode_vals[4][2] = {
+ 	[MOD_POS] = { 0, 0 },
+ 	[MOD_VEL] = { 0, 1 },
+-	[MOD_CONFIG] = { 1, 0 },
++	[MOD_CONFIG] = { 1, 1 },
+ };
+ 
+ static inline void ad2s1210_set_mode(enum ad2s1210_mode mode,
 -- 
 2.39.2
 

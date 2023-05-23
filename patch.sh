@@ -207,7 +207,6 @@ aufs () {
 		number=6
 		cleanup
 	fi
-
 	dir 'external/aufs'
 }
 
@@ -580,7 +579,7 @@ backports () {
 
 	dir 'backports/spidev'
 
-	backport_tag="v5.10.178"
+	backport_tag="v5.10.180"
 
 	subsystem="spi"
 	#regenerate="enable"
@@ -595,7 +594,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.178"
+	backport_tag="v5.10.180"
 
 	subsystem="iio"
 	#regenerate="enable"
