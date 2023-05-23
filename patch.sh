@@ -199,7 +199,6 @@ aufs () {
 		number=5
 		cleanup
 	fi
-
 	dir 'external/aufs'
 }
 
@@ -346,7 +345,6 @@ rt () {
 
 		exit 2
 	fi
-
 	dir 'external/rt'
 }
 
@@ -387,7 +385,6 @@ wireless_regdb () {
 		number=1
 		cleanup
 	fi
-
 	dir 'external/wireless_regdb'
 }
 
@@ -427,7 +424,6 @@ ti_pm_firmware () {
 		number=1
 		cleanup
 	fi
-
 	dir 'external/ti-amx3-cm3-pm-firmware'
 }
 
