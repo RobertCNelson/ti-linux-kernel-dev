@@ -509,11 +509,11 @@ local_patch () {
 }
 
 external_git
-aufs
+#aufs
 wpanusb
 bcfserial
 ksmbd
-#rt
+rt
 wireless_regdb
 ti_pm_firmware
 beagleboard_dtbs
