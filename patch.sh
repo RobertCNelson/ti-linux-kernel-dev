@@ -119,10 +119,6 @@ external_git () {
 		echo "${top_of_branch}"
 	fi
 	#exit 2
-
-	dir 'j7-evm'
-
-	#exit 2
 }
 
 aufs_fail () {
@@ -131,32 +127,31 @@ aufs_fail () {
 }
 
 aufs () {
-	#https://github.com/sfjro/aufs-standalone/tree/aufs5.10.140
-	aufs_prefix="aufs5-"
+	#https://github.com/sfjro/aufs-standalone/tree/aufs6.1
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
-		KERNEL_REL=5.10.140
-		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/${aufs_prefix}kbuild.patch
-		patch -p1 < ${aufs_prefix}kbuild.patch || aufs_fail
-		rm -rf ${aufs_prefix}kbuild.patch
+		KERNEL_REL=6.1
+		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/aufs6-kbuild.patch
+		patch -p1 < aufs6-kbuild.patch || aufs_fail
+		rm -rf aufs6-kbuild.patch
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: aufs-kbuild' -s
 
-		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/${aufs_prefix}base.patch
-		patch -p1 < ${aufs_prefix}base.patch || aufs_fail
-		rm -rf ${aufs_prefix}base.patch
+		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/aufs6-base.patch
+		patch -p1 < aufs6-base.patch || aufs_fail
+		rm -rf aufs6-base.patch
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: aufs-base' -s
 
-		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/${aufs_prefix}mmap.patch
-		patch -p1 < ${aufs_prefix}mmap.patch || aufs_fail
-		rm -rf ${aufs_prefix}mmap.patch
+		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/aufs6-mmap.patch
+		patch -p1 < aufs6-mmap.patch || aufs_fail
+		rm -rf aufs6-mmap.patch
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: aufs-mmap' -s
 
-		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/${aufs_prefix}standalone.patch
-		patch -p1 < ${aufs_prefix}standalone.patch || aufs_fail
-		rm -rf ${aufs_prefix}standalone.patch
+		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/aufs6-standalone.patch
+		patch -p1 < aufs6-standalone.patch || aufs_fail
+		rm -rf aufs6-standalone.patch
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: aufs-standalone' -s
 
@@ -173,7 +168,7 @@ aufs () {
 		cd -
 
 		cd ./KERNEL/
-		KERNEL_REL=5.10
+		KERNEL_REL=6.1
 
 		cp -v ../aufs-standalone/Documentation/ABI/testing/*aufs ./Documentation/ABI/testing/
 		mkdir -p ./Documentation/filesystems/aufs/
@@ -185,18 +180,12 @@ aufs () {
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: aufs' -m "https://github.com/sfjro/aufs-standalone/commit/${aufs_hash}" -s
 
-		wget https://raw.githubusercontent.com/sfjro/aufs-standalone/aufs${KERNEL_REL}/rt.patch
-		patch -p1 < rt.patch || aufs_fail
-		rm -rf rt.patch
-		${git_bin} add .
-		${git_bin} commit -a -m 'merge: aufs-rt' -s
-
-		${git_bin} format-patch -6 -o ../patches/external/aufs/
+		${git_bin} format-patch -5 -o ../patches/external/aufs/
 		echo "AUFS: https://github.com/sfjro/aufs-standalone/commit/${aufs_hash}" > ../patches/external/git/AUFS
 
 		rm -rf ../aufs-standalone/ || true
 
-		${git_bin} reset --hard HEAD~6
+		${git_bin} reset --hard HEAD~5
 
 		start_cleanup
 
@@ -205,10 +194,9 @@ aufs () {
 		${git} "${DIR}/patches/external/aufs/0003-merge-aufs-mmap.patch"
 		${git} "${DIR}/patches/external/aufs/0004-merge-aufs-standalone.patch"
 		${git} "${DIR}/patches/external/aufs/0005-merge-aufs.patch"
-		${git} "${DIR}/patches/external/aufs/0006-merge-aufs-rt.patch"
 
 		wdir="external/aufs"
-		number=6
+		number=5
 		cleanup
 	fi
 	dir 'external/aufs'
@@ -413,7 +401,7 @@ dtb_makefile_append () {
 }
 
 beagleboard_dtbs () {
-	branch="v5.10.x-ti-unified"
+	branch="v6.1.x-ti"
 	https_repo="https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
@@ -476,7 +464,7 @@ bcfserial
 ksmbd
 #rt
 wireless_regdb
-beagleboard_dtbs
+#beagleboard_dtbs
 #local_patch
 
 pre_backports () {
@@ -628,13 +616,13 @@ drivers () {
 }
 
 ###
-backports
-drivers
+#backports
+#drivers
 
 packaging () {
-	do_backport="enable"
+	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.0.19"
+		backport_tag="v6.1.27"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
