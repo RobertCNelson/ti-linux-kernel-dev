@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#https://packages.debian.org/source/bookworm/linux
+
 abi="6.1.0-9"
 kernel="6.1.27-1"
 
