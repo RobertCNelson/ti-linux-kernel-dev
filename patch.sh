@@ -502,7 +502,23 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.179"
+	backport_tag="v5.10.180"
+
+	subsystem="uio"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/uio/uio_pruss.c ./drivers/uio/
+
+		post_backports
+		exit 2
+	else
+		patch_backports
+		dir 'drivers/ti/uio'
+	fi
+
+	backport_tag="v6.1.29"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -522,7 +538,7 @@ backports () {
 		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
 
-	backport_tag="v6.0.19"
+	backport_tag="v6.1.29"
 
 	subsystem="it66121"
 	#regenerate="enable"
@@ -533,42 +549,10 @@ backports () {
 
 		post_backports
 		exit 2
-	else
-		patch_backports
-		${git} "${DIR}/patches/backports/${subsystem}/0002-wire-up-it66121.patch"
-		${git} "${DIR}/patches/backports/${subsystem}/0003-ite-it66121.c-fixes.patch"
-	fi
-
-	backport_tag="v5.11.22"
-
-	subsystem="bluetooth"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/bluetooth/* ./drivers/bluetooth/
-
-		post_backports
-		exit 2
-	else
+	#else
 		patch_backports
 	fi
-
-	backport_tag="v5.11.22"
-
-	subsystem="intel"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/drivers/net/wireless/intel/* ./drivers/net/wireless/intel/
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-		${git} "${DIR}/patches/backports/${subsystem}/0002-iwlwifi-disable-pnvm-loading.patch"
-	fi
+	${git} "${DIR}/patches/backports/${subsystem}/0003-ite-it66121.c-fixes.patch"
 }
 
 drivers () {
@@ -616,7 +600,7 @@ drivers () {
 }
 
 ###
-#backports
+backports
 #drivers
 
 packaging () {
