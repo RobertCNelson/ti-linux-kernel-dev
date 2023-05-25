@@ -601,7 +601,7 @@ drivers () {
 
 ###
 backports
-drivers
+#drivers
 
 packaging () {
 	#do_backport="enable"
