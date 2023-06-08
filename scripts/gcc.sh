@@ -64,7 +64,7 @@ dl_generic () {
 		echo "Using Existing Toolchain: ${toolchain}"
 	fi
 
-	if [ "x${ARCH}" = "xarmv7l" ] ; then
+	if [ "x${ARCH}" = "xarmv7l" ] || [ "x${ARCH}" = "xaarch64" ] ; then
 		#using native gcc
 		CC=
 	else
@@ -273,7 +273,7 @@ gcc_toolchain () {
 	esac
 }
 
-if [ "x${CC}" = "x" ] && [ "x${ARCH}" != "xarmv7l" ] ; then
+if [ "x${CC}" = "x" ] && [ "x${ARCH}" != "xarmv7l" ] && [ "x${ARCH}" != "xaarch64" ] ; then
 	gcc_toolchain
 fi
 
