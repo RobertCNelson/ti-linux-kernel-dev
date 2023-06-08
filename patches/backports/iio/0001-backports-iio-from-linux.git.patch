@@ -1,19 +1,22 @@
-From 66611390b85ece4bcd728b33e3ffaaa7f787fabb Mon Sep 17 00:00:00 2001
+From 17d91dddd8d8bb58b151f608320a7a887ff09707 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Fri, 12 May 2023 18:28:36 -0500
+Date: Thu, 8 Jun 2023 17:42:44 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.179
+Reference: v5.10.182
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/accel/mma9551_core.c   | 10 ++++++++--
- drivers/iio/adc/ad7791.c           |  2 +-
- drivers/iio/adc/at91-sama5d2_adc.c |  2 +-
- drivers/iio/adc/ti-ads7950.c       |  1 +
- drivers/iio/dac/cio-dac.c          |  4 ++--
- drivers/iio/light/cm32181.c        | 12 ++++++++++++
- drivers/iio/light/tsl2772.c        |  1 +
- 7 files changed, 26 insertions(+), 6 deletions(-)
+ drivers/iio/accel/mma9551_core.c        | 10 ++++++++--
+ drivers/iio/adc/ad7791.c                |  2 +-
+ drivers/iio/adc/at91-sama5d2_adc.c      |  2 +-
+ drivers/iio/adc/palmas_gpadc.c          |  2 +-
+ drivers/iio/adc/ti-ads7950.c            |  1 +
+ drivers/iio/dac/cio-dac.c               |  4 ++--
+ drivers/iio/light/cm32181.c             | 12 ++++++++++++
+ drivers/iio/light/max44009.c            | 13 +++++++------
+ drivers/iio/light/tsl2772.c             |  1 +
+ drivers/staging/iio/resolver/ad2s1210.c |  2 +-
+ 10 files changed, 35 insertions(+), 14 deletions(-)
 
 diff --git a/drivers/iio/accel/mma9551_core.c b/drivers/iio/accel/mma9551_core.c
 index 666e7a04a7d7..9bb5c2fea08c 100644
@@ -73,6 +76,19 @@ index 250b78ee1625..b806c1ab9b61 100644
  
  	trig->dev.parent = indio->dev.parent;
  	iio_trigger_set_drvdata(trig, indio);
+diff --git a/drivers/iio/adc/palmas_gpadc.c b/drivers/iio/adc/palmas_gpadc.c
+index f4756671cddb..6ed0d151ad21 100644
+--- a/drivers/iio/adc/palmas_gpadc.c
++++ b/drivers/iio/adc/palmas_gpadc.c
+@@ -628,7 +628,7 @@ static int palmas_gpadc_probe(struct platform_device *pdev)
+ 
+ static int palmas_gpadc_remove(struct platform_device *pdev)
+ {
+-	struct iio_dev *indio_dev = dev_to_iio_dev(&pdev->dev);
++	struct iio_dev *indio_dev = dev_get_drvdata(&pdev->dev);
+ 	struct palmas_gpadc *adc = iio_priv(indio_dev);
+ 
+ 	if (adc->wakeup1_enable || adc->wakeup2_enable)
 diff --git a/drivers/iio/adc/ti-ads7950.c b/drivers/iio/adc/ti-ads7950.c
 index a2b83f0bd526..d4583b76f1fe 100644
 --- a/drivers/iio/adc/ti-ads7950.c
@@ -130,6 +146,43 @@ index 97649944f1df..c14a630dd683 100644
  	}
  
  	cm32181 = iio_priv(indio_dev);
+diff --git a/drivers/iio/light/max44009.c b/drivers/iio/light/max44009.c
+index 801e5a0ad496..f3648f20ef2c 100644
+--- a/drivers/iio/light/max44009.c
++++ b/drivers/iio/light/max44009.c
+@@ -528,6 +528,12 @@ static int max44009_probe(struct i2c_client *client,
+ 	return devm_iio_device_register(&client->dev, indio_dev);
+ }
+ 
++static const struct of_device_id max44009_of_match[] = {
++	{ .compatible = "maxim,max44009" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, max44009_of_match);
++
+ static const struct i2c_device_id max44009_id[] = {
+ 	{ "max44009", 0 },
+ 	{ }
+@@ -537,18 +543,13 @@ MODULE_DEVICE_TABLE(i2c, max44009_id);
+ static struct i2c_driver max44009_driver = {
+ 	.driver = {
+ 		.name = MAX44009_DRV_NAME,
++		.of_match_table = max44009_of_match,
+ 	},
+ 	.probe = max44009_probe,
+ 	.id_table = max44009_id,
+ };
+ module_i2c_driver(max44009_driver);
+ 
+-static const struct of_device_id max44009_of_match[] = {
+-	{ .compatible = "maxim,max44009" },
+-	{ }
+-};
+-MODULE_DEVICE_TABLE(of, max44009_of_match);
+-
+ MODULE_AUTHOR("Robert Eshleman <bobbyeshleman@gmail.com>");
+ MODULE_LICENSE("GPL v2");
+ MODULE_DESCRIPTION("MAX44009 ambient light sensor driver");
 diff --git a/drivers/iio/light/tsl2772.c b/drivers/iio/light/tsl2772.c
 index d79205361dfa..ff33ad371420 100644
 --- a/drivers/iio/light/tsl2772.c
@@ -142,6 +195,19 @@ index d79205361dfa..ff33ad371420 100644
  
  	return 0;
  }
+diff --git a/drivers/staging/iio/resolver/ad2s1210.c b/drivers/staging/iio/resolver/ad2s1210.c
+index 74adb82f37c3..a19cfb2998c9 100644
+--- a/drivers/staging/iio/resolver/ad2s1210.c
++++ b/drivers/staging/iio/resolver/ad2s1210.c
+@@ -101,7 +101,7 @@ struct ad2s1210_state {
+ static const int ad2s1210_mode_vals[4][2] = {
+ 	[MOD_POS] = { 0, 0 },
+ 	[MOD_VEL] = { 0, 1 },
+-	[MOD_CONFIG] = { 1, 0 },
++	[MOD_CONFIG] = { 1, 1 },
+ };
+ 
+ static inline void ad2s1210_set_mode(enum ad2s1210_mode mode,
 -- 
 2.39.2
 
