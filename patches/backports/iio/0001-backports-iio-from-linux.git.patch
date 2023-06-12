@@ -1,17 +1,136 @@
-From d3babca3d16748dabca1a969dc03dcf0a595bb76 Mon Sep 17 00:00:00 2001
+From b8d2176cbdb9edc4fb9e02a154c8cf3d08ec7496 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 23 May 2023 15:42:31 -0500
+Date: Mon, 12 Jun 2023 16:57:47 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v6.1.29
+Reference: v6.1.33
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/adc/palmas_gpadc.c          |  2 +-
- drivers/iio/addac/stx104.c              | 12 ++++++++++++
- drivers/iio/light/max44009.c            | 13 +++++++------
- drivers/staging/iio/resolver/ad2s1210.c |  2 +-
- 4 files changed, 21 insertions(+), 8 deletions(-)
+ drivers/iio/accel/st_accel_core.c             |  4 +-
+ drivers/iio/adc/ad7192.c                      |  8 +--
+ drivers/iio/adc/ad_sigma_delta.c              |  4 ++
+ drivers/iio/adc/mxs-lradc-adc.c               | 10 +--
+ drivers/iio/adc/palmas_gpadc.c                |  2 +-
+ drivers/iio/adc/stm32-adc.c                   | 61 ++++++++++---------
+ drivers/iio/addac/ad74413r.c                  |  2 +-
+ drivers/iio/addac/stx104.c                    | 12 ++++
+ drivers/iio/dac/Makefile                      |  2 +-
+ drivers/iio/dac/mcp4725.c                     | 16 ++++-
+ .../imu/inv_icm42600/inv_icm42600_buffer.c    | 10 +--
+ drivers/iio/light/max44009.c                  | 13 ++--
+ drivers/iio/light/vcnl4035.c                  |  3 +
+ drivers/staging/iio/resolver/ad2s1210.c       |  2 +-
+ 14 files changed, 90 insertions(+), 59 deletions(-)
 
+diff --git a/drivers/iio/accel/st_accel_core.c b/drivers/iio/accel/st_accel_core.c
+index c8c8eb15c34e..c4143c567874 100644
+--- a/drivers/iio/accel/st_accel_core.c
++++ b/drivers/iio/accel/st_accel_core.c
+@@ -1289,12 +1289,12 @@ static int apply_acpi_orientation(struct iio_dev *indio_dev)
+ 
+ 	adev = ACPI_COMPANION(indio_dev->dev.parent);
+ 	if (!adev)
+-		return 0;
++		return -ENXIO;
+ 
+ 	/* Read _ONT data, which should be a package of 6 integers. */
+ 	status = acpi_evaluate_object(adev->handle, "_ONT", NULL, &buffer);
+ 	if (status == AE_NOT_FOUND) {
+-		return 0;
++		return -ENXIO;
+ 	} else if (ACPI_FAILURE(status)) {
+ 		dev_warn(&indio_dev->dev, "failed to execute _ONT: %d\n",
+ 			 status);
+diff --git a/drivers/iio/adc/ad7192.c b/drivers/iio/adc/ad7192.c
+index d71977be7d22..a8f6fa48daa8 100644
+--- a/drivers/iio/adc/ad7192.c
++++ b/drivers/iio/adc/ad7192.c
+@@ -898,10 +898,6 @@ static const struct iio_info ad7195_info = {
+ 	__AD719x_CHANNEL(_si, _channel1, -1, _address, NULL, IIO_VOLTAGE, \
+ 		BIT(IIO_CHAN_INFO_SCALE), ad7192_calibsys_ext_info)
+ 
+-#define AD719x_SHORTED_CHANNEL(_si, _channel1, _address) \
+-	__AD719x_CHANNEL(_si, _channel1, -1, _address, "shorted", IIO_VOLTAGE, \
+-		BIT(IIO_CHAN_INFO_SCALE), ad7192_calibsys_ext_info)
+-
+ #define AD719x_TEMP_CHANNEL(_si, _address) \
+ 	__AD719x_CHANNEL(_si, 0, -1, _address, NULL, IIO_TEMP, 0, NULL)
+ 
+@@ -909,7 +905,7 @@ static const struct iio_chan_spec ad7192_channels[] = {
+ 	AD719x_DIFF_CHANNEL(0, 1, 2, AD7192_CH_AIN1P_AIN2M),
+ 	AD719x_DIFF_CHANNEL(1, 3, 4, AD7192_CH_AIN3P_AIN4M),
+ 	AD719x_TEMP_CHANNEL(2, AD7192_CH_TEMP),
+-	AD719x_SHORTED_CHANNEL(3, 2, AD7192_CH_AIN2P_AIN2M),
++	AD719x_DIFF_CHANNEL(3, 2, 2, AD7192_CH_AIN2P_AIN2M),
+ 	AD719x_CHANNEL(4, 1, AD7192_CH_AIN1),
+ 	AD719x_CHANNEL(5, 2, AD7192_CH_AIN2),
+ 	AD719x_CHANNEL(6, 3, AD7192_CH_AIN3),
+@@ -923,7 +919,7 @@ static const struct iio_chan_spec ad7193_channels[] = {
+ 	AD719x_DIFF_CHANNEL(2, 5, 6, AD7193_CH_AIN5P_AIN6M),
+ 	AD719x_DIFF_CHANNEL(3, 7, 8, AD7193_CH_AIN7P_AIN8M),
+ 	AD719x_TEMP_CHANNEL(4, AD7193_CH_TEMP),
+-	AD719x_SHORTED_CHANNEL(5, 2, AD7193_CH_AIN2P_AIN2M),
++	AD719x_DIFF_CHANNEL(5, 2, 2, AD7193_CH_AIN2P_AIN2M),
+ 	AD719x_CHANNEL(6, 1, AD7193_CH_AIN1),
+ 	AD719x_CHANNEL(7, 2, AD7193_CH_AIN2),
+ 	AD719x_CHANNEL(8, 3, AD7193_CH_AIN3),
+diff --git a/drivers/iio/adc/ad_sigma_delta.c b/drivers/iio/adc/ad_sigma_delta.c
+index d8570f620785..7e2192870743 100644
+--- a/drivers/iio/adc/ad_sigma_delta.c
++++ b/drivers/iio/adc/ad_sigma_delta.c
+@@ -584,6 +584,10 @@ static int devm_ad_sd_probe_trigger(struct device *dev, struct iio_dev *indio_de
+ 	init_completion(&sigma_delta->completion);
+ 
+ 	sigma_delta->irq_dis = true;
++
++	/* the IRQ core clears IRQ_DISABLE_UNLAZY flag when freeing an IRQ */
++	irq_set_status_flags(sigma_delta->spi->irq, IRQ_DISABLE_UNLAZY);
++
+ 	ret = devm_request_irq(dev, sigma_delta->spi->irq,
+ 			       ad_sd_data_rdy_trig_poll,
+ 			       sigma_delta->info->irq_flags | IRQF_NO_AUTOEN,
+diff --git a/drivers/iio/adc/mxs-lradc-adc.c b/drivers/iio/adc/mxs-lradc-adc.c
+index bca79a93cbe4..a50f39143d3e 100644
+--- a/drivers/iio/adc/mxs-lradc-adc.c
++++ b/drivers/iio/adc/mxs-lradc-adc.c
+@@ -757,13 +757,13 @@ static int mxs_lradc_adc_probe(struct platform_device *pdev)
+ 
+ 	ret = mxs_lradc_adc_trigger_init(iio);
+ 	if (ret)
+-		goto err_trig;
++		return ret;
+ 
+ 	ret = iio_triggered_buffer_setup(iio, &iio_pollfunc_store_time,
+ 					 &mxs_lradc_adc_trigger_handler,
+ 					 &mxs_lradc_adc_buffer_ops);
+ 	if (ret)
+-		return ret;
++		goto err_trig;
+ 
+ 	adc->vref_mv = mxs_lradc_adc_vref_mv[lradc->soc];
+ 
+@@ -801,9 +801,9 @@ static int mxs_lradc_adc_probe(struct platform_device *pdev)
+ 
+ err_dev:
+ 	mxs_lradc_adc_hw_stop(adc);
+-	mxs_lradc_adc_trigger_remove(iio);
+-err_trig:
+ 	iio_triggered_buffer_cleanup(iio);
++err_trig:
++	mxs_lradc_adc_trigger_remove(iio);
+ 	return ret;
+ }
+ 
+@@ -814,8 +814,8 @@ static int mxs_lradc_adc_remove(struct platform_device *pdev)
+ 
+ 	iio_device_unregister(iio);
+ 	mxs_lradc_adc_hw_stop(adc);
+-	mxs_lradc_adc_trigger_remove(iio);
+ 	iio_triggered_buffer_cleanup(iio);
++	mxs_lradc_adc_trigger_remove(iio);
+ 
+ 	return 0;
+ }
 diff --git a/drivers/iio/adc/palmas_gpadc.c b/drivers/iio/adc/palmas_gpadc.c
 index fd000345ec5c..849a697a467e 100644
 --- a/drivers/iio/adc/palmas_gpadc.c
@@ -25,6 +144,117 @@ index fd000345ec5c..849a697a467e 100644
  	struct palmas_gpadc *adc = iio_priv(indio_dev);
  
  	if (adc->wakeup1_enable || adc->wakeup2_enable)
+diff --git a/drivers/iio/adc/stm32-adc.c b/drivers/iio/adc/stm32-adc.c
+index 3cda529f081d..a5d5b7b3823b 100644
+--- a/drivers/iio/adc/stm32-adc.c
++++ b/drivers/iio/adc/stm32-adc.c
+@@ -1882,16 +1882,15 @@ static int stm32_adc_get_legacy_chan_count(struct iio_dev *indio_dev, struct stm
+ 	 * to get the *real* number of channels.
+ 	 */
+ 	ret = device_property_count_u32(dev, "st,adc-diff-channels");
+-	if (ret < 0)
+-		return ret;
+-
+-	ret /= (int)(sizeof(struct stm32_adc_diff_channel) / sizeof(u32));
+-	if (ret > adc_info->max_channels) {
+-		dev_err(&indio_dev->dev, "Bad st,adc-diff-channels?\n");
+-		return -EINVAL;
+-	} else if (ret > 0) {
+-		adc->num_diff = ret;
+-		num_channels += ret;
++	if (ret > 0) {
++		ret /= (int)(sizeof(struct stm32_adc_diff_channel) / sizeof(u32));
++		if (ret > adc_info->max_channels) {
++			dev_err(&indio_dev->dev, "Bad st,adc-diff-channels?\n");
++			return -EINVAL;
++		} else if (ret > 0) {
++			adc->num_diff = ret;
++			num_channels += ret;
++		}
+ 	}
+ 
+ 	/* Optional sample time is provided either for each, or all channels */
+@@ -1913,6 +1912,7 @@ static int stm32_adc_legacy_chan_init(struct iio_dev *indio_dev,
+ 	struct stm32_adc_diff_channel diff[STM32_ADC_CH_MAX];
+ 	struct device *dev = &indio_dev->dev;
+ 	u32 num_diff = adc->num_diff;
++	int num_se = nchans - num_diff;
+ 	int size = num_diff * sizeof(*diff) / sizeof(u32);
+ 	int scan_index = 0, ret, i, c;
+ 	u32 smp = 0, smps[STM32_ADC_CH_MAX], chans[STM32_ADC_CH_MAX];
+@@ -1939,29 +1939,32 @@ static int stm32_adc_legacy_chan_init(struct iio_dev *indio_dev,
+ 			scan_index++;
+ 		}
+ 	}
+-
+-	ret = device_property_read_u32_array(dev, "st,adc-channels", chans,
+-					     nchans);
+-	if (ret)
+-		return ret;
+-
+-	for (c = 0; c < nchans; c++) {
+-		if (chans[c] >= adc_info->max_channels) {
+-			dev_err(&indio_dev->dev, "Invalid channel %d\n",
+-				chans[c]);
+-			return -EINVAL;
++	if (num_se > 0) {
++		ret = device_property_read_u32_array(dev, "st,adc-channels", chans, num_se);
++		if (ret) {
++			dev_err(&indio_dev->dev, "Failed to get st,adc-channels %d\n", ret);
++			return ret;
+ 		}
+ 
+-		/* Channel can't be configured both as single-ended & diff */
+-		for (i = 0; i < num_diff; i++) {
+-			if (chans[c] == diff[i].vinp) {
+-				dev_err(&indio_dev->dev, "channel %d misconfigured\n",	chans[c]);
++		for (c = 0; c < num_se; c++) {
++			if (chans[c] >= adc_info->max_channels) {
++				dev_err(&indio_dev->dev, "Invalid channel %d\n",
++					chans[c]);
+ 				return -EINVAL;
+ 			}
++
++			/* Channel can't be configured both as single-ended & diff */
++			for (i = 0; i < num_diff; i++) {
++				if (chans[c] == diff[i].vinp) {
++					dev_err(&indio_dev->dev, "channel %d misconfigured\n",
++						chans[c]);
++					return -EINVAL;
++				}
++			}
++			stm32_adc_chan_init_one(indio_dev, &channels[scan_index],
++						chans[c], 0, scan_index, false);
++			scan_index++;
+ 		}
+-		stm32_adc_chan_init_one(indio_dev, &channels[scan_index],
+-					chans[c], 0, scan_index, false);
+-		scan_index++;
+ 	}
+ 
+ 	if (adc->nsmps > 0) {
+@@ -2153,7 +2156,7 @@ static int stm32_adc_chan_fw_init(struct iio_dev *indio_dev, bool timestamping)
+ 
+ 	if (legacy)
+ 		ret = stm32_adc_legacy_chan_init(indio_dev, adc, channels,
+-						 num_channels);
++						 timestamping ? num_channels - 1 : num_channels);
+ 	else
+ 		ret = stm32_adc_generic_chan_init(indio_dev, adc, channels);
+ 	if (ret < 0)
+diff --git a/drivers/iio/addac/ad74413r.c b/drivers/iio/addac/ad74413r.c
+index e0e130ba9d3e..05faf3910bfc 100644
+--- a/drivers/iio/addac/ad74413r.c
++++ b/drivers/iio/addac/ad74413r.c
+@@ -973,7 +973,7 @@ static int ad74413r_read_raw(struct iio_dev *indio_dev,
+ 
+ 		ret = ad74413r_get_single_adc_result(indio_dev, chan->channel,
+ 						     val);
+-		if (ret)
++		if (ret < 0)
+ 			return ret;
+ 
+ 		ad74413r_adc_to_resistance_result(*val, val);
 diff --git a/drivers/iio/addac/stx104.c b/drivers/iio/addac/stx104.c
 index 48a91a95e597..b658a75d4e3a 100644
 --- a/drivers/iio/addac/stx104.c
@@ -90,6 +320,112 @@ index 48a91a95e597..b658a75d4e3a 100644
  	/* configure device for software trigger operation */
  	iowrite8(0, &priv->reg->acr);
  
+diff --git a/drivers/iio/dac/Makefile b/drivers/iio/dac/Makefile
+index ec3e42713f00..e22d9b4bac80 100644
+--- a/drivers/iio/dac/Makefile
++++ b/drivers/iio/dac/Makefile
+@@ -17,7 +17,7 @@ obj-$(CONFIG_AD5592R_BASE) += ad5592r-base.o
+ obj-$(CONFIG_AD5592R) += ad5592r.o
+ obj-$(CONFIG_AD5593R) += ad5593r.o
+ obj-$(CONFIG_AD5755) += ad5755.o
+-obj-$(CONFIG_AD5755) += ad5758.o
++obj-$(CONFIG_AD5758) += ad5758.o
+ obj-$(CONFIG_AD5761) += ad5761.o
+ obj-$(CONFIG_AD5764) += ad5764.o
+ obj-$(CONFIG_AD5766) += ad5766.o
+diff --git a/drivers/iio/dac/mcp4725.c b/drivers/iio/dac/mcp4725.c
+index 446d1a8fe4be..2be821d561c4 100644
+--- a/drivers/iio/dac/mcp4725.c
++++ b/drivers/iio/dac/mcp4725.c
+@@ -47,12 +47,18 @@ static int mcp4725_suspend(struct device *dev)
+ 	struct mcp4725_data *data = iio_priv(i2c_get_clientdata(
+ 		to_i2c_client(dev)));
+ 	u8 outbuf[2];
++	int ret;
+ 
+ 	outbuf[0] = (data->powerdown_mode + 1) << 4;
+ 	outbuf[1] = 0;
+ 	data->powerdown = true;
+ 
+-	return i2c_master_send(data->client, outbuf, 2);
++	ret = i2c_master_send(data->client, outbuf, 2);
++	if (ret < 0)
++		return ret;
++	else if (ret != 2)
++		return -EIO;
++	return 0;
+ }
+ 
+ static int mcp4725_resume(struct device *dev)
+@@ -60,13 +66,19 @@ static int mcp4725_resume(struct device *dev)
+ 	struct mcp4725_data *data = iio_priv(i2c_get_clientdata(
+ 		to_i2c_client(dev)));
+ 	u8 outbuf[2];
++	int ret;
+ 
+ 	/* restore previous DAC value */
+ 	outbuf[0] = (data->dac_value >> 8) & 0xf;
+ 	outbuf[1] = data->dac_value & 0xff;
+ 	data->powerdown = false;
+ 
+-	return i2c_master_send(data->client, outbuf, 2);
++	ret = i2c_master_send(data->client, outbuf, 2);
++	if (ret < 0)
++		return ret;
++	else if (ret != 2)
++		return -EIO;
++	return 0;
+ }
+ static DEFINE_SIMPLE_DEV_PM_OPS(mcp4725_pm_ops, mcp4725_suspend,
+ 				mcp4725_resume);
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
+index 99576b2c171f..32d7f8364230 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
+@@ -275,9 +275,14 @@ static int inv_icm42600_buffer_preenable(struct iio_dev *indio_dev)
+ {
+ 	struct inv_icm42600_state *st = iio_device_get_drvdata(indio_dev);
+ 	struct device *dev = regmap_get_device(st->map);
++	struct inv_icm42600_timestamp *ts = iio_priv(indio_dev);
+ 
+ 	pm_runtime_get_sync(dev);
+ 
++	mutex_lock(&st->lock);
++	inv_icm42600_timestamp_reset(ts);
++	mutex_unlock(&st->lock);
++
+ 	return 0;
+ }
+ 
+@@ -375,7 +380,6 @@ static int inv_icm42600_buffer_postdisable(struct iio_dev *indio_dev)
+ 	struct device *dev = regmap_get_device(st->map);
+ 	unsigned int sensor;
+ 	unsigned int *watermark;
+-	struct inv_icm42600_timestamp *ts;
+ 	struct inv_icm42600_sensor_conf conf = INV_ICM42600_SENSOR_CONF_INIT;
+ 	unsigned int sleep_temp = 0;
+ 	unsigned int sleep_sensor = 0;
+@@ -385,11 +389,9 @@ static int inv_icm42600_buffer_postdisable(struct iio_dev *indio_dev)
+ 	if (indio_dev == st->indio_gyro) {
+ 		sensor = INV_ICM42600_SENSOR_GYRO;
+ 		watermark = &st->fifo.watermark.gyro;
+-		ts = iio_priv(st->indio_gyro);
+ 	} else if (indio_dev == st->indio_accel) {
+ 		sensor = INV_ICM42600_SENSOR_ACCEL;
+ 		watermark = &st->fifo.watermark.accel;
+-		ts = iio_priv(st->indio_accel);
+ 	} else {
+ 		return -EINVAL;
+ 	}
+@@ -417,8 +419,6 @@ static int inv_icm42600_buffer_postdisable(struct iio_dev *indio_dev)
+ 	if (!st->fifo.on)
+ 		ret = inv_icm42600_set_temp_conf(st, false, &sleep_temp);
+ 
+-	inv_icm42600_timestamp_reset(ts);
+-
+ out_unlock:
+ 	mutex_unlock(&st->lock);
+ 
 diff --git a/drivers/iio/light/max44009.c b/drivers/iio/light/max44009.c
 index 801e5a0ad496..f3648f20ef2c 100644
 --- a/drivers/iio/light/max44009.c
@@ -127,6 +463,34 @@ index 801e5a0ad496..f3648f20ef2c 100644
  MODULE_AUTHOR("Robert Eshleman <bobbyeshleman@gmail.com>");
  MODULE_LICENSE("GPL v2");
  MODULE_DESCRIPTION("MAX44009 ambient light sensor driver");
+diff --git a/drivers/iio/light/vcnl4035.c b/drivers/iio/light/vcnl4035.c
+index 3ed37f6057fb..a23c415fcb7a 100644
+--- a/drivers/iio/light/vcnl4035.c
++++ b/drivers/iio/light/vcnl4035.c
+@@ -8,6 +8,7 @@
+  * TODO: Proximity
+  */
+ #include <linux/bitops.h>
++#include <linux/bitfield.h>
+ #include <linux/i2c.h>
+ #include <linux/module.h>
+ #include <linux/pm_runtime.h>
+@@ -42,6 +43,7 @@
+ #define VCNL4035_ALS_PERS_MASK		GENMASK(3, 2)
+ #define VCNL4035_INT_ALS_IF_H_MASK	BIT(12)
+ #define VCNL4035_INT_ALS_IF_L_MASK	BIT(13)
++#define VCNL4035_DEV_ID_MASK		GENMASK(7, 0)
+ 
+ /* Default values */
+ #define VCNL4035_MODE_ALS_ENABLE	BIT(0)
+@@ -413,6 +415,7 @@ static int vcnl4035_init(struct vcnl4035_data *data)
+ 		return ret;
+ 	}
+ 
++	id = FIELD_GET(VCNL4035_DEV_ID_MASK, id);
+ 	if (id != VCNL4035_DEV_ID_VAL) {
+ 		dev_err(&data->client->dev, "Wrong id, got %x, expected %x\n",
+ 			id, VCNL4035_DEV_ID_VAL);
 diff --git a/drivers/staging/iio/resolver/ad2s1210.c b/drivers/staging/iio/resolver/ad2s1210.c
 index e4cf42438487..636c45b12843 100644
 --- a/drivers/staging/iio/resolver/ad2s1210.c

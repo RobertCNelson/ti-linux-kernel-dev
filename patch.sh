@@ -464,7 +464,7 @@ bcfserial
 ksmbd
 #rt
 wireless_regdb
-#beagleboard_dtbs
+beagleboard_dtbs
 #local_patch
 
 pre_backports () {
@@ -502,7 +502,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.180"
+	backport_tag="v5.10.183"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -518,7 +518,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.29"
+	backport_tag="v6.1.33"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -538,7 +538,7 @@ backports () {
 		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
 
-	backport_tag="v6.1.29"
+	backport_tag="v6.1.33"
 
 	subsystem="it66121"
 	#regenerate="enable"
@@ -606,7 +606,7 @@ backports
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.27"
+		backport_tag="v6.1.33"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
@@ -621,7 +621,6 @@ packaging () {
 			patch_backports
 		fi
 	fi
-
 	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
 }
 
