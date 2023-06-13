@@ -499,7 +499,6 @@ beagleboard_dtbs () {
 		number=1
 		cleanup
 	fi
-
 	dir 'soc/ti/beagleboard_dtbs'
 }
 
@@ -548,13 +547,13 @@ post_backports () {
 	${git_bin} format-patch -1 -o ../patches/backports/${subsystem}/
 }
 
-patch_backports (){
+patch_backports () {
 	echo "dir: backports/${subsystem}"
 	${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-linux.git.patch"
 }
 
 backports () {
-	backport_tag="v5.10.180"
+	backport_tag="v5.10.183"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -570,7 +569,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.29"
+	backport_tag="v6.1.33"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -586,7 +585,25 @@ backports () {
 		exit 2
 	else
 		patch_backports
+		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
+
+	backport_tag="v6.1.33"
+
+	subsystem="it66121"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/gpu/drm/bridge/ite-it66121.c ./drivers/gpu/drm/bridge/
+
+		post_backports
+		exit 2
+	#else
+		patch_backports
+	fi
+	${git} "${DIR}/patches/backports/${subsystem}/0003-ite-it66121.c-fixes.patch"
 }
 
 brcmfmac () {
@@ -824,7 +841,7 @@ drivers
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.27"
+		backport_tag="v6.1.33"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
@@ -839,7 +856,6 @@ packaging () {
 			patch_backports
 		fi
 	fi
-
 	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
 }
 
