@@ -537,6 +537,7 @@ backports () {
 		${git} "${DIR}/patches/backports/${subsystem}/0007-iio-temperature-tmp117-add-TI-TMP116-support.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0008-iio-temperature-tmp117-cosmetic-alignment-cleanup.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0009-iio-temperature-add-driver-support-for-ti-tmp114.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0010-i2c-core-Introduce-i2c_client_get_device_id-helper-f.patch"
 	fi
 
 	backport_tag="v6.0.19"
