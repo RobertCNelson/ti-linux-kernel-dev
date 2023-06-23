@@ -536,6 +536,7 @@ backports () {
 		${git} "${DIR}/patches/backports/${subsystem}/0006-iio-temperature-tmp117-improve-fallback-capabilities.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0007-iio-temperature-tmp117-add-TI-TMP116-support.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0008-iio-temperature-tmp117-cosmetic-alignment-cleanup.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0009-iio-temperature-add-driver-support-for-ti-tmp114.patch"
 	fi
 
 	backport_tag="v6.0.19"
