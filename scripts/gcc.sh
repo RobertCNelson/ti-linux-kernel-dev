@@ -39,6 +39,17 @@ else
 	gcc_dir="${DIR}/dl"
 fi
 
+check_glibc () {
+	if [ -f ./glibc_version ] ; then
+		rm ./glibc_version || true
+	fi
+
+	gcc scripts/glibc_version.c -o glibc_version
+
+	version=$(LC_ALL=C ./glibc_version | awk '{print $3}')
+	echo "glibc: $version"
+}
+
 dl_generic () {
 	binary="bin/${gcc_prefix}-"
 
@@ -274,6 +285,7 @@ gcc_toolchain () {
 }
 
 if [ "x${CC}" = "x" ] && [ "x${ARCH}" != "xarmv7l" ] && [ "x${ARCH}" != "xaarch64" ] ; then
+	check_glibc
 	gcc_toolchain
 fi
 
