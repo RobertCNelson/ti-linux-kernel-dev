@@ -1,0 +1,86 @@
+From 6b57451e23bdeeb3899641a00b1bc92bf1f1022f Mon Sep 17 00:00:00 2001
+From: Marco Felsch <m.felsch@pengutronix.de>
+Date: Tue, 28 Feb 2023 10:05:17 +0100
+Subject: [PATCH 7/8] iio: temperature: tmp117: add TI TMP116 support
+
+The TMP116 is the predecessor of the TMP117. The TMP116 don't support
+custom offset calibration data, instead this register is used as generic
+EEPROM storage as well.
+
+Signed-off-by: Marco Felsch <m.felsch@pengutronix.de>
+Link: https://lore.kernel.org/r/20230228090518.529811-5-m.felsch@pengutronix.de
+Signed-off-by: Jonathan Cameron <Jonathan.Cameron@huawei.com>
+---
+ drivers/iio/temperature/tmp117.c | 20 +++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/iio/temperature/tmp117.c b/drivers/iio/temperature/tmp117.c
+index 8a3992d9ee93..9bfb818c3bf1 100644
+--- a/drivers/iio/temperature/tmp117.c
++++ b/drivers/iio/temperature/tmp117.c
+@@ -32,9 +32,11 @@
+ #define TMP117_REG_DEVICE_ID		0xF
+ 
+ #define TMP117_RESOLUTION_10UC		78125
+-#define TMP117_DEVICE_ID		0x0117
+ #define MICRODEGREE_PER_10MILLIDEGREE	10000
+ 
++#define TMP116_DEVICE_ID		0x1116
++#define TMP117_DEVICE_ID		0x0117
++
+ struct tmp117_data {
+ 	struct i2c_client *client;
+ 	s16 calibbias;
+@@ -109,6 +111,14 @@ static const struct iio_chan_spec tmp117_channels[] = {
+ 	},
+ };
+ 
++static const struct iio_chan_spec tmp116_channels[] = {
++	{
++		.type = IIO_TEMP,
++		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
++				      BIT(IIO_CHAN_INFO_SCALE),
++	},
++};
++
+ static const struct iio_info tmp117_info = {
+ 	.read_raw = tmp117_read_raw,
+ 	.write_raw = tmp117_write_raw,
+@@ -125,6 +135,7 @@ static int tmp117_identify(struct i2c_client *client)
+ 		return dev_id;
+ 
+ 	switch (dev_id) {
++	case TMP116_DEVICE_ID:
+ 	case TMP117_DEVICE_ID:
+ 		return dev_id;
+ 	}
+@@ -172,6 +183,11 @@ static int tmp117_probe(struct i2c_client *client)
+ 	indio_dev->info = &tmp117_info;
+ 
+ 	switch (dev_id) {
++	case TMP116_DEVICE_ID:
++		indio_dev->channels = tmp116_channels;
++		indio_dev->num_channels = ARRAY_SIZE(tmp116_channels);
++		indio_dev->name = "tmp116";
++		break;
+ 	case TMP117_DEVICE_ID:
+ 		indio_dev->channels = tmp117_channels;
+ 		indio_dev->num_channels = ARRAY_SIZE(tmp117_channels);
+@@ -183,12 +199,14 @@ static int tmp117_probe(struct i2c_client *client)
+ }
+ 
+ static const struct of_device_id tmp117_of_match[] = {
++	{ .compatible = "ti,tmp116", .data = (void *)TMP116_DEVICE_ID },
+ 	{ .compatible = "ti,tmp117", .data = (void *)TMP117_DEVICE_ID },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, tmp117_of_match);
+ 
+ static const struct i2c_device_id tmp117_id[] = {
++	{ "tmp116", TMP116_DEVICE_ID },
+ 	{ "tmp117", TMP117_DEVICE_ID },
+ 	{ }
+ };
+-- 
+2.39.2
+

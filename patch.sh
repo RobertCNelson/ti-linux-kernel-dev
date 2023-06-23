@@ -532,6 +532,10 @@ backports () {
 		patch_backports
 		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0005-iio-temperature-add-driver-support-for-ti-tmp117.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0006-iio-temperature-tmp117-improve-fallback-capabilities.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0007-iio-temperature-tmp117-add-TI-TMP116-support.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0008-iio-temperature-tmp117-cosmetic-alignment-cleanup.patch"
 	fi
 
 	backport_tag="v6.0.19"
