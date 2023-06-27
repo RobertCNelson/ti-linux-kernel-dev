@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2021 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2023 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -102,13 +102,13 @@ external_git () {
 	echo "pulling: [${git_patchset} ${git_tag}]"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
 	top_of_branch=$(${git_bin} describe)
-	if [ ! "x${ti_git_post}" = "x" ] ; then
+	if [ ! "x${ti_git_new_release}" = "x" ] ; then
 		${git_bin} checkout master -f
 		test_for_branch=$(${git_bin} branch --list "v${KERNEL_TAG}${BUILD}")
 		if [ "x${test_for_branch}" != "x" ] ; then
 			${git_bin} branch "v${KERNEL_TAG}${BUILD}" -D
 		fi
-		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
+		${git_bin} checkout ${ti_git_new_release} -b v${KERNEL_TAG}${BUILD} -f
 		current_git=$(${git_bin} describe)
 		echo "${current_git}"
 
@@ -434,23 +434,20 @@ dtb_makefile_append () {
 
 beagleboard_dtbs () {
 	branch="v4.19.x-ti-overlays"
-	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees"
+	https_repo="https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
-		if [ ! -d ./${work_dir} ] ; then
-			${git_bin} clone -b ${branch} ${https_repo} --depth=1
-			cd ./${work_dir}
-				git_hash=$(git rev-parse HEAD)
-			cd -
-		else
+		if [ -d ./${work_dir} ] ; then
 			rm -rf ./${work_dir} || true
-			${git_bin} clone -b ${branch} ${https_repo} --depth=1
-			cd ./${work_dir}
-				git_hash=$(git rev-parse HEAD)
-			cd -
 		fi
+
+		${git_bin} clone -b ${branch} ${https_repo} --depth=1
+		cd ./${work_dir}
+			git_hash=$(git rev-parse HEAD)
+		cd -
+
 		cd ./KERNEL/
 
 		cleanup_dts_builds
@@ -488,9 +485,9 @@ beagleboard_dtbs () {
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f include/dt-bindings/
-		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "${https_repo}/tree/${branch}" -m "${https_repo}/commit/${git_hash}" -s
+		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${branch}" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
-		echo "BBDTBS: ${https_repo}/commit/${git_hash}" > ../patches/git/BBDTBS
+		echo "BBDTBS: https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" > ../patches/external/git/BBDTBS
 
 		rm -rf ../${work_dir}/ || true
 
@@ -504,7 +501,6 @@ beagleboard_dtbs () {
 		number=1
 		cleanup
 	fi
-
 	dir 'soc/ti/beagleboard_dtbs'
 }
 
@@ -797,21 +793,19 @@ readme () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
-		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
-		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
+		cp -v "${DIR}/3rdparty/readme/.gitlab-ci.yml" "${DIR}/KERNEL/.gitlab-ci.yml"
 
 		mkdir -p "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
 		cp -v "${DIR}/3rdparty/readme/bug_report.md" "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
 		cp -v "${DIR}/3rdparty/readme/FUNDING.yml" "${DIR}/KERNEL/.github/"
 
 		git add -f README.md
-		git add -f jenkins_build.sh
-		git add -f Jenkinsfile
+		git add -f .gitlab-ci.yml
 
 		git add -f .github/ISSUE_TEMPLATE/bug_report.md
 		git add -f .github/FUNDING.yml
 
-		git commit -a -m 'enable: Jenkins: http://gfnd.rcn-ee.org:8080' -s
+		git commit -a -m 'enable: gitlab-ci' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
 	else
@@ -822,3 +816,4 @@ readme () {
 packaging
 readme
 echo "patch.sh ran successfully"
+#
