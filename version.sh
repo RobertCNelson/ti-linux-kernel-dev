@@ -20,6 +20,7 @@ toolchain="gcc_8_arm"
 #toolchain="gcc_10_arm"
 #toolchain="gcc_11_arm"
 #toolchain="gcc_12_arm"
+#toolchain="gcc_13_arm"
 #arm64
 #KERNEL_ARCH=arm64
 #DEBARCH=arm64
@@ -30,6 +31,7 @@ toolchain="gcc_8_arm"
 #toolchain="gcc_10_aarch64"
 #toolchain="gcc_11_aarch64"
 #toolchain="gcc_12_aarch64"
+#toolchain="gcc_13_aarch64"
 #riscv64
 #KERNEL_ARCH=riscv
 #DEBARCH=riscv64
@@ -39,15 +41,16 @@ toolchain="gcc_8_arm"
 #toolchain="gcc_10_riscv64"
 #toolchain="gcc_11_riscv64"
 #toolchain="gcc_12_riscv64"
+#toolchain="gcc_13_riscv64"
 
 #Kernel
 KERNEL_REL=4.19
 KERNEL_TAG=${KERNEL_REL}.94
 kernel_rt=".94-rt39"
 #Kernel Build
-BUILD=${build_prefix}73.1
+BUILD=${build_prefix}73.2
 
-#v5.X-rcX + upto SHA
+#v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
 #KERNEL_SHA=""
 
