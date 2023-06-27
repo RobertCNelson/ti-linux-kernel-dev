@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2021 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2023 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -102,13 +102,13 @@ external_git () {
 	echo "pulling: [${git_patchset} ${git_tag}]"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
 	top_of_branch=$(${git_bin} describe)
-	if [ ! "x${ti_git_post}" = "x" ] ; then
+	if [ ! "x${ti_git_new_release}" = "x" ] ; then
 		${git_bin} checkout master -f
 		test_for_branch=$(${git_bin} branch --list "v${KERNEL_TAG}${BUILD}")
 		if [ "x${test_for_branch}" != "x" ] ; then
 			${git_bin} branch "v${KERNEL_TAG}${BUILD}" -D
 		fi
-		${git_bin} checkout ${ti_git_post} -b v${KERNEL_TAG}${BUILD} -f
+		${git_bin} checkout ${ti_git_new_release} -b v${KERNEL_TAG}${BUILD} -f
 		current_git=$(${git_bin} describe)
 		echo "${current_git}"
 
@@ -950,21 +950,19 @@ readme () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cp -v "${DIR}/3rdparty/readme/README.md" "${DIR}/KERNEL/README.md"
-		cp -v "${DIR}/3rdparty/readme/jenkins_build.sh" "${DIR}/KERNEL/jenkins_build.sh"
-		cp -v "${DIR}/3rdparty/readme/Jenkinsfile" "${DIR}/KERNEL/Jenkinsfile"
+		cp -v "${DIR}/3rdparty/readme/.gitlab-ci.yml" "${DIR}/KERNEL/.gitlab-ci.yml"
 
 		mkdir -p "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
 		cp -v "${DIR}/3rdparty/readme/bug_report.md" "${DIR}/KERNEL/.github/ISSUE_TEMPLATE/"
 		cp -v "${DIR}/3rdparty/readme/FUNDING.yml" "${DIR}/KERNEL/.github/"
 
 		git add -f README.md
-		git add -f jenkins_build.sh
-		git add -f Jenkinsfile
+		git add -f .gitlab-ci.yml
 
 		git add -f .github/ISSUE_TEMPLATE/bug_report.md
 		git add -f .github/FUNDING.yml
 
-		git commit -a -m 'enable: Jenkins: http://gfnd.rcn-ee.org:8080' -s
+		git commit -a -m 'enable: gitlab-ci' -s
 		git format-patch -1 -o "${DIR}/patches/readme"
 		exit 2
 	else
@@ -975,3 +973,4 @@ readme () {
 packaging
 readme
 echo "patch.sh ran successfully"
+#
