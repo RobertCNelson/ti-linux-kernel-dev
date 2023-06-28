@@ -458,11 +458,11 @@ local_patch () {
 }
 
 external_git
-aufs
+#aufs
 wpanusb
 bcfserial
 ksmbd
-#rt
+rt
 wireless_regdb
 beagleboard_dtbs
 #local_patch

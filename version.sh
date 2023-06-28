@@ -4,10 +4,10 @@ ARCH=$(uname -m)
 
 config="defconfig"
 
-build_prefix="-ti-arm64-r"
-branch_prefix="ti-linux-arm64-"
+build_prefix="-ti-rt-arm64-r"
+branch_prefix="ti-linux-rt-arm64-"
 branch_postfix=".y"
-bborg_branch="6.1-arm64"
+bborg_branch="6.1-rt-arm64"
 
 #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.1-rc1
 #arm
