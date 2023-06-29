@@ -553,7 +553,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.185"
+	backport_tag="v5.10.186"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -569,7 +569,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.35"
+	backport_tag="v6.1.36"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -583,13 +583,13 @@ backports () {
 
 		post_backports
 		exit 2
-	else
+	#else
 		patch_backports
 		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
 
-	backport_tag="v6.1.35"
+	backport_tag="v6.1.36"
 
 	subsystem="it66121"
 	#regenerate="enable"
@@ -841,7 +841,7 @@ drivers
 packaging () {
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.35"
+		backport_tag="v6.1.36"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
