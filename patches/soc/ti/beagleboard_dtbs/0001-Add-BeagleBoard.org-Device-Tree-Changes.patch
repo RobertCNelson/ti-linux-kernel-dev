@@ -1,18 +1,17 @@
-From e999240a6195789f9cf56cb5b0c3b57cb319b41d Mon Sep 17 00:00:00 2001
+From 0d1e8811f978117e159c94832fbcad3bc40f033c Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 27 Jun 2023 20:47:38 -0500
+Date: Thu, 29 Jun 2023 16:16:43 -0500
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v6.1.x-ti
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/9b67a1de5eaf73dae7050a124001073b5413dd89
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/51f0e9ebb723252b8a5920873997fa4879c04291
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm/boot/dts/am335x-bbb-bone-buses.dtsi  |   85 +
  .../arm/boot/dts/am335x-bone-common-univ.dtsi | 2289 +++++++++++++++++
  arch/arm/boot/dts/am335x-bone-common.dtsi     |   25 +-
  arch/arm/boot/dts/am335x-bone.dts             |    5 +
- arch/arm/boot/dts/am335x-boneblack-hdmi.dtsi  |    7 +-
  .../boot/dts/am335x-boneblack-uboot-univ.dts  |  193 ++
  arch/arm/boot/dts/am335x-boneblack-uboot.dts  |  193 ++
  .../boot/dts/am335x-boneblack-wireless.dts    |    5 +
@@ -71,9 +70,9 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/overlays/PB-MIKROBUS-0.dts  |  107 +
  arch/arm/boot/dts/overlays/PB-MIKROBUS-1.dts  |  108 +
  include/dt-bindings/board/am335x-bone-pins.h  |  253 ++
- include/dt-bindings/pinctrl/k3.h              |    7 -
+ include/dt-bindings/pinctrl/k3.h              |   53 +
  include/dt-bindings/pinctrl/omap.h            |    4 +-
- 65 files changed, 10836 insertions(+), 332 deletions(-)
+ 64 files changed, 10883 insertions(+), 324 deletions(-)
  create mode 100644 arch/arm/boot/dts/am335x-bbb-bone-buses.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-common-univ.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-boneblack-uboot-univ.dts
@@ -117,6 +116,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 arch/arm/boot/dts/overlays/PB-MIKROBUS-0.dts
  create mode 100644 arch/arm/boot/dts/overlays/PB-MIKROBUS-1.dts
  create mode 100644 include/dt-bindings/board/am335x-bone-pins.h
+ create mode 100644 include/dt-bindings/pinctrl/k3.h
 
 diff --git a/arch/arm/boot/dts/am335x-bbb-bone-buses.dtsi b/arch/arm/boot/dts/am335x-bbb-bone-buses.dtsi
 new file mode 100644
@@ -2601,25 +2601,6 @@ index b5d85ef51a02..ea138cb34091 100644
  };
  
  &ldo3_reg {
-diff --git a/arch/arm/boot/dts/am335x-boneblack-hdmi.dtsi b/arch/arm/boot/dts/am335x-boneblack-hdmi.dtsi
-index 7cfddada9348..486f24deb875 100644
---- a/arch/arm/boot/dts/am335x-boneblack-hdmi.dtsi
-+++ b/arch/arm/boot/dts/am335x-boneblack-hdmi.dtsi
-@@ -85,8 +85,13 @@ tda19988: tda19988@70 {
- 		audio-ports = <	TDA998x_I2S	0x03>;
- 
- 		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
- 			port@0 {
--				hdmi_0: endpoint@0 {
-+				reg = <0>;
-+
-+				hdmi_0: endpoint {
- 					remote-endpoint = <&lcdc_0>;
- 				};
- 			};
 diff --git a/arch/arm/boot/dts/am335x-boneblack-uboot-univ.dts b/arch/arm/boot/dts/am335x-boneblack-uboot-univ.dts
 new file mode 100644
 index 000000000000..798bfa8bab9f
@@ -11963,23 +11944,64 @@ index 000000000000..54e92664ba79
 +
 +#endif
 diff --git a/include/dt-bindings/pinctrl/k3.h b/include/dt-bindings/pinctrl/k3.h
-index b5aca149664e..6bb9df1a264d 100644
---- a/include/dt-bindings/pinctrl/k3.h
+new file mode 100644
+index 000000000000..6bb9df1a264d
+--- /dev/null
 +++ b/include/dt-bindings/pinctrl/k3.h
-@@ -8,13 +8,6 @@
- #ifndef _DT_BINDINGS_PINCTRL_TI_K3_H
- #define _DT_BINDINGS_PINCTRL_TI_K3_H
- 
--/*
-- * These bindings are deprecated, because they do not match the actual
-- * concept of bindings but rather contain pure register values.
-- * Instead include the header in the DTS source directory.
-- */
--#warning "These bindings are deprecated. Instead, use the header in the DTS source directory."
--
- #define PULLUDEN_SHIFT		(16)
- #define PULLTYPESEL_SHIFT	(17)
- #define RXACTIVE_SHIFT		(18)
+@@ -0,0 +1,53 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * This header provides constants for pinctrl bindings for TI's K3 SoC
++ * family.
++ *
++ * Copyright (C) 2018-2021 Texas Instruments Incorporated - https://www.ti.com/
++ */
++#ifndef _DT_BINDINGS_PINCTRL_TI_K3_H
++#define _DT_BINDINGS_PINCTRL_TI_K3_H
++
++#define PULLUDEN_SHIFT		(16)
++#define PULLTYPESEL_SHIFT	(17)
++#define RXACTIVE_SHIFT		(18)
++
++#define PULL_DISABLE		(1 << PULLUDEN_SHIFT)
++#define PULL_ENABLE		(0 << PULLUDEN_SHIFT)
++
++#define PULL_UP			(1 << PULLTYPESEL_SHIFT | PULL_ENABLE)
++#define PULL_DOWN		(0 << PULLTYPESEL_SHIFT | PULL_ENABLE)
++
++#define INPUT_EN		(1 << RXACTIVE_SHIFT)
++#define INPUT_DISABLE		(0 << RXACTIVE_SHIFT)
++
++/* Only these macros are expected be used directly in device tree files */
++#define PIN_OUTPUT		(INPUT_DISABLE | PULL_DISABLE)
++#define PIN_OUTPUT_PULLUP	(INPUT_DISABLE | PULL_UP)
++#define PIN_OUTPUT_PULLDOWN	(INPUT_DISABLE | PULL_DOWN)
++#define PIN_INPUT		(INPUT_EN | PULL_DISABLE)
++#define PIN_INPUT_PULLUP	(INPUT_EN | PULL_UP)
++#define PIN_INPUT_PULLDOWN	(INPUT_EN | PULL_DOWN)
++
++#define AM62AX_IOPAD(pa, val, muxmode)		(((pa) & 0x1fff)) ((val) | (muxmode))
++#define AM62AX_MCU_IOPAD(pa, val, muxmode)	(((pa) & 0x1fff)) ((val) | (muxmode))
++
++#define AM62X_IOPAD(pa, val, muxmode)		(((pa) & 0x1fff)) ((val) | (muxmode))
++#define AM62X_MCU_IOPAD(pa, val, muxmode)	(((pa) & 0x1fff)) ((val) | (muxmode))
++
++#define AM64X_IOPAD(pa, val, muxmode)		(((pa) & 0x1fff)) ((val) | (muxmode))
++#define AM64X_MCU_IOPAD(pa, val, muxmode)	(((pa) & 0x1fff)) ((val) | (muxmode))
++
++#define AM65X_IOPAD(pa, val, muxmode)		(((pa) & 0x1fff)) ((val) | (muxmode))
++#define AM65X_WKUP_IOPAD(pa, val, muxmode)	(((pa) & 0x1fff)) ((val) | (muxmode))
++
++#define J721E_IOPAD(pa, val, muxmode)		(((pa) & 0x1fff)) ((val) | (muxmode))
++#define J721E_WKUP_IOPAD(pa, val, muxmode)	(((pa) & 0x1fff)) ((val) | (muxmode))
++
++#define J721S2_IOPAD(pa, val, muxmode)		(((pa) & 0x1fff)) ((val) | (muxmode))
++#define J721S2_WKUP_IOPAD(pa, val, muxmode)	(((pa) & 0x1fff)) ((val) | (muxmode))
++
++#define J784S4_IOPAD(pa, val, muxmode)		(((pa) & 0x1fff)) ((val) | (muxmode))
++#define J784S4_WKUP_IOPAD(pa, val, muxmode)	(((pa) & 0x1fff)) ((val) | (muxmode))
++
++#endif
 diff --git a/include/dt-bindings/pinctrl/omap.h b/include/dt-bindings/pinctrl/omap.h
 index f48245ff87e5..625718042413 100644
 --- a/include/dt-bindings/pinctrl/omap.h
