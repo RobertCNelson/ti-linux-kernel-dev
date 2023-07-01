@@ -537,22 +537,6 @@ backports () {
 		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
-
-	backport_tag="v6.1.36"
-
-	subsystem="it66121"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -v ~/linux-src/drivers/gpu/drm/bridge/ite-it66121.c ./drivers/gpu/drm/bridge/
-
-		post_backports
-		exit 2
-	#else
-		patch_backports
-	fi
-	${git} "${DIR}/patches/backports/${subsystem}/0003-ite-it66121.c-fixes.patch"
 }
 
 drivers () {
