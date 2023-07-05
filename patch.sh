@@ -579,7 +579,7 @@ backports () {
 
 	dir 'backports/spidev'
 
-	backport_tag="v5.10.180"
+	backport_tag="v5.10.186"
 
 	subsystem="spi"
 	#regenerate="enable"
@@ -594,7 +594,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.180"
+	backport_tag="v5.10.186"
 
 	subsystem="iio"
 	#regenerate="enable"
