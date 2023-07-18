@@ -427,9 +427,7 @@ beagleboard_dtbs () {
 
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; dtb_makefile_append
 		#device="k3-am625-pocketbeagle2.dtb" ; dtb_makefile_append
-		device="k3-j721e-beagleboneai64.dtb" ; dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; dtb_makefile_append
-		#device="k3-am625-beagleplay.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm64/boot/dts/ti/
 		${git_bin} add -f include/dt-bindings/
