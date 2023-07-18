@@ -42,7 +42,6 @@ cat_files () {
 DIR=$PWD
 git_bin=$(which git)
 
-repo_github="git@github.com:beagleboard/linux.git"
 repo_gitlab="git@git.beagleboard.org:beagleboard/linux.git"
 example="bb.org"
 compare="https://github.com/RobertCNelson/ti-linux-kernel/compare"
@@ -91,9 +90,6 @@ if [ -e ${DIR}/version.sh ]; then
 	#push tag
 	echo "log: git: pushing tags..."
 
-	echo "log: git push -f ${repo_github} ${KERNEL_TAG}${BUILD}"
-	${git_bin} push -f ${repo_github} "${KERNEL_TAG}${BUILD}"
-
 	echo "log: git push -f ${repo_gitlab} ${KERNEL_TAG}${BUILD}"
 	${git_bin} push -f ${repo_gitlab} "${KERNEL_TAG}${BUILD}"
 
@@ -105,9 +101,6 @@ if [ -e ${DIR}/version.sh ]; then
 
 	#push branch
 	echo "log: git: pushing branch v${KERNEL_TAG}${BUILD}..."
-
-	echo "log: git push -f ${repo_github} v${KERNEL_TAG}${BUILD}"
-	${git_bin} push -f ${repo_github} v${KERNEL_TAG}${BUILD}
 
 	echo "log: git push -f ${repo_gitlab} v${KERNEL_TAG}${BUILD}"
 	${git_bin} push -f ${repo_gitlab} v${KERNEL_TAG}${BUILD}
