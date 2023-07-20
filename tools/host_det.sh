@@ -467,10 +467,6 @@ debian_regs () {
 			#14 forky: https://wiki.debian.org/DebianForky
 			deb_distro="sid"
 			;;
-		buttercup)
-			#15 buttercup: https://wiki.debian.org/DebianButtercup
-			deb_distro="sid"
-			;;
 		esac
 
 		#https://wiki.ubuntu.com/Releases
