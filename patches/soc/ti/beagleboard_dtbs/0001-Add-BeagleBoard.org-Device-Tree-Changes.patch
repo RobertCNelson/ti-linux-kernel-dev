@@ -1,17 +1,17 @@
-From 6d3785a729ff9797df289529ec3ecb2098f27629 Mon Sep 17 00:00:00 2001
+From 1b31d27828b3a3d59aed92bb2ac9199d4abddcc3 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 5 Jul 2023 16:09:01 -0500
+Date: Thu, 20 Jul 2023 11:23:42 -0500
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v5.10.x-ti-unified
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/58068b8b37ba2c201ed32470ff34eb6a633887d8
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/a1ae5bd78d2311e204f79e3c89ca52abc2ca4156
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm/boot/dts/Makefile                    |   13 +
  arch/arm/boot/dts/am335x-bbb-bone-buses.dtsi  |  179 ++
  .../arm/boot/dts/am335x-bone-common-univ.dtsi | 2289 +++++++++++++++++
- arch/arm/boot/dts/am335x-bone-common.dtsi     |   46 +-
+ arch/arm/boot/dts/am335x-bone-common.dtsi     |   53 +-
  arch/arm/boot/dts/am335x-bone-jtag.dtsi       |   15 +
  arch/arm/boot/dts/am335x-bone-uboot-univ.dts  |   29 +
  arch/arm/boot/dts/am335x-bone.dts             |    5 +
@@ -95,10 +95,23 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/dt-bindings/board/am335x-bone-pins.h  |  253 ++
  include/dt-bindings/board/am572x-bone-pins.h  |  179 ++
  .../dt-bindings/board/k3-j721e-bone-pins.h    |  242 ++
+ .../dt-bindings/board/light-fm-bone-pins.h    |  308 +++
  include/dt-bindings/clock/dra7.h              |    4 +
+ include/dt-bindings/clock/light-dspsys.h      |   25 +
+ include/dt-bindings/clock/light-fm-ap-clock.h |  513 ++++
+ include/dt-bindings/clock/light-visys.h       |   54 +
+ include/dt-bindings/clock/light-vosys.h       |   41 +
+ include/dt-bindings/clock/light-vpsys.h       |   23 +
  include/dt-bindings/clock/omap5.h             |    2 +
+ include/dt-bindings/firmware/thead/rsrc.h     |   17 +
+ .../pinctrl/light-fm-aon-pinctrl.h            |   78 +
+ .../pinctrl/light-fm-left-pinctrl.h           |   71 +
+ .../pinctrl/light-fm-right-pinctrl.h          |   62 +
+ include/dt-bindings/pinctrl/light.h           |   53 +
  include/dt-bindings/pinctrl/omap.h            |    4 +-
- 90 files changed, 16179 insertions(+), 724 deletions(-)
+ include/dt-bindings/reset/light-reset.h       |   13 +
+ include/dt-bindings/soc/thead,light-iopmp.h   |   39 +
+ 103 files changed, 17483 insertions(+), 724 deletions(-)
  create mode 100644 arch/arm/boot/dts/am335x-bbb-bone-buses.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-common-univ.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-jtag.dtsi
@@ -163,6 +176,19 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  create mode 100644 include/dt-bindings/board/am335x-bone-pins.h
  create mode 100644 include/dt-bindings/board/am572x-bone-pins.h
  create mode 100644 include/dt-bindings/board/k3-j721e-bone-pins.h
+ create mode 100644 include/dt-bindings/board/light-fm-bone-pins.h
+ create mode 100644 include/dt-bindings/clock/light-dspsys.h
+ create mode 100644 include/dt-bindings/clock/light-fm-ap-clock.h
+ create mode 100644 include/dt-bindings/clock/light-visys.h
+ create mode 100644 include/dt-bindings/clock/light-vosys.h
+ create mode 100644 include/dt-bindings/clock/light-vpsys.h
+ create mode 100644 include/dt-bindings/firmware/thead/rsrc.h
+ create mode 100644 include/dt-bindings/pinctrl/light-fm-aon-pinctrl.h
+ create mode 100644 include/dt-bindings/pinctrl/light-fm-left-pinctrl.h
+ create mode 100644 include/dt-bindings/pinctrl/light-fm-right-pinctrl.h
+ create mode 100644 include/dt-bindings/pinctrl/light.h
+ create mode 100644 include/dt-bindings/reset/light-reset.h
+ create mode 100644 include/dt-bindings/soc/thead,light-iopmp.h
 
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
 index f19455a84563..bf9a58291b58 100644
@@ -2669,7 +2695,7 @@ index 000000000000..3af6f472c779
 +	};
 +};
 diff --git a/arch/arm/boot/dts/am335x-bone-common.dtsi b/arch/arm/boot/dts/am335x-bone-common.dtsi
-index b571227cec63..f1cf99566bf5 100644
+index b571227cec63..6e0937413b98 100644
 --- a/arch/arm/boot/dts/am335x-bone-common.dtsi
 +++ b/arch/arm/boot/dts/am335x-bone-common.dtsi
 @@ -4,10 +4,10 @@
@@ -2727,7 +2753,25 @@ index b571227cec63..f1cf99566bf5 100644
  	cpsw_default: cpsw_default {
  		pinctrl-single,pins = <
  			/* Slave 1 */
-@@ -194,6 +185,7 @@ &uart0 {
+@@ -150,6 +141,8 @@ davinci_mdio_default: davinci_mdio_default {
+ 			/* MDIO */
+ 			AM33XX_PADCONF(AM335X_PIN_MDIO, PIN_INPUT_PULLUP | SLEWCTRL_FAST, MUX_MODE0)
+ 			AM33XX_PADCONF(AM335X_PIN_MDC, PIN_OUTPUT_PULLUP, MUX_MODE0)
++            /* added to support GPIO controlled PHY reset */
++            AM33XX_PADCONF(AM335X_PIN_UART0_CTSN, PIN_OUTPUT_PULLUP, MUX_MODE7)
+ 		>;
+ 	};
+ 
+@@ -158,6 +151,8 @@ davinci_mdio_sleep: davinci_mdio_sleep {
+ 			/* MDIO reset value */
+ 			AM33XX_PADCONF(AM335X_PIN_MDIO, PIN_INPUT_PULLDOWN, MUX_MODE7)
+ 			AM33XX_PADCONF(AM335X_PIN_MDC, PIN_INPUT_PULLDOWN, MUX_MODE7)
++            /* added to support GPIO controlled PHY reset */
++            AM33XX_PADCONF(AM335X_PIN_UART0_CTSN, PIN_INPUT_PULLDOWN, MUX_MODE7)
+ 		>;
+ 	};
+ 
+@@ -194,6 +189,7 @@ &uart0 {
  	pinctrl-0 = <&uart0_pins>;
  
  	status = "okay";
@@ -2735,7 +2779,7 @@ index b571227cec63..f1cf99566bf5 100644
  };
  
  &usb0 {
-@@ -212,6 +204,7 @@ &i2c0 {
+@@ -212,6 +208,7 @@ &i2c0 {
  
  	status = "okay";
  	clock-frequency = <400000>;
@@ -2743,7 +2787,7 @@ index b571227cec63..f1cf99566bf5 100644
  
  	tps: tps@24 {
  		reg = <0x24>;
-@@ -235,6 +228,7 @@ &i2c2 {
+@@ -235,6 +232,7 @@ &i2c2 {
  
  	status = "okay";
  	clock-frequency = <100000>;
@@ -2751,7 +2795,7 @@ index b571227cec63..f1cf99566bf5 100644
  
  	cape_eeprom0: cape_eeprom0@54 {
  		compatible = "atmel,24c256";
-@@ -358,27 +352,24 @@ ldo4_reg: regulator@6 {
+@@ -358,27 +356,27 @@ ldo4_reg: regulator@6 {
  	};
  };
  
@@ -2777,14 +2821,17 @@ index b571227cec63..f1cf99566bf5 100644
  
 -&davinci_mdio_sw {
 +&davinci_mdio {
++	status = "okay";
  	pinctrl-names = "default", "sleep";
  	pinctrl-0 = <&davinci_mdio_default>;
  	pinctrl-1 = <&davinci_mdio_sleep>;
-+	status = "okay";
++    // Support GPIO Reset on Rev C3 boards
++    reset-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
++    reset-delay-us = <280>;
  
  	ethphy0: ethernet-phy@0 {
  		reg = <0>;
-@@ -414,3 +405,12 @@ &pruss_tm {
+@@ -414,3 +412,12 @@ &pruss_tm {
  &wkup_m3_ipc {
  	ti,scale-data-fw = "am335x-bone-scale-data.bin";
  };
@@ -18294,6 +18341,320 @@ index 000000000000..12d772347911
 +#define P9_42B(mode, mux) J721E_IOPAD(0x4C, mode, mux)	/* AJ21: PRG1_PRU0_GPO17 AC2_AJ21 */
 +
 +#endif
+diff --git a/include/dt-bindings/board/light-fm-bone-pins.h b/include/dt-bindings/board/light-fm-bone-pins.h
+new file mode 100644
+index 000000000000..4231b4bfeaee
+--- /dev/null
++++ b/include/dt-bindings/board/light-fm-bone-pins.h
+@@ -0,0 +1,308 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2020 - 2023 BeagleBoard.org - https://beagleboard.org/
++ * Copyright (C) 2020 - 2023 Deepak Khatri <lorforlinux@beagleboard.org>
++ * Copyright (C) 2021 Jason Kridner <jkridner@beagleboard.org>
++ * See Cape Interface Spec page for more info on Bone Buses
++ * https://docs.beagleboard.org/0.0/boards/capes/cape-interface-spec.html
++ */
++
++#ifndef _DT_BINDINGS_BOARD_TH1520_BONE_PINS_H
++#define _DT_BINDINGS_BOARD_TH1520_BONE_PINS_H
++
++#define bb_device 1
++#define board_soc TH1520
++
++/*
++* GPIO port macros
++*
++* gpio0: &gpio0_porta
++* gpio1: &gpio1_porta
++* gpio2: &gpio2_porta
++* gpio3: &gpio3_porta
++* ao_gpio4: &ao_gpio4_porta
++* ao_gpio: &ao_gpio_porta
++*
++*/
++
++// P8 cape header
++#define gpio_P8_03 &gpio1_porta 21
++#define gpio_P8_04 &gpio1_porta 22
++#define gpio_P8_05 &gpio1_porta 23
++#define gpio_P8_06 &gpio1_porta 24
++#define gpio_P8_07 &gpio1_porta 25
++#define gpio_P8_08 &gpio1_porta 26
++#define gpio_P8_09 &gpio1_porta 27
++#define gpio_P8_10 &gpio1_porta 28
++#define gpio_P8_11 &gpio1_porta 29
++#define gpio_P8_12 &gpio1_porta 30
++#define gpio_P8_13 &gpio3_porta 2
++#define gpio_P8_14 &gpio1_porta 20
++#define gpio_P8_15 &gpio3_porta 0
++#define gpio_P8_16 &gpio0_porta 20
++#define gpio_P8_17 &gpio3_porta 1
++#define gpio_P8_18 &gpio1_porta 5
++#define gpio_P8_19 &gpio3_porta 3
++#define gpio_P8_20 &gpio1_porta 6
++#define gpio_P8_21 &gpio1_porta 7
++#define gpio_P8_22 &gpio1_porta 8
++#define gpio_P8_23 &gpio1_porta 9
++#define gpio_P8_24 &gpio1_porta 10
++#define gpio_P8_25 &gpio1_porta 11
++#define gpio_P8_26 &gpio1_porta 12
++#define gpio_P8_27 &gpio1_porta 15
++#define gpio_P8_28 &gpio1_porta 16
++#define gpio_P8_29 &gpio1_porta 14
++#define gpio_P8_30 &gpio1_porta 13
++#define gpio_P8_31 &gpio1_porta 3
++#define gpio_P8_32 &gpio1_porta 4
++#define gpio_P8_33 &gpio1_porta 2
++#define gpio_P8_34 &gpio1_porta 0
++#define gpio_P8_35 &gpio1_porta 1
++#define gpio_P8_36 &gpio0_porta 31
++#define gpio_P8_37 &gpio0_porta 29
++#define gpio_P8_38 &gpio0_porta 30
++#define gpio_P8_39 &gpio0_porta 27
++#define gpio_P8_40 &gpio0_porta 28
++#define gpio_P8_41 &gpio0_porta 25
++#define gpio_P8_42 &gpio0_porta 26
++#define gpio_P8_43 &gpio0_porta 23
++#define gpio_P8_44 &gpio0_porta 24
++#define gpio_P8_45 &gpio0_porta 21
++#define gpio_P8_46 &gpio0_porta 22
++
++// P9 cape header
++#define gpio_P9_11 &gpio0_porta 10
++#define gpio_P9_12 &gpio2_porta 3
++#define gpio_P9_13 &gpio0_porta 11
++#define gpio_P9_14 &gpio2_porta 6
++#define gpio_P9_15 &gpio2_porta 7
++#define gpio_P9_16 &gpio2_porta 5
++#define gpio_P9_17 &gpio0_porta 1
++#define gpio_P9_18 &gpio0_porta 2
++#define gpio_P9_19 &gpio2_porta 9
++#define gpio_P9_20 &gpio2_porta 10
++#define gpio_P9_21 &gpio0_porta 3
++#define gpio_P9_22 &gpio0_porta 0
++#define gpio_P9_23 &gpio2_porta 8
++#define gpio_P9_24 &gpio0_porta 4
++#define gpio_P9_25 &gpio2_porta 18
++#define gpio_P9_26 &gpio0_porta 5
++#define gpio_P9_27 &gpio2_porta 19
++#define gpio_P9_28 &gpio2_porta 15
++#define gpio_P9_29 &gpio2_porta 17
++#define gpio_P9_30 &gpio2_porta 16
++#define gpio_P9_31 &gpio2_porta 14
++#define gpio_P9_41 &gpio2_porta 13
++#define gpio_P9_42 &gpio2_porta 2
++
++// mikroBus port
++#define gpio_mb_pwm  &gpio2_porta 4
++#define gpio_mb_rst  &ao_gpio4_porta 3
++#define gpio_mb_int  &gpio2_porta 21
++#define gpio_mb_rxd  &gpio0_porta 17
++#define gpio_mb_txd  &gpio0_porta 16
++#define gpio_mb_cs   &gpio2_porta 20
++#define gpio_mb_sck  &gpio2_porta 14
++#define gpio_mb_miso &gpio2_porta 17
++#define gpio_mb_mosi &gpio2_porta 16
++#define gpio_mb_scl  &gpio0_porta 18
++#define gpio_mb_sda  &gpio0_porta 19
++
++// AP6203BM
++#define gpio_bt_shutdown &gpio2_porta 28
++#define gpio_bt_device_wakeup &gpio2_porta 29
++#define gpio_bt_host_wakeup &gpio2_porta 30
++
++/*
++* padctrl macros
++*
++* left-pinctrl (gpio0,gpio1): &light_padctrl1
++* right-pinctrl (gpio2,gpio3): &light_padctrl0
++* aon-pinctrl (ao_gpio4,ao_gpio): &light_padctrl
++*
++*/
++
++// P8 cape header
++#define padctrl_P8_03 &light_padctrl1
++#define padctrl_P8_04 &light_padctrl1
++#define padctrl_P8_05 &light_padctrl1
++#define padctrl_P8_06 &light_padctrl1
++#define padctrl_P8_07 &light_padctrl1
++#define padctrl_P8_08 &light_padctrl1
++#define padctrl_P8_09 &light_padctrl1
++#define padctrl_P8_10 &light_padctrl1
++#define padctrl_P8_11 &light_padctrl1
++#define padctrl_P8_12 &light_padctrl1
++#define padctrl_P8_13 &light_padctrl0
++#define padctrl_P8_14 &light_padctrl1
++#define padctrl_P8_15 &light_padctrl0
++#define padctrl_P8_16 &light_padctrl1
++#define padctrl_P8_17 &light_padctrl0
++#define padctrl_P8_18 &light_padctrl1
++#define padctrl_P8_19 &light_padctrl0
++#define padctrl_P8_20 &light_padctrl1
++#define padctrl_P8_21 &light_padctrl1
++#define padctrl_P8_22 &light_padctrl1
++#define padctrl_P8_23 &light_padctrl1
++#define padctrl_P8_24 &light_padctrl1
++#define padctrl_P8_25 &light_padctrl1
++#define padctrl_P8_26 &light_padctrl1
++#define padctrl_P8_27 &light_padctrl1
++#define padctrl_P8_28 &light_padctrl1
++#define padctrl_P8_29 &light_padctrl1
++#define padctrl_P8_30 &light_padctrl1
++#define padctrl_P8_31 &light_padctrl1
++#define padctrl_P8_32 &light_padctrl1
++#define padctrl_P8_33 &light_padctrl1
++#define padctrl_P8_34 &light_padctrl1
++#define padctrl_P8_35 &light_padctrl1
++#define padctrl_P8_36 &light_padctrl1
++#define padctrl_P8_37 &light_padctrl1
++#define padctrl_P8_38 &light_padctrl1
++#define padctrl_P8_39 &light_padctrl1
++#define padctrl_P8_40 &light_padctrl1
++#define padctrl_P8_41 &light_padctrl1
++#define padctrl_P8_42 &light_padctrl1
++#define padctrl_P8_43 &light_padctrl1
++#define padctrl_P8_44 &light_padctrl1
++#define padctrl_P8_45 &light_padctrl1
++#define padctrl_P8_46 &light_padctrl1
++
++// P9 cape header
++#define padctrl_P9_11 &light_padctrl1
++#define padctrl_P9_12 &light_padctrl0
++#define padctrl_P9_13 &light_padctrl1
++#define padctrl_P9_14 &light_padctrl0
++#define padctrl_P9_15 &light_padctrl0
++#define padctrl_P9_16 &light_padctrl0
++#define padctrl_P9_17 &light_padctrl1
++#define padctrl_P9_18 &light_padctrl1
++#define padctrl_P9_19 &light_padctrl0
++#define padctrl_P9_20 &light_padctrl0
++#define padctrl_P9_21 &light_padctrl1
++#define padctrl_P9_22 &light_padctrl1
++#define padctrl_P9_23 &light_padctrl0
++#define padctrl_P9_24 &light_padctrl1
++#define padctrl_P9_25 &light_padctrl0
++#define padctrl_P9_26 &light_padctrl1
++#define padctrl_P9_27 &light_padctrl0
++#define padctrl_P9_28 &light_padctrl0
++#define padctrl_P9_29 &light_padctrl0
++#define padctrl_P9_30 &light_padctrl0
++#define padctrl_P9_31 &light_padctrl0
++#define padctrl_P9_41 &light_padctrl0
++#define padctrl_P9_42 &light_padctrl0
++
++// mikroBus port
++#define padctrl_mb_pwm  &light_padctrl0
++#define padctrl_mb_rst  &light_padctrl
++#define padctrl_mb_int  &light_padctrl0
++#define padctrl_mb_rxd  &light_padctrl1
++#define padctrl_mb_txd  &light_padctrl1
++#define padctrl_mb_cs   &light_padctrl0
++#define padctrl_mb_sck  &light_padctrl0
++#define padctrl_mb_miso &light_padctrl0
++#define padctrl_mb_mosi &light_padctrl0
++#define padctrl_mb_scl  &light_padctrl1
++#define padctrl_mb_sda  &light_padctrl1
++
++// AM6203BM
++#define padctrl_bt_shutdown &light_padctrl0
++#define padctrl_bt_device_wakeup &light_padctrl0
++#define padctrl_bt_host_wakeup &light_padctrl0
++
++/*
++* Cape compatibility PinMuxing macros
++*/
++
++// P8 cape header
++#define P8_03(muxmode, config) FM_GPIO1_21 muxmode config
++#define P8_04(muxmode, config) FM_GPIO1_22 muxmode config
++#define P8_05(muxmode, config) FM_GPIO1_23 muxmode config
++#define P8_06(muxmode, config) FM_GPIO1_24 muxmode config
++#define P8_07(muxmode, config) FM_GPIO1_25 muxmode config
++#define P8_08(muxmode, config) FM_GPIO1_26 muxmode config
++#define P8_09(muxmode, config) FM_GPIO1_27 muxmode config
++#define P8_10(muxmode, config) FM_GPIO1_28 muxmode config
++#define P8_11(muxmode, config) FM_GPIO1_29 muxmode config
++#define P8_12(muxmode, config) FM_GPIO1_30 muxmode config
++#define P8_13(muxmode, config) FM_GPIO3_2 muxmode config
++#define P8_14(muxmode, config) FM_CLK_OUT_3 muxmode config
++#define P8_15(muxmode, config) FM_GPIO3_0 muxmode config
++#define P8_16(muxmode, config) FM_GPIO0_20 muxmode config
++#define P8_17(muxmode, config) FM_GPIO3_1 muxmode config
++#define P8_18(muxmode, config) FM_GPIO1_5 muxmode config
++#define P8_19(muxmode, config) FM_GPIO3_3 muxmode config
++#define P8_20(muxmode, config) FM_GPIO1_6 muxmode config
++#define P8_21(muxmode, config) FM_GPIO1_7 muxmode config
++#define P8_22(muxmode, config) FM_GPIO1_8 muxmode config
++#define P8_23(muxmode, config) FM_GPIO1_9 muxmode config
++#define P8_24(muxmode, config) FM_GPIO1_10 muxmode config
++#define P8_25(muxmode, config) FM_GPIO1_11 muxmode config
++#define P8_26(muxmode, config) FM_GPIO1_12 muxmode config
++#define P8_27(muxmode, config) FM_GPIO1_15 muxmode config
++#define P8_28(muxmode, config) FM_GPIO1_16 muxmode config
++#define P8_29(muxmode, config) FM_GPIO1_14 muxmode config
++#define P8_30(muxmode, config) FM_GPIO1_13 muxmode config
++#define P8_31(muxmode, config) FM_GPIO1_3 muxmode config
++#define P8_32(muxmode, config) FM_GPIO1_4 muxmode config
++#define P8_33(muxmode, config) FM_GPIO1_2 muxmode config
++#define P8_34(muxmode, config) FM_GPIO1_0 muxmode config
++#define P8_35(muxmode, config) FM_GPIO1_1 muxmode config
++#define P8_36(muxmode, config) FM_GPIO0_31 muxmode config
++#define P8_37(muxmode, config) FM_GPIO0_29 muxmode config
++#define P8_38(muxmode, config) FM_GPIO0_30 muxmode config
++#define P8_39(muxmode, config) FM_GPIO0_27 muxmode config
++#define P8_40(muxmode, config) FM_GPIO0_28 muxmode config
++#define P8_41(muxmode, config) FM_GPIO0_25 muxmode config
++#define P8_42(muxmode, config) FM_GPIO0_26 muxmode config
++#define P8_43(muxmode, config) FM_GPIO0_23 muxmode config
++#define P8_44(muxmode, config) FM_GPIO0_24 muxmode config
++#define P8_45(muxmode, config) FM_GPIO0_21 muxmode config
++#define P8_46(muxmode, config) FM_GPIO0_22 muxmode config
++
++// P9 cape header
++#define P9_11(muxmode, config) FM_UART1_TXD muxmode config
++#define P9_12(muxmode, config) FM_QSPI0_CSN0 muxmode config
++#define P9_13(muxmode, config) FM_UART1_RXD muxmode config
++#define P9_14(muxmode, config) FM_QSPI0_D1_MISO muxmode config
++#define P9_15(muxmode, config) FM_QSPI0_D2_WP muxmode config
++#define P9_16(muxmode, config) FM_QSPI0_D0_MOSI muxmode config
++#define P9_17(muxmode, config) FM_QSPI1_CSN0 muxmode config
++#define P9_18(muxmode, config) FM_QSPI1_D0_MOSI muxmode config
++#define P9_19(muxmode, config) FM_I2C2_SCL muxmode config
++#define P9_20(muxmode, config) FM_I2C2_SDA muxmode config
++#define P9_21(muxmode, config) FM_QSPI1_D1_MISO muxmode config
++#define P9_22(muxmode, config) FM_QSPI1_SCLK muxmode config
++#define P9_23(muxmode, config) FM_QSPI0_D3_HOLD muxmode config
++#define P9_24(muxmode, config) FM_QSPI1_D2_WP muxmode config
++#define P9_25(muxmode, config) FM_GPIO2_18 muxmode config
++#define P9_26(muxmode, config) FM_QSPI1_D3_HOLD muxmode config
++#define P9_27(muxmode, config) FM_GPIO2_19 muxmode config
++#define P9_28(muxmode, config) FM_SPI_CSN muxmode config
++#define P9_29(muxmode, config) FM_SPI_MISO muxmode config
++#define P9_30(muxmode, config) FM_SPI_MOSI muxmode config
++#define P9_31(muxmode, config) FM_SPI_SCLK muxmode config
++#define P9_41(muxmode, config) FM_GPIO2_13 muxmode config
++#define P9_42(muxmode, config) FM_QSPI0_SCLK muxmode config
++
++// mikroBus port
++#define mb_pwm(muxmode, config)  FM_QSPI0_CSN1 muxmode config
++#define mb_rst(muxmode, config)  FM_AUDIO_PA3 muxmode config
++#define mb_int(muxmode, config)  FM_GPIO2_21 muxmode config
++#define mb_rxd(muxmode, config)  FM_UART3_RXD muxmode config
++#define mb_txd(muxmode, config)  FM_UART3_TXD muxmode config
++#define mb_cs(muxmode, config)   FM_GPIO2_20 muxmode config
++#define mb_sck(muxmode, config)  FM_SPI_SCLK muxmode config
++#define mb_miso(muxmode, config) FM_SPI_MISO muxmode config
++#define mb_mosi(muxmode, config) FM_SPI_MOSI muxmode config
++#define mb_scl(muxmode, config)  FM_GPIO0_18 muxmode config
++#define mb_sda(muxmode, config)  FM_GPIO0_19 muxmode config
++
++// AM6203BM
++#define bt_shutdown(muxmode, config) FM_SDIO1_WPRTN muxmode config
++#define bt_device_wakeup(muxmode, config) FM_SDIO1_DETN muxmode config
++#define bt_host_wakeup(muxmode, config) FM_GPIO2_30 muxmode config
++
++#endif
 diff --git a/include/dt-bindings/clock/dra7.h b/include/dt-bindings/clock/dra7.h
 index 5ec4137231e3..7d57063b8a65 100644
 --- a/include/dt-bindings/clock/dra7.h
@@ -18309,6 +18670,692 @@ index 5ec4137231e3..7d57063b8a65 100644
  /* dss clocks */
  #define DRA7_DSS_CORE_CLKCTRL	DRA7_CLKCTRL_INDEX(0x20)
  #define DRA7_BB2D_CLKCTRL	DRA7_CLKCTRL_INDEX(0x30)
+diff --git a/include/dt-bindings/clock/light-dspsys.h b/include/dt-bindings/clock/light-dspsys.h
+new file mode 100644
+index 000000000000..6473e12623c6
+--- /dev/null
++++ b/include/dt-bindings/clock/light-dspsys.h
+@@ -0,0 +1,25 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (C) 2022 Alibaba Group Holding Limited.
++ */
++
++#ifndef _LIGHT_DSPSYS_H
++#define _LIGHT_DSPSYS_H
++
++#define CLKGEN_DSP0_PCLK			0
++#define CLKGEN_DSP0_CCLK                        1
++#define CLKGEN_DSP1_PCLK                        2
++#define CLKGEN_DSP1_CCLK                        3
++#define CLKGEN_X2X_X4_DSPSLV_DSP0_ACLK_M        4
++#define CLKGEN_X2X_X4_DSPSLV_DSP1_ACLK_M        5
++#define CLKGEN_AXI4_DSPSYS_SLV_ACLK             6
++#define CLKGEN_AXI4_DSPSYS_ACLK                 7
++#define CLKGEN_IOPMP_DSP0_PCLK                  8
++#define CLKGEN_IOPMP_DSP1_PCLK                  9
++#define CLKGEN_AXI4_DSPSYS_SLV_PCLK             10
++#define CLKGEN_AXI4_DSPSYS_PCLK                 11
++#define CLKGEN_X2X_DSP0_ACLK_S			12
++#define CLKGEN_X2X_DSP2_ACLK_S			13
++#define LIGHT_CLKGEN_DSPSYS_CLK_END		14
++
++#endif
+diff --git a/include/dt-bindings/clock/light-fm-ap-clock.h b/include/dt-bindings/clock/light-fm-ap-clock.h
+new file mode 100644
+index 000000000000..8bb23b690f98
+--- /dev/null
++++ b/include/dt-bindings/clock/light-fm-ap-clock.h
+@@ -0,0 +1,513 @@
++#ifndef _APSYS_CLKGEN_H
++#define _APSYS_CLKGEN_H
++
++#define C910_CCLK_I0                                       0
++#define AXI4_CPUSYS1_ACLK                                  1
++#define CLKGEN_GPIO2_DBCLK                                 2
++#define CLKGEN_MBOX0_PCLK                                  3
++#define CLKGEN_GMAC0_CCLK                                  4
++#define CLKGEN_SPI_PCLK                                    5
++#define CLKGEN_CLK_OUT_1_CLK                               6
++#define PAD_RTC_CLK                                        7
++#define CLKGEN_SPINLOCK_HCLK                               8
++#define CLKGEN_QSPI1_PCLK                                  9
++#define CLKGEN_HDMI_ISCAN_CK_REF_CLK                       10
++#define CLKGEN_IOPMP_AON_PCLK                              11
++#define CLKGEN_ISP_RY_ACLK                                 12
++#define CLKGEN_MIPIDSI0_SCANRXCLKESC                       13
++#define CLKGEN_EIP120SII_HCLK                              14
++#define CLKGEN_MIPI_CSI0_PIXCLK                            15
++#define CLKGEN_SRAM_AXI_ACLK_3                             16
++#define CLKGEN_PERISYS_AHB_HCLK                            17
++#define VOSYS_HDMI_ISCAN_RX_WORD_CLK0_CLK                  18
++#define CLKGEN_QSPI0_SSI_CLK                               19
++#define CLKGEN_DW200_ACLK                                  20
++#define CLKGEN_IOPMP_EIP120SIII_PCLK                       21
++#define VISYS_MIPI_CSI2_CFGCLK                             22
++#define CLKGEN_APB3_CPUSYS_HCLK                            23
++#define CLKGEN_PERISYS_APB1_HCLK                           24
++#define CLKGEN_GPU_CORE_CLK                                25
++#define CLKGEN_USB3_DRD_ACLK                               26
++#define CLKGEN_VISYS_ACLK                                  27
++#define CLKGEN_USB3_DRD_CTRL_REF_CLK                       28
++#define CLKGEN_TEE_DMAC_ACLK                               29
++#define CLKGEN_AUDIO_SUBSYS_ACLK_CP2AP                     30
++#define CLKGEN_SRAM_AXI_ACLK_2                             31
++#define CLKGEN_IOPMP_VOSYS_GPU_PCLK                        32
++#define CLKGEN_CFG2TEE_X2H_ACLK                            33
++#define CLKGEN_SRAM_AXI_ACLK_1                             34
++#define MISC_SDIO0_OSC_CLK                                 35
++#define CLKGEN_SDIO0_ACLK                                  36
++#define CLKGEN_MIPI_DSI1_CFGCLK                            37
++#define APB3_CPUSYS_PCLK                                   38
++#define CLKGEN_TEE_DMAC_HCLK                               39
++#define VOSYS_DPU0_PIXELCLK                                40
++#define CLKGEN_CPU2CFG_X2H_MHCLK                           41
++#define CLKGEN_VPSYS_ACLK                                  42
++#define CLKGEN_MIPIDSI1_SCANRXCLKESC                       43
++#define CLKGEN_MISC2VP_X2X_ACLK_S                          44
++#define CLKGEN_MIPI_CSI_SCANBYTECLK                        45
++#define CLKGEN_APB3_TEESYS_HCLK                            46
++#define VENC_CCLK                                          47
++#define VPSYS_VDEC_CCLK                                    48
++#define CLKGEN_MIPI_CSI0_CFG_CLK                           49
++#define CLKGEN_MISCSYS_BUS_CLK                             50
++#define CLKGEN_DPU_HCLK                                    51
++#define CLKGEN_UART1_SCLK                                  52
++#define GMAC_PLL_FOUTPOSTDIV                               53
++#define MISC_BUS_CLK                                       54
++#define CLKGEN_USB3_DRD_SPDCLK                             55
++#define CLKGEN_MIPI_CSI2_CFG_CLK                           56
++#define CLKGEN_TOP_AXI4S_ACLK                              57
++#define CLKGEN_IOPMP_EIP120SII_ACLK                        58
++#define CORE_CLK                                           59
++#define CLKGEN_VPSYS_FCE_ACLK                              60
++#define CLKGEN_I2C3_PCLK                                   61
++#define DPU1_PLL_DIV_CLK                                   62
++#define CLKGEN_USB3_DRD_PHY_REF_CLK                        63
++#define CLKGEN_AON2CPU_A2X_ACLK                            64
++#define CLKGEN_QSPI1_SSI_CLK                               65
++#define CLKGEN_DPU_CCLK                                    66
++#define VISYS_MASTER_BUS_ACLK                              67
++#define CLKGEN_PERI_I2S_SRC_CLK_0                          68
++#define VOSYS_ACLK_M                                       69
++#define TEESYS_I0_HCLK                                     70
++#define CLKGEN_MIPI_DSI1_REFCLK                            71
++#define CLKGEN_MIPI_DSI0_PCLK                              72
++#define CLKGEN_VOSYS_ACLK_S                                73
++#define CLKGEN_CPU2VP_X2P_PCLK                             74
++#define CLKGEN_X2X_CPUSYS_ACLK_S                           75
++#define CLKGEN_HDMI_ISCAN_RX_WORD_CLK1_CLK                 76
++#define CLKGEN_IOPMP_VOSYS_DPU1_PCLK                       77
++#define CLKGEN_MISC2VP_X2X_ACLK_M                          78
++#define CLKGEN_WDT0_PCLK                                   79
++#define VOSYS_MIPIDSI0_SCANTXCLKESC                        80
++#define VISYS_MIPI_CSI1_CFGCLK                             81
++#define AHB2_CPUSYS_HCLK                                   82
++#define CLKGEN_SDIO1_HCLK                                  83
++#define CLKGEN_SDIO0_HCLK                                  84
++#define CLKGEN_CLK_OUT_3_CLK                               85
++#define CLKGEN_GMAC_AXI_ACLK                               86
++#define GMAC_CCLK                                          87
++#define CLKGEN_VIPRE_PCLK                                  88
++#define CLKGEN_HDMI_ISCAN_TX_CK_OUT2_CLK                   89
++#define CLKGEN_MIPIDSI1_SCANTXCLKESC                       90
++#define CLKGEN_VISYS_SLAVE_HCLK                            91
++#define VOSYS_HDMI_ISCAN_TX_CK_OUT1_CLK                    92
++#define CLKGEN_X2X_CPUSYS_ACLK_M                           93
++#define CLKGEN_CPU2CFG_X2X_ACLK_S                          94
++#define C910_OSC_CLK                                       95
++#define CLKGEN_X2H_DPU1_ACLK                               96
++#define CLKGEN_I2C4_PCLK                                   97
++#define CLKGEN_GMAC0_ACLK                                  98
++#define MISC_USB3_PHY_REF_CLK                              99
++#define VOSYS_MIPIDSI0_CFG_CLK                             100
++#define CLKGEN_VPSYS_VDEC_CCLK                             101
++#define VOSYS_MIPIDSI1_CFG_CLK                             102
++#define CLKGEN_I2S_PCLK                                    103
++#define CLKGEN_DMAC_CPUSYS_ACLK                            104
++#define VISYS_DW200_CLK_DWE                                105
++#define CLKGEN_OCRAM_HCLK                                  106
++#define CLKGEN_EFUSE_PCLK                                  107
++#define CLKGEN_X2H_DPU_ACLK                                108
++#define CLKGEN_IOPMP_SDIO0_ACLK                            109
++#define VOSYS_DPU1_PIXELCLK                                110
++#define CPU_PLL1_FOUT4                                     111
++#define CLKGEN_GPIO2_PCLK                                  112
++#define CLKGEN_GMAC1_CCLK                                  113
++#define CPU_PLL1_FOUTPOSTDIV                               114
++#define VOSYS_HDMI_ISCAN_40M_CLK                           115
++#define CLKGEN_VOSYS_X2X_ACLK_S                            116
++#define CLKGEN_PERISYS_APB2_HCLK                           117
++#define VOSYS_OSC_CLK_MUX_I2S_CLK_OCCBUF                   118
++#define CLKGEN_HDMI_CEC_CLK                                119
++#define CLKGEN_X2P_X4_VOSYS_PCLK                           120
++#define CLKGEN_VOSYS_ACLK_M                                121
++#define CLKGEN_EMMC_SDIO_REF_CLK                           122
++#define CLKGEN_IOPMP_EMMC_ACLK                             123
++#define VIDEO_PLL_FOUTVCO                                  124
++#define CLKGEN_HDMI_ISCAN_CKO_WORD_CLK                     125
++#define CLKGEN_IOPMP_VOSYS_DPU_PCLK                        126
++#define CLKGEN_AXI4_VISYS3_ACLK                            127
++#define CLKGEN_VISYS_SYSREG_PCLK                           128
++#define CLKGEN_MIPIDSI0_SCANTXCLKESC                       129
++#define CLKGEN_HDMI_ISCAN_TX_CK_OUT1_CLK                   130
++#define CLKGEN_IOPMP_EIP120SIII_ACLK                       131
++#define CLKGEN_EIP120SII_ACLK                              132
++#define CLKGEN_MBOX2_PCLK                                  133
++#define CLKGEN_AXI4_VISYS1_ACLK                            134
++#define CLKGEN_UART1_PCLK                                  135
++#define CLK_OUT_3                                          136
++#define CLKGEN_UART5_SCLK                                  137
++#define CLKGEN_HDMI_ISCAN_RX_WORD_CLK2_CLK                 138
++#define CLKGEN_MBOX3_PCLK                                  139
++#define QSPI1_SSI_CLK                                      140
++#define CLKGEN_I2C1_PCLK                                   141
++#define CLKGEN_HDMI_I2S_CLK                                142
++#define CLKGEN_AXI4_CPUSYS2_PCLK                           143
++#define CLKGEN_CFG2TEE_X2H_MHCLK                           144
++#define CLKGEN_C910_CPU_CLK                                145
++#define VOSYS_HDMI_ISCAN_TX_CK_OUT2_CLK                    146
++#define CLKGEN_HDMI_PCLK                                   147
++#define CLKGEN_IOPMP_EIP120SII_PCLK                        148
++#define CLKGEN_MISCSYS_AXI_PCLK                            149
++#define CLKGEN_EIP120SI_ACLK                               150
++#define TEESYS_I1_HCLK                                     151
++#define PERISYS_APB_PCLK                                   152
++#define VOSYS_HDMI_ISCAN_RX_WORD_CLK0_DIV2_CLK             153
++#define CLKGEN_TIMER0_CCLK                                 154
++#define CLKGEN_IOPMP_USB3_ACLK                             155
++#define CLKGEN_UART2_PCLK                                  156
++#define CLK_OUT_4                                          157
++#define AXI4_CPUSYS2_ACLK                                  158
++#define CLKGEN_AUDIO_SUBSYS_ACLK_AP2CP                     159
++#define CLKGEN_I2C3_IC_CLK                                 160
++#define CLKGEN_IOPMP_GPU_ACLK                              161
++#define CLKGEN_TIMER1_CCLK                                 162
++#define VOSYS_I2S_CLK                                      163
++#define CLKGEN_I2C5_IC_CLK                                 164
++#define VOSYS_OSC_CLK_MUX_I2S_CLK                          165
++#define CLKGEN_DDR_SUBSYS_ACLK_0                           166
++#define CLKGEN_TIMER1_PCLK                                 167
++#define CLKGEN_I2C1_IC_CLK                                 168
++#define CLKGEN_I2S_SRC_CLK                                 169
++#define VISYS_DW200_CLK_VSE                                170
++#define CLKGEN_MIPIDSI1_PIXCLK                             171
++#define VOSYS_RTC_CLK                                      172
++#define CLK_OUT_1                                          173
++#define CLKGEN_PERISYS_APB4_HCLK                           174
++#define MISC_USB3_CTRL_REF_CLK                             175
++#define CLKGEN_TEE_SYSREG_PCLK                             176
++#define CLKGEN_MISCSYS_AXI_ACLK                            177
++#define CLKGEN_MIPIDSI1_SCANCLK                            178
++#define CLKGEN_GPIO3_DBCLK                                 179
++#define CLKGEN_HDMI_ISCAN_40M_CLK                          180
++#define CLKGEN_PERI2PERI1_APB_HCLK                         181
++#define CLKGEN_GMAC0_HCLK                                  182
++#define CLKGEN_DDR_SUBSYS_PCLK                             183
++#define VOSYS_PCLK                                         184
++#define CLKGEN_MIPIDSI1_SCANBYTECLK                        185
++#define CLKGEN_VPSYS_G2D_ACLK                              186
++#define CLKGEN_EIP150B_HCLK                                187
++#define CLKGEN_UART4_SCLK                                  188
++#define DPU1_PLL_TEST_CLK                                  189
++#define CLKGEN_VOSYS_X2X_ACLK_M                            190
++#define CLKGEN_IOPMP_EIP120SI_ACLK                         191
++#define CLKGEN_CLK_OUT_4_CLK                               192
++#define CLKGEN_GPIO0_FPCLK                                 193
++#define PAD_OSC_CLK                                        194
++#define CLKGEN_C910_BUS_CLK_NO_ICG                         195
++#define CLKGEN_TIMER0_PCLK                                 196
++#define CLKGEN_AHB2_CPUSYS_HCLK                            197
++#define EMMC_SDIO_REF_CLK                                  198
++#define CLKGEN_IOPMP_CHIP_DBG_PCLK                         199
++#define CLKGEN_BMU_C910_PCLK                               200
++#define CLKGEN_IOPMP_DPU1_ACLK                             201
++#define CLKGEN_PADCTRL0_APSYS_PCLK                         202
++#define MISC_SDIO1_OSC_CLK                                 203
++#define CLKGEN_C910_OSC_CLK                                204
++#define VISYS_ISP_RY_CCLK                                  205
++#define CLKGEN_VPSYS_PCLK                                  206
++#define VISYS_MIPI_CSI0_PIXELCLK                           207
++#define NPU_CCLK                                           208
++#define CLKGEN_AXI4_TEESYS_ACLK                            209
++#define PERI2SYS_APB_PCLK                                  210
++#define CLKGEN_IOPMP_GMAC0_PCLK                            211
++#define CLKGEN_VPSYS_G2D_PCLK                              212
++#define CLKGEN_EMMC_ACLK                                   213
++#define CLKGEN_UART3_SCLK                                  214
++#define AONSYS_BUS_CLK                                     215
++#define DPU0_PLL_FOUT4                                     216
++#define VOSYS_MIPIDSI1_SCANCLK                             217
++#define CLKGEN_UART4_PCLK                                  218
++#define CLKGEN_HDMI_ISCAN_SCL                              219
++#define CLKGEN_MIPI_CSI1_PIXCLK                            220
++#define CLKGEN_APSYS_CLKGEN_PCLK                           221
++#define CLKGEN_GPU_TIMER_REFCLK                            222
++#define GMAC_PLL_FOUT1PH0                                  223
++#define VOSYS_MIPIDSI1_SCANBYTECLK                         224
++#define CLKGEN_GPIO3_FPCLK                                 225
++#define CLKGEN_SDIO1_OSC_CLK                               226
++#define CLKGEN_GPIO3_PCLK                                  227
++#define CLKGEN_VPSYS_AXI_ACLK                              228
++#define CLKGEN_HDMI_ISCAN_TX_CK_20B_CLK                    229
++#define CLKGEN_VOSYSREG_PCLK                               230
++#define VIDEO_PLL_TEST_CLK                                 231
++#define CLKGEN_MBOX1_PCLK                                  232
++#define CLKGEN_I2C2_IC_CLK                                 233
++#define VOSYS_MIPIDSI0_PLL_SCANCLK                         234
++#define VOSYS_MIPIDSI1_SCANTXCLKESC                        235
++#define VOSYS_HDMI_ISCAN_RX_WORD_CLK1_DIV2_CLK             236
++#define CLKGEN_UART2_SCLK                                  237
++#define MISC_TEESYS_PCLK                                   238
++#define AUDIO_PLL_TEST_CLK                                 239
++#define CLKGEN_DPU_PIXELCLK1                               240
++#define CLKGEN_IOPMP_TEEDMAC_PCLK                          241
++#define CLKGEN_TOP_APB_SX_PCLK                             242
++#define CLKGEN_I2C4_IC_CLK                                 243
++#define GMAC_PLL_TEST_CLK                                  244
++#define CLKGEN_HDMI_JTAG_TCLK                              245
++#define VISYS_MIPI_CSI0_CFGCLK                             246
++#define CLKGEN_CPU2AON_X2H_ACLK                            247
++#define VOSYS_HDMI_ISCAN_TX_CK_OUT0_CLK                    248
++#define QSPI_SSI_CLK                                       249
++#define VOSYS_DPU_CCLK                                     250
++#define CLKGEN_CPU2VI_X2H_MHCLK                            251
++#define CLKGEN_MIPI_DSI0_REFCLK                            252
++#define CLKGEN_DSPSYS_HCLK                                 253
++#define CLKGEN_IOPMP_AUD_PCLK                              254
++#define CLKGEN_PERI2PERI1_APB_PCLK                         255
++#define CFG_AXI_ACLK                                       256
++#define VPSYS_FCE_CCLK                                     257
++#define CLKGEN_HDMI_ISCAN_CLK                              258
++#define CPU_PLL0_TEST_CLK                                  259
++#define CLKGEN_CPU2PERI_X2H_MHCLK                          260
++#define VISYS_ACLK_M                                       261
++#define VOSYS_HDMI_JTAG_TCLK                               262
++#define CLKGEN_IOPMP_AUD_ACLK                              263
++#define CLKGEN_HDMI_ISCAN_RX_WORD_CLK1_DIV2_CLK            264
++#define VOSYS_HDMI_ISCAN_RX_WORD_CLK1_CLK                  265
++#define VOSYS_MIPIDSI0_REFCLK                              266
++#define CLKGEN_VISYS_ACLK_M                                267
++#define VOSYS_MIPIDSI0_SCANRXCLKESC                        268
++#define CLKGEN_SDIO1_ACLK                                  269
++#define CFG_APB_PCLK                                       270
++#define CLKGEN_PADCTRL1_APSYS_PCLK                         271
++#define VOSYS_MIPIDSI0_SCANCLK                             272
++#define CLKGEN_I2C0_IC_CLK                                 273
++#define CLKGEN_VPSYS_APB_PCLK                              274
++#define CLKGEN_VPSYS_VENC_CCLK                             275
++#define CLKGEN_AXI4_CFG_BUS_ACLK                           276
++#define CLKGEN_MIPIDSI0_SCANBYTECLK                        277
++#define GPIO3_DBCLK                                        278
++#define CLKGEN_HDMI_ISCAN_RX_WORD_CLK0_CLK                 279
++#define CLKGEN_UART5_PCLK                                  280
++#define DPU0_PLL_FOUTPOSTDIV_ICG                           281
++#define CPU_PLL0_FOUT4                                     282
++#define CLKGEN_GPIO2_FPCLK                                 283
++#define CLKGEN_DPU_ACLK                                    284
++#define CLKGEN_AXI4_CPUSYS2_ACLK                           285
++#define CLKGEN_DSPSYS_PCLK                                 286
++#define TEE_PLL_FOUTPOSTDIV                                287
++#define TIMER_CCLK                                         288
++#define VOSYS_MIPIDSI1_PLL_SCANCLK                         289
++#define CLKGEN_GMAC_AXI_PCLK                               290
++#define CLKGEN_USB3_DRD_PCLK                               291
++#define CLKGEN_AXI4_CPUSYS1_PCLK                           292
++#define VOSYS_ACLK                                         293
++#define CLKGEN_IOPMP_EIP120SI_PCLK                         294
++#define VOSYS_HDMI_ISCAN_TMDSCLKIN_CLK                     295
++#define VOSYS_HDMI_ISCAN_CKO_WORD_CLK                      296
++#define CLKGEN_NPUSYS_AXI_ACLK                             297
++#define CLKGEN_IOPMP_SDIO0_PCLK                            298
++#define CLKGEN_DW200_HCLK                                  299
++#define VOSYS_HDMI_ISCAN_RX_WORD_CLK2_CLK                  300
++#define CLKGEN_UART0_PCLK                                  301
++#define CLKGEN_CLK_OUT_2_CLK                               302
++#define CLKGEN_GPIO0_PCLK                                  303
++#define CLKGEN_EMMC_OSC_CLK                                304
++#define VPSYS_APB_PCLK                                     305
++#define CLKGEN_HDMI_PIXCLK                                 306
++#define CLKGEN_IOPMP_TEEDMAC_ACLK                          307
++#define AUDIO_PLL_FOUT4                                    308
++#define CLKGEN_MIPI_CSI2_PCLK                              309
++#define CLKGEN_MIPI_DSI1_PCLK                              310
++#define CLKGEN_MIPI_DSI0_CFGCLK                            311
++#define VISYS_ISP0_CLK                                     312
++#define VISYS_ISP1_CLK                                     313
++#define MISC_EMMC_OSC_CLK                                  314
++#define DPU0_PLL_FOUTPOSTDIV                               315
++#define VISYS_AHB_HCLK                                     316
++#define CLKGEN_IOPMP_SDIO1_ACLK                            317
++#define CLKGEN_EMMC_HCLK                                   318
++#define I2S_CLK                                            319
++#define CLKGEN_CPU2PERI_X2H_ACLK                           320
++#define VPSYS_AXI_ACLK                                     321
++#define CLKGEN_IOPMP_SDIO1_PCLK                            322
++#define CLKGEN_EIP120SIII_HCLK                             323
++#define CLKGEN_BMU_C910_ACLK                               324
++#define CLKGEN_IOPMP_DMAC_CPUSYS_PCLK                      325
++#define GPIO2_DBCLK                                        326
++#define CHIP_DBG_CCLK                                      327
++#define CLKGEN_MISCSYS_TEE_CCLK                            328
++#define CLKGEN_I2C5_PCLK                                   329
++#define CLKGEN_X2H_CPUSYS_MHCLK                            330
++#define CLKGEN_PWM_CCLK                                    331
++#define DPU0_PLL_TEST_CLK                                  332
++#define CLKGEN_VISYS_PCLK                                  333
++#define MISC_TEESYS_HCLK                                   334
++#define SPI_SSI_CLK                                        335
++#define CLKGEN_PWM_PCLK                                    336
++#define VOSYS_MIPIDSI1_SCANRXCLKESC                        337
++#define QSPI0_SSI_CLK                                      338
++#define CLKGEN_HDMI_ISCAN_TMDSCLKIN_CLK                    339
++#define CLKGEN_SPI_SSI_CLK                                 340
++#define VIDEO_PLL_FOUT4                                    341
++#define CLKGEN_IOPMP_GMAC0_ACLK                            342
++#define CLKGEN_VIPRE_ACLK                                  343
++#define MISC_OSC_CLK_DIV24                                 344
++#define CLKGEN_ISP_VENC_SHAKE_PCLK                         345
++#define CLKGEN_HDMI_ISCAN_TX_CK_OUT0_CLK                   346
++#define CLKGEN_VPSYS_G2D_CCLK                              347
++#define CLKGEN_CPU2CFG_X2X_ACLK_M                          348
++#define CLKGEN_GMAC1_PCLK                                  349
++#define CLKGEN_MIPIDSI0_PLL_SCANCLK                        350
++#define CLKGEN_HDMI_ISCAN_RX_WORD_CLK0_DIV2_CLK            351
++#define TEE_PLL_FOUT4                                      352
++#define PERISYS_AHB_HCLK                                   353
++#define VIDEO_PLL_FOUT1PH0                                 354
++#define CLKGEN_MIPIDSI0_PIXCLK                             355
++#define CLKGEN_PERI_I2S_SRC_CLK_1                          356
++#define CLKGEN_MIPI_CSI0_PCLK                              357
++#define CLKGEN_DDR_SUBSYS_ACLK_1                           358
++#define CLKGEN_GMAC0_PCLK                                  359
++#define CLK_OUT_2                                          360
++#define CLKGEN_EIP120SIII_ACLK                             361
++#define AONSYS_HCLK                                        362
++#define CLKGEN_ISP0_CLK                                    363
++#define CLKGEN_C910_BROM_HCLK                              364
++#define DPU1_PLL_FOUT4                                     365
++#define PERI_I2S_SRC_CLK                                   366
++#define CPU_PLL1_TEST_CLK                                  367
++#define CLKGEN_DDR_SUBSYS_ACLK_2                           368
++#define CLKGEN_MIPIDSI0_SCANCLK                            369
++#define I2C_IC_CLK                                         370
++#define CLKGEN_DPU_PIXELCLK0                               371
++#define CLKGEN_GPIO1_DBCLK                                 372
++#define CLKGEN_C910_TOP_DS_PCLK                            373
++#define CLKGEN_DSPSYS_ACLK_M                               374
++#define CLKGEN_AON2CPU_A2X_HCLK                            375
++#define VOSYS_HDMI_ISCAN_CK_REF_CLK                        376
++#define CLKGEN_IOPMP_EMMC_PCLK                             377
++#define NPU_CORE_CLK                                       378
++#define CLKGEN_IOPMP_USB3_PCLK                             379
++#define VPSYS_PCLK                                         380
++#define VIDEO_PLL_FOUTPOSTDIV                              381
++#define CLKGEN_CPU2VP_X2P_ACLK                             382
++#define CLKGEN_APB_CPU2CFG_HCLK                            383
++#define VOSYS_OSC_CLK_MUX_CEC_CLK_OCCBUF                   384
++#define CLKGEN_GPIO1_PCLK                                  385
++#define CLKGEN_APSYS_SYSREG_PCLK                           386
++#define CLKGEN_VISYS_HCLK                                  387
++#define CLKGEN_MIPI_CSI1_PCLK                              388
++#define CLKGEN_AHB2_TEESYS_HCLK                            389
++#define CLKGEN_DDR_SUBSYS_ACLK_4                           390
++#define SYS_PLL_TEST_CLK                                   391
++#define VISYS_MIPI_CSI_SCANCLK                             392
++#define CPU_PLL0_FOUTPOSTDIV                               393
++#define CLKGEN_UART3_PCLK                                  394
++#define CLKGEN_X2H_CPUSYS_ACLK                             395
++#define CLKGEN_MIPI_CSI1_CFG_CLK                           396
++#define CLKGEN_HDMI_ISCAN_RX_WORD_CLK2_DIV2_CLK            397
++#define CLKGEN_MISCSYS_APB_HCLK                            398
++#define CLKGEN_CPU2CFG_X2H_ACLK                            399
++#define CLKGEN_MIPI_CSI2_FPCLK                             400
++#define CLKGEN_ISP_RY_CCLK                                 401
++#define CLKGEN_X2P_VOSYS_ACLK                              402
++#define CLKGEN_VIPRE_PIXELCLK                              403
++#define VOSYS_GPU_TIMER_REFCLK                             404
++#define VOSYS_OSC_CLK_MUX_CEC_CLK                          405
++#define CLKGEN_APSYS_RSTGEN_PCLK                           406
++#define VOSYS_HDMI_ISCAN_SCL                               407
++#define CLKGEN_ISP_RY_HCLK                                 408
++#define VOSYS_OSC_CLK                                      409
++#define VISYS_PCLK                                         410
++#define CLKGEN_AXI4_VO_ACLK                                411
++#define CLKGEN_MIPIDSI1_PLL_SCANCLK                        412
++#define GPIO1_DBCLK                                        413
++#define CLKGEN_AXI4_VISYS2_ACLK                            414
++#define CLKGEN_EIP120SI_HCLK                               415
++#define CLKGEN_IOPMP_CHIP_DBG_ACLK                         416
++#define VOSYS_HDMI_ISCAN_TX_CK_20B_CLK                     417
++#define VOSYS_MIPIDSI1_REFCLK                              418
++#define CLKGEN_CHIP_DBG_ACLK                               419
++#define VOSYS_CFG_ACLK                                     420
++#define CLKGEN_VOSYS_AXI_ACLK                              421
++#define CPU_BUS_DFTCLK                                     422
++#define VOSYS_HDMI_ISCAN_CLK                               423
++#define VISYS_SLAVE_BUS_HCLK                               424
++#define CLKGEN_VPSYS_VDEC_PCLK                             425
++#define GMAC_PLL_FOUT4                                     426
++#define CLKGEN_QSPI0_PCLK                                  427
++#define CLKGEN_ISP1_CLK                                    428
++#define CLKGEN_MIPI_CSI0_FPCLK                             429
++#define CLKGEN_ISP0_ACLK                                   430
++#define CLKGEN_CPU2VI_X2H_ACLK                             431
++#define C910_CCLK                                          432
++#define CLKGEN_DW200_CLK_VSE                               433
++#define CLKGEN_AXI4_CPUSYS1_ACLK                           434
++#define CLKGEN_GPU_CFG_ACLK                                435
++#define CLKGEN_GPIO1_FPCLK                                 436
++#define CLKGEN_SRAM_AXI_ACLK_0                             437
++#define CLKGEN_I2C2_PCLK                                   438
++#define CLKGEN_IOPMP_GMAC1_PCLK                            439
++#define CLKGEN_ISP0_S_HCLK                                 440
++#define GPIO0_DBCLK                                        441
++#define CLKGEN_AXI4_VO_CFG_ACLK                            442
++#define CLKGEN_NPU_CORE_CLK                                443
++#define DPU0_PLL_DIV_CLK                                   444
++#define VOSYS_MIPIDSI0_SCANBYTECLK                         445
++#define CLKGEN_CHIP_DBG_CCLK                               446
++#define CLKGEN_DMAC_CPUSYS_HCLK                            447
++#define CLKGEN_IOPMP_DPU_ACLK                              448
++#define CLKGEN_DDR_SUBSYS_ACLK_3                           449
++#define CLK_100M                                           450
++#define CLKGEN_DSMART_PCLK                                 451
++#define CLKGEN_DW200_CLK_DWE                               452
++#define VPSYS_G2D_CCLK                                     453
++#define CLKGEN_WDT1_PCLK                                   454
++#define DPU1_PLL_FOUTPOSTDIV                               455
++#define CLKGEN_IOPMP_GMAC1_ACLK                            456
++#define CLKGEN_VPSYS_FCE_PCLK                              457
++#define CLKGEN_MIPI_CSI_SCANCLK                            458
++#define CLKGEN_MIPI_CSI2_PIXCLK                            459
++#define CLKGEN_I2C0_PCLK                                   460
++#define VOSYS_HDMI_ISCAN_RX_WORD_CLK2_DIV2_CLK             461
++#define CLKGEN_HDMI_SFR_CLK                                462
++#define TEE_PLL_TEST_CLK                                   463
++#define CLKGEN_IOPMP_DMAC_CPUSYS_ACLK                      464
++#define CLKGEN_ISP_PIXELCLK                                465
++#define CLKGEN_MIPI_CSI1_FPCLK                             466
++#define SYS_PLL_FOUT4                                      467
++#define CLKGEN_AXI4_VO_PCLK                                468
++#define CLKGEN_UART0_SCLK                                  469
++#define CLKGEN_CPU2AON_X2H_MHCLK                           470
++#define VISYS_MIPI_CSI_SCANBYTECLK                         471
++#define UART_SCLK                                          472
++#define CLKGEN_IOPMP_AON_ACLK                              473
++#define CLKGEN_VPSYS_VDEC_ACLK                             474
++#define CLKGEN_GMAC1_HCLK                                  475
++#define CLKGEN_ISP_VENC_SHAKE_ACLK                         476
++#define TEESYS_HCLK                                        477
++#define PWM_CCLK                                           478
++#define CLKGEN_GPIO0_DBCLK                                 479
++#define CLKGEN_SDIO0_OSC_CLK                               480
++#define CLKGEN_GMAC1_ACLK                                  481
++#define VPSYS_ACLK                                         482
++
++#define AHB2_CPUSYS_HCLK_OUT_DIV			   483
++#define APB3_CPUSYS_PCLK_DIV				   484
++#define CFG_AXI_ACLK_OUT_DIV				   485
++#define PERISYS_AHB_HCLK_OUT_DIV			   486
++#define CLK_OUT_1_OUT_DIV				   487
++#define CLK_OUT_2_OUT_DIV                                  488
++#define CLK_OUT_3_OUT_DIV                                  489
++#define CLK_OUT_4_OUT_DIV                                  490
++#define NPU_CCLK_OUT_DIV				   491
++#define CFG_APB_PCLK_OUT_DIV				   492
++#define CPU_PLL0_BYPASS					   493
++#define CPU_PLL1_BYPASS					   494
++#define GMAC_PLL_BYPASS					   495
++#define VIDEO_PLL_BYPASS				   496
++#define TEE_PLL_BYPASS					   497
++#define DPU0_PLL_BYPASS					   498
++#define DPU1_PLL_BYPASS					   499
++
++#define CLK_DUMMY					   500
++#define OSC_32K						   501
++#define OSC_24M						   502
++#define RC_24M						   503
++
++#define CLK_END						   504
++
++#endif
+diff --git a/include/dt-bindings/clock/light-visys.h b/include/dt-bindings/clock/light-visys.h
+new file mode 100644
+index 000000000000..53fed0bfb624
+--- /dev/null
++++ b/include/dt-bindings/clock/light-visys.h
+@@ -0,0 +1,54 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (C) 2022 Alibaba Group Holding Limited.
++ */
++
++#ifndef _LIGHT_VISYS_H
++#define _LIGHT_VISYS_H
++
++#define LIGHT_CLKGEN_VISYS_ACLK			      0
++#define LIGHT_CLKGEN_DW200_ACLK			      1
++#define LIGHT_CLKGEN_AXI4_VISYS1_ACLK		      2
++#define LIGHT_CLKGEN_AXI4_VISYS2_ACLK                 3
++#define LIGHT_CLKGEN_AXI4_VISYS3_ACLK                 4
++#define LIGHT_CLKGEN_ISP0_ACLK                        5
++#define LIGHT_CLKGEN_ISP_RY_ACLK                      6
++#define LIGHT_CLKGEN_ISP_VENC_SHAKE_ACLK              7
++#define LIGHT_CLKGEN_VIPRE_ACLK                       8
++#define LIGHT_CLKGEN_VISYS_SLAVE_HCLK                 9
++#define LIGHT_CLKGEN_ISP0_S_HCLK                      10
++#define LIGHT_CLKGEN_DW200_HCLK                       11
++#define LIGHT_CLKGEN_ISP_RY_HCLK                      12
++#define LIGHT_CLKGEN_MIPI_CSI0_PCLK                   13
++#define LIGHT_CLKGEN_MIPI_CSI0_FPCLK                  14
++#define LIGHT_CLKGEN_MIPI_CSI1_PCLK                   15
++#define LIGHT_CLKGEN_MIPI_CSI1_FPCLK                  16
++#define LIGHT_CLKGEN_MIPI_CSI2_PCLK                   17
++#define LIGHT_CLKGEN_MIPI_CSI2_FPCLK                  18
++#define LIGHT_CLKGEN_VIPRE_PCLK                       19
++#define LIGHT_CLKGEN_VISYS_PCLK                       20
++#define LIGHT_CLKGEN_VISYS_SYSREG_PCLK                21
++#define LIGHT_CLKGEN_ISP_VENC_SHAKE_PCLK              22
++#define LIGHT_CLKGEN_MIPI_CSI0_PIXCLK                 23
++#define LIGHT_CLKGEN_MIPI_CSI1_PIXCLK                 24
++#define LIGHT_CLKGEN_MIPI_CSI2_PIXCLK                 25
++#define LIGHT_CLKGEN_VIPRE_PIXELCLK                   26
++#define LIGHT_CLKGEN_ISP_PIXELCLK                     27
++#define LIGHT_CLKGEN_MIPI_CSI0_CFG_CLK                28
++#define LIGHT_CLKGEN_MIPI_CSI1_CFG_CLK                29
++#define LIGHT_CLKGEN_MIPI_CSI2_CFG_CLK                30
++#define LIGHT_CLKGEN_DW200_CLK_VSE                    31
++#define LIGHT_CLKGEN_DW200_CLK_DWE                    32
++#define LIGHT_CLKGEN_ISP0_CLK                         33
++#define LIGHT_CLKGEN_ISP1_CLK                         34
++#define LIGHT_CLKGEN_ISP_RY_CCLK                      35
++#define LIGHT_CLKGEN_MIPI_CSI_SCANBYTECLK             36
++#define LIGHT_CLKGEN_MIPI_CSI_SCANCLK                 37
++#define LIGHT_CLKGEN_ISP1_PIXELCLK		      38
++#define LIGHT_CLKGEN_ISP0_PIXELCLK		      39
++#define LIGHT_CLKGEN_ISP1_HCLK			      40
++#define LIGHT_CLKGEN_ISP0_HCLK			      41
++#define LIGHT_CLKGEN_ISP1_ACLK			      42
++#define LIGHT_CLKGEN_VISYS_CLK_END		      43
++
++#endif
+diff --git a/include/dt-bindings/clock/light-vosys.h b/include/dt-bindings/clock/light-vosys.h
+new file mode 100644
+index 000000000000..dbdd7fa7016b
+--- /dev/null
++++ b/include/dt-bindings/clock/light-vosys.h
+@@ -0,0 +1,41 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (C) 2022 Alibaba Group Holding Limited.
++ */
++
++#ifndef LIGHT_VOSYS_H
++#define LIGHT_VOSYS_H
++
++#define LIGHT_CLKGEN_AXI4_VO_PCLK			0
++#define LIGHT_CLKGEN_IOPMP_VOSYS_DPU_PCLK		1
++#define LIGHT_CLKGEN_IOPMP_VOSYS_DPU1_PCLK		2
++#define LIGHT_CLKGEN_IOPMP_VOSYS_GPU_PCLK		3
++#define LIGHT_CLKGEN_HDMI_PCLK				4
++#define LIGHT_CLKGEN_MIPIDSI0_PCLK			5
++#define LIGHT_CLKGEN_MIPIDSI1_PCLK			6
++#define LIGHT_CLKGEN_AXI4_VO_ACLK			7
++#define LIGHT_CLKGEN_IOPMP_GPU_ACLK			8
++#define LIGHT_CLKGEN_IOPMP_DPU_ACLK			9
++#define LIGHT_CLKGEN_IOPMP_DPU1_ACLK			10
++#define LIGHT_CLKGEN_X2H_DPU_ACLK			11
++#define LIGHT_CLKGEN_X2H_DPU1_ACLK			12
++#define LIGHT_CLKGEN_MIPIDSI0_PIXCLK			13
++#define LIGHT_CLKGEN_HDMI_PIXCLK			14
++#define LIGHT_CLKGEN_MIPIDSI1_PIXCLK			15
++#define LIGHT_CLKGEN_HDMI_SFR_CLK			16
++#define LIGHT_CLKGEN_HDMI_CEC_CLK			17
++#define LIGHT_CLKGEN_HDMI_I2S_CLK			18
++#define LIGHT_CLKGEN_MIPIDSI0_CFG_CLK			19
++#define LIGHT_CLKGEN_MIPIDSI1_CFG_CLK			20
++#define LIGHT_CLKGEN_MIPIDSI0_REFCLK			21
++#define LIGHT_CLKGEN_MIPIDSI1_REFCLK			22
++#define LIGHT_CLKGEN_GPU_CORE_CLK			23
++#define LIGHT_CLKGEN_GPU_CFG_ACLK			24
++#define LIGHT_CLKGEN_DPU_HCLK				25
++#define LIGHT_CLKGEN_DPU_ACLK				26
++#define LIGHT_CLKGEN_DPU_CCLK				27
++#define LIGHT_CLKGEN_DPU_PIXCLK0			28
++#define LIGHT_CLKGEN_DPU_PIXCLK1                        29
++#define LIGHT_CLKGEN_VOSYS_CLK_END			30
++
++#endif
+diff --git a/include/dt-bindings/clock/light-vpsys.h b/include/dt-bindings/clock/light-vpsys.h
+new file mode 100644
+index 000000000000..57abe6a3d56b
+--- /dev/null
++++ b/include/dt-bindings/clock/light-vpsys.h
+@@ -0,0 +1,23 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (C) 2022 Alibaba Group Holding Limited.
++ */
++
++#ifndef _LIGHT_VPSYS_H
++#define _LIGHT_VPSYS_H
++
++#define LIGHT_VPSYS_G2D_PCLK		0
++#define LIGHT_VPSYS_G2D_ACLK		1
++#define LIGHT_VPSYS_G2D_CCLK		2
++#define LIGHT_VPSYS_FCE_PCLK		3
++#define LIGHT_VPSYS_FCE_ACLK		4
++#define LIGHT_VPSYS_VDEC_PCLK		5
++#define LIGHT_VPSYS_VDEC_ACLK		6
++#define LIGHT_VPSYS_VDEC_CCLK		7
++#define LIGHT_VPSYS_AXI_ACLK		8
++#define LIGHT_VPSYS_VENC_CCLK		9
++#define LIGHT_VPSYS_VENC_PCLK		10
++#define LIGHT_VPSYS_VENC_ACLK		11
++#define LIGHT_VPSYS_CLK_END		12
++
++#endif
 diff --git a/include/dt-bindings/clock/omap5.h b/include/dt-bindings/clock/omap5.h
 index 41775272fd27..90e0d4b00127 100644
 --- a/include/dt-bindings/clock/omap5.h
@@ -18322,6 +19369,318 @@ index 41775272fd27..90e0d4b00127 100644
  
  /* ipu clocks */
  #define OMAP5_MMU_IPU_CLKCTRL	OMAP5_CLKCTRL_INDEX(0x20)
+diff --git a/include/dt-bindings/firmware/thead/rsrc.h b/include/dt-bindings/firmware/thead/rsrc.h
+new file mode 100644
+index 000000000000..8cee0fcaeb74
+--- /dev/null
++++ b/include/dt-bindings/firmware/thead/rsrc.h
+@@ -0,0 +1,17 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Copyright (C) 2022 Alibaba Group Holding Limited.
++ */
++
++#ifndef __DT_BINDINGS_RSCRC_LIGHT_H
++#define __DT_BINDINGS_RSCRC_LIGHT_H
++
++#define LIGHT_AON_AUDIO_PD	0
++#define LIGHT_AON_VDEC_PD	1
++#define LIGHT_AON_NPU_PD        2
++#define LIGHT_AON_VENC_PD       3
++#define LIGHT_AON_GPU_PD        4
++#define LIGHT_AON_DSP0_PD       5
++#define LIGHT_AON_DSP1_PD       6
++
++#endif
+diff --git a/include/dt-bindings/pinctrl/light-fm-aon-pinctrl.h b/include/dt-bindings/pinctrl/light-fm-aon-pinctrl.h
+new file mode 100644
+index 000000000000..3d2676d8b0f9
+--- /dev/null
++++ b/include/dt-bindings/pinctrl/light-fm-aon-pinctrl.h
+@@ -0,0 +1,78 @@
++#ifndef _LIGHT_FM_AUDIO_PINCTRL_H
++#define _LIGHT_FM_AUDIO_PINCTRL_H
++
++#define FM_OSC_CLK_IN			0
++#define FM_RTC_CLK_IN			3
++#define FM_DEBUG_MODE			7
++#define FM_I2C_AON_SCL			9
++#define FM_I2C_AON_SDA			10
++#define FM_CPU_JTG_TCLK			11
++#define FM_CPU_JTG_TMS			12
++#define FM_CPU_JTG_TDI			13
++#define FM_CPU_JTG_TDO			14
++#define FM_CPU_JTG_TRST			15
++#define FM_AOGPIO_7			16
++#define FM_AOGPIO_8			17
++#define FM_AOGPIO_9			18
++#define FM_AOGPIO_10			19
++#define FM_AOGPIO_11			20
++#define FM_AOGPIO_12			21
++#define FM_AOGPIO_13			22
++#define FM_AOGPIO_14			23
++#define FM_AOGPIO_15			24
++#define FM_AUDIO_PA0			25
++#define FM_AUDIO_PA1			26
++#define FM_AUDIO_PA2			27
++#define FM_AUDIO_PA3			28
++#define FM_AUDIO_PA4			29
++#define FM_AUDIO_PA5			30
++#define FM_AUDIO_PA6			31
++#define FM_AUDIO_PA7			32
++#define FM_AUDIO_PA8			33
++#define FM_AUDIO_PA9			34
++#define FM_AUDIO_PA10			35
++#define FM_AUDIO_PA11			36
++#define FM_AUDIO_PA12			37
++#define FM_AUDIO_PA13			38
++#define FM_AUDIO_PA14			39
++#define FM_AUDIO_PA15			40
++#define FM_AUDIO_PA16			41
++#define FM_AUDIO_PA17			42
++#define FM_AUDIO_PA27			43
++#define FM_AUDIO_PA28			44
++#define FM_AUDIO_PA29			45
++#define FM_AUDIO_PA30			46
++
++#define FM_AUDIO_CFG_PA0			25
++#define FM_AUDIO_CFG_PA1			26
++#define FM_AUDIO_CFG_PA2			27
++#define FM_AUDIO_CFG_PA3			28
++#define FM_AUDIO_CFG_PA4			29
++#define FM_AUDIO_CFG_PA5			30
++#define FM_AUDIO_CFG_PA6			31
++#define FM_AUDIO_CFG_PA7			32
++#define FM_AUDIO_CFG_PA8			33
++#define FM_AUDIO_CFG_PA9			34
++#define FM_AUDIO_CFG_PA10			35
++#define FM_AUDIO_CFG_PA11			36
++#define FM_AUDIO_CFG_PA12			37
++#define FM_AUDIO_CFG_PA13			38
++#define FM_AUDIO_CFG_PA14			39
++#define FM_AUDIO_CFG_PA15			40
++#define FM_AUDIO_CFG_PA16			41
++#define FM_AUDIO_CFG_PA17			42
++#define FM_AUDIO_CFG_PA18			43
++#define FM_AUDIO_CFG_PA19			44
++#define FM_AUDIO_CFG_PA20			45
++#define FM_AUDIO_CFG_PA21			46
++#define FM_AUDIO_CFG_PA22			47
++#define FM_AUDIO_CFG_PA23			48
++#define FM_AUDIO_CFG_PA24			49
++#define FM_AUDIO_CFG_PA25			50
++#define FM_AUDIO_CFG_PA26			51
++#define FM_AUDIO_CFG_PA27			52
++#define FM_AUDIO_CFG_PA28			53
++#define FM_AUDIO_CFG_PA29			54
++#define FM_AUDIO_CFG_PA30			55
++
++#endif	/* _LIGHT_FM_AUDIO_PINCTRL_H */
+diff --git a/include/dt-bindings/pinctrl/light-fm-left-pinctrl.h b/include/dt-bindings/pinctrl/light-fm-left-pinctrl.h
+new file mode 100644
+index 000000000000..1ebc511a0bc4
+--- /dev/null
++++ b/include/dt-bindings/pinctrl/light-fm-left-pinctrl.h
+@@ -0,0 +1,71 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++
++#ifndef _DT_BINDINGS_LIGHT_FM_LEFT_PINCTRL_H_
++#define _DT_BINDINGS_LIGHT_FM_LEFT_PINCTRL_H_
++
++#define FM_QSPI1_SCLK		0
++#define FM_QSPI1_CSN0		1
++#define FM_QSPI1_D0_MOSI	2
++#define FM_QSPI1_D1_MISO	3
++#define FM_QSPI1_D2_WP		4
++#define FM_QSPI1_D3_HOLD	5
++#define FM_I2C0_SCL		6
++#define FM_I2C0_SDA		7
++#define FM_I2C1_SCL		8
++#define FM_I2C1_SDA		9
++#define FM_UART1_TXD		10
++#define FM_UART1_RXD		11
++#define FM_UART4_TXD		12
++#define FM_UART4_RXD		13
++#define FM_UART4_CTSN		14
++#define FM_UART4_RTSN		15
++#define FM_UART3_TXD		16
++#define FM_UART3_RXD		17
++#define FM_GPIO0_18		18
++#define FM_GPIO0_19		19
++#define FM_GPIO0_20		20
++#define FM_GPIO0_21		21
++#define FM_GPIO0_22		22
++#define FM_GPIO0_23		23
++#define FM_GPIO0_24		24
++#define FM_GPIO0_25		25
++#define FM_GPIO0_26		26
++#define FM_GPIO0_27		27
++#define FM_GPIO0_28		28
++#define FM_GPIO0_29		29
++#define FM_GPIO0_30		30
++#define FM_GPIO0_31		31
++#define FM_GPIO1_0		32
++#define FM_GPIO1_1		33
++#define FM_GPIO1_2		34
++#define FM_GPIO1_3		35
++#define FM_GPIO1_4		36
++#define FM_GPIO1_5		37
++#define FM_GPIO1_6		38
++#define FM_GPIO1_7		39
++#define FM_GPIO1_8		40
++#define FM_GPIO1_9		41
++#define FM_GPIO1_10		42
++#define FM_GPIO1_11		43
++#define FM_GPIO1_12		44
++#define FM_GPIO1_13		45
++#define FM_GPIO1_14		46
++#define FM_GPIO1_15		47
++#define FM_GPIO1_16		48
++#define FM_CLK_OUT_0		49
++#define FM_CLK_OUT_1		50
++#define FM_CLK_OUT_2		51
++#define FM_CLK_OUT_3		52
++#define FM_GPIO1_21		53
++#define FM_GPIO1_22		54
++#define FM_GPIO1_23		55
++#define FM_GPIO1_24		56
++#define FM_GPIO1_25		57
++#define FM_GPIO1_26		58
++#define FM_GPIO1_27		59
++#define FM_GPIO1_28		60
++#define FM_GPIO1_29		61
++#define FM_GPIO1_30		62
++
++
++#endif /* _DT_BINDINGS_LIGHT_FM_LEFT_PINCTRL_H_ */
+diff --git a/include/dt-bindings/pinctrl/light-fm-right-pinctrl.h b/include/dt-bindings/pinctrl/light-fm-right-pinctrl.h
+new file mode 100644
+index 000000000000..6522efc72089
+--- /dev/null
++++ b/include/dt-bindings/pinctrl/light-fm-right-pinctrl.h
+@@ -0,0 +1,62 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++
++#ifndef _DT_BINDINGS_LIGHT_FM_RIGHT_PINCTRL_H_
++#define _DT_BINDINGS_LIGHT_FM_RIGHT_PINCTRL_H_
++
++#define FM_UART0_TXD		0
++#define FM_UART0_RXD		1
++#define FM_QSPI0_SCLK		2
++#define FM_QSPI0_CSN0		3
++#define FM_QSPI0_CSN1		4
++#define FM_QSPI0_D0_MOSI	5
++#define FM_QSPI0_D1_MISO	6
++#define FM_QSPI0_D2_WP		7
++#define FM_QSPI0_D3_HOLD	8
++#define FM_I2C2_SCL		9
++#define FM_I2C2_SDA		10
++#define FM_I2C3_SCL		11
++#define FM_I2C3_SDA		12
++#define FM_GPIO2_13		13
++#define FM_SPI_SCLK		14
++#define FM_SPI_CSN		15
++#define FM_SPI_MOSI		16
++#define FM_SPI_MISO		17
++#define FM_GPIO2_18		18
++#define FM_GPIO2_19		19
++#define FM_GPIO2_20		20
++#define FM_GPIO2_21		21
++#define FM_GPIO2_22		22
++#define FM_GPIO2_23		23
++#define FM_GPIO2_24		24
++#define FM_GPIO2_25		25
++#define FM_SDIO0_WPRTN		26
++#define FM_SDIO0_DETN		27
++#define FM_SDIO1_WPRTN		28
++#define FM_SDIO1_DETN		29
++#define FM_GPIO2_30		30
++#define FM_GPIO2_31		31
++#define FM_GPIO3_0		32
++#define FM_GPIO3_1		33
++#define FM_GPIO3_2		34
++#define FM_GPIO3_3		35
++#define FM_HDMI_SCL		36
++#define FM_HDMI_SDA		37
++#define FM_HDMI_CEC		38
++#define FM_GMAC0_TX_CLK		39
++#define FM_GMAC0_RX_CLK		40
++#define FM_GMAC0_TXEN		41
++#define FM_GMAC0_TXD0		42
++#define FM_GMAC0_TXD1		43
++#define FM_GMAC0_TXD2		44
++#define FM_GMAC0_TXD3		45
++#define FM_GMAC0_RXDV		46
++#define FM_GMAC0_RXD0		47
++#define FM_GMAC0_RXD1		48
++#define FM_GMAC0_RXD2		49
++#define FM_GMAC0_RXD3		50
++#define FM_GMAC0_MDC		51
++#define FM_GMAC0_MDIO		52
++#define FM_GMAC0_COL		53
++#define FM_GMAC0_CRS		54
++
++#endif /* _DT_BINDINGS_LIGHT_FM_RIGHT_PINCTRL_H_ */
+diff --git a/include/dt-bindings/pinctrl/light.h b/include/dt-bindings/pinctrl/light.h
+new file mode 100644
+index 000000000000..f07e43afbd13
+--- /dev/null
++++ b/include/dt-bindings/pinctrl/light.h
+@@ -0,0 +1,53 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2023 BeagleBoard.org - https://beagleboard.org/
++ * Copyright (C) 2023 Deepak Khatri <lorforlinux@beagleboard.org>
++ */
++
++#ifndef _LIGHT_H
++#define _LIGHT_H
++
++#define MUX_MODE0	0x0
++#define MUX_MODE1	0x1
++#define MUX_MODE2	0x2
++#define MUX_MODE3	0x3
++#define MUX_MODE4	0x4
++#define MUX_MODE5	0x5
++
++#define INPUT_ENABLE_SHIFT          (9)
++#define SLEW_RATE_SHIFT             (8)
++#define SCHMITT_TRIGGER_SHIFT       (7)
++#define STRONG_PULLUP_SHIFT         (6)
++#define PULL_SELECT_SHIFT           (5)
++#define PULL_ENABLE_SHIFT           (4)
++#define DRIVE_STRENGTH_BIT3_SHIFT   (3)
++#define DRIVE_STRENGTH_BIT2_SHIFT   (2)
++#define DRIVE_STRENGTH_BIT1_SHIFT   (1)
++#define DRIVE_STRENGTH_BIT0_SHIFT   (0)
++
++#define PULL_ENA		(1 << PULL_ENABLE_SHIFT)
++#define PULL_UP			(1 << PULL_SELECT_SHIFT)
++#define INPUT_EN		(1 << INPUT_ENABLE_SHIFT)
++#define SLEWCONTROL		(1 << SLEW_RATE_SHIFT)
++#define STRONG_PULLUP   (1 << STRONG_PULLUP_SHIFT)
++
++#define DS3 (1 << DRIVE_STRENGTH_BIT3_SHIFT)
++#define DS2 (1 << DRIVE_STRENGTH_BIT2_SHIFT)
++#define DS1 (1 << DRIVE_STRENGTH_BIT1_SHIFT)
++#define DS0 (1 << DRIVE_STRENGTH_BIT0_SHIFT)
++
++#define STRENGTH_LOW    (DS0 | DS2)
++#define STRENGTH_MID    (DS1 | DS3)
++#define STRENGTH_HIGH   (DS0 | DS1 | DS2 | DS3)
++
++#define PIN_OUTPUT                  0
++#define PIN_OUTPUT_PULLDOWN         (PIN_OUTPUT | PULL_ENA)
++#define PIN_OUTPUT_PULLUP           (PIN_OUTPUT | PULL_ENA | PULL_UP)
++#define PIN_OUTPUT_STRONG_PULLUP    (PIN_OUTPUT | PULL_ENA | PULL_UP | STRONG_PULLUP)
++
++#define PIN_INPUT                   INPUT_EN
++#define PIN_INPUT_PULLDOWN          (PULL_ENA | INPUT_EN)
++#define PIN_INPUT_PULLUP            (PULL_ENA | INPUT_EN | PULL_UP)
++#define PIN_INPUT_STRONG_PULLUP     (PULL_ENA | INPUT_EN | PULL_UP | STRONG_PULLUP)
++
++#endif
+\ No newline at end of file
 diff --git a/include/dt-bindings/pinctrl/omap.h b/include/dt-bindings/pinctrl/omap.h
 index f48245ff87e5..625718042413 100644
 --- a/include/dt-bindings/pinctrl/omap.h
@@ -18337,6 +19696,70 @@ index f48245ff87e5..625718042413 100644
  
  /*
   * Macros to allow using the offset from the padconf physical address
+diff --git a/include/dt-bindings/reset/light-reset.h b/include/dt-bindings/reset/light-reset.h
+new file mode 100644
+index 000000000000..9c94805cb04c
+--- /dev/null
++++ b/include/dt-bindings/reset/light-reset.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/*
++ * Copyright (C) 2021 Alibaba, Inc.
++ *
++ * Author: zenglinghui  <zenglinghui.zlh@linux.alibaba.com>
++ */
++
++#ifndef DT_BINDING_RESET_LIGHT_H
++#define DT_BINDING_RESET_LIGHT_H
++
++#define LIGHT_RESET_WDT0    0
++#define LIGHT_RESET_WDT1    1
++#endif
+diff --git a/include/dt-bindings/soc/thead,light-iopmp.h b/include/dt-bindings/soc/thead,light-iopmp.h
+new file mode 100644
+index 000000000000..53739acb9162
+--- /dev/null
++++ b/include/dt-bindings/soc/thead,light-iopmp.h
+@@ -0,0 +1,39 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (C) 2021 Alibaba Group Holding Limited.
++ */
++
++
++#ifndef __DT_THEAD_LIGHT_IOPMP_H__
++#define __DT_THEAD_LIGHT_IOPMP_H__
++
++#define IOPMP_EMMC	0
++#define IOPMP_SDIO0	1
++#define IOPMP_SDIO1	2
++#define IOPMP_USB0	3
++#define IOPMP_AO	4
++#define IOPMP_AUD	5
++#define IOPMP_CHIP_DBG	6
++#define IOPMP_EIP120I	7
++#define IOPMP_EIP120II	8
++#define IOPMP_EIP120III	9
++#define IOPMP_ISP0	10
++#define IOPMP_ISP1	11
++#define IOPMP_DW200	12
++#define IOPMP_VIPRE	13
++#define IOPMP_VENC	14
++#define IOPMP_VDEC	15
++#define IOPMP_G2D	16
++#define IOPMP_FCE	17
++#define IOPMP_NPU	18
++#define IOPMP0_DPU	19
++#define IOPMP1_DPU	20
++#define IOPMP_GPU	21
++#define IOPMP_GMAC1	22
++#define IOPMP_GMAC2	23
++#define IOPMP_DMAC	24
++#define IOPMP_TEE_DMAC	25
++#define IOPMP_DSP0	26
++#define IOPMP_DSP1	27
++
++#endif /* __DT_THEAD_LIGHT_IOPMP_H__ */
 -- 
 2.39.2
 
