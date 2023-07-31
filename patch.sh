@@ -865,6 +865,7 @@ soc () {
 
 fixes () {
 	dir 'fixes/gcc'
+	dir 'fixes/gcc/13'
 }
 
 ###
