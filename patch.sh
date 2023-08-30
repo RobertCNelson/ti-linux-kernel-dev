@@ -500,7 +500,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.186"
+	backport_tag="v5.10.193"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -516,7 +516,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.38"
+	backport_tag="v6.1.50"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -589,7 +589,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.38"
+		backport_tag="v6.1.50"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
