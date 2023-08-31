@@ -877,6 +877,7 @@ soc
 fixes
 
 packaging () {
+	echo "Update: package scripts"
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
 		backport_tag="v5.19.17"
@@ -894,7 +895,6 @@ packaging () {
 			patch_backports
 		fi
 	fi
-
 	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
 }
 
