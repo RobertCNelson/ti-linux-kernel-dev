@@ -1,6 +1,6 @@
-From 16462a2c5fda57c00962bbb5e43a4c36e665c9a5 Mon Sep 17 00:00:00 2001
+From 200d453348cfc266ef512f292260e0fdbd41ed1d Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 7 Aug 2023 11:41:57 -0500
+Date: Thu, 31 Aug 2023 15:21:50 -0500
 Subject: [PATCH 3/6] merge: aufs-mmap
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
@@ -14,10 +14,10 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  kernel/fork.c            |  2 +-
  mm/Makefile              |  1 +
  mm/filemap.c             |  2 +-
- mm/mmap.c                | 39 +++++++++++++++---
+ mm/mmap.c                | 41 +++++++++++++++----
  mm/nommu.c               | 10 ++---
  mm/prfile.c              | 86 ++++++++++++++++++++++++++++++++++++++++
- 12 files changed, 184 insertions(+), 18 deletions(-)
+ 12 files changed, 185 insertions(+), 19 deletions(-)
  create mode 100644 mm/prfile.c
 
 diff --git a/fs/proc/base.c b/fs/proc/base.c
@@ -198,7 +198,7 @@ index 3a983bc1a71c..509e00390361 100644
  	if (page->mapping != inode->i_mapping) {
  		unlock_page(page);
 diff --git a/mm/mmap.c b/mm/mmap.c
-index 33ebda8385b9..2d588b244b72 100644
+index 33ebda8385b9..c55bfc8b79e2 100644
 --- a/mm/mmap.c
 +++ b/mm/mmap.c
 @@ -179,7 +179,7 @@ static struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
@@ -219,6 +219,15 @@ index 33ebda8385b9..2d588b244b72 100644
  		}
  		if (next->anon_vma)
  			anon_vma_merge(vma, next);
+@@ -1834,7 +1834,7 @@ unsigned long mmap_region(struct file *file, unsigned long addr,
+ 				 * fput the vma->vm_file here or we would add an extra fput for file
+ 				 * and cause general protection fault ultimately.
+ 				 */
+-				fput(vma->vm_file);
++				vma_fput(vma);
+ 				vm_area_free(vma);
+ 				vma = merge;
+ 				/* Update vm_flags to pick up the change. */
 @@ -1904,8 +1904,8 @@ unsigned long mmap_region(struct file *file, unsigned long addr,
  	if (vma->vm_ops && vma->vm_ops->close)
  		vma->vm_ops->close(vma);
@@ -273,7 +282,7 @@ index 33ebda8385b9..2d588b244b72 100644
 +		new_vma = find_vma(mm, ret);
 +		if (!new_vma->vm_prfile)
 +			new_vma->vm_prfile = prfile;
-+		if (new_vma != vma)
++		if (prfile)
 +			get_file(prfile);
 +	}
 +	/*
