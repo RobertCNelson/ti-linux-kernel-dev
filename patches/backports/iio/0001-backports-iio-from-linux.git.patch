@@ -1,30 +1,62 @@
-From aee11a2e144d4faa8ea0e5a3c9e963e5062c4822 Mon Sep 17 00:00:00 2001
+From f8d5eb3414d9a520127db4dc713baa09f5391449 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 7 Aug 2023 11:48:46 -0500
+Date: Thu, 31 Aug 2023 15:33:39 -0500
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.188
+Reference: v5.10.193
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/accel/mma9551_core.c                 | 10 ++++++++--
- drivers/iio/adc/ad7192.c                         |  8 ++------
- drivers/iio/adc/ad7791.c                         |  2 +-
- drivers/iio/adc/at91-sama5d2_adc.c               |  2 +-
- drivers/iio/adc/meson_saradc.c                   |  2 +-
- drivers/iio/adc/mxs-lradc-adc.c                  | 10 +++++-----
- drivers/iio/adc/palmas_gpadc.c                   |  2 +-
- drivers/iio/adc/ti-ads7950.c                     |  1 +
- drivers/iio/dac/Makefile                         |  2 +-
- drivers/iio/dac/cio-dac.c                        |  4 ++--
- drivers/iio/dac/mcp4725.c                        | 16 ++++++++++++++--
- .../iio/imu/inv_icm42600/inv_icm42600_buffer.c   | 10 +++++-----
- drivers/iio/light/cm32181.c                      | 12 ++++++++++++
- drivers/iio/light/max44009.c                     | 13 +++++++------
- drivers/iio/light/tsl2772.c                      |  1 +
- drivers/iio/light/vcnl4035.c                     |  3 +++
- drivers/staging/iio/resolver/ad2s1210.c          |  2 +-
- 17 files changed, 66 insertions(+), 34 deletions(-)
+ drivers/iio/Kconfig                           |  1 +
+ drivers/iio/Makefile                          |  1 +
+ drivers/iio/accel/mma9551_core.c              | 10 +-
+ drivers/iio/adc/ad7192.c                      |  8 +-
+ drivers/iio/adc/ad7791.c                      |  2 +-
+ drivers/iio/adc/at91-sama5d2_adc.c            |  2 +-
+ drivers/iio/adc/meson_saradc.c                |  2 +-
+ drivers/iio/adc/mxs-lradc-adc.c               | 10 +-
+ drivers/iio/adc/palmas_gpadc.c                |  2 +-
+ drivers/iio/adc/stx104.c                      | 96 +++++++++++++------
+ drivers/iio/adc/ti-ads7950.c                  |  1 +
+ drivers/iio/addac/Kconfig                     |  8 ++
+ drivers/iio/addac/Makefile                    |  6 ++
+ .../cros_ec_sensors/cros_ec_sensors_core.c    |  2 +-
+ drivers/iio/dac/Makefile                      |  2 +-
+ drivers/iio/dac/cio-dac.c                     |  4 +-
+ drivers/iio/dac/mcp4725.c                     | 16 +++-
+ .../imu/inv_icm42600/inv_icm42600_buffer.c    | 10 +-
+ drivers/iio/light/cm32181.c                   | 12 +++
+ drivers/iio/light/max44009.c                  | 13 +--
+ drivers/iio/light/tsl2772.c                   |  1 +
+ drivers/iio/light/vcnl4035.c                  |  3 +
+ drivers/staging/iio/resolver/ad2s1210.c       |  2 +-
+ 23 files changed, 151 insertions(+), 63 deletions(-)
+ create mode 100644 drivers/iio/addac/Kconfig
+ create mode 100644 drivers/iio/addac/Makefile
 
+diff --git a/drivers/iio/Kconfig b/drivers/iio/Kconfig
+index 267553386c71..2ed303aa7de3 100644
+--- a/drivers/iio/Kconfig
++++ b/drivers/iio/Kconfig
+@@ -70,6 +70,7 @@ config IIO_TRIGGERED_EVENT
+ 
+ source "drivers/iio/accel/Kconfig"
+ source "drivers/iio/adc/Kconfig"
++source "drivers/iio/addac/Kconfig"
+ source "drivers/iio/afe/Kconfig"
+ source "drivers/iio/amplifiers/Kconfig"
+ source "drivers/iio/chemical/Kconfig"
+diff --git a/drivers/iio/Makefile b/drivers/iio/Makefile
+index 1712011c0f4a..d6690e449cce 100644
+--- a/drivers/iio/Makefile
++++ b/drivers/iio/Makefile
+@@ -15,6 +15,7 @@ obj-$(CONFIG_IIO_TRIGGERED_EVENT) += industrialio-triggered-event.o
+ 
+ obj-y += accel/
+ obj-y += adc/
++obj-y += addac/
+ obj-y += afe/
+ obj-y += amplifiers/
+ obj-y += buffer/
 diff --git a/drivers/iio/accel/mma9551_core.c b/drivers/iio/accel/mma9551_core.c
 index 666e7a04a7d7..9bb5c2fea08c 100644
 --- a/drivers/iio/accel/mma9551_core.c
@@ -184,6 +216,248 @@ index f4756671cddb..6ed0d151ad21 100644
  	struct palmas_gpadc *adc = iio_priv(indio_dev);
  
  	if (adc->wakeup1_enable || adc->wakeup2_enable)
+diff --git a/drivers/iio/adc/stx104.c b/drivers/iio/adc/stx104.c
+index 55bd2dc514e9..b658a75d4e3a 100644
+--- a/drivers/iio/adc/stx104.c
++++ b/drivers/iio/adc/stx104.c
+@@ -15,7 +15,9 @@
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
++#include <linux/mutex.h>
+ #include <linux/spinlock.h>
++#include <linux/types.h>
+ 
+ #define STX104_OUT_CHAN(chan) {				\
+ 	.type = IIO_VOLTAGE,				\
+@@ -44,14 +46,38 @@ static unsigned int num_stx104;
+ module_param_hw_array(base, uint, ioport, &num_stx104, 0);
+ MODULE_PARM_DESC(base, "Apex Embedded Systems STX104 base addresses");
+ 
++/**
++ * struct stx104_reg - device register structure
++ * @ssr_ad:	Software Strobe Register and ADC Data
++ * @achan:	ADC Channel
++ * @dio:	Digital I/O
++ * @dac:	DAC Channels
++ * @cir_asr:	Clear Interrupts and ADC Status
++ * @acr:	ADC Control
++ * @pccr_fsh:	Pacer Clock Control and FIFO Status MSB
++ * @acfg:	ADC Configuration
++ */
++struct stx104_reg {
++	u16 ssr_ad;
++	u8 achan;
++	u8 dio;
++	u16 dac[2];
++	u8 cir_asr;
++	u8 acr;
++	u8 pccr_fsh;
++	u8 acfg;
++};
++
+ /**
+  * struct stx104_iio - IIO device private data structure
++ * @lock: synchronization lock to prevent I/O race conditions
+  * @chan_out_states:	channels' output states
+- * @base:		base port address of the IIO device
++ * @reg:		I/O address offset for the device registers
+  */
+ struct stx104_iio {
++	struct mutex lock;
+ 	unsigned int chan_out_states[STX104_NUM_OUT_CHAN];
+-	unsigned int base;
++	struct stx104_reg __iomem *reg;
+ };
+ 
+ /**
+@@ -64,7 +90,7 @@ struct stx104_iio {
+ struct stx104_gpio {
+ 	struct gpio_chip chip;
+ 	spinlock_t lock;
+-	unsigned int base;
++	u8 __iomem *base;
+ 	unsigned int out_state;
+ };
+ 
+@@ -72,6 +98,7 @@ static int stx104_read_raw(struct iio_dev *indio_dev,
+ 	struct iio_chan_spec const *chan, int *val, int *val2, long mask)
+ {
+ 	struct stx104_iio *const priv = iio_priv(indio_dev);
++	struct stx104_reg __iomem *const reg = priv->reg;
+ 	unsigned int adc_config;
+ 	int adbu;
+ 	int gain;
+@@ -79,7 +106,7 @@ static int stx104_read_raw(struct iio_dev *indio_dev,
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_HARDWAREGAIN:
+ 		/* get gain configuration */
+-		adc_config = inb(priv->base + 11);
++		adc_config = ioread8(&reg->acfg);
+ 		gain = adc_config & 0x3;
+ 
+ 		*val = 1 << gain;
+@@ -90,25 +117,31 @@ static int stx104_read_raw(struct iio_dev *indio_dev,
+ 			return IIO_VAL_INT;
+ 		}
+ 
++		mutex_lock(&priv->lock);
++
+ 		/* select ADC channel */
+-		outb(chan->channel | (chan->channel << 4), priv->base + 2);
++		iowrite8(chan->channel | (chan->channel << 4), &reg->achan);
++
++		/* trigger ADC sample capture by writing to the 8-bit
++		 * Software Strobe Register and wait for completion
++		 */
++		iowrite8(0, &reg->ssr_ad);
++		while (ioread8(&reg->cir_asr) & BIT(7));
+ 
+-		/* trigger ADC sample capture and wait for completion */
+-		outb(0, priv->base);
+-		while (inb(priv->base + 8) & BIT(7));
++		*val = ioread16(&reg->ssr_ad);
+ 
+-		*val = inw(priv->base);
++		mutex_unlock(&priv->lock);
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_OFFSET:
+ 		/* get ADC bipolar/unipolar configuration */
+-		adc_config = inb(priv->base + 11);
++		adc_config = ioread8(&reg->acfg);
+ 		adbu = !(adc_config & BIT(2));
+ 
+ 		*val = -32768 * adbu;
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_SCALE:
+ 		/* get ADC bipolar/unipolar and gain configuration */
+-		adc_config = inb(priv->base + 11);
++		adc_config = ioread8(&reg->acfg);
+ 		adbu = !(adc_config & BIT(2));
+ 		gain = adc_config & 0x3;
+ 
+@@ -130,16 +163,16 @@ static int stx104_write_raw(struct iio_dev *indio_dev,
+ 		/* Only four gain states (x1, x2, x4, x8) */
+ 		switch (val) {
+ 		case 1:
+-			outb(0, priv->base + 11);
++			iowrite8(0, &priv->reg->acfg);
+ 			break;
+ 		case 2:
+-			outb(1, priv->base + 11);
++			iowrite8(1, &priv->reg->acfg);
+ 			break;
+ 		case 4:
+-			outb(2, priv->base + 11);
++			iowrite8(2, &priv->reg->acfg);
+ 			break;
+ 		case 8:
+-			outb(3, priv->base + 11);
++			iowrite8(3, &priv->reg->acfg);
+ 			break;
+ 		default:
+ 			return -EINVAL;
+@@ -152,9 +185,12 @@ static int stx104_write_raw(struct iio_dev *indio_dev,
+ 			if ((unsigned int)val > 65535)
+ 				return -EINVAL;
+ 
++			mutex_lock(&priv->lock);
++
+ 			priv->chan_out_states[chan->channel] = val;
+-			outw(val, priv->base + 4 + 2 * chan->channel);
++			iowrite16(val, &priv->reg->dac[chan->channel]);
+ 
++			mutex_unlock(&priv->lock);
+ 			return 0;
+ 		}
+ 		return -EINVAL;
+@@ -222,7 +258,7 @@ static int stx104_gpio_get(struct gpio_chip *chip, unsigned int offset)
+ 	if (offset >= 4)
+ 		return -EINVAL;
+ 
+-	return !!(inb(stx104gpio->base) & BIT(offset));
++	return !!(ioread8(stx104gpio->base) & BIT(offset));
+ }
+ 
+ static int stx104_gpio_get_multiple(struct gpio_chip *chip, unsigned long *mask,
+@@ -230,7 +266,7 @@ static int stx104_gpio_get_multiple(struct gpio_chip *chip, unsigned long *mask,
+ {
+ 	struct stx104_gpio *const stx104gpio = gpiochip_get_data(chip);
+ 
+-	*bits = inb(stx104gpio->base);
++	*bits = ioread8(stx104gpio->base);
+ 
+ 	return 0;
+ }
+@@ -252,7 +288,7 @@ static void stx104_gpio_set(struct gpio_chip *chip, unsigned int offset,
+ 	else
+ 		stx104gpio->out_state &= ~mask;
+ 
+-	outb(stx104gpio->out_state, stx104gpio->base);
++	iowrite8(stx104gpio->out_state, stx104gpio->base);
+ 
+ 	spin_unlock_irqrestore(&stx104gpio->lock, flags);
+ }
+@@ -279,7 +315,7 @@ static void stx104_gpio_set_multiple(struct gpio_chip *chip,
+ 
+ 	stx104gpio->out_state &= ~*mask;
+ 	stx104gpio->out_state |= *mask & *bits;
+-	outb(stx104gpio->out_state, stx104gpio->base);
++	iowrite8(stx104gpio->out_state, stx104gpio->base);
+ 
+ 	spin_unlock_irqrestore(&stx104gpio->lock, flags);
+ }
+@@ -306,11 +342,16 @@ static int stx104_probe(struct device *dev, unsigned int id)
+ 		return -EBUSY;
+ 	}
+ 
++	priv = iio_priv(indio_dev);
++	priv->reg = devm_ioport_map(dev, base[id], STX104_EXTENT);
++	if (!priv->reg)
++		return -ENOMEM;
++
+ 	indio_dev->info = &stx104_info;
+ 	indio_dev->modes = INDIO_DIRECT_MODE;
+ 
+ 	/* determine if differential inputs */
+-	if (inb(base[id] + 8) & BIT(5)) {
++	if (ioread8(&priv->reg->cir_asr) & BIT(5)) {
+ 		indio_dev->num_channels = ARRAY_SIZE(stx104_channels_diff);
+ 		indio_dev->channels = stx104_channels_diff;
+ 	} else {
+@@ -320,18 +361,17 @@ static int stx104_probe(struct device *dev, unsigned int id)
+ 
+ 	indio_dev->name = dev_name(dev);
+ 
+-	priv = iio_priv(indio_dev);
+-	priv->base = base[id];
++	mutex_init(&priv->lock);
+ 
+ 	/* configure device for software trigger operation */
+-	outb(0, base[id] + 9);
++	iowrite8(0, &priv->reg->acr);
+ 
+ 	/* initialize gain setting to x1 */
+-	outb(0, base[id] + 11);
++	iowrite8(0, &priv->reg->acfg);
+ 
+ 	/* initialize DAC output to 0V */
+-	outw(0, base[id] + 4);
+-	outw(0, base[id] + 6);
++	iowrite16(0, &priv->reg->dac[0]);
++	iowrite16(0, &priv->reg->dac[1]);
+ 
+ 	stx104gpio->chip.label = dev_name(dev);
+ 	stx104gpio->chip.parent = dev;
+@@ -346,7 +386,7 @@ static int stx104_probe(struct device *dev, unsigned int id)
+ 	stx104gpio->chip.get_multiple = stx104_gpio_get_multiple;
+ 	stx104gpio->chip.set = stx104_gpio_set;
+ 	stx104gpio->chip.set_multiple = stx104_gpio_set_multiple;
+-	stx104gpio->base = base[id] + 3;
++	stx104gpio->base = &priv->reg->dio;
+ 	stx104gpio->out_state = 0x0;
+ 
+ 	spin_lock_init(&stx104gpio->lock);
 diff --git a/drivers/iio/adc/ti-ads7950.c b/drivers/iio/adc/ti-ads7950.c
 index a2b83f0bd526..d4583b76f1fe 100644
 --- a/drivers/iio/adc/ti-ads7950.c
@@ -196,6 +470,45 @@ index a2b83f0bd526..d4583b76f1fe 100644
  	st->chip.base = -1;
  	st->chip.ngpio = TI_ADS7950_NUM_GPIOS;
  	st->chip.get_direction = ti_ads7950_get_direction;
+diff --git a/drivers/iio/addac/Kconfig b/drivers/iio/addac/Kconfig
+new file mode 100644
+index 000000000000..2e64d7755d5e
+--- /dev/null
++++ b/drivers/iio/addac/Kconfig
+@@ -0,0 +1,8 @@
++#
++# ADC DAC drivers
++#
++# When adding new entries keep the list in alphabetical order
++
++menu "Analog to digital and digital to analog converters"
++
++endmenu
+diff --git a/drivers/iio/addac/Makefile b/drivers/iio/addac/Makefile
+new file mode 100644
+index 000000000000..b888b9ee12da
+--- /dev/null
++++ b/drivers/iio/addac/Makefile
+@@ -0,0 +1,6 @@
++# SPDX-License-Identifier: GPL-2.0
++#
++# Makefile for industrial I/O ADDAC drivers
++#
++
++# When adding new entries keep the list in alphabetical order
+diff --git a/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c b/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c
+index e3f507771f17..829077bcd09d 100644
+--- a/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c
++++ b/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c
+@@ -263,7 +263,7 @@ int cros_ec_sensors_core_init(struct platform_device *pdev,
+ 	platform_set_drvdata(pdev, indio_dev);
+ 
+ 	state->ec = ec->ec_dev;
+-	state->msg = devm_kzalloc(&pdev->dev,
++	state->msg = devm_kzalloc(&pdev->dev, sizeof(*state->msg) +
+ 				max((u16)sizeof(struct ec_params_motion_sense),
+ 				state->ec->max_response), GFP_KERNEL);
+ 	if (!state->msg)
 diff --git a/drivers/iio/dac/Makefile b/drivers/iio/dac/Makefile
 index 2fc481167724..09506d248c9e 100644
 --- a/drivers/iio/dac/Makefile
