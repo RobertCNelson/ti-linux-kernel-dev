@@ -610,6 +610,7 @@ backports () {
 		exit 2
 	else
 		patch_backports
+		${git} "${DIR}/patches/backports/${subsystem}/0002-hwmon-lm80.c-backport-amc80-support.patch"
 	fi
 
 	backport_tag="v5.19.17"
