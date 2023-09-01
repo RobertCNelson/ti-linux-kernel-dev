@@ -638,6 +638,7 @@ backports
 drivers
 
 packaging () {
+	echo "Update: package scripts"
 	do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
 		backport_tag="v6.0.19"
