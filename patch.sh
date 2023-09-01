@@ -514,7 +514,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.188"
+	backport_tag="v5.10.193"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -530,6 +530,7 @@ backports () {
 		exit 2
 	else
 		patch_backports
+		${git} "${DIR}/patches/backports/${subsystem}/0002-hwmon-lm80.c-backport-amc80-support.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0005-iio-temperature-add-driver-support-for-ti-tmp117.patch"

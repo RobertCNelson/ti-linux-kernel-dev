@@ -1,9 +1,7 @@
 #!/bin/bash
 
-#https://packages.debian.org/source/bullseye/linux
-
-abi="5.10.0-23"
-kernel="5.10.179-1"
+abi="5.10.0-25"
+kernel="5.10.191-1"
 
 debian_site="http://ftp.de.debian.org/debian/pool/main/l/linux"
 incoming_site="http://incoming.debian.org/debian-buildd/pool/main/l/linux"
