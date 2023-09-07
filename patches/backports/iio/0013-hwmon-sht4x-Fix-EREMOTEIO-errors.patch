@@ -1,0 +1,47 @@
+From 98d26238b2a13e86494fbaee654f6cb6702efff2 Mon Sep 17 00:00:00 2001
+From: David Mosberger-Tang <davidm@egauge.net>
+Date: Sat, 20 Nov 2021 21:28:56 +0000
+Subject: [PATCH 13/13] hwmon: (sht4x) Fix EREMOTEIO errors
+
+Per datasheet, SHT4x may need up to 8.2ms for a "high repeatability"
+measurement to complete.  Attempting to read the result too early
+triggers a NAK which then causes an EREMOTEIO error.
+
+This behavior has been confirmed with a logic analyzer while running
+the I2C bus at only 40kHz.  The low frequency precludes any
+signal-integrity issues, which was also confirmed by the absence of
+any CRC8 errors.  In this configuration, a NAK occurred on any read
+that followed the measurement command within less than 8.2ms.
+
+Signed-off-by: David Mosberger-Tang <davidm@egauge.net>
+Link: https://lore.kernel.org/r/20211120212849.2300854-2-davidm@egauge.net
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+---
+ drivers/hwmon/sht4x.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/hwmon/sht4x.c b/drivers/hwmon/sht4x.c
+index 09c2a0b06444..3415d7a0e0fc 100644
+--- a/drivers/hwmon/sht4x.c
++++ b/drivers/hwmon/sht4x.c
+@@ -23,7 +23,7 @@
+ /*
+  * I2C command delays (in microseconds)
+  */
+-#define SHT4X_MEAS_DELAY	1000
++#define SHT4X_MEAS_DELAY_HPM	8200	/* see t_MEAS,h in datasheet */
+ #define SHT4X_DELAY_EXTRA	10000
+ 
+ /*
+@@ -90,7 +90,7 @@ static int sht4x_read_values(struct sht4x_data *data)
+ 	if (ret < 0)
+ 		goto unlock;
+ 
+-	usleep_range(SHT4X_MEAS_DELAY, SHT4X_MEAS_DELAY + SHT4X_DELAY_EXTRA);
++	usleep_range(SHT4X_MEAS_DELAY_HPM, SHT4X_MEAS_DELAY_HPM + SHT4X_DELAY_EXTRA);
+ 
+ 	ret = i2c_master_recv(client, raw_data, SHT4X_RESPONSE_LENGTH);
+ 	if (ret != SHT4X_RESPONSE_LENGTH) {
+-- 
+2.39.2
+

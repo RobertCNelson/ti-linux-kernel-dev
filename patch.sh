@@ -539,6 +539,11 @@ backports () {
 		${git} "${DIR}/patches/backports/${subsystem}/0008-iio-temperature-tmp117-cosmetic-alignment-cleanup.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0009-iio-temperature-add-driver-support-for-ti-tmp114.patch"
 		${git} "${DIR}/patches/backports/${subsystem}/0010-i2c-core-Introduce-i2c_client_get_device_id-helper-f.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0011-hwmon-Add-sht4x-Temperature-and-Humidity-Sensor-Driv.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0012-hwmon-sht4x-Fix-sht4x_read_values-return-value.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0013-hwmon-sht4x-Fix-EREMOTEIO-errors.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0014-hwmon-sht4x-Add-device-tree-match-table.patch"
+		${git} "${DIR}/patches/backports/${subsystem}/0015-hwmon-sht4x-do-not-overflow-clamping-operation-on-32.patch"
 	fi
 
 	backport_tag="v6.0.19"
