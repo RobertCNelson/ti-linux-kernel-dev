@@ -153,4 +153,12 @@ config="CONFIG_LEDS_TRIGGER_AUDIO" ; config_module
 #PRU
 config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 
+#iwd
+./scripts/config --enable CONFIG_CRYPTO_USER_API_SKCIPHER
+./scripts/config --enable CONFIG_KEY_DH_OPERATIONS
+./scripts/config --enable CONFIG_CRYPTO_ECB
+./scripts/config --enable CONFIG_CRYPTO_CBC
+./scripts/config --enable CONFIG_CRYPTO_DES
+./scripts/config --enable CONFIG_CRYPTO_AES
+
 cd ${DIR}/
