@@ -48,7 +48,7 @@ KERNEL_REL=5.10
 KERNEL_TAG=${KERNEL_REL}.168
 kernel_rt=".168-rt83"
 #Kernel Build
-BUILD=${build_prefix}110.2
+BUILD=${build_prefix}111
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
