@@ -172,4 +172,19 @@ config="CONFIG_GCC_PLUGINS" ; config_disable
 config="CONFIG_MUSB_PIO_ONLY" ; config_enable
 config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 
+#iwd
+./scripts/config --enable CONFIG_CRYPTO_USER_API_SKCIPHER
+./scripts/config --enable CONFIG_CRYPTO_USER_API_HASH
+./scripts/config --enable CONFIG_CRYPTO_HMAC
+./scripts/config --enable CONFIG_CRYPTO_CMAC
+./scripts/config --enable CONFIG_CRYPTO_MD4
+./scripts/config --enable CONFIG_CRYPTO_MD5
+./scripts/config --enable CONFIG_CRYPTO_SHA256
+./scripts/config --enable CONFIG_CRYPTO_SHA512
+./scripts/config --enable CONFIG_CRYPTO_AES
+./scripts/config --enable CONFIG_CRYPTO_ECB
+./scripts/config --enable CONFIG_CRYPTO_DES
+./scripts/config --enable CONFIG_CRYPTO_CBC
+./scripts/config --enable CONFIG_KEY_DH_OPERATIONS
+
 cd ${DIR}/
