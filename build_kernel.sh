@@ -45,17 +45,14 @@ copy_defconfig () {
 	cd "${DIR}/KERNEL" || exit
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
 
-	if [ -f ./ti_config_fragments/defconfig_builder.sh ] ; then
-		#./ti_config_fragments/defconfig_builder.sh -l
-		./ti_config_fragments/defconfig_builder.sh -t ti_sdk_arm64_release
-		./ti_config_fragments/defconfig_builder.sh -t ti_sdk_arm64_rt_release
+	if [ -f ./kernel/configs/ti_arm64_prune.config ] ; then
 
 		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
-		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" ti_sdk_arm64_release_defconfig
+		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" defconfig ti_arm64_prune.config
 		cp -v .config "${DIR}/patches/ti_sdk_arm64_release_defconfig"
 
 		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
-		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" ti_sdk_arm64_rt_release_defconfig
+		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" defconfig ti_rt.config ti_arm64_prune.config
 		cp -v .config "${DIR}/patches/ti_sdk_arm64_rt_release_defconfig"
 
 		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
@@ -68,6 +65,7 @@ copy_defconfig () {
 	else
 		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" rcn-ee_defconfig
 	fi
+	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" olddefconfig
 	cd "${DIR}/" || exit
 }
 

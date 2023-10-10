@@ -14,10 +14,6 @@ cat_files () {
 		cat ./patches/external/git/RT >> ${wfile}
 	fi
 
-	if [ -f ./patches/external/git/AUFS ] ; then
-		cat ./patches/external/git/AUFS >> ${wfile}
-	fi
-
 	if [ -f ./patches/external/git/WIRELESS_REGDB ] ; then
 		cat ./patches/external/git/WIRELESS_REGDB >> ${wfile}
 	fi
@@ -28,14 +24,6 @@ cat_files () {
 
 	if [ -f ./patches/external/git/TI_AMX3_CM3 ] ; then
 		cat ./patches/external/git/TI_AMX3_CM3 >> ${wfile}
-	fi
-
-	if [ -f ./patches/external/git/WPANUSB ] ; then
-		cat ./patches/external/git/WPANUSB >> ${wfile}
-	fi
-
-	if [ -f ./patches/external/git/BCFSERIAL ] ; then
-		cat ./patches/external/git/BCFSERIAL >> ${wfile}
 	fi
 }
 
