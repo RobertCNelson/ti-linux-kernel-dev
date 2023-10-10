@@ -142,7 +142,7 @@ config="CONFIG_USB_CONFIGFS_F_PRINTER" ; config_enable
 
 # Extras
 config="CONFIG_VIDEO_OV5647" ; config_module
-config="CONFIG_LED_TRIGGER_PHY" ; config_module
+config="CONFIG_LED_TRIGGER_PHY" ; config_enable
 config="CONFIG_USB_LEDS_TRIGGER_USBPORT" ; config_module
 config="CONFIG_LEDS_TRIGGER_TRANSIENT" ; config_module
 config="CONFIG_LEDS_TRIGGER_CAMERA" ; config_module
@@ -176,5 +176,11 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_CRYPTO_DES
 ./scripts/config --enable CONFIG_CRYPTO_CBC
 ./scripts/config --enable CONFIG_KEY_DH_OPERATIONS
+
+#WiFi devices being removed...
+./scripts/config --disable CONFIG_WLAN_VENDOR_CISCO
+./scripts/config --disable CONFIG_HOSTAP
+./scripts/config --disable CONFIG_HERMES
+./scripts/config --disable CONFIG_USB_ZD1201
 
 cd ${DIR}/
