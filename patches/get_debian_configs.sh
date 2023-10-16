@@ -2,8 +2,8 @@
 
 #https://packages.debian.org/source/bookworm/linux
 
-abi="6.1.0-11"
-kernel="6.1.38-4"
+abi="6.1.0-13"
+kernel="6.1.55-1"
 
 debian_site="http://ftp.de.debian.org/debian/pool/main/l/linux"
 incoming_site="http://incoming.debian.org/debian-buildd/pool/main/l/linux"
