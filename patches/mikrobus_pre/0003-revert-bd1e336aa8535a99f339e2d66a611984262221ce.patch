@@ -1,0 +1,93 @@
+From 878d3f52f1881989edee09c9596f6a012e308374 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Tue, 17 Oct 2023 12:37:01 -0500
+Subject: [PATCH 3/3] testing
+
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ Documentation/spi/spi-summary.rst |  8 +++++++
+ drivers/spi/spi.c                 | 35 +++++++++++++++++++++++++++++++
+ include/linux/spi/spi.h           |  2 ++
+ 3 files changed, 45 insertions(+)
+
+diff --git a/Documentation/spi/spi-summary.rst b/Documentation/spi/spi-summary.rst
+index aab5d07cb3d7..d4239025461d 100644
+--- a/Documentation/spi/spi-summary.rst
++++ b/Documentation/spi/spi-summary.rst
+@@ -336,6 +336,14 @@ certainly includes SPI devices hooked up through the card connectors!
+ Non-static Configurations
+ ^^^^^^^^^^^^^^^^^^^^^^^^^
+ 
++Developer boards often play by different rules than product boards, and one
++example is the potential need to hotplug SPI devices and/or controllers.
++
++For those cases you might need to use spi_busnum_to_master() to look
++up the spi bus master, and will likely need spi_new_device() to provide the
++board info based on the board that was hotplugged.  Of course, you'd later
++call at least spi_unregister_device() when that board is removed.
++
+ When Linux includes support for MMC/SD/SDIO/DataFlash cards through SPI, those
+ configurations will also be dynamic.  Fortunately, such devices all support
+ basic device identification probes, so they should hotplug normally.
+diff --git a/drivers/spi/spi.c b/drivers/spi/spi.c
+index 5f9aedd1f0b6..4d138a38a9af 100644
+--- a/drivers/spi/spi.c
++++ b/drivers/spi/spi.c
+@@ -3330,6 +3330,41 @@ int spi_controller_resume(struct spi_controller *ctlr)
+ }
+ EXPORT_SYMBOL_GPL(spi_controller_resume);
+ 
++static int __spi_controller_match(struct device *dev, const void *data)
++{
++	struct spi_controller *ctlr;
++	const u16 *bus_num = data;
++
++	ctlr = container_of(dev, struct spi_controller, dev);
++	return ctlr->bus_num == *bus_num;
++}
++
++/**
++ * spi_busnum_to_master - look up master associated with bus_num
++ * @bus_num: the master's bus number
++ * Context: can sleep
++ *
++ * This call may be used with devices that are registered after
++ * arch init time.  It returns a refcounted pointer to the relevant
++ * spi_controller (which the caller must release), or NULL if there is
++ * no such master registered.
++ *
++ * Return: the SPI master structure on success, else NULL.
++ */
++struct spi_controller *spi_busnum_to_master(u16 bus_num)
++{
++	struct device		*dev;
++	struct spi_controller	*ctlr = NULL;
++
++	dev = class_find_device(&spi_master_class, NULL, &bus_num,
++				__spi_controller_match);
++	if (dev)
++		ctlr = container_of(dev, struct spi_controller, dev);
++	/* reference got in class_find_device */
++	return ctlr;
++}
++EXPORT_SYMBOL_GPL(spi_busnum_to_master);
++
+ /*-------------------------------------------------------------------------*/
+ 
+ /* Core methods for spi_message alterations */
+diff --git a/include/linux/spi/spi.h b/include/linux/spi/spi.h
+index fbf8c0d95968..ca57151fbb40 100644
+--- a/include/linux/spi/spi.h
++++ b/include/linux/spi/spi.h
+@@ -794,6 +794,8 @@ extern struct spi_device *acpi_spi_device_alloc(struct spi_controller *ctlr,
+ int acpi_spi_count_resources(struct acpi_device *adev);
+ #endif
+ 
++extern struct spi_controller *spi_busnum_to_master(u16 busnum);
++
+ /*
+  * SPI resource management while processing a SPI message
+  */
+-- 
+2.39.2
+
