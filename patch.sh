@@ -390,6 +390,7 @@ drivers () {
 
 #	dir 'drivers/eqep'
 	#git revert --no-edit 2338e7bcef445059a99848a3eddde0b556277663
+	#git revert --no-edit bd1e336aa8535a99f339e2d66a611984262221ce
 	dir 'mikrobus_pre'
 	dir 'mikrobus'
 	dir 'pcie'
