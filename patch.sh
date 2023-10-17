@@ -389,6 +389,8 @@ drivers () {
 	#dir 'overlays'
 
 #	dir 'drivers/eqep'
+	#git revert --no-edit 2338e7bcef445059a99848a3eddde0b556277663
+	dir 'mikrobus_pre'
 	dir 'mikrobus'
 	dir 'pcie'
 #	#dir 'fixes'
