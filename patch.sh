@@ -377,7 +377,7 @@ backports () {
 drivers () {
 	#https://github.com/raspberrypi/linux/branches
 	#git clone -b rpi-6.1.y https://github.com/raspberrypi/linux.git --reference ~/linux-src/
-	dir 'RPi'
+	#dir 'RPi'
 
 	#cd KERNEL/
 	#git checkout v5.10-rc1 -b tmp
@@ -388,15 +388,13 @@ drivers () {
 	#../
 	#dir 'overlays'
 
-#	dir 'drivers/spi'
 #	dir 'drivers/eqep'
-#	dir 'mikrobus'
-#	dir 'pcie'
-#	dir 'usb'
+	dir 'mikrobus'
+	dir 'pcie'
 #	#dir 'fixes'
 
 #	dir 'tusb322'
-#	dir 'boris'
+	dir 'boris'
 #	dir 'drivers/ti/uio'
 #	dir 'rpi-panel'
 #	dir 'edt-ft'
@@ -420,7 +418,7 @@ drivers () {
 
 ###
 backports
-#drivers
+drivers
 
 packaging () {
 	echo "Update: package scripts"
