@@ -418,6 +418,7 @@ drivers () {
 ##	dir 'cc33xx'
 #	dir 'i2c'
 #	dir 'meta-ti'
+	dir 'greybus_beagleplay_v9'
 }
 
 ###
