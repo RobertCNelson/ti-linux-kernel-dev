@@ -177,10 +177,14 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_CRYPTO_CBC
 ./scripts/config --enable CONFIG_KEY_DH_OPERATIONS
 
-#WiFi devices being removed...
+#WiFi, removed in 6.7-rc1
 ./scripts/config --disable CONFIG_WLAN_VENDOR_CISCO
 ./scripts/config --disable CONFIG_HOSTAP
 ./scripts/config --disable CONFIG_HERMES
 ./scripts/config --disable CONFIG_USB_ZD1201
+./scripts/config --disable CONFIG_RTL8192U
+
+#removed in 6.7-rc1
+./scripts/config --disable CONFIG_DEV_APPLETALK
 
 cd ${DIR}/

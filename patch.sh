@@ -121,6 +121,46 @@ external_git () {
 	#exit 2
 }
 
+wpanusb () {
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ -d ./wpanusb ] ; then
+			rm -rf ./wpanusb || true
+		fi
+
+		${git_bin} clone https://git.beagleboard.org/beagleconnect/linux/wpanusb --depth=1
+		cd ./wpanusb
+			wpanusb_hash=$(git rev-parse HEAD)
+		cd -
+
+		cd ./KERNEL/
+
+		cp -v ../wpanusb/wpanusb.h drivers/net/ieee802154/
+		cp -v ../wpanusb/wpanusb.c drivers/net/ieee802154/
+
+		${git_bin} add .
+		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://git.beagleboard.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
+		${git_bin} format-patch -1 -o ../patches/external/wpanusb/
+		echo "WPANUSB: https://git.beagleboard.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/external/git/WPANUSB
+
+		rm -rf ../wpanusb/ || true
+
+		${git_bin} reset --hard HEAD~1
+
+		start_cleanup
+
+		${git} "${DIR}/patches/external/wpanusb/0001-merge-wpanusb-https-git.beagleboard.org-beagleconnec.patch"
+
+		wdir="external/wpanusb"
+		number=1
+		cleanup
+
+		exit 2
+	fi
+	dir 'external/wpanusb'
+}
+
 ksmbd () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -229,6 +269,11 @@ wireless_regdb () {
 }
 
 cleanup_dts_builds () {
+	rm -rf arch/arm/boot/dts/modules.order || true
+	rm -rf arch/arm/boot/dts/.*cmd || true
+	rm -rf arch/arm/boot/dts/.*tmp || true
+	rm -rf arch/arm/boot/dts/*dtb || true
+	rm -rf arch/arm/boot/dts/*dtbo || true
 	rm -rf arch/arm64/boot/dts/ti/modules.order || true
 	rm -rf arch/arm64/boot/dts/ti/.*cmd || true
 	rm -rf arch/arm64/boot/dts/ti/.*tmp || true
@@ -259,8 +304,11 @@ beagleboard_dtbs () {
 		cd ./KERNEL/
 
 		cleanup_dts_builds
+		rm -rf arch/arm/boot/dts/overlays/ || true
 		rm -rf arch/arm64/boot/dts/ti/overlays/ || true
 
+		mkdir -p arch/arm/boot/dts/overlays/
+		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
 		mkdir -p arch/arm64/boot/dts/ti/overlays/
 		cp -vr ../${work_dir}/src/arm64/* arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
@@ -269,10 +317,11 @@ beagleboard_dtbs () {
 		#device="k3-am625-pocketbeagle2.dtb" ; dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; dtb_makefile_append
 
-		${git_bin} add -f arch/arm64/boot/dts/ti/
+		${git_bin} add -f arch/arm/boot/dts/
+		${git_bin} add -f arch/arm64/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${branch}" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
+		${git_bin} format-patch -1 -o ../patches/external/bbb.io/
 		echo "BBDTBS: https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" > ../patches/external/git/BBDTBS
 
 		rm -rf ../${work_dir}/ || true
@@ -281,13 +330,13 @@ beagleboard_dtbs () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
+		${git} "${DIR}/patches/external/bbb.io/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
 
-		wdir="soc/ti/beagleboard_dtbs"
+		wdir="external/bbb.io"
 		number=1
 		cleanup
 	fi
-	dir 'soc/ti/beagleboard_dtbs'
+	dir 'external/bbb.io'
 }
 
 local_patch () {
@@ -296,6 +345,7 @@ local_patch () {
 }
 
 external_git
+wpanusb
 ksmbd
 rt
 wireless_regdb
@@ -310,7 +360,7 @@ pre_backports () {
 	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
 	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
-		${git_bin} checkout ${backport_tag} -b tmp
+		${git_bin} checkout ${backport_tag} -f
 	fi
 	cd -
 }
@@ -318,7 +368,7 @@ pre_backports () {
 post_backports () {
 	if [ ! "x${backport_tag}" = "x" ] ; then
 		cd ~/linux-src/
-		${git_bin} checkout master -f ; ${git_bin} branch -D tmp
+		${git_bin} checkout master -f
 		cd -
 	fi
 
@@ -337,7 +387,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.198"
+	backport_tag="v5.10.201"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -353,7 +403,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.57"
+	backport_tag="v6.1.63"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -369,9 +419,11 @@ backports () {
 		exit 2
 	else
 		patch_backports
-		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
-		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
+#		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
+#		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
+
+	dir 'greybus/gb-beagleplay'
 }
 
 drivers () {
@@ -418,7 +470,7 @@ drivers () {
 ##	dir 'cc33xx'
 #	dir 'i2c'
 #	dir 'meta-ti'
-	dir 'greybus_beagleplay_v9'
+#	dir 'greybus_beagleplay_v9'
 }
 
 ###

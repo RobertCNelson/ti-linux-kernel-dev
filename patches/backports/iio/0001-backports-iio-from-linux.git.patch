@@ -1,13 +1,30 @@
-From 3dbc095044940115935649429a89b1efdff347c7 Mon Sep 17 00:00:00 2001
+From b8c9f172674afe36ea40a657eb2644822b5ae768 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 10 Oct 2023 16:49:02 -0500
+Date: Mon, 27 Nov 2023 15:38:18 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v6.1.57
+Reference: v6.1.63
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/accel/adxl313_i2c.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/iio/accel/adxl313_i2c.c               |  4 +-
+ drivers/iio/adc/ad7192.c                      | 42 +++++++----
+ drivers/iio/adc/exynos_adc.c                  | 24 +++---
+ drivers/iio/adc/imx8qxp-adc.c                 |  4 +-
+ drivers/iio/adc/xilinx-xadc-core.c            | 39 ++++------
+ drivers/iio/adc/xilinx-xadc.h                 |  2 +
+ drivers/iio/addac/Kconfig                     |  2 +
+ drivers/iio/afe/iio-rescale.c                 | 19 ++++-
+ .../cros_ec_sensors/cros_ec_sensors_core.c    |  6 +-
+ drivers/iio/dac/ad3552r.c                     |  4 +-
+ drivers/iio/frequency/adf4350.c               | 75 ++++++-------------
+ drivers/iio/frequency/admv1013.c              |  4 +-
+ drivers/iio/imu/bno055/Kconfig                |  2 +
+ drivers/iio/industrialio-core.c               | 38 ++++++++++
+ drivers/iio/pressure/bmp280-core.c            |  2 +-
+ drivers/iio/pressure/dps310.c                 |  8 +-
+ drivers/iio/pressure/ms5611_core.c            |  2 +-
+ include/linux/iio/iio.h                       |  2 +
+ 18 files changed, 157 insertions(+), 122 deletions(-)
 
 diff --git a/drivers/iio/accel/adxl313_i2c.c b/drivers/iio/accel/adxl313_i2c.c
 index 99cc7fc29488..68785bd3ef2f 100644
@@ -23,6 +40,593 @@ index 99cc7fc29488..68785bd3ef2f 100644
 +	{ .name = "adxl314", .driver_data = (kernel_ulong_t)&adxl31x_chip_info[ADXL314] },
  	{ }
  };
+ 
+diff --git a/drivers/iio/adc/ad7192.c b/drivers/iio/adc/ad7192.c
+index 80eff7090f14..faf680140c17 100644
+--- a/drivers/iio/adc/ad7192.c
++++ b/drivers/iio/adc/ad7192.c
+@@ -177,7 +177,7 @@ struct ad7192_chip_info {
+ struct ad7192_state {
+ 	const struct ad7192_chip_info	*chip_info;
+ 	struct regulator		*avdd;
+-	struct regulator		*dvdd;
++	struct regulator		*vref;
+ 	struct clk			*mclk;
+ 	u16				int_vref_mv;
+ 	u32				fclk;
+@@ -1011,24 +1011,34 @@ static int ad7192_probe(struct spi_device *spi)
+ 	if (ret)
+ 		return ret;
+ 
+-	st->dvdd = devm_regulator_get(&spi->dev, "dvdd");
+-	if (IS_ERR(st->dvdd))
+-		return PTR_ERR(st->dvdd);
++	ret = devm_regulator_get_enable(&spi->dev, "dvdd");
++	if (ret)
++		return dev_err_probe(&spi->dev, ret, "Failed to enable specified DVdd supply\n");
+ 
+-	ret = regulator_enable(st->dvdd);
+-	if (ret) {
+-		dev_err(&spi->dev, "Failed to enable specified DVdd supply\n");
+-		return ret;
+-	}
++	st->vref = devm_regulator_get_optional(&spi->dev, "vref");
++	if (IS_ERR(st->vref)) {
++		if (PTR_ERR(st->vref) != -ENODEV)
++			return PTR_ERR(st->vref);
+ 
+-	ret = devm_add_action_or_reset(&spi->dev, ad7192_reg_disable, st->dvdd);
+-	if (ret)
+-		return ret;
++		ret = regulator_get_voltage(st->avdd);
++		if (ret < 0)
++			return dev_err_probe(&spi->dev, ret,
++					     "Device tree error, AVdd voltage undefined\n");
++	} else {
++		ret = regulator_enable(st->vref);
++		if (ret) {
++			dev_err(&spi->dev, "Failed to enable specified Vref supply\n");
++			return ret;
++		}
+ 
+-	ret = regulator_get_voltage(st->avdd);
+-	if (ret < 0) {
+-		dev_err(&spi->dev, "Device tree error, reference voltage undefined\n");
+-		return ret;
++		ret = devm_add_action_or_reset(&spi->dev, ad7192_reg_disable, st->vref);
++		if (ret)
++			return ret;
++
++		ret = regulator_get_voltage(st->vref);
++		if (ret < 0)
++			return dev_err_probe(&spi->dev, ret,
++					     "Device tree error, Vref voltage undefined\n");
+ 	}
+ 	st->int_vref_mv = ret / 1000;
+ 
+diff --git a/drivers/iio/adc/exynos_adc.c b/drivers/iio/adc/exynos_adc.c
+index cff1ba57fb16..43c8af41b4a9 100644
+--- a/drivers/iio/adc/exynos_adc.c
++++ b/drivers/iio/adc/exynos_adc.c
+@@ -826,16 +826,26 @@ static int exynos_adc_probe(struct platform_device *pdev)
+ 		}
+ 	}
+ 
++	/* leave out any TS related code if unreachable */
++	if (IS_REACHABLE(CONFIG_INPUT)) {
++		has_ts = of_property_read_bool(pdev->dev.of_node,
++					       "has-touchscreen") || pdata;
++	}
++
+ 	irq = platform_get_irq(pdev, 0);
+ 	if (irq < 0)
+ 		return irq;
+ 	info->irq = irq;
+ 
+-	irq = platform_get_irq(pdev, 1);
+-	if (irq == -EPROBE_DEFER)
+-		return irq;
++	if (has_ts) {
++		irq = platform_get_irq(pdev, 1);
++		if (irq == -EPROBE_DEFER)
++			return irq;
+ 
+-	info->tsirq = irq;
++		info->tsirq = irq;
++	} else {
++		info->tsirq = -1;
++	}
+ 
+ 	info->dev = &pdev->dev;
+ 
+@@ -900,12 +910,6 @@ static int exynos_adc_probe(struct platform_device *pdev)
+ 	if (info->data->init_hw)
+ 		info->data->init_hw(info);
+ 
+-	/* leave out any TS related code if unreachable */
+-	if (IS_REACHABLE(CONFIG_INPUT)) {
+-		has_ts = of_property_read_bool(pdev->dev.of_node,
+-					       "has-touchscreen") || pdata;
+-	}
+-
+ 	if (pdata)
+ 		info->delay = pdata->delay;
+ 	else
+diff --git a/drivers/iio/adc/imx8qxp-adc.c b/drivers/iio/adc/imx8qxp-adc.c
+index f5a0fc9e64c5..fff6e5a2d956 100644
+--- a/drivers/iio/adc/imx8qxp-adc.c
++++ b/drivers/iio/adc/imx8qxp-adc.c
+@@ -38,8 +38,8 @@
+ #define IMX8QXP_ADR_ADC_FCTRL		0x30
+ #define IMX8QXP_ADR_ADC_SWTRIG		0x34
+ #define IMX8QXP_ADR_ADC_TCTRL(tid)	(0xc0 + (tid) * 4)
+-#define IMX8QXP_ADR_ADC_CMDH(cid)	(0x100 + (cid) * 8)
+-#define IMX8QXP_ADR_ADC_CMDL(cid)	(0x104 + (cid) * 8)
++#define IMX8QXP_ADR_ADC_CMDL(cid)	(0x100 + (cid) * 8)
++#define IMX8QXP_ADR_ADC_CMDH(cid)	(0x104 + (cid) * 8)
+ #define IMX8QXP_ADR_ADC_RESFIFO		0x300
+ #define IMX8QXP_ADR_ADC_TST		0xffc
+ 
+diff --git a/drivers/iio/adc/xilinx-xadc-core.c b/drivers/iio/adc/xilinx-xadc-core.c
+index 292f2892d223..abb8891b9e82 100644
+--- a/drivers/iio/adc/xilinx-xadc-core.c
++++ b/drivers/iio/adc/xilinx-xadc-core.c
+@@ -456,6 +456,9 @@ static const struct xadc_ops xadc_zynq_ops = {
+ 	.interrupt_handler = xadc_zynq_interrupt_handler,
+ 	.update_alarm = xadc_zynq_update_alarm,
+ 	.type = XADC_TYPE_S7,
++	/* Temp in C = (val * 503.975) / 2**bits - 273.15 */
++	.temp_scale = 503975,
++	.temp_offset = 273150,
+ };
+ 
+ static const unsigned int xadc_axi_reg_offsets[] = {
+@@ -566,6 +569,9 @@ static const struct xadc_ops xadc_7s_axi_ops = {
+ 	.interrupt_handler = xadc_axi_interrupt_handler,
+ 	.flags = XADC_FLAGS_BUFFERED | XADC_FLAGS_IRQ_OPTIONAL,
+ 	.type = XADC_TYPE_S7,
++	/* Temp in C = (val * 503.975) / 2**bits - 273.15 */
++	.temp_scale = 503975,
++	.temp_offset = 273150,
+ };
+ 
+ static const struct xadc_ops xadc_us_axi_ops = {
+@@ -577,6 +583,12 @@ static const struct xadc_ops xadc_us_axi_ops = {
+ 	.interrupt_handler = xadc_axi_interrupt_handler,
+ 	.flags = XADC_FLAGS_BUFFERED | XADC_FLAGS_IRQ_OPTIONAL,
+ 	.type = XADC_TYPE_US,
++	/**
++	 * Values below are for UltraScale+ (SYSMONE4) using internal reference.
++	 * See https://docs.xilinx.com/v/u/en-US/ug580-ultrascale-sysmon
++	 */
++	.temp_scale = 509314,
++	.temp_offset = 280231,
+ };
+ 
+ static int _xadc_update_adc_reg(struct xadc *xadc, unsigned int reg,
+@@ -948,8 +960,7 @@ static int xadc_read_raw(struct iio_dev *indio_dev,
+ 			*val2 = bits;
+ 			return IIO_VAL_FRACTIONAL_LOG2;
+ 		case IIO_TEMP:
+-			/* Temp in C = (val * 503.975) / 2**bits - 273.15 */
+-			*val = 503975;
++			*val = xadc->ops->temp_scale;
+ 			*val2 = bits;
+ 			return IIO_VAL_FRACTIONAL_LOG2;
+ 		default:
+@@ -957,7 +968,7 @@ static int xadc_read_raw(struct iio_dev *indio_dev,
+ 		}
+ 	case IIO_CHAN_INFO_OFFSET:
+ 		/* Only the temperature channel has an offset */
+-		*val = -((273150 << bits) / 503975);
++		*val = -((xadc->ops->temp_offset << bits) / xadc->ops->temp_scale);
+ 		return IIO_VAL_INT;
+ 	case IIO_CHAN_INFO_SAMP_FREQ:
+ 		ret = xadc_read_samplerate(xadc);
+@@ -1426,28 +1437,6 @@ static int xadc_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 
+-	/* Disable all alarms */
+-	ret = xadc_update_adc_reg(xadc, XADC_REG_CONF1, XADC_CONF1_ALARM_MASK,
+-				  XADC_CONF1_ALARM_MASK);
+-	if (ret)
+-		return ret;
+-
+-	/* Set thresholds to min/max */
+-	for (i = 0; i < 16; i++) {
+-		/*
+-		 * Set max voltage threshold and both temperature thresholds to
+-		 * 0xffff, min voltage threshold to 0.
+-		 */
+-		if (i % 8 < 4 || i == 7)
+-			xadc->threshold[i] = 0xffff;
+-		else
+-			xadc->threshold[i] = 0;
+-		ret = xadc_write_adc_reg(xadc, XADC_REG_THRESHOLD(i),
+-			xadc->threshold[i]);
+-		if (ret)
+-			return ret;
+-	}
+-
+ 	/* Go to non-buffered mode */
+ 	xadc_postdisable(indio_dev);
+ 
+diff --git a/drivers/iio/adc/xilinx-xadc.h b/drivers/iio/adc/xilinx-xadc.h
+index 7d78ce698967..3036f4d613ff 100644
+--- a/drivers/iio/adc/xilinx-xadc.h
++++ b/drivers/iio/adc/xilinx-xadc.h
+@@ -85,6 +85,8 @@ struct xadc_ops {
+ 
+ 	unsigned int flags;
+ 	enum xadc_type type;
++	int temp_scale;
++	int temp_offset;
+ };
+ 
+ static inline int _xadc_read_adc_reg(struct xadc *xadc, unsigned int reg,
+diff --git a/drivers/iio/addac/Kconfig b/drivers/iio/addac/Kconfig
+index fcf6d2269bfc..3507cd6ab4e5 100644
+--- a/drivers/iio/addac/Kconfig
++++ b/drivers/iio/addac/Kconfig
+@@ -10,6 +10,8 @@ config AD74413R
+ 	depends on GPIOLIB && SPI
+ 	select REGMAP_SPI
+ 	select CRC8
++	select IIO_BUFFER
++	select IIO_TRIGGERED_BUFFER
+ 	help
+ 	  Say yes here to build support for Analog Devices AD74412R/AD74413R
+ 	  quad-channel software configurable input/output solution.
+diff --git a/drivers/iio/afe/iio-rescale.c b/drivers/iio/afe/iio-rescale.c
+index 1f280c360701..56e5913ab82d 100644
+--- a/drivers/iio/afe/iio-rescale.c
++++ b/drivers/iio/afe/iio-rescale.c
+@@ -214,8 +214,18 @@ static int rescale_read_raw(struct iio_dev *indio_dev,
+ 				return ret < 0 ? ret : -EOPNOTSUPP;
+ 		}
+ 
+-		ret = iio_read_channel_scale(rescale->source, &scale, &scale2);
+-		return rescale_process_offset(rescale, ret, scale, scale2,
++		if (iio_channel_has_info(rescale->source->channel,
++					 IIO_CHAN_INFO_SCALE)) {
++			ret = iio_read_channel_scale(rescale->source, &scale, &scale2);
++			return rescale_process_offset(rescale, ret, scale, scale2,
++						      schan_off, val, val2);
++		}
++
++		/*
++		 * If we get here we have no scale so scale 1:1 but apply
++		 * rescaler and offset, if any.
++		 */
++		return rescale_process_offset(rescale, IIO_VAL_FRACTIONAL, 1, 1,
+ 					      schan_off, val, val2);
+ 	default:
+ 		return -EINVAL;
+@@ -280,8 +290,9 @@ static int rescale_configure_channel(struct device *dev,
+ 	chan->type = rescale->cfg->type;
+ 
+ 	if (iio_channel_has_info(schan, IIO_CHAN_INFO_RAW) &&
+-	    iio_channel_has_info(schan, IIO_CHAN_INFO_SCALE)) {
+-		dev_info(dev, "using raw+scale source channel\n");
++	    (iio_channel_has_info(schan, IIO_CHAN_INFO_SCALE) ||
++	     iio_channel_has_info(schan, IIO_CHAN_INFO_OFFSET))) {
++		dev_info(dev, "using raw+scale/offset source channel\n");
+ 	} else if (iio_channel_has_info(schan, IIO_CHAN_INFO_PROCESSED)) {
+ 		dev_info(dev, "using processed channel\n");
+ 		rescale->chan_processed = true;
+diff --git a/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c b/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c
+index d98f7e4d202c..1ddce991fb3f 100644
+--- a/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c
++++ b/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c
+@@ -190,8 +190,11 @@ int cros_ec_sensors_push_data(struct iio_dev *indio_dev,
+ 	/*
+ 	 * Ignore samples if the buffer is not set: it is needed if the ODR is
+ 	 * set but the buffer is not enabled yet.
++	 *
++	 * Note: iio_device_claim_buffer_mode() returns -EBUSY if the buffer
++	 * is not enabled.
+ 	 */
+-	if (!iio_buffer_enabled(indio_dev))
++	if (iio_device_claim_buffer_mode(indio_dev) < 0)
+ 		return 0;
+ 
+ 	out = (s16 *)st->samples;
+@@ -210,6 +213,7 @@ int cros_ec_sensors_push_data(struct iio_dev *indio_dev,
+ 	iio_push_to_buffers_with_timestamp(indio_dev, st->samples,
+ 					   timestamp + delta);
+ 
++	iio_device_release_buffer_mode(indio_dev);
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(cros_ec_sensors_push_data);
+diff --git a/drivers/iio/dac/ad3552r.c b/drivers/iio/dac/ad3552r.c
+index d5ea1a1be122..a492e8f2fc0f 100644
+--- a/drivers/iio/dac/ad3552r.c
++++ b/drivers/iio/dac/ad3552r.c
+@@ -140,8 +140,8 @@ enum ad3552r_ch_vref_select {
+ };
+ 
+ enum ad3542r_id {
+-	AD3542R_ID = 0x4008,
+-	AD3552R_ID = 0x4009,
++	AD3542R_ID = 0x4009,
++	AD3552R_ID = 0x4008,
+ };
+ 
+ enum ad3552r_ch_output_range {
+diff --git a/drivers/iio/frequency/adf4350.c b/drivers/iio/frequency/adf4350.c
+index 85e289700c3c..4abf80f75ef5 100644
+--- a/drivers/iio/frequency/adf4350.c
++++ b/drivers/iio/frequency/adf4350.c
+@@ -33,7 +33,6 @@ enum {
+ 
+ struct adf4350_state {
+ 	struct spi_device		*spi;
+-	struct regulator		*reg;
+ 	struct gpio_desc		*lock_detect_gpiod;
+ 	struct adf4350_platform_data	*pdata;
+ 	struct clk			*clk;
+@@ -469,6 +468,15 @@ static struct adf4350_platform_data *adf4350_parse_dt(struct device *dev)
+ 	return pdata;
+ }
+ 
++static void adf4350_power_down(void *data)
++{
++	struct iio_dev *indio_dev = data;
++	struct adf4350_state *st = iio_priv(indio_dev);
++
++	st->regs[ADF4350_REG2] |= ADF4350_REG2_POWER_DOWN_EN;
++	adf4350_sync_config(st);
++}
++
+ static int adf4350_probe(struct spi_device *spi)
+ {
+ 	struct adf4350_platform_data *pdata;
+@@ -491,31 +499,21 @@ static int adf4350_probe(struct spi_device *spi)
+ 	}
+ 
+ 	if (!pdata->clkin) {
+-		clk = devm_clk_get(&spi->dev, "clkin");
++		clk = devm_clk_get_enabled(&spi->dev, "clkin");
+ 		if (IS_ERR(clk))
+-			return -EPROBE_DEFER;
+-
+-		ret = clk_prepare_enable(clk);
+-		if (ret < 0)
+-			return ret;
++			return PTR_ERR(clk);
+ 	}
+ 
+ 	indio_dev = devm_iio_device_alloc(&spi->dev, sizeof(*st));
+-	if (indio_dev == NULL) {
+-		ret =  -ENOMEM;
+-		goto error_disable_clk;
+-	}
++	if (indio_dev == NULL)
++		return -ENOMEM;
+ 
+ 	st = iio_priv(indio_dev);
+ 
+-	st->reg = devm_regulator_get(&spi->dev, "vcc");
+-	if (!IS_ERR(st->reg)) {
+-		ret = regulator_enable(st->reg);
+-		if (ret)
+-			goto error_disable_clk;
+-	}
++	ret = devm_regulator_get_enable(&spi->dev, "vcc");
++	if (ret)
++		return ret;
+ 
+-	spi_set_drvdata(spi, indio_dev);
+ 	st->spi = spi;
+ 	st->pdata = pdata;
+ 
+@@ -544,47 +542,21 @@ static int adf4350_probe(struct spi_device *spi)
+ 
+ 	st->lock_detect_gpiod = devm_gpiod_get_optional(&spi->dev, NULL,
+ 							GPIOD_IN);
+-	if (IS_ERR(st->lock_detect_gpiod)) {
+-		ret = PTR_ERR(st->lock_detect_gpiod);
+-		goto error_disable_reg;
+-	}
++	if (IS_ERR(st->lock_detect_gpiod))
++		return PTR_ERR(st->lock_detect_gpiod);
+ 
+ 	if (pdata->power_up_frequency) {
+ 		ret = adf4350_set_freq(st, pdata->power_up_frequency);
+ 		if (ret)
+-			goto error_disable_reg;
++			return ret;
+ 	}
+ 
+-	ret = iio_device_register(indio_dev);
++	ret = devm_add_action_or_reset(&spi->dev, adf4350_power_down, indio_dev);
+ 	if (ret)
+-		goto error_disable_reg;
+-
+-	return 0;
+-
+-error_disable_reg:
+-	if (!IS_ERR(st->reg))
+-		regulator_disable(st->reg);
+-error_disable_clk:
+-	clk_disable_unprepare(clk);
+-
+-	return ret;
+-}
+-
+-static void adf4350_remove(struct spi_device *spi)
+-{
+-	struct iio_dev *indio_dev = spi_get_drvdata(spi);
+-	struct adf4350_state *st = iio_priv(indio_dev);
+-	struct regulator *reg = st->reg;
+-
+-	st->regs[ADF4350_REG2] |= ADF4350_REG2_POWER_DOWN_EN;
+-	adf4350_sync_config(st);
+-
+-	iio_device_unregister(indio_dev);
+-
+-	clk_disable_unprepare(st->clk);
++		return dev_err_probe(&spi->dev, ret,
++				     "Failed to add action to managed power down\n");
+ 
+-	if (!IS_ERR(reg))
+-		regulator_disable(reg);
++	return devm_iio_device_register(&spi->dev, indio_dev);
+ }
+ 
+ static const struct of_device_id adf4350_of_match[] = {
+@@ -607,7 +579,6 @@ static struct spi_driver adf4350_driver = {
+ 		.of_match_table = adf4350_of_match,
+ 	},
+ 	.probe		= adf4350_probe,
+-	.remove		= adf4350_remove,
+ 	.id_table	= adf4350_id,
+ };
+ module_spi_driver(adf4350_driver);
+diff --git a/drivers/iio/frequency/admv1013.c b/drivers/iio/frequency/admv1013.c
+index e6311213f3e8..d15b85377159 100644
+--- a/drivers/iio/frequency/admv1013.c
++++ b/drivers/iio/frequency/admv1013.c
+@@ -351,9 +351,9 @@ static int admv1013_update_mixer_vgate(struct admv1013_state *st)
+ 	if (vcm < 0)
+ 		return vcm;
+ 
+-	if (vcm < 1800000)
++	if (vcm <= 1800000)
+ 		mixer_vgate = (2389 * vcm / 1000000 + 8100) / 100;
+-	else if (vcm > 1800000 && vcm < 2600000)
++	else if (vcm > 1800000 && vcm <= 2600000)
+ 		mixer_vgate = (2375 * vcm / 1000000 + 125) / 100;
+ 	else
+ 		return -EINVAL;
+diff --git a/drivers/iio/imu/bno055/Kconfig b/drivers/iio/imu/bno055/Kconfig
+index fa79b1ac4f85..83e53acfbe88 100644
+--- a/drivers/iio/imu/bno055/Kconfig
++++ b/drivers/iio/imu/bno055/Kconfig
+@@ -2,6 +2,8 @@
+ 
+ config BOSCH_BNO055
+ 	tristate
++	select IIO_BUFFER
++	select IIO_TRIGGERED_BUFFER
+ 
+ config BOSCH_BNO055_SERIAL
+ 	tristate "Bosch BNO055 attached via UART"
+diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
+index f3f8392623a4..c9614982cb67 100644
+--- a/drivers/iio/industrialio-core.c
++++ b/drivers/iio/industrialio-core.c
+@@ -2084,6 +2084,44 @@ void iio_device_release_direct_mode(struct iio_dev *indio_dev)
+ }
+ EXPORT_SYMBOL_GPL(iio_device_release_direct_mode);
+ 
++/**
++ * iio_device_claim_buffer_mode - Keep device in buffer mode
++ * @indio_dev:	the iio_dev associated with the device
++ *
++ * If the device is in buffer mode it is guaranteed to stay
++ * that way until iio_device_release_buffer_mode() is called.
++ *
++ * Use with iio_device_release_buffer_mode().
++ *
++ * Returns: 0 on success, -EBUSY on failure.
++ */
++int iio_device_claim_buffer_mode(struct iio_dev *indio_dev)
++{
++	mutex_lock(&indio_dev->mlock);
++
++	if (iio_buffer_enabled(indio_dev))
++		return 0;
++
++	mutex_unlock(&indio_dev->mlock);
++	return -EBUSY;
++}
++EXPORT_SYMBOL_GPL(iio_device_claim_buffer_mode);
++
++/**
++ * iio_device_release_buffer_mode - releases claim on buffer mode
++ * @indio_dev:	the iio_dev associated with the device
++ *
++ * Release the claim. Device is no longer guaranteed to stay
++ * in buffer mode.
++ *
++ * Use with iio_device_claim_buffer_mode().
++ */
++void iio_device_release_buffer_mode(struct iio_dev *indio_dev)
++{
++	mutex_unlock(&indio_dev->mlock);
++}
++EXPORT_SYMBOL_GPL(iio_device_release_buffer_mode);
++
+ /**
+  * iio_device_get_current_mode() - helper function providing read-only access to
+  *				   the opaque @currentmode variable
+diff --git a/drivers/iio/pressure/bmp280-core.c b/drivers/iio/pressure/bmp280-core.c
+index c0aff78489b4..4c867157aa96 100644
+--- a/drivers/iio/pressure/bmp280-core.c
++++ b/drivers/iio/pressure/bmp280-core.c
+@@ -1786,7 +1786,7 @@ int bmp280_common_probe(struct device *dev,
+ 	 * however as it happens, the BMP085 shares the chip ID of BMP180
+ 	 * so we look for an IRQ if we have that.
+ 	 */
+-	if (irq > 0 || (chip_id  == BMP180_CHIP_ID)) {
++	if (irq > 0 && (chip_id  == BMP180_CHIP_ID)) {
+ 		ret = bmp085_fetch_eoc_irq(dev, name, irq, data);
+ 		if (ret)
+ 			return ret;
+diff --git a/drivers/iio/pressure/dps310.c b/drivers/iio/pressure/dps310.c
+index 984a3f511a1a..db1b1e48225a 100644
+--- a/drivers/iio/pressure/dps310.c
++++ b/drivers/iio/pressure/dps310.c
+@@ -57,8 +57,8 @@
+ #define  DPS310_RESET_MAGIC	0x09
+ #define DPS310_COEF_BASE	0x10
+ 
+-/* Make sure sleep time is <= 20ms for usleep_range */
+-#define DPS310_POLL_SLEEP_US(t)		min(20000, (t) / 8)
++/* Make sure sleep time is <= 30ms for usleep_range */
++#define DPS310_POLL_SLEEP_US(t)		min(30000, (t) / 8)
+ /* Silently handle error in rate value here */
+ #define DPS310_POLL_TIMEOUT_US(rc)	((rc) <= 0 ? 1000000 : 1000000 / (rc))
+ 
+@@ -402,8 +402,8 @@ static int dps310_reset_wait(struct dps310_data *data)
+ 	if (rc)
+ 		return rc;
+ 
+-	/* Wait for device chip access: 2.5ms in specification */
+-	usleep_range(2500, 12000);
++	/* Wait for device chip access: 15ms in specification */
++	usleep_range(15000, 55000);
+ 	return 0;
+ }
+ 
+diff --git a/drivers/iio/pressure/ms5611_core.c b/drivers/iio/pressure/ms5611_core.c
+index c564a1d6cafe..44cfdbedcfaa 100644
+--- a/drivers/iio/pressure/ms5611_core.c
++++ b/drivers/iio/pressure/ms5611_core.c
+@@ -76,7 +76,7 @@ static bool ms5611_prom_is_valid(u16 *prom, size_t len)
+ 
+ 	crc = (crc >> 12) & 0x000F;
+ 
+-	return crc_orig != 0x0000 && crc == crc_orig;
++	return crc == crc_orig;
+ }
+ 
+ static int ms5611_read_prom(struct iio_dev *indio_dev)
+diff --git a/include/linux/iio/iio.h b/include/linux/iio/iio.h
+index f0ec8a5e5a7a..9d3bd6379eb8 100644
+--- a/include/linux/iio/iio.h
++++ b/include/linux/iio/iio.h
+@@ -629,6 +629,8 @@ int __devm_iio_device_register(struct device *dev, struct iio_dev *indio_dev,
+ int iio_push_event(struct iio_dev *indio_dev, u64 ev_code, s64 timestamp);
+ int iio_device_claim_direct_mode(struct iio_dev *indio_dev);
+ void iio_device_release_direct_mode(struct iio_dev *indio_dev);
++int iio_device_claim_buffer_mode(struct iio_dev *indio_dev);
++void iio_device_release_buffer_mode(struct iio_dev *indio_dev);
+ 
+ extern struct bus_type iio_bus_type;
  
 -- 
 2.39.2
