@@ -465,12 +465,10 @@ drivers () {
 #	dir 'tidss'
 #	dir 'tidss_wip'
 #	dir 'led'
-#	dir 'greybus'
 #	dir 'nfc'
 ##	dir 'cc33xx'
 #	dir 'i2c'
 #	dir 'meta-ti'
-#	dir 'greybus_beagleplay_v9'
 }
 
 ###
