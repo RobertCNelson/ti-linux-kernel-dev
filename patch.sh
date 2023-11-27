@@ -161,45 +161,6 @@ wpanusb () {
 	dir 'external/wpanusb'
 }
 
-bcfserial () {
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		cd ../
-		if [ -d ./bcfserial ] ; then
-			rm -rf ./bcfserial || true
-		fi
-
-		${git_bin} clone https://git.beagleboard.org/beagleconnect/linux/bcfserial.git --depth=1
-		cd ./bcfserial
-			bcfserial_hash=$(git rev-parse HEAD)
-		cd -
-
-		cd ./KERNEL/
-
-		cp -v ../bcfserial/bcfserial.c drivers/net/ieee802154/
-
-		${git_bin} add .
-		${git_bin} commit -a -m 'merge: bcfserial: https://git.beagleboard.org/beagleconnect/linux/bcfserial.git' -m "https://git.beagleboard.org/beagleconnect/linux/bcfserial/-/commit/${bcfserial_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/external/bcfserial/
-		echo "BCFSERIAL: https://git.beagleboard.org/beagleconnect/linux/bcfserial/-/commit/${bcfserial_hash}" > ../patches/external/git/BCFSERIAL
-
-		rm -rf ../bcfserial/ || true
-
-		${git_bin} reset --hard HEAD~1
-
-		start_cleanup
-
-		${git} "${DIR}/patches/external/bcfserial/0001-merge-bcfserial-https-git.beagleboard.org-beagleconn.patch"
-
-		wdir="external/bcfserial"
-		number=1
-		cleanup
-
-		exit 2
-	fi
-	dir 'external/bcfserial'
-}
-
 ksmbd () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -438,7 +399,6 @@ local_patch () {
 
 external_git
 wpanusb
-bcfserial
 ksmbd
 rt
 wireless_regdb
@@ -552,7 +512,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.38"
+		backport_tag="v6.1.63"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
