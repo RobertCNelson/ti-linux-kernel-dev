@@ -328,7 +328,7 @@ ti_pm_firmware () {
 
 		${git_bin} add -f ./firmware/am*
 		${git_bin} commit -a -m 'Add AM335x CM3 Power Managment Firmware' -m "http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=commit;h=${ti_amx3_cm3_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/external/ti-amx3-cm3-pm-firmware/
+		${git_bin} format-patch -1 -o ../patches/drivers/ti/firmware/
 		echo "TI_AMX3_CM3: http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=commit;h=${ti_amx3_cm3_hash}" > ../patches/external/git/TI_AMX3_CM3
 
 		rm -rf ../ti-amx3-cm3-pm-firmware/ || true
@@ -337,13 +337,13 @@ ti_pm_firmware () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/external/ti-amx3-cm3-pm-firmware/0001-Add-AM335x-CM3-Power-Managment-Firmware.patch"
+		${git} "${DIR}/patches/drivers/ti/firmware/0001-Add-AM335x-CM3-Power-Managment-Firmware.patch"
 
-		wdir="external/ti-amx3-cm3-pm-firmware"
+		wdir="drivers/ti/firmware"
 		number=1
 		cleanup
 	fi
-	dir 'external/ti-amx3-cm3-pm-firmware'
+	dir 'drivers/ti/firmware'
 }
 
 cleanup_dts_builds () {
@@ -351,6 +351,12 @@ cleanup_dts_builds () {
 	rm -rf arch/arm/boot/dts/.*cmd || true
 	rm -rf arch/arm/boot/dts/.*tmp || true
 	rm -rf arch/arm/boot/dts/*dtb || true
+	rm -rf arch/arm/boot/dts/*dtbo || true
+	rm -rf arch/arm64/boot/dts/ti/modules.order || true
+	rm -rf arch/arm64/boot/dts/ti/.*cmd || true
+	rm -rf arch/arm64/boot/dts/ti/.*tmp || true
+	rm -rf arch/arm64/boot/dts/ti/*dtb || true
+	rm -rf arch/arm64/boot/dts/ti/*dtbo || true
 }
 
 dtb_makefile_append () {
@@ -377,9 +383,12 @@ beagleboard_dtbs () {
 
 		cleanup_dts_builds
 		rm -rf arch/arm/boot/dts/overlays/ || true
+		rm -rf arch/arm64/boot/dts/ti/overlays/ || true
 
 		mkdir -p arch/arm/boot/dts/overlays/
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
+		mkdir -p arch/arm64/boot/dts/ti/overlays/
+		cp -vr ../${work_dir}/src/arm64/* arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
 #		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
@@ -401,9 +410,10 @@ beagleboard_dtbs () {
 #		device="am335x-sancloud-bbe-extended-wifi-uboot-univ.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
+		${git_bin} add -f arch/arm64/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${branch}" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
+		${git_bin} format-patch -1 -o ../patches/external/bbb.io/
 		echo "BBDTBS: https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" > ../patches/external/git/BBDTBS
 
 		rm -rf ../${work_dir}/ || true
@@ -412,13 +422,13 @@ beagleboard_dtbs () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
+		${git} "${DIR}/patches/external/bbb.io/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
 
-		wdir="soc/ti/beagleboard_dtbs"
+		wdir="external/bbb.io"
 		number=1
 		cleanup
 	fi
-	dir 'soc/ti/beagleboard_dtbs'
+	dir 'external/bbb.io'
 }
 
 local_patch () {
@@ -471,7 +481,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.186"
+	backport_tag="v5.10.201"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -487,7 +497,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.38"
+	backport_tag="v6.1.63"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -501,31 +511,10 @@ backports () {
 
 		post_backports
 		exit 2
-	#else
+	else
 		patch_backports
-		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
-		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
-	fi
-}
-
-reverts () {
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		start_cleanup
-	fi
-
-	## notes
-	##git revert --no-edit xyz -s
-	#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/kernel/kthread.c?h=linux-5.7.y&id=26c7295be0c5e6da3fa45970e9748be983175b1b
-	#git revert --no-edit 26c7295be0c5e6da3fa45970e9748be983175b1b -s
-	#exit 2
-
-	dir 'reverts'
-
-	if [ "x${regenerate}" = "xenable" ] ; then
-		wdir="reverts"
-		number=1
-		cleanup
+#		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
+#		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
 	fi
 }
 
@@ -551,15 +540,12 @@ drivers () {
 	dir 'drivers/fb_ssd1306'
 	dir 'drivers/hackaday'
 	#dir 'drivers/qcacld'
-	##dir 'android'
 
-	dir 'bootup_hacks'
 	dir 'boris'
 }
 
 ###
 backports
-#reverts
 drivers
 
 packaging () {
