@@ -410,10 +410,10 @@ backports () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/include/linux/iio/* ./include/linux/iio/
-		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
-		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
-		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
+		rsync -av ~/linux-src/include/linux/iio/* ./include/linux/iio/
+		rsync -av ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
+		rsync -av ~/linux-src/drivers/iio/* ./drivers/iio/
+		rsync -av ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
 
 		post_backports
 		exit 2
@@ -479,7 +479,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.57"
+		backport_tag="v6.1.63"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
