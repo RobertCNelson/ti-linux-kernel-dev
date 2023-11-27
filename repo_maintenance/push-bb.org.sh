@@ -25,6 +25,10 @@ cat_files () {
 	if [ -f ../patches/external/git/TI_AMX3_CM3 ] ; then
 		cat ../patches/external/git/TI_AMX3_CM3 >> ${wfile}
 	fi
+
+	if [ -f ../patches/external/git/WPANUSB ] ; then
+		cat ../patches/external/git/WPANUSB >> ${wfile}
+	fi
 }
 
 DIR=$PWD
