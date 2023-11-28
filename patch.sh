@@ -306,7 +306,7 @@ ksmbd () {
 		cd ./KERNEL/
 
 		mkdir -p ./fs/ksmbd/
-		cp -rv ../ksmbd/* fs/ksmbd/
+		rsync -av --delete ../ksmbd/* fs/ksmbd/
 
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: ksmbd: https://github.com/cifsd-team/ksmbd' -m "https://github.com/cifsd-team/ksmbd/commit/${ksmbd_hash}" -s
@@ -466,9 +466,12 @@ beagleboard_dtbs () {
 
 		cleanup_dts_builds
 		rm -rf arch/arm/boot/dts/overlays/ || true
+		rm -rf arch/arm64/boot/dts/ti/overlays/ || true
 
 		mkdir -p arch/arm/boot/dts/overlays/
 		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
+		mkdir -p arch/arm64/boot/dts/ti/overlays/
+		cp -vr ../${work_dir}/src/arm64/* arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
 		device="am335x-bonegreen-gateway.dtb" ; dtb_makefile_append
@@ -490,9 +493,10 @@ beagleboard_dtbs () {
 		device="am335x-sancloud-bbe-extended-wifi-uboot-univ.dtb" ; dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
+		${git_bin} add -f arch/arm64/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${branch}" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
+		${git_bin} format-patch -1 -o ../patches/external/bbb.io/
 		echo "BBDTBS: https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" > ../patches/external/git/BBDTBS
 
 		rm -rf ../${work_dir}/ || true
@@ -501,13 +505,13 @@ beagleboard_dtbs () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
+		${git} "${DIR}/patches/external/bbb.io/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
 
-		wdir="soc/ti/beagleboard_dtbs"
+		wdir="external/bbb.io"
 		number=1
 		cleanup
 	fi
-	dir 'soc/ti/beagleboard_dtbs'
+	dir 'external/bbb.io'
 }
 
 local_patch () {
@@ -534,7 +538,7 @@ pre_backports () {
 	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
 	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
-		${git_bin} checkout ${backport_tag} -b tmp
+		${git_bin} checkout ${backport_tag} -f
 	fi
 	cd -
 }
@@ -542,7 +546,7 @@ pre_backports () {
 post_backports () {
 	if [ ! "x${backport_tag}" = "x" ] ; then
 		cd ~/linux-src/
-		${git_bin} checkout master -f ; ${git_bin} branch -D tmp
+		${git_bin} checkout master -f
 		cd -
 	fi
 
@@ -578,7 +582,7 @@ backports () {
 
 	dir 'backports/spidev'
 
-	backport_tag="v5.10.197"
+	backport_tag="v5.10.202"
 
 	subsystem="spi"
 	#regenerate="enable"
@@ -593,17 +597,17 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.197"
+	backport_tag="v5.10.202"
 
 	subsystem="iio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/include/linux/iio/* ./include/linux/iio/
-		cp -rv ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
-		cp -rv ~/linux-src/drivers/iio/* ./drivers/iio/
-		cp -rv ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
+		rsync -av ~/linux-src/include/linux/iio/* ./include/linux/iio/
+		rsync -av ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
+		rsync -av ~/linux-src/drivers/iio/* ./drivers/iio/
+		rsync -av ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
 
 		post_backports
 		exit 2
@@ -854,11 +858,9 @@ drivers () {
 	dir 'drivers/fb_ssd1306'
 	dir 'drivers/hackaday'
 	dir 'drivers/qcacld'
-	#dir 'android'
 }
 
 soc () {
-	dir 'bootup_hacks'
 	dir 'drivers/ti/uio'
 	dir 'boris'
 }
