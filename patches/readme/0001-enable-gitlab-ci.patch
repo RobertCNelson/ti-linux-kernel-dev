@@ -1,15 +1,15 @@
-From eee1842a0f5c61577f17443f12b4507679771976 Mon Sep 17 00:00:00 2001
+From 8aa6a8408ddb3f7167256bfe57ff884a073840f8 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 28 Jun 2023 09:13:11 -0500
+Date: Tue, 28 Nov 2023 19:56:24 -0600
 Subject: [PATCH] enable: gitlab-ci
 
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  .github/FUNDING.yml                  | 12 ++++++++++++
- .github/ISSUE_TEMPLATE/bug_report.md | 20 ++++++++++++++++++++
- .gitlab-ci.yml                       | 19 +++++++++++++++++++
+ .github/ISSUE_TEMPLATE/bug_report.md | 20 +++++++++++++++++++
+ .gitlab-ci.yml                       | 29 ++++++++++++++++++++++++++++
  README.md                            |  3 +++
- 4 files changed, 54 insertions(+)
+ 4 files changed, 64 insertions(+)
  create mode 100644 .github/FUNDING.yml
  create mode 100644 .github/ISSUE_TEMPLATE/bug_report.md
  create mode 100644 .gitlab-ci.yml
@@ -61,29 +61,39 @@ index 000000000000..94be17e338b3
 +```
 diff --git a/.gitlab-ci.yml b/.gitlab-ci.yml
 new file mode 100644
-index 000000000000..779b3d337fbd
+index 000000000000..92384cffc8bd
 --- /dev/null
 +++ b/.gitlab-ci.yml
-@@ -0,0 +1,19 @@
-+image: robertcnelson/debian-bullseye-slim-linux-compile:latest
+@@ -0,0 +1,29 @@
++image: robertcnelson/debian-bookworm-slim-linux-compile:latest
++
++cache:
++  key: "$CI_PROJECT_NAME-ti-linux-rt-6.1.y-arm64"
++  paths:
++    - ccache.tar.gz
 +
 +build:
 +  tags:
 +    - docker-amd64
 +  stage: build
 +  script:
++    - mkdir -p /root/.cache/ccache/ || true
++    - ccache -s
++    - tar -xf ccache.tar.gz -C / || true
++    - ccache -s
 +    - CORES=$(getconf _NPROCESSORS_ONLN)
-+    - export CC=/usr/bin/aarch64-linux-gnu-
-+    - make ARCH=arm64 CROSS_COMPILE=${CC} clean
-+    - make ARCH=arm64 CROSS_COMPILE=${CC} bb.org_defconfig
-+    - echo "make -j${CORES} ARCH=arm64 KBUILD_DEBARCH=arm64 CROSS_COMPILE=${CC} LOCALVERSION=-ti-rt-r$CI_JOB_ID KDEB_SOURCENAME=linux-upstream KDEB_COMPRESS=xz bindeb-pkg"
-+    - make -j${CORES} ARCH=arm64 KBUILD_DEBARCH=arm64 KDEB_PKGVERSION=1xross CROSS_COMPILE=${CC} LOCALVERSION=-ti-rt-r$CI_JOB_ID KDEB_SOURCENAME=linux-upstream KDEB_COMPRESS=xz bindeb-pkg
++    - make ARCH=arm64 CROSS_COMPILE=/usr/bin/aarch64-linux-gnu- clean
++    - make ARCH=arm64 CROSS_COMPILE=/usr/bin/aarch64-linux-gnu- bb.org_defconfig
++    - echo "make -j${CORES} ARCH=arm64 KBUILD_DEBARCH=arm64 CROSS_COMPILE=/usr/bin/aarch64-linux-gnu- LOCALVERSION=-ti-rt-arm64-r$CI_JOB_ID KDEB_SOURCENAME=linux-upstream KDEB_COMPRESS=xz bindeb-pkg"
++    - make -j${CORES} ARCH=arm64 KBUILD_DEBARCH=arm64 KDEB_PKGVERSION=1xross CROSS_COMPILE="ccache /usr/bin/aarch64-linux-gnu-" LOCALVERSION=-ti-rt-arm64-r$CI_JOB_ID KDEB_SOURCENAME=linux-upstream KDEB_COMPRESS=xz bindeb-pkg
 +    - mv ../*.deb ./
++    - ccache -s
++    - tar -cf ccache.tar.gz /root/.cache/ccache/
 +  artifacts:
-+    expire_in: 5 days
++    expire_in: 28 days
 +    name: "$CI_PROJECT_NAME-$CI_JOB_ID"
 +    paths:
-+      - "linux-image*.deb"
++      - "linux-image-*.deb"
 diff --git a/README.md b/README.md
 new file mode 100644
 index 000000000000..35f4caf8a15a
