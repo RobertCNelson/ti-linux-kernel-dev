@@ -1,15 +1,16 @@
-From ff610a9200723a60c2e84f9a6ff1c946ade31bb5 Mon Sep 17 00:00:00 2001
+From 3384961172061604abaa6335fea1eedb11f1c12d Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 27 Nov 2023 16:51:58 -0600
+Date: Tue, 28 Nov 2023 19:03:22 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v6.1.63
+Reference: v6.1.64
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/adxl313_i2c.c               |  4 +-
  drivers/iio/adc/ad7192.c                      | 42 +++++++----
  drivers/iio/adc/exynos_adc.c                  | 24 +++---
  drivers/iio/adc/imx8qxp-adc.c                 |  4 +-
+ drivers/iio/adc/stm32-adc-core.c              |  9 ++-
  drivers/iio/adc/xilinx-xadc-core.c            | 39 ++++------
  drivers/iio/adc/xilinx-xadc.h                 |  2 +
  drivers/iio/addac/Kconfig                     |  2 +
@@ -24,7 +25,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/pressure/dps310.c                 |  8 +-
  drivers/iio/pressure/ms5611_core.c            |  2 +-
  include/linux/iio/iio.h                       |  2 +
- 18 files changed, 157 insertions(+), 122 deletions(-)
+ 19 files changed, 164 insertions(+), 124 deletions(-)
 
 diff --git a/drivers/iio/accel/adxl313_i2c.c b/drivers/iio/accel/adxl313_i2c.c
 index 99cc7fc29488..68785bd3ef2f 100644
@@ -166,6 +167,33 @@ index f5a0fc9e64c5..fff6e5a2d956 100644
 +#define IMX8QXP_ADR_ADC_CMDH(cid)	(0x104 + (cid) * 8)
  #define IMX8QXP_ADR_ADC_RESFIFO		0x300
  #define IMX8QXP_ADR_ADC_TST		0xffc
+ 
+diff --git a/drivers/iio/adc/stm32-adc-core.c b/drivers/iio/adc/stm32-adc-core.c
+index 81d5db91c67b..dee47b899e5d 100644
+--- a/drivers/iio/adc/stm32-adc-core.c
++++ b/drivers/iio/adc/stm32-adc-core.c
+@@ -695,6 +695,8 @@ static int stm32_adc_probe(struct platform_device *pdev)
+ 	struct stm32_adc_priv *priv;
+ 	struct device *dev = &pdev->dev;
+ 	struct device_node *np = pdev->dev.of_node;
++	const struct of_device_id *of_id;
++
+ 	struct resource *res;
+ 	u32 max_rate;
+ 	int ret;
+@@ -707,8 +709,11 @@ static int stm32_adc_probe(struct platform_device *pdev)
+ 		return -ENOMEM;
+ 	platform_set_drvdata(pdev, &priv->common);
+ 
+-	priv->cfg = (const struct stm32_adc_priv_cfg *)
+-		of_match_device(dev->driver->of_match_table, dev)->data;
++	of_id = of_match_device(dev->driver->of_match_table, dev);
++	if (!of_id)
++		return -ENODEV;
++
++	priv->cfg = (const struct stm32_adc_priv_cfg *)of_id->data;
+ 	priv->nb_adc_max = priv->cfg->num_adcs;
+ 	spin_lock_init(&priv->common.lock);
  
 diff --git a/drivers/iio/adc/xilinx-xadc-core.c b/drivers/iio/adc/xilinx-xadc-core.c
 index 292f2892d223..abb8891b9e82 100644
