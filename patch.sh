@@ -178,7 +178,7 @@ ksmbd () {
 		cd ./KERNEL/
 
 		mkdir -p ./fs/ksmbd/
-		cp -rv ../ksmbd/* fs/ksmbd/
+		rsync -av --delete ../ksmbd/* fs/ksmbd/
 
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: ksmbd: https://github.com/cifsd-team/ksmbd' -m "https://github.com/cifsd-team/ksmbd/commit/${ksmbd_hash}" -s
@@ -441,7 +441,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.201"
+	backport_tag="v5.10.202"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -457,7 +457,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.63"
+	backport_tag="v6.1.64"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -512,7 +512,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.63"
+		backport_tag="v6.1.64"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
