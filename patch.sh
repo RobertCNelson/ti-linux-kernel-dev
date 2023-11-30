@@ -492,9 +492,36 @@ pre_backports () {
 	cd -
 }
 
+pre_rpibackports () {
+	echo "dir: backports/${subsystem}"
+
+	cd ~/linux-rpi/
+	${git_bin} fetch --tags
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		${git_bin} checkout ${backport_tag} -f
+	fi
+	cd -
+}
+
 post_backports () {
 	if [ ! "x${backport_tag}" = "x" ] ; then
 		cd ~/linux-src/
+		${git_bin} checkout master -f
+		cd -
+	fi
+
+	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
+	${git_bin} add .
+	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
+	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
+		mkdir -p ../patches/backports/${subsystem}/
+	fi
+	${git_bin} format-patch -1 -o ../patches/backports/${subsystem}/
+}
+
+post_rpibackports () {
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		cd ~/linux-rpi/
 		${git_bin} checkout master -f
 		cd -
 	fi
@@ -593,6 +620,21 @@ backports () {
 		patch_backports
 		${git} "${DIR}/patches/backports/${subsystem}/0002-iwlwifi-disable-pnvm-loading.patch"
 	fi
+
+	backport_tag="rpi-5.10.y"
+
+	subsystem="edt-ft5x06"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_rpibackports
+
+		cp -v ~/linux-rpi/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/
+
+		post_rpibackports
+		exit 2
+	else
+		patch_backports
+	fi
 }
 
 drivers () {
@@ -620,7 +662,7 @@ drivers () {
 	dir 'boris'
 	dir 'drivers/ti/uio'
 	dir 'rpi-panel'
-	dir 'edt-ft'
+	#dir 'edt-ft'
 	dir 'panel-simple'
 
 	dir 'drm-bridge'
