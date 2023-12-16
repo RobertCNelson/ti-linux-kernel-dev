@@ -1,35 +1,40 @@
-From bebee411db6505b3503cff6d03e1459635d17d49 Mon Sep 17 00:00:00 2001
+From 60512ed1c054776280a4919036a5b397865b757b Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 25 Sep 2023 17:07:53 -0500
+Date: Sat, 16 Dec 2023 16:56:29 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.197
+Reference: v5.10.204
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
- drivers/iio/Kconfig                           |  1 +
- drivers/iio/Makefile                          |  1 +
- drivers/iio/accel/mma9551_core.c              | 10 +-
- drivers/iio/adc/ad7192.c                      |  8 +-
- drivers/iio/adc/ad7791.c                      |  2 +-
- drivers/iio/adc/at91-sama5d2_adc.c            |  2 +-
- drivers/iio/adc/meson_saradc.c                |  2 +-
- drivers/iio/adc/mxs-lradc-adc.c               | 10 +-
- drivers/iio/adc/palmas_gpadc.c                |  2 +-
- drivers/iio/adc/stx104.c                      | 96 +++++++++++++------
- drivers/iio/adc/ti-ads7950.c                  |  1 +
- drivers/iio/addac/Kconfig                     |  8 ++
- drivers/iio/addac/Makefile                    |  6 ++
- .../cros_ec_sensors/cros_ec_sensors_core.c    |  2 +-
- drivers/iio/dac/Makefile                      |  2 +-
- drivers/iio/dac/cio-dac.c                     |  4 +-
- drivers/iio/dac/mcp4725.c                     | 16 +++-
- .../imu/inv_icm42600/inv_icm42600_buffer.c    | 10 +-
- drivers/iio/light/cm32181.c                   | 12 +++
- drivers/iio/light/max44009.c                  | 13 +--
- drivers/iio/light/tsl2772.c                   |  1 +
- drivers/iio/light/vcnl4035.c                  |  3 +
- drivers/staging/iio/resolver/ad2s1210.c       |  2 +-
- 23 files changed, 151 insertions(+), 63 deletions(-)
+ drivers/iio/Kconfig                           |   1 +
+ drivers/iio/Makefile                          |   1 +
+ drivers/iio/accel/mma9551_core.c              |  10 +-
+ drivers/iio/adc/ad7192.c                      |   8 +-
+ drivers/iio/adc/ad7791.c                      |   2 +-
+ drivers/iio/adc/at91-sama5d2_adc.c            |   2 +-
+ drivers/iio/adc/exynos_adc.c                  |  24 ++-
+ drivers/iio/adc/meson_saradc.c                |   2 +-
+ drivers/iio/adc/mxs-lradc-adc.c               |  10 +-
+ drivers/iio/adc/palmas_gpadc.c                |   2 +-
+ drivers/iio/adc/stx104.c                      |  96 +++++++---
+ drivers/iio/adc/ti-ads7950.c                  |   1 +
+ drivers/iio/adc/xilinx-xadc-core.c            | 179 +++++++-----------
+ drivers/iio/addac/Kconfig                     |   8 +
+ drivers/iio/addac/Makefile                    |   6 +
+ .../cros_ec_sensors/cros_ec_sensors_core.c    |   2 +-
+ drivers/iio/dac/Makefile                      |   2 +-
+ drivers/iio/dac/cio-dac.c                     |   4 +-
+ drivers/iio/dac/mcp4725.c                     |  16 +-
+ .../imu/inv_icm42600/inv_icm42600_buffer.c    |  10 +-
+ drivers/iio/light/cm32181.c                   |  12 ++
+ drivers/iio/light/max44009.c                  |  13 +-
+ drivers/iio/light/tsl2772.c                   |   1 +
+ drivers/iio/light/vcnl4035.c                  |   3 +
+ drivers/iio/pressure/bmp280-core.c            |   2 +-
+ drivers/iio/pressure/dps310.c                 |   8 +-
+ drivers/iio/pressure/ms5611_core.c            |   2 +-
+ drivers/staging/iio/resolver/ad2s1210.c       |   2 +-
+ 28 files changed, 242 insertions(+), 187 deletions(-)
  create mode 100644 drivers/iio/addac/Kconfig
  create mode 100644 drivers/iio/addac/Makefile
 
@@ -148,6 +153,54 @@ index 250b78ee1625..b806c1ab9b61 100644
  
  	trig->dev.parent = indio->dev.parent;
  	iio_trigger_set_drvdata(trig, indio);
+diff --git a/drivers/iio/adc/exynos_adc.c b/drivers/iio/adc/exynos_adc.c
+index 99f4404e9fd1..b6f09e5acb91 100644
+--- a/drivers/iio/adc/exynos_adc.c
++++ b/drivers/iio/adc/exynos_adc.c
+@@ -821,16 +821,26 @@ static int exynos_adc_probe(struct platform_device *pdev)
+ 		}
+ 	}
+ 
++	/* leave out any TS related code if unreachable */
++	if (IS_REACHABLE(CONFIG_INPUT)) {
++		has_ts = of_property_read_bool(pdev->dev.of_node,
++					       "has-touchscreen") || pdata;
++	}
++
+ 	irq = platform_get_irq(pdev, 0);
+ 	if (irq < 0)
+ 		return irq;
+ 	info->irq = irq;
+ 
+-	irq = platform_get_irq(pdev, 1);
+-	if (irq == -EPROBE_DEFER)
+-		return irq;
++	if (has_ts) {
++		irq = platform_get_irq(pdev, 1);
++		if (irq == -EPROBE_DEFER)
++			return irq;
+ 
+-	info->tsirq = irq;
++		info->tsirq = irq;
++	} else {
++		info->tsirq = -1;
++	}
+ 
+ 	info->dev = &pdev->dev;
+ 
+@@ -895,12 +905,6 @@ static int exynos_adc_probe(struct platform_device *pdev)
+ 	if (info->data->init_hw)
+ 		info->data->init_hw(info);
+ 
+-	/* leave out any TS related code if unreachable */
+-	if (IS_REACHABLE(CONFIG_INPUT)) {
+-		has_ts = of_property_read_bool(pdev->dev.of_node,
+-					       "has-touchscreen") || pdata;
+-	}
+-
+ 	if (pdata)
+ 		info->delay = pdata->delay;
+ 	else
 diff --git a/drivers/iio/adc/meson_saradc.c b/drivers/iio/adc/meson_saradc.c
 index e03988698755..e771299fac9d 100644
 --- a/drivers/iio/adc/meson_saradc.c
@@ -470,6 +523,317 @@ index a2b83f0bd526..d4583b76f1fe 100644
  	st->chip.base = -1;
  	st->chip.ngpio = TI_ADS7950_NUM_GPIOS;
  	st->chip.get_direction = ti_ads7950_get_direction;
+diff --git a/drivers/iio/adc/xilinx-xadc-core.c b/drivers/iio/adc/xilinx-xadc-core.c
+index f93c34fe5873..30b5a17ce41a 100644
+--- a/drivers/iio/adc/xilinx-xadc-core.c
++++ b/drivers/iio/adc/xilinx-xadc-core.c
+@@ -19,6 +19,7 @@
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
++#include <linux/overflow.h>
+ #include <linux/platform_device.h>
+ #include <linux/slab.h>
+ #include <linux/sysfs.h>
+@@ -585,15 +586,22 @@ static int xadc_update_scan_mode(struct iio_dev *indio_dev,
+ 	const unsigned long *mask)
+ {
+ 	struct xadc *xadc = iio_priv(indio_dev);
+-	unsigned int n;
++	size_t new_size, n;
++	void *data;
+ 
+ 	n = bitmap_weight(mask, indio_dev->masklength);
+ 
+-	kfree(xadc->data);
+-	xadc->data = kcalloc(n, sizeof(*xadc->data), GFP_KERNEL);
+-	if (!xadc->data)
++	if (check_mul_overflow(n, sizeof(*xadc->data), &new_size))
++		return -ENOMEM;
++
++	data = devm_krealloc(indio_dev->dev.parent, xadc->data,
++			     new_size, GFP_KERNEL);
++	if (!data)
+ 		return -ENOMEM;
+ 
++	memset(data, 0, new_size);
++	xadc->data = data;
++
+ 	return 0;
+ }
+ 
+@@ -705,11 +713,12 @@ static const struct iio_trigger_ops xadc_trigger_ops = {
+ static struct iio_trigger *xadc_alloc_trigger(struct iio_dev *indio_dev,
+ 	const char *name)
+ {
++	struct device *dev = indio_dev->dev.parent;
+ 	struct iio_trigger *trig;
+ 	int ret;
+ 
+-	trig = iio_trigger_alloc("%s%d-%s", indio_dev->name,
+-				indio_dev->id, name);
++	trig = devm_iio_trigger_alloc(dev, "%s%d-%s", indio_dev->name,
++				      indio_dev->id, name);
+ 	if (trig == NULL)
+ 		return ERR_PTR(-ENOMEM);
+ 
+@@ -717,15 +726,11 @@ static struct iio_trigger *xadc_alloc_trigger(struct iio_dev *indio_dev,
+ 	trig->ops = &xadc_trigger_ops;
+ 	iio_trigger_set_drvdata(trig, iio_priv(indio_dev));
+ 
+-	ret = iio_trigger_register(trig);
++	ret = devm_iio_trigger_register(dev, trig);
+ 	if (ret)
+-		goto error_free_trig;
++		return ERR_PTR(ret);
+ 
+ 	return trig;
+-
+-error_free_trig:
+-	iio_trigger_free(trig);
+-	return ERR_PTR(ret);
+ }
+ 
+ static int xadc_power_adc_b(struct xadc *xadc, unsigned int seq_mode)
+@@ -1184,8 +1189,23 @@ static int xadc_parse_dt(struct iio_dev *indio_dev, struct device_node *np,
+ 	return 0;
+ }
+ 
++static void xadc_clk_disable_unprepare(void *data)
++{
++	struct clk *clk = data;
++
++	clk_disable_unprepare(clk);
++}
++
++static void xadc_cancel_delayed_work(void *data)
++{
++	struct delayed_work *work = data;
++
++	cancel_delayed_work_sync(work);
++}
++
+ static int xadc_probe(struct platform_device *pdev)
+ {
++	struct device *dev = &pdev->dev;
+ 	const struct of_device_id *id;
+ 	struct iio_dev *indio_dev;
+ 	unsigned int bipolar_mask;
+@@ -1195,10 +1215,10 @@ static int xadc_probe(struct platform_device *pdev)
+ 	int irq;
+ 	int i;
+ 
+-	if (!pdev->dev.of_node)
++	if (!dev->of_node)
+ 		return -ENODEV;
+ 
+-	id = of_match_node(xadc_of_match_table, pdev->dev.of_node);
++	id = of_match_node(xadc_of_match_table, dev->of_node);
+ 	if (!id)
+ 		return -EINVAL;
+ 
+@@ -1206,7 +1226,7 @@ static int xadc_probe(struct platform_device *pdev)
+ 	if (irq <= 0)
+ 		return -ENXIO;
+ 
+-	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*xadc));
++	indio_dev = devm_iio_device_alloc(dev, sizeof(*xadc));
+ 	if (!indio_dev)
+ 		return -ENOMEM;
+ 
+@@ -1226,39 +1246,40 @@ static int xadc_probe(struct platform_device *pdev)
+ 	indio_dev->modes = INDIO_DIRECT_MODE;
+ 	indio_dev->info = &xadc_info;
+ 
+-	ret = xadc_parse_dt(indio_dev, pdev->dev.of_node, &conf0);
++	ret = xadc_parse_dt(indio_dev, dev->of_node, &conf0);
+ 	if (ret)
+ 		return ret;
+ 
+ 	if (xadc->ops->flags & XADC_FLAGS_BUFFERED) {
+-		ret = iio_triggered_buffer_setup(indio_dev,
+-			&iio_pollfunc_store_time, &xadc_trigger_handler,
+-			&xadc_buffer_ops);
++		ret = devm_iio_triggered_buffer_setup(dev, indio_dev,
++						      &iio_pollfunc_store_time,
++						      &xadc_trigger_handler,
++						      &xadc_buffer_ops);
+ 		if (ret)
+ 			return ret;
+ 
+ 		xadc->convst_trigger = xadc_alloc_trigger(indio_dev, "convst");
+-		if (IS_ERR(xadc->convst_trigger)) {
+-			ret = PTR_ERR(xadc->convst_trigger);
+-			goto err_triggered_buffer_cleanup;
+-		}
++		if (IS_ERR(xadc->convst_trigger))
++			return PTR_ERR(xadc->convst_trigger);
++
+ 		xadc->samplerate_trigger = xadc_alloc_trigger(indio_dev,
+ 			"samplerate");
+-		if (IS_ERR(xadc->samplerate_trigger)) {
+-			ret = PTR_ERR(xadc->samplerate_trigger);
+-			goto err_free_convst_trigger;
+-		}
++		if (IS_ERR(xadc->samplerate_trigger))
++			return PTR_ERR(xadc->samplerate_trigger);
+ 	}
+ 
+-	xadc->clk = devm_clk_get(&pdev->dev, NULL);
+-	if (IS_ERR(xadc->clk)) {
+-		ret = PTR_ERR(xadc->clk);
+-		goto err_free_samplerate_trigger;
+-	}
++	xadc->clk = devm_clk_get(dev, NULL);
++	if (IS_ERR(xadc->clk))
++		return PTR_ERR(xadc->clk);
+ 
+ 	ret = clk_prepare_enable(xadc->clk);
+ 	if (ret)
+-		goto err_free_samplerate_trigger;
++		return ret;
++
++	ret = devm_add_action_or_reset(dev,
++				       xadc_clk_disable_unprepare, xadc->clk);
++	if (ret)
++		return ret;
+ 
+ 	/*
+ 	 * Make sure not to exceed the maximum samplerate since otherwise the
+@@ -1267,22 +1288,28 @@ static int xadc_probe(struct platform_device *pdev)
+ 	if (xadc->ops->flags & XADC_FLAGS_BUFFERED) {
+ 		ret = xadc_read_samplerate(xadc);
+ 		if (ret < 0)
+-			goto err_free_samplerate_trigger;
++			return ret;
++
+ 		if (ret > XADC_MAX_SAMPLERATE) {
+ 			ret = xadc_write_samplerate(xadc, XADC_MAX_SAMPLERATE);
+ 			if (ret < 0)
+-				goto err_free_samplerate_trigger;
++				return ret;
+ 		}
+ 	}
+ 
+-	ret = request_irq(xadc->irq, xadc->ops->interrupt_handler, 0,
+-			dev_name(&pdev->dev), indio_dev);
++	ret = devm_request_irq(dev, xadc->irq, xadc->ops->interrupt_handler, 0,
++			       dev_name(dev), indio_dev);
+ 	if (ret)
+-		goto err_clk_disable_unprepare;
++		return ret;
++
++	ret = devm_add_action_or_reset(dev, xadc_cancel_delayed_work,
++				       &xadc->zynq_unmask_work);
++	if (ret)
++		return ret;
+ 
+ 	ret = xadc->ops->setup(pdev, indio_dev, xadc->irq);
+ 	if (ret)
+-		goto err_free_irq;
++		return ret;
+ 
+ 	for (i = 0; i < 16; i++)
+ 		xadc_read_adc_reg(xadc, XADC_REG_THRESHOLD(i),
+@@ -1290,7 +1317,7 @@ static int xadc_probe(struct platform_device *pdev)
+ 
+ 	ret = xadc_write_adc_reg(xadc, XADC_REG_CONF0, conf0);
+ 	if (ret)
+-		goto err_free_irq;
++		return ret;
+ 
+ 	bipolar_mask = 0;
+ 	for (i = 0; i < indio_dev->num_channels; i++) {
+@@ -1300,85 +1327,21 @@ static int xadc_probe(struct platform_device *pdev)
+ 
+ 	ret = xadc_write_adc_reg(xadc, XADC_REG_INPUT_MODE(0), bipolar_mask);
+ 	if (ret)
+-		goto err_free_irq;
++		return ret;
++
+ 	ret = xadc_write_adc_reg(xadc, XADC_REG_INPUT_MODE(1),
+ 		bipolar_mask >> 16);
+ 	if (ret)
+-		goto err_free_irq;
+-
+-	/* Disable all alarms */
+-	ret = xadc_update_adc_reg(xadc, XADC_REG_CONF1, XADC_CONF1_ALARM_MASK,
+-				  XADC_CONF1_ALARM_MASK);
+-	if (ret)
+-		goto err_free_irq;
+-
+-	/* Set thresholds to min/max */
+-	for (i = 0; i < 16; i++) {
+-		/*
+-		 * Set max voltage threshold and both temperature thresholds to
+-		 * 0xffff, min voltage threshold to 0.
+-		 */
+-		if (i % 8 < 4 || i == 7)
+-			xadc->threshold[i] = 0xffff;
+-		else
+-			xadc->threshold[i] = 0;
+-		ret = xadc_write_adc_reg(xadc, XADC_REG_THRESHOLD(i),
+-			xadc->threshold[i]);
+-		if (ret)
+-			goto err_free_irq;
+-	}
++		return ret;
+ 
+ 	/* Go to non-buffered mode */
+ 	xadc_postdisable(indio_dev);
+ 
+-	ret = iio_device_register(indio_dev);
+-	if (ret)
+-		goto err_free_irq;
+-
+-	platform_set_drvdata(pdev, indio_dev);
+-
+-	return 0;
+-
+-err_free_irq:
+-	free_irq(xadc->irq, indio_dev);
+-	cancel_delayed_work_sync(&xadc->zynq_unmask_work);
+-err_clk_disable_unprepare:
+-	clk_disable_unprepare(xadc->clk);
+-err_free_samplerate_trigger:
+-	if (xadc->ops->flags & XADC_FLAGS_BUFFERED)
+-		iio_trigger_free(xadc->samplerate_trigger);
+-err_free_convst_trigger:
+-	if (xadc->ops->flags & XADC_FLAGS_BUFFERED)
+-		iio_trigger_free(xadc->convst_trigger);
+-err_triggered_buffer_cleanup:
+-	if (xadc->ops->flags & XADC_FLAGS_BUFFERED)
+-		iio_triggered_buffer_cleanup(indio_dev);
+-
+-	return ret;
+-}
+-
+-static int xadc_remove(struct platform_device *pdev)
+-{
+-	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
+-	struct xadc *xadc = iio_priv(indio_dev);
+-
+-	iio_device_unregister(indio_dev);
+-	if (xadc->ops->flags & XADC_FLAGS_BUFFERED) {
+-		iio_trigger_free(xadc->samplerate_trigger);
+-		iio_trigger_free(xadc->convst_trigger);
+-		iio_triggered_buffer_cleanup(indio_dev);
+-	}
+-	free_irq(xadc->irq, indio_dev);
+-	cancel_delayed_work_sync(&xadc->zynq_unmask_work);
+-	clk_disable_unprepare(xadc->clk);
+-	kfree(xadc->data);
+-
+-	return 0;
++	return devm_iio_device_register(dev, indio_dev);
+ }
+ 
+ static struct platform_driver xadc_driver = {
+ 	.probe = xadc_probe,
+-	.remove = xadc_remove,
+ 	.driver = {
+ 		.name = "xadc",
+ 		.of_match_table = xadc_of_match_table,
 diff --git a/drivers/iio/addac/Kconfig b/drivers/iio/addac/Kconfig
 new file mode 100644
 index 000000000000..2e64d7755d5e
@@ -737,6 +1101,58 @@ index 1bd85e21fd11..6e38a33f55c7 100644
  	if (id != VCNL4035_DEV_ID_VAL) {
  		dev_err(&data->client->dev, "Wrong id, got %x, expected %x\n",
  			id, VCNL4035_DEV_ID_VAL);
+diff --git a/drivers/iio/pressure/bmp280-core.c b/drivers/iio/pressure/bmp280-core.c
+index 6b7da40f99c8..919a338d9181 100644
+--- a/drivers/iio/pressure/bmp280-core.c
++++ b/drivers/iio/pressure/bmp280-core.c
+@@ -1112,7 +1112,7 @@ int bmp280_common_probe(struct device *dev,
+ 	 * however as it happens, the BMP085 shares the chip ID of BMP180
+ 	 * so we look for an IRQ if we have that.
+ 	 */
+-	if (irq > 0 || (chip_id  == BMP180_CHIP_ID)) {
++	if (irq > 0 && (chip_id  == BMP180_CHIP_ID)) {
+ 		ret = bmp085_fetch_eoc_irq(dev, name, irq, data);
+ 		if (ret)
+ 			return ret;
+diff --git a/drivers/iio/pressure/dps310.c b/drivers/iio/pressure/dps310.c
+index cf8b92fae1b3..1b6b9530f166 100644
+--- a/drivers/iio/pressure/dps310.c
++++ b/drivers/iio/pressure/dps310.c
+@@ -57,8 +57,8 @@
+ #define  DPS310_RESET_MAGIC	0x09
+ #define DPS310_COEF_BASE	0x10
+ 
+-/* Make sure sleep time is <= 20ms for usleep_range */
+-#define DPS310_POLL_SLEEP_US(t)		min(20000, (t) / 8)
++/* Make sure sleep time is <= 30ms for usleep_range */
++#define DPS310_POLL_SLEEP_US(t)		min(30000, (t) / 8)
+ /* Silently handle error in rate value here */
+ #define DPS310_POLL_TIMEOUT_US(rc)	((rc) <= 0 ? 1000000 : 1000000 / (rc))
+ 
+@@ -402,8 +402,8 @@ static int dps310_reset_wait(struct dps310_data *data)
+ 	if (rc)
+ 		return rc;
+ 
+-	/* Wait for device chip access: 2.5ms in specification */
+-	usleep_range(2500, 12000);
++	/* Wait for device chip access: 15ms in specification */
++	usleep_range(15000, 55000);
+ 	return 0;
+ }
+ 
+diff --git a/drivers/iio/pressure/ms5611_core.c b/drivers/iio/pressure/ms5611_core.c
+index 874a73b3ea9d..f88d8f2ce610 100644
+--- a/drivers/iio/pressure/ms5611_core.c
++++ b/drivers/iio/pressure/ms5611_core.c
+@@ -76,7 +76,7 @@ static bool ms5611_prom_is_valid(u16 *prom, size_t len)
+ 
+ 	crc = (crc >> 12) & 0x000F;
+ 
+-	return crc_orig != 0x0000 && crc == crc_orig;
++	return crc == crc_orig;
+ }
+ 
+ static int ms5611_read_prom(struct iio_dev *indio_dev)
 diff --git a/drivers/staging/iio/resolver/ad2s1210.c b/drivers/staging/iio/resolver/ad2s1210.c
 index 74adb82f37c3..a19cfb2998c9 100644
 --- a/drivers/staging/iio/resolver/ad2s1210.c

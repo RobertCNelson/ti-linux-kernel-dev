@@ -443,10 +443,11 @@ beagleboard_dtbs () {
 		device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; dtb_makefile_append
 		device="k3-am625-beagleplay.dtb" ; dtb_makefile_append
 
-		${git_bin} add -f arch/arm64/boot/dts/ti/
+		${git_bin} add -f arch/arm/boot/dts/
+		${git_bin} add -f arch/arm64/boot/dts/
 		${git_bin} add -f include/dt-bindings/
 		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${branch}" -m "https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/soc/ti/beagleboard_dtbs/
+		${git_bin} format-patch -1 -o ../patches/external/bbb.io/
 		echo "BBDTBS: https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" > ../patches/external/git/BBDTBS
 
 		rm -rf ../${work_dir}/ || true
@@ -455,13 +456,13 @@ beagleboard_dtbs () {
 
 		start_cleanup
 
-		${git} "${DIR}/patches/soc/ti/beagleboard_dtbs/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
+		${git} "${DIR}/patches/external/bbb.io/0001-Add-BeagleBoard.org-Device-Tree-Changes.patch"
 
-		wdir="soc/ti/beagleboard_dtbs"
+		wdir="external/bbb.io"
 		number=1
 		cleanup
 	fi
-	dir 'soc/ti/beagleboard_dtbs'
+	dir 'external/bbb.io'
 }
 
 local_patch () {
@@ -541,7 +542,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.197"
+	backport_tag="v5.10.204"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -662,13 +663,11 @@ drivers () {
 	dir 'boris'
 	dir 'drivers/ti/uio'
 	dir 'rpi-panel'
-	#dir 'edt-ft'
 	dir 'panel-simple'
 
 	dir 'drm-bridge'
 
 	dir 'tiam62x'
-#	dir 'android'
 	dir 'ti-edgeai'
 	dir 'lincolntech'
 	dir 'tidss'
