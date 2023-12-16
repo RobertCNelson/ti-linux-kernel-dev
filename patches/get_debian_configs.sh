@@ -2,10 +2,12 @@
 
 #https://packages.debian.org/source/bullseye/linux
 
+#
 abi="5.10.0-26"
 kernel="5.10.197-1"
+#
 
-debian_site="http://ftp.de.debian.org/debian/pool/main/l/linux"
+debian_site="http://ftp.us.debian.org/debian/pool/main/l/linux"
 incoming_site="http://incoming.debian.org/debian-buildd/pool/main/l/linux"
 
 dl_deb () {
