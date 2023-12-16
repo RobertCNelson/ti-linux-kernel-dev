@@ -572,7 +572,7 @@ backports () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/drivers/net/wireless/ti/* ./drivers/net/wireless/ti/
+		rsync -av ~/linux-src/drivers/net/wireless/ti/* ./drivers/net/wireless/ti/
 
 		post_backports
 		exit 2
@@ -582,7 +582,7 @@ backports () {
 
 	dir 'backports/spidev'
 
-	backport_tag="v5.10.202"
+	backport_tag="v5.10.204"
 
 	subsystem="spi"
 	#regenerate="enable"
@@ -597,7 +597,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v5.10.202"
+	backport_tag="v5.10.204"
 
 	subsystem="iio"
 	#regenerate="enable"
