@@ -281,12 +281,16 @@ cleanup_dts_builds () {
 	rm -rf arch/arm64/boot/dts/ti/*dtbo || true
 }
 
-dtb_makefile_append () {
+arm_dtb_makefile_append () {
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+}
+
+k3_dtb_makefile_append () {
 	echo "dtb-\$(CONFIG_ARCH_K3) += $device" >> arch/arm64/boot/dts/ti/Makefile
 }
 
 beagleboard_dtbs () {
-	branch="v6.1.x-ti"
+	branch="v6.1.x-Beagle"
 	https_repo="https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
@@ -303,19 +307,41 @@ beagleboard_dtbs () {
 
 		cd ./KERNEL/
 
-		cleanup_dts_builds
+		#cleanup_dts_builds
 		rm -rf arch/arm/boot/dts/overlays/ || true
 		rm -rf arch/arm64/boot/dts/ti/overlays/ || true
 
-		mkdir -p arch/arm/boot/dts/overlays/
-		cp -vr ../${work_dir}/src/arm/* arch/arm/boot/dts/
-		mkdir -p arch/arm64/boot/dts/ti/overlays/
-		cp -vr ../${work_dir}/src/arm64/* arch/arm64/boot/dts/ti/
+		cp -v ../${work_dir}/src/arm/ti/omap/*.dts arch/arm/boot/dts/
+		cp -v ../${work_dir}/src/arm/ti/omap/*.dtsi arch/arm/boot/dts/
+		cp -v ../${work_dir}/src/arm64/ti/*.dts arch/arm64/boot/dts/ti/
+		cp -v ../${work_dir}/src/arm64/ti/*.dtsi arch/arm64/boot/dts/ti/
+		cp -v ../${work_dir}/src/arm64/ti/*.h arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
-		#device="k3-am625-beagleplay-cc33xx.dtb" ; dtb_makefile_append
-		#device="k3-am625-pocketbeagle2.dtb" ; dtb_makefile_append
-		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; dtb_makefile_append
+		mkdir -p arch/arm/boot/dts/overlays/
+		cp -vr ../${work_dir}/src/arm/overlays/* arch/arm/boot/dts/overlays/
+
+#		device="am335x-bonegreen-gateway.dtb" ; arm_dtb_makefile_append
+#		device="am335x-sancloud-bbe-lite.dtb" ; arm_dtb_makefile_append
+#		device="am335x-sancloud-bbe-extended-wifi.dtb" ; arm_dtb_makefile_append
+
+#		device="am335x-boneblack-uboot.dtb" ; arm_dtb_makefile_append
+
+#		device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
+#		device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
+#		device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
+
+#		device="am335x-bone-uboot-univ.dtb" ; arm_dtb_makefile_append
+#		device="am335x-boneblack-uboot-univ.dtb" ; arm_dtb_makefile_append
+#		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; arm_dtb_makefile_append
+
+#		device="am335x-sancloud-bbe-uboot-univ.dtb" ; arm_dtb_makefile_append
+#		device="am335x-sancloud-bbe-lite-uboot-univ.dtb" ; arm_dtb_makefile_append
+#		device="am335x-sancloud-bbe-extended-wifi-uboot-univ.dtb" ; arm_dtb_makefile_append
+
+		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
+		#device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
+		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f arch/arm64/boot/dts/
@@ -381,13 +407,40 @@ post_backports () {
 	${git_bin} format-patch -1 -o ../patches/backports/${subsystem}/
 }
 
+pre_rpibackports () {
+	echo "dir: backports/${subsystem}"
+
+	cd ~/linux-rpi/
+	${git_bin} fetch --tags
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		${git_bin} checkout ${backport_tag} -f
+	fi
+	cd -
+}
+
+post_rpibackports () {
+	if [ ! "x${backport_tag}" = "x" ] ; then
+		cd ~/linux-rpi/
+		${git_bin} checkout master -f
+		cd -
+	fi
+
+	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
+	${git_bin} add .
+	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
+	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
+		mkdir -p ../patches/backports/${subsystem}/
+	fi
+	${git_bin} format-patch -1 -o ../patches/backports/${subsystem}/
+}
+
 patch_backports () {
 	echo "dir: backports/${subsystem}"
 	${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-linux.git.patch"
 }
 
 backports () {
-	backport_tag="v5.10.202"
+	backport_tag="v5.10.204"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -403,7 +456,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.64"
+	backport_tag="v6.1.68"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -421,6 +474,21 @@ backports () {
 		patch_backports
 #		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
 #		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
+	fi
+
+	backport_tag="rpi-6.1.y"
+
+	subsystem="edt-ft5x06"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_rpibackports
+
+		cp -v ~/linux-rpi/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/
+
+		post_rpibackports
+		exit 2
+	else
+		patch_backports
 	fi
 
 	dir 'greybus/gb-beagleplay'
@@ -453,7 +521,6 @@ drivers () {
 	dir 'boris'
 #	dir 'drivers/ti/uio'
 #	dir 'rpi-panel'
-#	dir 'edt-ft'
 #	dir 'panel-simple'
 
 #	dir 'drm-bridge'
