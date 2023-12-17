@@ -324,6 +324,10 @@ arm_dtb_makefile_append () {
 	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
 }
 
+k3_dtb_makefile_append () {
+	echo "dtb-\$(CONFIG_ARCH_K3) += $device" >> arch/arm64/boot/dts/ti/Makefile
+}
+
 beagleboard_dtbs () {
 	branch="v6.1.x-Beagle"
 	https_repo="https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees.git"
@@ -373,6 +377,10 @@ beagleboard_dtbs () {
 #		device="am335x-sancloud-bbe-uboot-univ.dtb" ; arm_dtb_makefile_append
 #		device="am335x-sancloud-bbe-lite-uboot-univ.dtb" ; arm_dtb_makefile_append
 #		device="am335x-sancloud-bbe-extended-wifi-uboot-univ.dtb" ; arm_dtb_makefile_append
+
+		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
+		#device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
+		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f arch/arm64/boot/dts/
