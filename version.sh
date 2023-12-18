@@ -2,7 +2,7 @@
 #
 ARCH=$(uname -m)
 
-config="omap2plus_defconfig"
+config="multi_v7_defconfig"
 
 build_prefix="-ti-rt-r"
 branch_prefix="ti-linux-rt-"
@@ -48,7 +48,7 @@ KERNEL_REL=6.1
 KERNEL_TAG=${KERNEL_REL}.46
 kernel_rt=".46-rt14"
 #Kernel Build
-BUILD=${build_prefix}14
+BUILD=${build_prefix}14.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -59,8 +59,8 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="7d494fe58c8e5d41a6bd886c9a628a7fff5763f9"
-ti_git_new_release="85cb03befa7e7bf2b0e8a4279c52bf26f8138d28"
-TISDK="09.01.00.004"
+ti_git_old_release="85cb03befa7e7bf2b0e8a4279c52bf26f8138d28"
+ti_git_new_release="3db9a45004a01caba21d64b397814abadcc841b0"
+TISDK="09.01.00.005"
 
 #
