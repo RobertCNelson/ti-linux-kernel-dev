@@ -52,10 +52,6 @@ copy_defconfig () {
 		cp -v .config "${DIR}/patches/ti_sdk_arm64_release_defconfig"
 
 		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
-		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" defconfig ti_rt.config ti_arm64_prune.config
-		cp -v .config "${DIR}/patches/ti_sdk_arm64_rt_release_defconfig"
-
-		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
 	fi
 
 	if [ ! -f "${DIR}/.yakbuild" ] ; then

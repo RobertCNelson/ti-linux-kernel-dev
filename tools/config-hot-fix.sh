@@ -195,4 +195,8 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_FB_SIMPLE
 ./scripts/config --module CONFIG_TI_EQEP
 
+#TI delta 09.01.00.005:
+./scripts/config --enable CONFIG_TI_SYSC
+./scripts/config --module CONFIG_TI_CPSW_PROXY_CLIENT
+
 cd ${DIR}/
