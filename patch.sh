@@ -527,7 +527,8 @@ backports () {
 
 		post_rpibackports
 		exit 2
-	else
+	#else
+	#TI merged these in: https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/09.01.00.006
 		patch_backports
 	fi
 }
