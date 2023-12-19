@@ -199,4 +199,38 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_TI_SYSC
 ./scripts/config --module CONFIG_TI_CPSW_PROXY_CLIENT
 
+#TI delta 09.01.00.006:
+./scripts/config --disable CONFIG_PCIE_ALTERA
+./scripts/config --disable CONFIG_PCIE_ALTERA_MSI
+./scripts/config --disable CONFIG_PCI_HOST_THUNDER_PEM
+./scripts/config --disable CONFIG_PCI_HOST_THUNDER_ECAM
+./scripts/config --disable CONFIG_MTD_NAND_DENALI
+./scripts/config --disable CONFIG_MTD_NAND_DENALI_DT
+./scripts/config --disable CONFIG_SCSI_HISI_SAS
+./scripts/config --disable CONFIG_AHCI_CEVA
+./scripts/config --disable CONFIG_ROCKCHIP_PHY
+./scripts/config --disable CONFIG_CAN_FLEXCAN
+./scripts/config --disable CONFIG_HW_RANDOM_ARM_SMCCC_TRNG
+./scripts/config --disable CONFIG_HW_RANDOM_CN10K
+./scripts/config --disable CONFIG_SPI_PL022
+./scripts/config --disable CONFIG_GPIO_DWAPB
+./scripts/config --disable CONFIG_GPIO_PL061
+./scripts/config --disable CONFIG_ARM_SP805_WATCHDOG
+./scripts/config --disable CONFIG_ARM_SBSA_WATCHDOG
+./scripts/config --disable CONFIG_DW_WATCHDOG
+./scripts/config --disable CONFIG_MFD_SEC_CORE
+
+./scripts/config --module CONFIG_REGULATOR_RASPBERRYPI_TOUCHSCREEN_ATTINY
+
+./scripts/config --disable CONFIG_MMC_ARMMMCI
+./scripts/config --disable CONFIG_MMC_SDHCI_CADENCE
+./scripts/config --disable CONFIG_MMC_SDHCI_F_SDH30
+./scripts/config --disable CONFIG_MMC_SDHCI_XENON
+./scripts/config --disable CONFIG_RTC_DRV_PL031
+./scripts/config --disable CONFIG_FSL_EDMA
+./scripts/config --disable CONFIG_MV_XOR_V2
+./scripts/config --disable CONFIG_PL330_DMA
+./scripts/config --disable CONFIG_QCOM_HIDMA_MGMT
+./scripts/config --disable CONFIG_QCOM_HIDMA
+
 cd ${DIR}/
