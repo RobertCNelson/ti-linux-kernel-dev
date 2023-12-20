@@ -233,4 +233,9 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --disable CONFIG_QCOM_HIDMA_MGMT
 ./scripts/config --disable CONFIG_QCOM_HIDMA
 
+#TI delta 09.01.00.007:
+./scripts/config --disable CONFIG_CRASH_DUMP
+./scripts/config --disable CONFIG_ARM64_SVE
+./scripts/config --disable CONFIG_PROC_VMCORE
+
 cd ${DIR}/
