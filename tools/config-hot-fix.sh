@@ -241,4 +241,25 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --disable CONFIG_ARM64_SVE
 ./scripts/config --disable CONFIG_PROC_VMCORE
 
+#TI delta 09.01.00.008:
+./scripts/config --disable CONFIG_AMPERE_ERRATUM_AC03_CPU_38
+./scripts/config --disable CONFIG_ARM64_ERRATUM_832075
+./scripts/config --disable CONFIG_ARM64_ERRATUM_1024718
+./scripts/config --disable CONFIG_ARM64_ERRATUM_1418040
+./scripts/config --disable CONFIG_ARM64_ERRATUM_1165522
+./scripts/config --disable CONFIG_ARM64_ERRATUM_1530923
+./scripts/config --disable CONFIG_ARM64_ERRATUM_2441007
+./scripts/config --disable CONFIG_ARM64_ERRATUM_1286807
+./scripts/config --disable CONFIG_ARM64_ERRATUM_1463225
+./scripts/config --disable CONFIG_ARM64_ERRATUM_1542419
+./scripts/config --disable CONFIG_ARM64_ERRATUM_1508412
+./scripts/config --disable CONFIG_ARM64_ERRATUM_2051678
+./scripts/config --disable CONFIG_ARM64_ERRATUM_2077057
+./scripts/config --disable CONFIG_ARM64_ERRATUM_2658417
+./scripts/config --disable CONFIG_ARM64_ERRATUM_2054223
+./scripts/config --disable CONFIG_ARM64_ERRATUM_2067961
+./scripts/config --disable CONFIG_ARM64_ERRATUM_2441009
+./scripts/config --disable CONFIG_CAVIUM_TX2_ERRATUM_219
+./scripts/config --disable CONFIG_FUJITSU_ERRATUM_010001
+
 cd ${DIR}/
