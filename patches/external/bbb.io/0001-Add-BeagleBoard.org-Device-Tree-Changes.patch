@@ -1,11 +1,11 @@
-From 5c9c976e45087fc665605c6091db107d1e31394d Mon Sep 17 00:00:00 2001
+From 8b691ac9844ea4346d6c11aa033ba7319e2da54d Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Wed, 20 Dec 2023 13:57:21 -0600
+Date: Thu, 21 Dec 2023 09:31:18 -0600
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v6.1.x-Beagle
 
-https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/ba8972c2e64f75863eb85864026de24d63cff9fa
+https://git.beagleboard.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/8eacecbbd83d758f1bc5e86774b3750210b1bb1e
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm/boot/dts/am335x-bbb-bone-buses.dtsi  |   85 +
@@ -80,12 +80,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/overlays/Makefile           |   43 +
  arch/arm/boot/dts/overlays/PB-MIKROBUS-0.dts  |  107 +
  arch/arm/boot/dts/overlays/PB-MIKROBUS-1.dts  |  108 +
- .../arm64/boot/dts/ti/k3-am625-beagleplay.dts |  110 +-
- .../boot/dts/ti/k3-j721e-beagleboneai64.dts   |    5 +
+ .../arm64/boot/dts/ti/k3-am625-beagleplay.dts |  240 +-
+ .../boot/dts/ti/k3-j721e-beagleboneai64.dts   |   25 +
  include/dt-bindings/board/am335x-bone-pins.h  |  253 ++
  include/dt-bindings/mailbox/miv-ihc.h         |   17 +
  include/dt-bindings/pinctrl/omap.h            |    8 +-
- 77 files changed, 11150 insertions(+), 387 deletions(-)
+ 77 files changed, 11246 insertions(+), 441 deletions(-)
  create mode 100644 arch/arm/boot/dts/am335x-bbb-bone-buses.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-bone-common-univ.dtsi
  create mode 100644 arch/arm/boot/dts/am335x-boneblack-uboot-univ.dts
@@ -12448,7 +12448,7 @@ index 000000000000..23236ee7c938
 +	force-empty-serdev-controller;
 +};
 diff --git a/arch/arm64/boot/dts/ti/k3-am625-beagleplay.dts b/arch/arm64/boot/dts/ti/k3-am625-beagleplay.dts
-index 4e68eb762a1d..e8ce15c5ae94 100644
+index 4e68eb762a1d..bf3389c41a41 100644
 --- a/arch/arm64/boot/dts/ti/k3-am625-beagleplay.dts
 +++ b/arch/arm64/boot/dts/ti/k3-am625-beagleplay.dts
 @@ -14,7 +14,7 @@
@@ -12468,7 +12468,7 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  		mmc0 = &sdhci0;
  		mmc1 = &sdhci1;
  		mmc2 = &sdhci2;
-@@ -44,6 +45,8 @@ aliases {
+@@ -44,9 +45,12 @@ aliases {
  
  	chosen {
  		stdout-path = "serial2:115200n8";
@@ -12477,18 +12477,70 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  	};
  
  	memory@80000000 {
-@@ -170,6 +173,7 @@ leds {
++		bootph-pre-ram;
+ 		device_type = "memory";
+ 		/* 2G RAM */
+ 		reg = <0x00000000 0x80000000 0x00000000 0x80000000>;
+@@ -104,6 +108,7 @@ wkup_r5fss0_core0_dma_memory_region: r5f-dma-memory@9db00000 {
+ 	};
+ 
+ 	vsys_5v0: regulator-1 {
++		bootph-all;
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "vsys_5v0";
+ 		regulator-min-microvolt = <5000000>;
+@@ -114,6 +119,7 @@ vsys_5v0: regulator-1 {
+ 
+ 	vdd_3v3: regulator-2 {
+ 		/* output of TLV62595DMQR-U12 */
++		bootph-all;
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "vdd_3v3";
+ 		regulator-min-microvolt = <3300000>;
+@@ -130,7 +136,8 @@ wlan_en: regulator-3 {
+ 		regulator-min-microvolt = <1800000>;
+ 		regulator-max-microvolt = <1800000>;
+ 		enable-active-high;
+-		regulator-always-on;
++		/* regulator-always-on; */
++		regulator-off-in-suspend;
+ 		vin-supply = <&vdd_3v3>;
+ 		gpio = <&main_gpio0 38 GPIO_ACTIVE_HIGH>;
+ 		pinctrl-names = "default";
+@@ -139,6 +146,7 @@ wlan_en: regulator-3 {
+ 
+ 	vdd_3v3_sd: regulator-4 {
+ 		/* output of TPS22918DBVR-U21 */
++		bootph-all;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&vdd_3v3_sd_pins_default>;
+ 
+@@ -153,6 +161,7 @@ vdd_3v3_sd: regulator-4 {
+ 	};
+ 
+ 	vdd_sd_dv: regulator-5 {
++		bootph-all;
+ 		compatible = "regulator-gpio";
+ 		regulator-name = "sd_hs200_switch";
+ 		pinctrl-names = "default";
+@@ -167,9 +176,12 @@ vdd_sd_dv: regulator-5 {
+ 	};
+ 
+ 	leds {
++		bootph-all;
  		compatible = "gpio-leds";
  
  		led-0 {
++			bootph-all;
 +			label = "beaglebone:green:usr0";
  			gpios = <&main_gpio0 3 GPIO_ACTIVE_HIGH>;
  			linux,default-trigger = "heartbeat";
  			function = LED_FUNCTION_HEARTBEAT;
-@@ -177,24 +181,31 @@ led-0 {
+@@ -177,24 +189,35 @@ led-0 {
  		};
  
  		led-1 {
++			bootph-all;
 +			label = "beaglebone:green:usr1";
  			gpios = <&main_gpio0 4 GPIO_ACTIVE_HIGH>;
 -			linux,default-trigger = "disk-activity";
@@ -12498,6 +12550,7 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  		};
  
  		led-2 {
++			bootph-all;
 +			label = "beaglebone:green:usr2";
  			gpios = <&main_gpio0 5 GPIO_ACTIVE_HIGH>;
 +			linux,default-trigger = "cpu";
@@ -12505,6 +12558,7 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  		};
  
  		led-3 {
++			bootph-all;
 +			label = "beaglebone:green:usr3";
  			gpios = <&main_gpio0 6 GPIO_ACTIVE_HIGH>;
 -			function = LED_FUNCTION_LAN;
@@ -12513,13 +12567,14 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  		};
  
  		led-4 {
++			bootph-all;
 +			label = "beaglebone:green:usr4";
  			gpios = <&main_gpio0 9 GPIO_ACTIVE_HIGH>;
 +			linux,default-trigger = "phy0tx";
  			function = LED_FUNCTION_WLAN;
  		};
  	};
-@@ -264,6 +275,33 @@ cpsw3g_phy1: ethernet-phy@1 {
+@@ -264,6 +287,33 @@ cpsw3g_phy1: ethernet-phy@1 {
  			reset-deassert-us = <60000>; /* T2 */
  		};
  	};
@@ -12553,7 +12608,39 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  };
  
  &main_pmx0 {
-@@ -500,6 +538,13 @@ AM62X_IOPAD(0x01d4, PIN_INPUT_PULLUP, 2) /* (B15) UART0_RTSn.I2C3_SDA */
+@@ -327,6 +377,7 @@ AM62X_IOPAD(0x00ac, PIN_INPUT, 7) /* (L21) GPMC0_CSn1.GPIO0_42 */
+ 	};
+ 
+ 	vdd_sd_dv_pins_default: vdd-sd-pins-default {
++		bootph-all;
+ 		pinctrl-single,pins = <
+ 			AM62X_IOPAD(0x0244, PIN_OUTPUT, 7) /* (C17) MMC1_SDWP.GPIO1_49 */
+ 		>;
+@@ -346,6 +397,7 @@ AM62X_IOPAD(0x01ec, PIN_INPUT_PULLUP, 0) /* (A17) I2C1_SDA */
+ 	};
+ 
+ 	local_i2c_pins_default: local-i2c-pins-default {
++		bootph-all;
+ 		pinctrl-single,pins = <
+ 			AM62X_IOPAD(0x01e0, PIN_INPUT_PULLUP, 0) /* (B16) I2C0_SCL */
+ 			AM62X_IOPAD(0x01e4, PIN_INPUT_PULLUP, 0) /* (A16) I2C0_SDA */
+@@ -395,6 +447,7 @@ AM62X_IOPAD(0x012c, PIN_OUTPUT, 0) /* (AD19) RGMII1_TX_CTL */
+ 	};
+ 
+ 	emmc_pins_default: emmc-pins-default {
++		bootph-all;
+ 		pinctrl-single,pins = <
+ 			AM62X_IOPAD(0x0220, PIN_INPUT, 0) /* (Y3) MMC0_CMD */
+ 			AM62X_IOPAD(0x0218, PIN_INPUT, 0) /* (AB1) MMC0_CLK */
+@@ -416,6 +469,7 @@ AM62X_IOPAD(0x01c4, PIN_INPUT, 7) /* (B14) SPI0_D1_GPIO1_19 */
+ 	};
+ 
+ 	sd_pins_default: sd-pins-default {
++		bootph-all;
+ 		pinctrl-single,pins = <
+ 			AM62X_IOPAD(0x023c, PIN_INPUT, 0) /* (A21) MMC1_CMD */
+ 			AM62X_IOPAD(0x0234, PIN_INPUT, 0) /* (B22) MMC1_CLK */
+@@ -500,6 +554,13 @@ AM62X_IOPAD(0x01d4, PIN_INPUT_PULLUP, 2) /* (B15) UART0_RTSn.I2C3_SDA */
  		>;
  	};
  
@@ -12567,7 +12654,7 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  	mikrobus_uart_pins_default: mikrobus-uart-pins-default {
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x01d8, PIN_INPUT, 1) /* (C15) MCAN0_TX.UART5_RXD */
-@@ -507,6 +552,13 @@ AM62X_IOPAD(0x01dc, PIN_OUTPUT, 1) /* (E15) MCAN0_RX.UART5_TXD */
+@@ -507,6 +568,13 @@ AM62X_IOPAD(0x01dc, PIN_OUTPUT, 1) /* (E15) MCAN0_RX.UART5_TXD */
  		>;
  	};
  
@@ -12581,7 +12668,7 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  	mikrobus_spi_pins_default: mikrobus-spi-pins-default {
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x01b0, PIN_INPUT, 1) /* (A20) MCASP0_ACLKR.SPI2_CLK */
-@@ -516,6 +568,15 @@ AM62X_IOPAD(0x0198, PIN_INPUT, 1) /* (A19) MCASP0_AXR2.SPI2_D1 */
+@@ -516,6 +584,15 @@ AM62X_IOPAD(0x0198, PIN_INPUT, 1) /* (A19) MCASP0_AXR2.SPI2_D1 */
  		>;
  	};
  
@@ -12597,11 +12684,20 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  	mikrobus_gpio_pins_default: mikrobus-gpio-pins-default {
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x019c, PIN_INPUT, 7) /* (B18) MCASP0_AXR1.GPIO1_9 */
-@@ -524,6 +585,18 @@ AM62X_IOPAD(0x01a8, PIN_INPUT, 7) /* (D20) MCASP0_AFSX.GPIO1_12 */
+@@ -524,6 +601,27 @@ AM62X_IOPAD(0x01a8, PIN_INPUT, 7) /* (D20) MCASP0_AFSX.GPIO1_12 */
  		>;
  	};
  
++	main_uart0_pins_default: main-uart0-default-pins {
++		bootph-all;
++		pinctrl-single,pins = <
++			AM62X_IOPAD(0x01c8, PIN_INPUT, 0) /* (D14) UART0_RXD */
++			AM62X_IOPAD(0x01cc, PIN_OUTPUT, 0) /* (E14) UART0_TXD */
++		>;
++	};
++
 +	mikrobus_pwm_pins_default: mikrobus-pwm-pins-default {
++		bootph-all;
 +		pinctrl-single,pins = <
 +			AM62X_IOPAD(0x01a4, PIN_INPUT, 2) /* (B20) MCASP0_ACLKX.ECAP2_IN_APWM_OUT */
 +		>;
@@ -12616,7 +12712,21 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  	touchscreen_pins_default: touchscreen-pins-default {
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x01b4, PIN_OUTPUT, 7) /* (A13) SPI0_CS0.GPIO1_15 */
-@@ -606,6 +679,7 @@ &wkup_i2c0 {
+@@ -538,13 +636,6 @@ AM62X_IOPAD(0x01b8, PIN_OUTPUT, 2) /* (C13) SPI0_CS1.EHRPWM0_B */
+ 		>;
+ 	};
+ 
+-	console_pins_default: console-pins-default {
+-		pinctrl-single,pins = <
+-			AM62X_IOPAD(0x01c8, PIN_INPUT, 0) /* (D14) UART0_RXD */
+-			AM62X_IOPAD(0x01cc, PIN_OUTPUT, 0) /* (E14) UART0_TXD */
+-		>;
+-	};
+-
+ 	wifi_debug_uart_pins_default: wifi-debug-uart-pins-default {
+ 		pinctrl-single,pins = <
+ 			AM62X_IOPAD(0x001c, PIN_INPUT, 3) /* (J23) OSPI0_D4.UART6_RXD */
+@@ -606,6 +697,7 @@ &wkup_i2c0 {
  	pinctrl-0 = <&i2c_csi_pins_default>;
  	clock-frequency = <400000>;
  	/* Enable with overlay for camera sensor */
@@ -12624,7 +12734,7 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  };
  
  &mcu_i2c0 {
-@@ -613,6 +687,7 @@ &mcu_i2c0 {
+@@ -613,6 +705,7 @@ &mcu_i2c0 {
  	pinctrl-0 = <&i2c_qwiic_pins_default>;
  	clock-frequency = <100000>;
  	status = "okay";
@@ -12632,16 +12742,25 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  };
  
  &mcu_m4fss {
-@@ -696,8 +771,6 @@ &main_gpio0 {
+@@ -677,6 +770,7 @@ &cpsw3g_mdio {
+ };
+ 
+ &main_gpio0 {
++	bootph-all;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&gpio0_pins_default>;
+ 	gpio-line-names = "BL_EN_3V3", "SPE_PO_EN", "RTC_INT",	/* 0-2 */
+@@ -696,8 +790,7 @@ &main_gpio0 {
  };
  
  &main_gpio1 {
 -	pinctrl-names = "default";
 -	pinctrl-0 = <&mikrobus_gpio_pins_default>;
++	bootph-all;
  	gpio-line-names = "", "", "", "", "",			/* 0-4 */
  		"SPE_RSTN", "SPE_INTN", "MIKROBUS_GPIO1_7",	/* 5-7 */
  		"MIKROBUS_GPIO1_8", "MIKROBUS_GPIO1_9",		/* 8-9 */
-@@ -712,6 +785,15 @@ &main_gpio1 {
+@@ -712,7 +805,17 @@ &main_gpio1 {
  		"SD_CD", "SD_VOLT_SEL", "", "";			/* 48-51 */
  };
  
@@ -12655,9 +12774,19 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
 +};
 +
  &main_i2c0 {
++	bootph-all;
  	pinctrl-names = "default";
  	pinctrl-0 = <&local_i2c_pins_default>;
-@@ -822,6 +904,7 @@ &main_i2c1 {
+ 	clock-frequency = <400000>;
+@@ -731,6 +834,7 @@ rtc: rtc@68 {
+ 	};
+ 
+ 	tps65219: pmic@30 {
++		bootph-all;
+ 		compatible = "ti,tps65219";
+ 		reg = <0x30>;
+ 		buck1-supply = <&vsys_5v0>;
+@@ -822,6 +926,7 @@ &main_i2c1 {
  	pinctrl-0 = <&grove_pins_default>;
  	clock-frequency = <100000>;
  	status = "okay";
@@ -12665,7 +12794,32 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  };
  
  &main_i2c2 {
-@@ -871,16 +954,14 @@ it66121hdmitx_out: endpoint {
+@@ -831,20 +936,17 @@ &main_i2c2 {
+ 	status = "okay";
+ 
+ 	it66121hdmitx: hdmitx@4c {
+-		#sound-dai-cells = <0>;
+ 		compatible = "ite,it66121";
++		reg = <0x4c>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&hdmi_gpio_pins_default>;
+-		reg = <0x4c>;
+-
+-		interrupt-parent = <&main_gpio0>;
+-		interrupts = <36 IRQ_TYPE_EDGE_FALLING>;
+-
+ 		vcn33-supply = <&vdd_3v3>;
+ 		vcn18-supply = <&buck2_reg>;
+ 		vrf12-supply = <&buck3_reg>;
+-
+ 		reset-gpios = <&main_gpio0 21 GPIO_ACTIVE_LOW>;
++		interrupt-parent = <&main_gpio0>;
++		interrupts = <36 IRQ_TYPE_EDGE_FALLING>;
++		#sound-dai-cells = <0>;
+ 
+ 		ports {
+ 			#address-cells = <1>;
+@@ -871,65 +973,26 @@ it66121hdmitx_out: endpoint {
  };
  
  &main_i2c3 {
@@ -12684,14 +12838,82 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
  };
  
  &mcasp0 {
-@@ -990,13 +1071,20 @@ &main_uart1 {
+ 	status = "disabled";
+ };
+ 
+-&mcasp1 {
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&mcasp_hdmi_pins_default>;
+-
+-	#sound-dai-cells = <0>;
+-
+-	op-mode = <0>;          /* MCASP_IIS_MODE */
+-	tdm-slots = <2>;
+-
+-	serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
+-	       1 0 0 0
+-	       0 0 0 0
+-	       0 0 0 0
+-	       0 0 0 0
+-	>;
+-	tx-num-evt = <32>;
+-	rx-num-evt = <32>;
+-};
+-
+ &mcasp2 {
+ 	status = "disabled";
+ };
+ 
+-&dss {
+-	pinctrl-names = "default";
+-	pinctrl-0 = <&hdmi_pins_default>;
+-};
+-
+-&dss_ports {
+-	#address-cells = <1>;
+-	#size-cells = <0>;
+-
+-	/* VP2: DPI Output */
+-	port@1 {
+-		reg = <1>;
+-
+-		dpi1_out: endpoint {
+-			remote-endpoint = <&it66121hdmitx_in>;
+-		};
+-	};
+-};
+-
+ &sdhci0 {
++	bootph-all;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&emmc_pins_default>;
+ 	ti,driver-strength-ohm = <50>;
+@@ -939,6 +1002,7 @@ &sdhci0 {
+ 
+ &sdhci1 {
+ 	/* SD/MMC */
++	bootph-all;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&sd_pins_default>;
+ 
+@@ -979,8 +1043,9 @@ wlcore: wlcore@2 {
+ };
+ 
+ &main_uart0 {
++	bootph-all;
+ 	pinctrl-names = "default";
+-	pinctrl-0 = <&console_pins_default>;
++	pinctrl-0 = <&main_uart0_pins_default>;
+ 	status = "okay";
+ };
+ 
+@@ -990,13 +1055,58 @@ &main_uart1 {
  };
  
  &main_uart5 {
 -	pinctrl-names = "default";
 -	pinctrl-0 = <&mikrobus_uart_pins_default>;
  	status = "okay";
-+	force-empty-serdev-controller;
 +	symlink = "play/mikrobus/uart";
  };
  
@@ -12702,16 +12924,64 @@ index 4e68eb762a1d..e8ce15c5ae94 100644
 +	symlink = "play/cc1352/uart";
 +
 +	mcu {
++		status = "okay";
 +		compatible = "ti,cc1352p7";
 +		reset-gpios = <&main_gpio0 72 GPIO_ACTIVE_LOW>;
 +		vdds-supply = <&vdd_3v3>;
 +	};
++};
++
++&dss {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&hdmi_pins_default>;
++};
++
++&dss_ports {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	/* VP2: DPI Output */
++	port@1 {
++		reg = <1>;
++
++		dpi1_out: endpoint {
++			remote-endpoint = <&it66121hdmitx_in>;
++		};
++	};
++};
++
++&mcasp1 {
++	status = "okay";
++	#sound-dai-cells = <0>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&mcasp_hdmi_pins_default>;
++
++	op-mode = <0>;          /* MCASP_IIS_MODE */
++	tdm-slots = <2>;
++	serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
++	       1 0 0 0
++	       0 0 0 0
++	       0 0 0 0
++	       0 0 0 0
++	>;
++	tx-num-evt = <32>;
++	rx-num-evt = <32>;
  };
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts b/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
-index 490a5fe4a07c..86defecd4620 100644
+index 490a5fe4a07c..de269040698b 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
 +++ b/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
-@@ -189,30 +189,35 @@ leds {
+@@ -31,6 +31,8 @@ aliases {
+ 
+ 	chosen {
+ 		stdout-path = "serial2:115200n8";
++		base_dtb = "k3-j721e-beagleboneai64.dts";
++		base_dtb_timestamp = __TIMESTAMP__;
+ 	};
+ 
+ 	memory@80000000 {
+@@ -189,30 +191,35 @@ leds {
  		pinctrl-0 = <&led_pins_default>;
  
  		led-0 {
@@ -12747,6 +13017,99 @@ index 490a5fe4a07c..86defecd4620 100644
  			gpios = <&main_gpio0 109 GPIO_ACTIVE_HIGH>;
  			function = LED_FUNCTION_WLAN;
  			default-state = "off";
+@@ -531,6 +538,13 @@ J721E_WKUP_IOPAD(0xfc, PIN_INPUT_PULLUP, 0) /* (H24) WKUP_I2C0_SDA */
+ 		>;
+ 	};
+ 
++	wkup_uart0_pins_default: wkup-uart0-default-pins {
++		pinctrl-single,pins = <
++			J721E_WKUP_IOPAD(0xa0, PIN_INPUT, 0) /* (J29) WKUP_UART0_RXD */
++			J721E_WKUP_IOPAD(0xa4, PIN_OUTPUT, 0) /* (J28) WKUP_UART0_TXD */
++		>;
++	};
++
+ 	mcu_usbss1_pins_default: mcu-usbss1-pins-default {
+ 		pinctrl-single,pins = <
+ 			J721E_WKUP_IOPAD(0x3c, PIN_OUTPUT_PULLUP, 5) /* (A23) MCU_OSPI1_LBCLKO.WKUP_GPIO0_30 */
+@@ -541,6 +555,8 @@ J721E_WKUP_IOPAD(0x3c, PIN_OUTPUT_PULLUP, 5) /* (A23) MCU_OSPI1_LBCLKO.WKUP_GPIO
+ &wkup_uart0 {
+ 	/* Wakeup UART is used by TIFS firmware. */
+ 	status = "reserved";
++	pinctrl-names = "default";
++	pinctrl-0 = <&wkup_uart0_pins_default>;
+ };
+ 
+ &main_uart0 {
+@@ -553,6 +569,7 @@ &main_uart0 {
+ 
+ &main_sdhci0 {
+ 	/* eMMC */
++	status = "okay";
+ 	non-removable;
+ 	ti,driver-strength-ohm = <50>;
+ 	disable-wp;
+@@ -560,6 +577,7 @@ &main_sdhci0 {
+ 
+ &main_sdhci1 {
+ 	/* SD Card */
++	status = "okay";
+ 	vmmc-supply = <&vdd_mmc1>;
+ 	vqmmc-supply = <&vdd_sd_dv_alt>;
+ 	pinctrl-names = "default";
+@@ -681,6 +699,7 @@ &main_gpio7 {
+ };
+ 
+ &wkup_gpio0 {
++	status = "okay";
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&mcu_adc0_pins_default>, <&mcu_adc1_pins_default>,
+ 		    <&mikro_bus_pins_default>;
+@@ -692,6 +711,7 @@ &wkup_gpio1 {
+ };
+ 
+ &main_gpio0 {
++	status = "okay";
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&csi1_gpio_pins_default>, <&csi0_gpio_pins_default>;
+ };
+@@ -779,6 +799,7 @@ &usb1 {
+ };
+ 
+ &tscadc0 {
++	status = "okay";
+ 	/* BBB Header: P9.39, P9.40, P9.37, P9.38, P9.33, P9.36, P9.35 */
+ 	adc {
+ 		ti,adc-channels = <0 1 2 3 4 5 6>;
+@@ -786,6 +807,7 @@ adc {
+ };
+ 
+ &tscadc1 {
++	status = "okay";
+ 	/* MCU mikroBUS Header J10.1 - MCU_ADC1_AIN0 */
+ 	adc {
+ 		ti,adc-channels = <0>;
+@@ -1007,18 +1029,21 @@ &main_r5fss1_core1 {
+ };
+ 
+ &c66_0 {
++	status = "okay";
+ 	mboxes = <&mailbox0_cluster3>, <&mbox_c66_0>;
+ 	memory-region = <&c66_0_dma_memory_region>,
+ 			<&c66_0_memory_region>;
+ };
+ 
+ &c66_1 {
++	status = "okay";
+ 	mboxes = <&mailbox0_cluster3>, <&mbox_c66_1>;
+ 	memory-region = <&c66_1_dma_memory_region>,
+ 			<&c66_1_memory_region>;
+ };
+ 
+ &c71_0 {
++	status = "okay";
+ 	mboxes = <&mailbox0_cluster4>, <&mbox_c71_0>;
+ 	memory-region = <&c71_0_dma_memory_region>,
+ 			<&c71_0_memory_region>;
 diff --git a/include/dt-bindings/board/am335x-bone-pins.h b/include/dt-bindings/board/am335x-bone-pins.h
 new file mode 100644
 index 000000000000..54e92664ba79
