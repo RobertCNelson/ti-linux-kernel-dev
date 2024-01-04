@@ -1,9 +1,9 @@
-From 37ae40787a54895b773212b87baa6790a17b9c52 Mon Sep 17 00:00:00 2001
+From a6fe9aba3a0c7b7af2349fddd0c7a145a0763201 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 18 Dec 2023 13:54:10 -0600
+Date: Thu, 4 Jan 2024 15:59:52 -0600
 Subject: [PATCH] merge: ksmbd: https://github.com/cifsd-team/ksmbd
 
-https://github.com/cifsd-team/ksmbd/commit/7dec4e9aa879132a92d730aedaebfff130e2963f
+https://github.com/cifsd-team/ksmbd/commit/0590dfae7a6e0a50eda6584286b2c6215aaddea1
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  fs/ksmbd/Kconfig                        |   79 +
@@ -14,8 +14,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/auth.c                         | 1555 ++++
  fs/ksmbd/auth.h                         |   85 +
  fs/ksmbd/build_ksmbd.sh                 |  177 +
- fs/ksmbd/compat.c                       |  142 +
- fs/ksmbd/compat.h                       |   25 +
+ fs/ksmbd/compat.c                       |  149 +
+ fs/ksmbd/compat.h                       |   26 +
  fs/ksmbd/connection.c                   |  499 ++
  fs/ksmbd/connection.h                   |  232 +
  fs/ksmbd/crypto_ctx.c                   |  282 +
@@ -26,7 +26,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/ksmbd_netlink.h                |  414 +
  fs/ksmbd/ksmbd_spnego_negtokeninit.asn1 |   31 +
  fs/ksmbd/ksmbd_spnego_negtokentarg.asn1 |   19 +
- fs/ksmbd/ksmbd_work.c                   |  174 +
+ fs/ksmbd/ksmbd_work.c                   |  180 +
  fs/ksmbd/ksmbd_work.h                   |  144 +
  fs/ksmbd/mgmt/ksmbd_ida.c               |   57 +
  fs/ksmbd/mgmt/ksmbd_ida.h               |   40 +
@@ -45,18 +45,18 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/netmisc.c                      |  606 ++
  fs/ksmbd/nterr.h                        |  543 ++
  fs/ksmbd/ntlmssp.h                      |  169 +
- fs/ksmbd/oplock.c                       | 1986 +++++
- fs/ksmbd/oplock.h                       |  138 +
+ fs/ksmbd/oplock.c                       | 2078 +++++
+ fs/ksmbd/oplock.h                       |  144 +
  fs/ksmbd/server.c                       |  664 ++
  fs/ksmbd/server.h                       |   71 +
  fs/ksmbd/smb1misc.c                     |  298 +
  fs/ksmbd/smb1ops.c                      |   91 +
- fs/ksmbd/smb1pdu.c                      | 8881 ++++++++++++++++++++++
+ fs/ksmbd/smb1pdu.c                      | 8881 +++++++++++++++++++++
  fs/ksmbd/smb1pdu.h                      | 1651 ++++
  fs/ksmbd/smb2misc.c                     |  453 ++
- fs/ksmbd/smb2ops.c                      |  367 +
- fs/ksmbd/smb2pdu.c                      | 9283 +++++++++++++++++++++++
- fs/ksmbd/smb2pdu.h                      | 1725 +++++
+ fs/ksmbd/smb2ops.c                      |  370 +
+ fs/ksmbd/smb2pdu.c                      | 9310 +++++++++++++++++++++++
+ fs/ksmbd/smb2pdu.h                      | 1726 +++++
  fs/ksmbd/smb_common.c                   |  854 +++
  fs/ksmbd/smb_common.h                   |  521 ++
  fs/ksmbd/smbacl.c                       | 1668 ++++
@@ -73,12 +73,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  fs/ksmbd/unicode.c                      |  491 ++
  fs/ksmbd/unicode.h                      |  361 +
  fs/ksmbd/uniupr.h                       |  268 +
- fs/ksmbd/vfs.c                          | 3398 +++++++++
- fs/ksmbd/vfs.h                          |  340 +
- fs/ksmbd/vfs_cache.c                    |  802 ++
- fs/ksmbd/vfs_cache.h                    |  193 +
+ fs/ksmbd/vfs.c                          | 3415 +++++++++
+ fs/ksmbd/vfs.h                          |  346 +
+ fs/ksmbd/vfs_cache.c                    |  806 ++
+ fs/ksmbd/vfs_cache.h                    |  196 +
  fs/ksmbd/xattr.h                        |  122 +
- 72 files changed, 49653 insertions(+)
+ 72 files changed, 49826 insertions(+)
  create mode 100644 fs/ksmbd/Kconfig
  create mode 100644 fs/ksmbd/Makefile
  create mode 100644 fs/ksmbd/README.md
@@ -2704,10 +2704,10 @@ index 000000000000..4b10f0417d84
 +main $1
 diff --git a/fs/ksmbd/compat.c b/fs/ksmbd/compat.c
 new file mode 100644
-index 000000000000..d362ca32459b
+index 000000000000..cd48401f28c5
 --- /dev/null
 +++ b/fs/ksmbd/compat.c
-@@ -0,0 +1,142 @@
+@@ -0,0 +1,149 @@
 +#include <linux/version.h>
 +#include <linux/fs.h>
 +#include "compat.h"
@@ -2735,9 +2735,11 @@ index 000000000000..d362ca32459b
 +}
 +
 +int compat_ksmbd_vfs_set_dos_attrib_xattr(const struct path *path,
-+					  struct xattr_dos_attrib *da)
++					  struct xattr_dos_attrib *da,
++					  bool get_write)
 +{
-+	return ksmbd_vfs_set_dos_attrib_xattr(mnt_idmap(path->mnt), path, da);
++	return ksmbd_vfs_set_dos_attrib_xattr(mnt_idmap(path->mnt), path, da,
++			get_write);
 +}
 +
 +ssize_t compat_ksmbd_vfs_getxattr(struct path *path, struct dentry *dentry,
@@ -2770,9 +2772,11 @@ index 000000000000..d362ca32459b
 +}
 +
 +int compat_ksmbd_vfs_set_dos_attrib_xattr(const struct path *path,
-+					  struct xattr_dos_attrib *da)
++					  struct xattr_dos_attrib *da,
++					  bool get_write)
 +{
-+	return ksmbd_vfs_set_dos_attrib_xattr(mnt_idmap(path->mnt), path, da);
++	return ksmbd_vfs_set_dos_attrib_xattr(mnt_idmap(path->mnt), path, da,
++			get_write);
 +}
 +
 +ssize_t compat_ksmbd_vfs_getxattr(struct path *path, struct dentry *dentry,
@@ -2804,9 +2808,11 @@ index 000000000000..d362ca32459b
 +}
 +
 +int compat_ksmbd_vfs_set_dos_attrib_xattr(const struct path *path,
-+					  struct xattr_dos_attrib *da)
++					  struct xattr_dos_attrib *da,
++					  bool get_write)
 +{
-+	return ksmbd_vfs_set_dos_attrib_xattr(mnt_user_ns(path->mnt), path, da);
++	return ksmbd_vfs_set_dos_attrib_xattr(mnt_user_ns(path->mnt), path, da,
++			get_write);
 +}
 +
 +ssize_t compat_ksmbd_vfs_getxattr(struct path *path, struct dentry *dentry,
@@ -2836,10 +2842,11 @@ index 000000000000..d362ca32459b
 +}
 +
 +int compat_ksmbd_vfs_set_dos_attrib_xattr(const struct path *path,
-+					  struct xattr_dos_attrib *da)
++					  struct xattr_dos_attrib *da,
++					  bool get_write)
 +{
 +	return ksmbd_vfs_set_dos_attrib_xattr(mnt_user_ns(path->mnt), path,
-+					      da);
++					      da, get_write);
 +}
 +ssize_t compat_ksmbd_vfs_getxattr(struct path *path, struct dentry *dentry,
 +				  char *xattr_name, char **xattr_buf)
@@ -2852,10 +2859,10 @@ index 000000000000..d362ca32459b
 +#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0) */
 diff --git a/fs/ksmbd/compat.h b/fs/ksmbd/compat.h
 new file mode 100644
-index 000000000000..134b7a210842
+index 000000000000..0c03f5c9a3e8
 --- /dev/null
 +++ b/fs/ksmbd/compat.h
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,26 @@
 +#ifndef COMPAT_H
 +#define COMPAT_H
 +
@@ -2878,7 +2885,8 @@ index 000000000000..134b7a210842
 +					  struct xattr_dos_attrib *da);
 +
 +int compat_ksmbd_vfs_set_dos_attrib_xattr(const struct path *path,
-+					  struct xattr_dos_attrib *da);
++					  struct xattr_dos_attrib *da,
++					  bool get_write);
 +
 +#endif
 diff --git a/fs/ksmbd/connection.c b/fs/ksmbd/connection.c
@@ -4741,10 +4749,10 @@ index 000000000000..1151933e7b9c
 +	}
 diff --git a/fs/ksmbd/ksmbd_work.c b/fs/ksmbd/ksmbd_work.c
 new file mode 100644
-index 000000000000..5293824cd423
+index 000000000000..33b675bee565
 --- /dev/null
 +++ b/fs/ksmbd/ksmbd_work.c
-@@ -0,0 +1,174 @@
+@@ -0,0 +1,180 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2019 Samsung Electronics Co., Ltd.
@@ -4806,6 +4814,9 @@ index 000000000000..5293824cd423
 +	kfree(work->tr_buf);
 +	kvfree(work->request_buf);
 +	kfree(work->iov);
++	if (!list_empty(&work->interim_entry))
++		list_del(&work->interim_entry);
++
 +	if (work->async_id)
 +		ksmbd_release_id(&work->conn->async_ida, work->async_id);
 +	kmem_cache_free(work_cache, work);
@@ -4873,8 +4884,11 @@ index 000000000000..5293824cd423
 +		new = krealloc(work->iov,
 +			       sizeof(struct kvec) * work->iov_alloc_cnt,
 +			       GFP_KERNEL | __GFP_ZERO);
-+		if (!new)
++		if (!new) {
++			kfree(ar);
++			work->iov_alloc_cnt -= 4;
 +			return -ENOMEM;
++		}
 +		work->iov = new;
 +	}
 +
@@ -8931,10 +8945,10 @@ index 000000000000..adaf4c0cbe8f
 +#endif /* __KSMBD_NTLMSSP_H */
 diff --git a/fs/ksmbd/oplock.c b/fs/ksmbd/oplock.c
 new file mode 100644
-index 000000000000..7f43dd5976e2
+index 000000000000..61c83f00d8c3
 --- /dev/null
 +++ b/fs/ksmbd/oplock.c
-@@ -0,0 +1,1986 @@
+@@ -0,0 +1,2078 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -9045,9 +9059,10 @@ index 000000000000..7f43dd5976e2
 +	lease->new_state = 0;
 +	lease->flags = lctx->flags;
 +	lease->duration = lctx->duration;
++	lease->is_dir = lctx->is_dir;
 +	memcpy(lease->parent_lease_key, lctx->parent_lease_key, SMB2_LEASE_KEY_SIZE);
 +	lease->version = lctx->version;
-+	lease->epoch = 0;
++	lease->epoch = le16_to_cpu(lctx->epoch);
 +	INIT_LIST_HEAD(&opinfo->lease_entry);
 +	opinfo->o_lease = lease;
 +
@@ -9403,8 +9418,8 @@ index 000000000000..7f43dd5976e2
 +{
 +	struct oplock_info *opinfo;
 +
-+	if (S_ISDIR(file_inode(fp->filp)->i_mode))
-+		return;
++	if (fp->reserve_lease_break)
++		smb_lazy_parent_lease_break_close(fp);
 +
 +	opinfo = opinfo_get(fp);
 +	if (!opinfo)
@@ -9579,12 +9594,13 @@ index 000000000000..7f43dd5976e2
 +			/* upgrading lease */
 +			if ((atomic_read(&ci->op_count) +
 +			     atomic_read(&ci->sop_count)) == 1) {
-+				if (lease->state ==
-+				    (lctx->req_state & lease->state)) {
++				if (lease->state != SMB2_LEASE_NONE_LE &&
++				    lease->state == (lctx->req_state & lease->state)) {
 +					lease->state |= lctx->req_state;
 +					if (lctx->req_state &
 +						SMB2_LEASE_WRITE_CACHING_LE)
 +						lease_read_to_write(opinfo);
++
 +				}
 +			} else if ((atomic_read(&ci->op_count) +
 +				    atomic_read(&ci->sop_count)) > 1) {
@@ -9972,7 +9988,8 @@ index 000000000000..7f43dd5976e2
 +					     interim_entry);
 +			setup_async_work(in_work, NULL, NULL);
 +			smb2_send_interim_resp(in_work, STATUS_PENDING);
-+			list_del(&in_work->interim_entry);
++			list_del_init(&in_work->interim_entry);
++			release_async_work(in_work);
 +		}
 +		INIT_WORK(&work->work, __smb2_lease_break_noti);
 +		ksmbd_queue_work(work);
@@ -10038,7 +10055,8 @@ index 000000000000..7f43dd5976e2
 +					lease->new_state =
 +						SMB2_LEASE_READ_CACHING_LE;
 +			} else {
-+				if (lease->state & SMB2_LEASE_HANDLE_CACHING_LE)
++				if (lease->state & SMB2_LEASE_HANDLE_CACHING_LE &&
++						!lease->is_dir)
 +					lease->new_state =
 +						SMB2_LEASE_READ_CACHING_LE;
 +				else
@@ -10180,6 +10198,7 @@ index 000000000000..7f43dd5976e2
 +	       SMB2_LEASE_KEY_SIZE);
 +	lease2->duration = lease1->duration;
 +	lease2->flags = lease1->flags;
++	lease2->epoch = lease1->epoch++;
 +}
 +
 +static int add_lease_global_list(struct oplock_info *opinfo)
@@ -10233,6 +10252,89 @@ index 000000000000..7f43dd5976e2
 +	}
 +}
 +
++void smb_send_parent_lease_break_noti(struct ksmbd_file *fp,
++				      struct lease_ctx_info *lctx)
++{
++	struct oplock_info *opinfo;
++	struct ksmbd_inode *p_ci = NULL;
++
++	if (lctx->version != 2)
++		return;
++
++	p_ci = ksmbd_inode_lookup_lock(fp->filp->f_path.dentry->d_parent);
++	if (!p_ci)
++		return;
++
++	read_lock(&p_ci->m_lock);
++	list_for_each_entry(opinfo, &p_ci->m_op_list, op_entry) {
++		if (!opinfo->is_lease)
++			continue;
++
++		if (opinfo->o_lease->state != SMB2_OPLOCK_LEVEL_NONE &&
++		    (!(lctx->flags & SMB2_LEASE_FLAG_PARENT_LEASE_KEY_SET_LE) ||
++		     !compare_guid_key(opinfo, fp->conn->ClientGUID,
++				      lctx->parent_lease_key))) {
++			if (!atomic_inc_not_zero(&opinfo->refcount))
++				continue;
++
++			atomic_inc(&opinfo->conn->r_count);
++			if (ksmbd_conn_releasing(opinfo->conn)) {
++				atomic_dec(&opinfo->conn->r_count);
++				continue;
++			}
++
++			read_unlock(&p_ci->m_lock);
++			oplock_break(opinfo, SMB2_OPLOCK_LEVEL_NONE);
++			opinfo_conn_put(opinfo);
++			read_lock(&p_ci->m_lock);
++		}
++	}
++	read_unlock(&p_ci->m_lock);
++
++	ksmbd_inode_put(p_ci);
++}
++
++void smb_lazy_parent_lease_break_close(struct ksmbd_file *fp)
++{
++	struct oplock_info *opinfo;
++	struct ksmbd_inode *p_ci = NULL;
++
++	rcu_read_lock();
++	opinfo = rcu_dereference(fp->f_opinfo);
++	rcu_read_unlock();
++
++	if (!opinfo->is_lease || opinfo->o_lease->version != 2)
++		return;
++
++	p_ci = ksmbd_inode_lookup_lock(fp->filp->f_path.dentry->d_parent);
++	if (!p_ci)
++		return;
++
++	read_lock(&p_ci->m_lock);
++	list_for_each_entry(opinfo, &p_ci->m_op_list, op_entry) {
++		if (!opinfo->is_lease)
++			continue;
++
++		if (opinfo->o_lease->state != SMB2_OPLOCK_LEVEL_NONE) {
++			if (!atomic_inc_not_zero(&opinfo->refcount))
++				continue;
++
++			atomic_inc(&opinfo->conn->r_count);
++			if (ksmbd_conn_releasing(opinfo->conn)) {
++				atomic_dec(&opinfo->conn->r_count);
++				continue;
++			}
++			read_unlock(&p_ci->m_lock);
++			oplock_break(opinfo, SMB2_OPLOCK_LEVEL_NONE);
++			opinfo_conn_put(opinfo);
++			read_lock(&p_ci->m_lock);
++		}
++	}
++	read_unlock(&p_ci->m_lock);
++
++	ksmbd_inode_put(p_ci);
++}
++
 +/**
 + * smb_grant_oplock() - handle oplock/lease request on file open
 + * @work:		smb work
@@ -10255,10 +10357,6 @@ index 000000000000..7f43dd5976e2
 +	struct ksmbd_inode *ci = fp->f_ci;
 +	bool prev_op_has_lease;
 +	__le32 prev_op_state = 0;
-+
-+	/* not support directory lease */
-+	if (S_ISDIR(file_inode(fp->filp)->i_mode))
-+		return 0;
 +
 +	opinfo = alloc_opinfo(work, pid, tid);
 +	if (!opinfo)
@@ -10547,6 +10645,7 @@ index 000000000000..7f43dd5976e2
 +		memcpy(buf->lcontext.LeaseKey, lease->lease_key,
 +		       SMB2_LEASE_KEY_SIZE);
 +		buf->lcontext.LeaseFlags = lease->flags;
++		buf->lcontext.Epoch = cpu_to_le16(++lease->epoch);
 +		buf->lcontext.LeaseState = lease->state;
 +		memcpy(buf->lcontext.ParentLeaseKey, lease->parent_lease_key,
 +		       SMB2_LEASE_KEY_SIZE);
@@ -10583,10 +10682,11 @@ index 000000000000..7f43dd5976e2
 +/**
 + * parse_lease_state() - parse lease context containted in file open request
 + * @open_req:	buffer containing smb2 file open(create) request
++ * @is_dir:	whether leasing file is directory
 + *
 + * Return:  oplock state, -ENOENT if create lease context not found
 + */
-+struct lease_ctx_info *parse_lease_state(void *open_req)
++struct lease_ctx_info *parse_lease_state(void *open_req, bool is_dir)
 +{
 +	struct create_context *cc;
 +	struct smb2_create_req *req = (struct smb2_create_req *)open_req;
@@ -10604,8 +10704,14 @@ index 000000000000..7f43dd5976e2
 +		struct create_lease_v2 *lc = (struct create_lease_v2 *)cc;
 +
 +		memcpy(lreq->lease_key, lc->lcontext.LeaseKey, SMB2_LEASE_KEY_SIZE);
-+		lreq->req_state = lc->lcontext.LeaseState;
++		if (is_dir) {
++			lreq->req_state = lc->lcontext.LeaseState &
++				~SMB2_LEASE_WRITE_CACHING_LE;
++			lreq->is_dir = true;
++		} else
++			lreq->req_state = lc->lcontext.LeaseState;
 +		lreq->flags = lc->lcontext.LeaseFlags;
++		lreq->epoch = lc->lcontext.Epoch;
 +		lreq->duration = lc->lcontext.LeaseDuration;
 +		memcpy(lreq->parent_lease_key, lc->lcontext.ParentLeaseKey,
 +				SMB2_LEASE_KEY_SIZE);
@@ -10923,10 +11029,10 @@ index 000000000000..7f43dd5976e2
 +}
 diff --git a/fs/ksmbd/oplock.h b/fs/ksmbd/oplock.h
 new file mode 100644
-index 000000000000..94395e4804ce
+index 000000000000..19144100906e
 --- /dev/null
 +++ b/fs/ksmbd/oplock.h
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,144 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -10971,7 +11077,9 @@ index 000000000000..94395e4804ce
 +	__le32			flags;
 +	__le64			duration;
 +	__u8			parent_lease_key[SMB2_LEASE_KEY_SIZE];
++	__le16			epoch;
 +	int			version;
++	bool			is_dir;
 +};
 +
 +struct lease_table {
@@ -10990,6 +11098,7 @@ index 000000000000..94395e4804ce
 +	__u8			parent_lease_key[SMB2_LEASE_KEY_SIZE];
 +	int			version;
 +	unsigned short		epoch;
++	bool			is_dir;
 +	struct lease_table	*l_lb;
 +};
 +
@@ -11048,7 +11157,7 @@ index 000000000000..94395e4804ce
 +
 +/* Lease related functions */
 +void create_lease_buf(u8 *rbuf, struct lease *lease);
-+struct lease_ctx_info *parse_lease_state(void *open_req);
++struct lease_ctx_info *parse_lease_state(void *open_req, bool is_dir);
 +__u8 smb2_map_lease_to_oplock(__le32 lease_state);
 +int lease_read_to_write(struct oplock_info *opinfo);
 +
@@ -11064,6 +11173,9 @@ index 000000000000..94395e4804ce
 +int find_same_lease_key(struct ksmbd_session *sess, struct ksmbd_inode *ci,
 +			struct lease_ctx_info *lctx);
 +void destroy_lease_table(struct ksmbd_conn *conn);
++void smb_send_parent_lease_break_noti(struct ksmbd_file *fp,
++				      struct lease_ctx_info *lctx);
++void smb_lazy_parent_lease_break_close(struct ksmbd_file *fp);
 +#endif /* __KSMBD_OPLOCK_H */
 diff --git a/fs/ksmbd/server.c b/fs/ksmbd/server.c
 new file mode 100644
@@ -12215,7 +12327,7 @@ index 000000000000..8a314bc99b5c
 +}
 diff --git a/fs/ksmbd/smb1pdu.c b/fs/ksmbd/smb1pdu.c
 new file mode 100644
-index 000000000000..ffed1e3f8782
+index 000000000000..7501a53777cb
 --- /dev/null
 +++ b/fs/ksmbd/smb1pdu.c
 @@ -0,0 +1,8881 @@
@@ -14841,7 +14953,7 @@ index 000000000000..ffed1e3f8782
 +			goto free_path;
 +	}
 +
-+	err = ksmbd_query_inode_status(d_inode(path.dentry->d_parent));
++	err = ksmbd_query_inode_status(path.dentry->d_parent);
 +	if (err == KSMBD_INODE_STATUS_PENDING_DELETE) {
 +		err = -EBUSY;
 +		goto free_path;
@@ -14965,7 +15077,7 @@ index 000000000000..ffed1e3f8782
 +			da.create_time = fp->create_time;
 +
 +			err = compat_ksmbd_vfs_set_dos_attrib_xattr(&path,
-+								    &da);
++								    &da, false);
 +			if (err)
 +				ksmbd_debug(SMB, "failed to store creation time in xattr\n");
 +			err = 0;
@@ -15017,9 +15129,7 @@ index 000000000000..ffed1e3f8782
 +
 +free_path:
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	path_put(&path);
 +#endif
@@ -16344,7 +16454,11 @@ index 000000000000..ffed1e3f8782
 +	struct smb_com_trans2_rsp *rsp = work->response_buf;
 +	struct trans2_qpi_req_params *req_params;
 +	char *name = NULL;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 +	struct path path, parent_path;
++#else
++	struct path path;
++#endif
 +	struct kstat st;
 +	int rc;
 +	char *ptr;
@@ -16415,7 +16529,7 @@ index 000000000000..ffed1e3f8782
 +		struct file_info_standard *infos;
 +
 +		ksmbd_debug(SMB, "SMB_INFO_STANDARD\n");
-+		rc = ksmbd_query_inode_status(d_inode(path.dentry));
++		rc = ksmbd_query_inode_status(path.dentry);
 +		if (rc == KSMBD_INODE_STATUS_PENDING_DELETE) {
 +			rc = -EBUSY;
 +			goto err_out;
@@ -16460,7 +16574,7 @@ index 000000000000..ffed1e3f8782
 +		unsigned int del_pending;
 +
 +		ksmbd_debug(SMB, "SMB_QUERY_FILE_STANDARD_INFO\n");
-+		del_pending = ksmbd_query_inode_status(d_inode(path.dentry));
++		del_pending = ksmbd_query_inode_status(path.dentry);
 +		if (del_pending == KSMBD_INODE_STATUS_PENDING_DELETE)
 +			del_pending = 1;
 +		else
@@ -16617,7 +16731,7 @@ index 000000000000..ffed1e3f8782
 +
 +		ksmbd_debug(SMB, "SMB_QUERY_FILE_ALL_INFO\n");
 +
-+		del_pending = ksmbd_query_inode_status(d_inode(path.dentry));
++		del_pending = ksmbd_query_inode_status(path.dentry);
 +		if (del_pending == KSMBD_INODE_STATUS_PENDING_DELETE)
 +			del_pending = 1;
 +		else
@@ -16804,9 +16918,7 @@ index 000000000000..ffed1e3f8782
 +
 +err_out:
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	path_put(&path);
 +#endif
@@ -16904,7 +17016,6 @@ index 000000000000..ffed1e3f8782
 + */
 +static int query_fs_info(struct ksmbd_work *work)
 +{
-+	struct smb_hdr *req_hdr = work->request_buf;
 +	struct smb_com_trans2_req *req = work->request_buf;
 +	struct smb_com_trans2_rsp *rsp = work->response_buf;
 +	struct smb_com_trans2_qfsi_req_params *req_params;
@@ -17396,9 +17507,7 @@ index 000000000000..ffed1e3f8782
 +
 +free_path:
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	path_put(&path);
 +#endif
@@ -17473,10 +17582,7 @@ index 000000000000..ffed1e3f8782
 +
 +	rc = ksmbd_vfs_remove_file(work, &path);
 +
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
-+
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	rc = ksmbd_vfs_remove_file(work, name);
 +#endif
@@ -18310,7 +18416,11 @@ index 000000000000..ffed1e3f8782
 +	struct smb_com_trans2_rsp *rsp = work->response_buf;
 +	struct smb_com_trans2_ffirst_req_params *req_params;
 +	struct smb_com_trans2_ffirst_rsp_parms *params = NULL;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 +	struct path path, parent_path;
++#else
++	struct path path;
++#endif
 +	struct ksmbd_dirent *de;
 +	struct ksmbd_file *dir_fp = NULL;
 +	struct kstat kstat;
@@ -18584,9 +18694,7 @@ index 000000000000..ffed1e3f8782
 +
 +err_free_kernpath:
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	path_put(&path);
 +#endif
@@ -19740,7 +19848,11 @@ index 000000000000..ffed1e3f8782
 +	if (test_share_config_flag(work->tcon->share_conf,
 +				   KSMBD_SHARE_FLAG_STORE_DOS_ATTRS)) {
 +		__u64 ctime;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 +		struct path path, parent_path;
++#else
++		struct path path;
++#endif
 +		struct xattr_dos_attrib da = {0};
 +
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
@@ -19759,13 +19871,11 @@ index 000000000000..ffed1e3f8782
 +				   XATTR_DOSINFO_CREATE_TIME |
 +				   XATTR_DOSINFO_ITIME;
 +
-+			err = compat_ksmbd_vfs_set_dos_attrib_xattr(&path, &da);
++			err = compat_ksmbd_vfs_set_dos_attrib_xattr(&path, &da, false);
 +			if (err)
 +				ksmbd_debug(SMB, "failed to store creation time in xattr\n");
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+			inode_unlock(d_inode(parent_path.dentry));
-+			path_put(&path);
-+			path_put(&parent_path);
++			ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +			path_put(&path);
 +#endif
@@ -19952,7 +20062,11 @@ index 000000000000..ffed1e3f8782
 +	struct smb_com_check_directory_req *req = work->request_buf;
 +	struct smb_com_check_directory_rsp *rsp = work->response_buf;
 +	struct ksmbd_share_config *share = work->tcon->share_conf;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 +	struct path path, parent_path;
++#else
++	struct path path;
++#endif
 +	struct kstat stat;
 +	char *name, *last;
 +	int err;
@@ -20040,9 +20154,7 @@ index 000000000000..ffed1e3f8782
 +	}
 +
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	path_put(&path);
 +#endif
@@ -20110,9 +20222,8 @@ index 000000000000..ffed1e3f8782
 +	}
 +
 +	err = ksmbd_vfs_remove_file(work, &path);
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	err = ksmbd_vfs_remove_file(work, name);
 +#endif
@@ -20175,9 +20286,7 @@ index 000000000000..ffed1e3f8782
 +						 &parent_path, &path, 0);
 +		if (!err) {
 +			err = ksmbd_vfs_remove_file(work, &path);
-+			inode_unlock(d_inode(parent_path.dentry));
-+			path_put(&path);
-+			path_put(&parent_path);
++			ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +		}
 +#else
 +		err = ksmbd_vfs_remove_file(work, name);
@@ -20312,7 +20421,11 @@ index 000000000000..ffed1e3f8782
 +{
 +	struct smb_com_query_information_req *req = work->request_buf;
 +	struct ksmbd_share_config *share = work->tcon->share_conf;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 +	struct path path, parent_path;
++#else
++	struct path path;
++#endif
 +	char *name;
 +	__le32 err = 0;
 +	int ret;
@@ -20345,9 +20458,7 @@ index 000000000000..ffed1e3f8782
 +	compat_generic_fillattr(&path, STATX_BASIC_STATS,
 +				d_inode(path.dentry), st);
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	path_put(&path);
 +#endif
@@ -20617,7 +20728,7 @@ index 000000000000..ffed1e3f8782
 +			goto free_path;
 +	}
 +
-+	err = ksmbd_query_inode_status(d_inode(path.dentry->d_parent));
++	err = ksmbd_query_inode_status(path.dentry->d_parent);
 +	if (err == KSMBD_INODE_STATUS_PENDING_DELETE) {
 +		err = -EBUSY;
 +		goto free_path;
@@ -20705,7 +20816,8 @@ index 000000000000..ffed1e3f8782
 +				   XATTR_DOSINFO_CREATE_TIME |
 +				   XATTR_DOSINFO_ITIME;
 +
-+			err = compat_ksmbd_vfs_set_dos_attrib_xattr(&path, &da);
++			err = compat_ksmbd_vfs_set_dos_attrib_xattr(&path, &da,
++					false);
 +			if (err)
 +				ksmbd_debug(SMB, "failed to store creation time in xattr\n");
 +			err = 0;
@@ -20743,9 +20855,7 @@ index 000000000000..ffed1e3f8782
 +
 +free_path:
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	path_put(&path);
 +#endif
@@ -20799,7 +20909,11 @@ index 000000000000..ffed1e3f8782
 +	struct smb_com_setattr_req *req = work->request_buf;
 +	struct smb_com_setattr_rsp *rsp = work->response_buf;
 +	struct ksmbd_share_config *share = work->tcon->share_conf;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
 +	struct path path, parent_path;
++#else
++	struct path path;
++#endif
 +	struct kstat stat;
 +	struct iattr attrs;
 +	int err = 0;
@@ -20832,9 +20946,7 @@ index 000000000000..ffed1e3f8782
 +	attrs.ia_mode = 0;
 +
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	path_put(&path);
 +#endif
@@ -23218,10 +23330,10 @@ index 000000000000..25e981f447c0
 +}
 diff --git a/fs/ksmbd/smb2ops.c b/fs/ksmbd/smb2ops.c
 new file mode 100644
-index 000000000000..8c26b11c33bb
+index 000000000000..f58edb5f44f6
 --- /dev/null
 +++ b/fs/ksmbd/smb2ops.c
-@@ -0,0 +1,367 @@
+@@ -0,0 +1,370 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -23496,7 +23608,8 @@ index 000000000000..8c26b11c33bb
 +	conn->signing_algorithm = SIGNING_ALG_AES_CMAC;
 +
 +	if (server_conf.flags & KSMBD_GLOBAL_FLAG_SMB2_LEASES)
-+		conn->vals->capabilities |= SMB2_GLOBAL_CAP_LEASING;
++		conn->vals->capabilities |= SMB2_GLOBAL_CAP_LEASING |
++			SMB2_GLOBAL_CAP_DIRECTORY_LEASING;
 +
 +	if (server_conf.flags & KSMBD_GLOBAL_FLAG_SMB2_ENCRYPTION ||
 +	    (!(server_conf.flags & KSMBD_GLOBAL_FLAG_SMB2_ENCRYPTION_OFF) &&
@@ -23521,7 +23634,8 @@ index 000000000000..8c26b11c33bb
 +	conn->signing_algorithm = SIGNING_ALG_AES_CMAC;
 +
 +	if (server_conf.flags & KSMBD_GLOBAL_FLAG_SMB2_LEASES)
-+		conn->vals->capabilities |= SMB2_GLOBAL_CAP_LEASING;
++		conn->vals->capabilities |= SMB2_GLOBAL_CAP_LEASING |
++			SMB2_GLOBAL_CAP_DIRECTORY_LEASING;
 +
 +	if (server_conf.flags & KSMBD_GLOBAL_FLAG_SMB2_ENCRYPTION ||
 +	    (!(server_conf.flags & KSMBD_GLOBAL_FLAG_SMB2_ENCRYPTION_OFF) &&
@@ -23546,7 +23660,8 @@ index 000000000000..8c26b11c33bb
 +	conn->signing_algorithm = SIGNING_ALG_AES_CMAC;
 +
 +	if (server_conf.flags & KSMBD_GLOBAL_FLAG_SMB2_LEASES)
-+		conn->vals->capabilities |= SMB2_GLOBAL_CAP_LEASING;
++		conn->vals->capabilities |= SMB2_GLOBAL_CAP_LEASING |
++			SMB2_GLOBAL_CAP_DIRECTORY_LEASING;
 +
 +	if (server_conf.flags & KSMBD_GLOBAL_FLAG_SMB3_MULTICHANNEL)
 +		conn->vals->capabilities |= SMB2_GLOBAL_CAP_MULTI_CHANNEL;
@@ -23591,10 +23706,10 @@ index 000000000000..8c26b11c33bb
 +}
 diff --git a/fs/ksmbd/smb2pdu.c b/fs/ksmbd/smb2pdu.c
 new file mode 100644
-index 000000000000..0557aa4d91ce
+index 000000000000..334e4a92524f
 --- /dev/null
 +++ b/fs/ksmbd/smb2pdu.c
-@@ -0,0 +1,9283 @@
+@@ -0,0 +1,9310 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -24260,12 +24375,8 @@ index 000000000000..0557aa4d91ce
 +
 +int setup_async_work(struct ksmbd_work *work, void (*fn)(void **), void **arg)
 +{
-+	struct smb2_hdr *rsp_hdr;
 +	struct ksmbd_conn *conn = work->conn;
 +	int id;
-+
-+	rsp_hdr = ksmbd_resp_buf_next(work);
-+	rsp_hdr->Flags |= SMB2_FLAGS_ASYNC_COMMAND;
 +
 +	id = ksmbd_acquire_async_msg_id(&conn->async_ida);
 +	if (id < 0) {
@@ -24274,7 +24385,6 @@ index 000000000000..0557aa4d91ce
 +	}
 +	work->asynchronous = true;
 +	work->async_id = id;
-+	rsp_hdr->Id.AsyncId = cpu_to_le64(id);
 +
 +	ksmbd_debug(SMB,
 +		    "Send interim Response to inform async request id : %d\n",
@@ -24326,6 +24436,8 @@ index 000000000000..0557aa4d91ce
 +	       __SMB2_HEADER_STRUCTURE_SIZE);
 +
 +	rsp_hdr = smb2_get_msg(in_work->response_buf);
++	rsp_hdr->Flags |= SMB2_FLAGS_ASYNC_COMMAND;
++	rsp_hdr->Id.AsyncId = cpu_to_le64(work->async_id);
 +	smb2_set_err_rsp(in_work);
 +	rsp_hdr->Status = status;
 +
@@ -26012,7 +26124,8 @@ index 000000000000..0557aa4d91ce
 +			rc = ksmbd_vfs_setxattr(user_ns,
 +#endif
 +						path, attr_name, value,
-+						le16_to_cpu(eabuf->EaValueLength), 0);
++						le16_to_cpu(eabuf->EaValueLength),
++						0, true);
 +			if (rc < 0) {
 +				ksmbd_debug(SMB,
 +					    "ksmbd_vfs_setxattr is failed(%d)\n",
@@ -26088,7 +26201,7 @@ index 000000000000..0557aa4d91ce
 +#else
 +	rc = ksmbd_vfs_setxattr(user_ns, path,
 +#endif
-+				xattr_stream_name, NULL, 0, 0);
++				xattr_stream_name, NULL, 0, 0, false);
 +	if (rc < 0)
 +		pr_err("Failed to store XATTR stream name :%d\n", rc);
 +	return 0;
@@ -26170,7 +26283,7 @@ index 000000000000..0557aa4d91ce
 +	da.flags = XATTR_DOSINFO_ATTRIB | XATTR_DOSINFO_CREATE_TIME |
 +		XATTR_DOSINFO_ITIME;
 +
-+	rc = compat_ksmbd_vfs_set_dos_attrib_xattr(path, &da);
++	rc = compat_ksmbd_vfs_set_dos_attrib_xattr(path, &da, true);
 +	if (rc)
 +		ksmbd_debug(SMB, "failed to store file attribute into xattr\n");
 +}
@@ -26268,7 +26381,7 @@ index 000000000000..0557aa4d91ce
 +	    sizeof(struct create_sd_buf_req))
 +		return -EINVAL;
 +	return set_info_sec(work->conn, work->tcon, path, &sd_buf->ntsd,
-+			    le32_to_cpu(sd_buf->ccontext.DataLength), true);
++			    le32_to_cpu(sd_buf->ccontext.DataLength), true, false);
 +}
 +
 +static void ksmbd_acls_fattr(struct smb_fattr *fattr,
@@ -26384,7 +26497,7 @@ index 000000000000..0557aa4d91ce
 +		    *(char *)req->Buffer == '\\') {
 +			pr_err("not allow directory name included leading slash\n");
 +			rc = -EINVAL;
-+			goto err_out1;
++			goto err_out2;
 +		}
 +
 +		name = smb2_get_name(req->Buffer,
@@ -26395,7 +26508,7 @@ index 000000000000..0557aa4d91ce
 +			if (rc != -ENOMEM)
 +				rc = -ENOENT;
 +			name = NULL;
-+			goto err_out1;
++			goto err_out2;
 +		}
 +
 +		ksmbd_debug(SMB, "converted name = %s\n", name);
@@ -26403,48 +26516,44 @@ index 000000000000..0557aa4d91ce
 +			if (!test_share_config_flag(work->tcon->share_conf,
 +						    KSMBD_SHARE_FLAG_STREAMS)) {
 +				rc = -EBADF;
-+				goto err_out1;
++				goto err_out2;
 +			}
 +			rc = parse_stream_name(name, &stream_name, &s_type);
 +			if (rc < 0)
-+				goto err_out1;
++				goto err_out2;
 +		}
 +
 +		rc = ksmbd_validate_filename(name);
 +		if (rc < 0)
-+			goto err_out1;
++			goto err_out2;
 +
 +		if (ksmbd_share_veto_filename(share, name)) {
 +			rc = -ENOENT;
 +			ksmbd_debug(SMB, "Reject open(), vetoed file: %s\n",
 +				    name);
-+			goto err_out1;
++			goto err_out2;
 +		}
 +	} else {
 +		name = kstrdup("", GFP_KERNEL);
 +		if (!name) {
 +			rc = -ENOMEM;
-+			goto err_out1;
++			goto err_out2;
 +		}
 +	}
-+
-+	req_op_level = req->RequestedOplockLevel;
-+	if (req_op_level == SMB2_OPLOCK_LEVEL_LEASE)
-+		lc = parse_lease_state(req);
 +
 +	if (le32_to_cpu(req->ImpersonationLevel) > le32_to_cpu(IL_DELEGATE_LE)) {
 +		pr_err("Invalid impersonationlevel : 0x%x\n",
 +		       le32_to_cpu(req->ImpersonationLevel));
 +		rc = -EIO;
 +		rsp->hdr.Status = STATUS_BAD_IMPERSONATION_LEVEL;
-+		goto err_out1;
++		goto err_out2;
 +	}
 +
 +	if (req->CreateOptions && !(req->CreateOptions & CREATE_OPTIONS_MASK)) {
 +		pr_err("Invalid create options : 0x%x\n",
 +		       le32_to_cpu(req->CreateOptions));
 +		rc = -EINVAL;
-+		goto err_out1;
++		goto err_out2;
 +	} else {
 +		if (req->CreateOptions & FILE_SEQUENTIAL_ONLY_LE &&
 +		    req->CreateOptions & FILE_RANDOM_ACCESS_LE)
@@ -26454,13 +26563,13 @@ index 000000000000..0557aa4d91ce
 +		    (FILE_OPEN_BY_FILE_ID_LE | CREATE_TREE_CONNECTION |
 +		     FILE_RESERVE_OPFILTER_LE)) {
 +			rc = -EOPNOTSUPP;
-+			goto err_out1;
++			goto err_out2;
 +		}
 +
 +		if (req->CreateOptions & FILE_DIRECTORY_FILE_LE) {
 +			if (req->CreateOptions & FILE_NON_DIRECTORY_FILE_LE) {
 +				rc = -EINVAL;
-+				goto err_out1;
++				goto err_out2;
 +			} else if (req->CreateOptions & FILE_NO_COMPRESSION_LE) {
 +				req->CreateOptions = ~(FILE_NO_COMPRESSION_LE);
 +			}
@@ -26472,21 +26581,21 @@ index 000000000000..0557aa4d91ce
 +		pr_err("Invalid create disposition : 0x%x\n",
 +		       le32_to_cpu(req->CreateDisposition));
 +		rc = -EINVAL;
-+		goto err_out1;
++		goto err_out2;
 +	}
 +
 +	if (!(req->DesiredAccess & DESIRED_ACCESS_MASK)) {
 +		pr_err("Invalid desired access : 0x%x\n",
 +		       le32_to_cpu(req->DesiredAccess));
 +		rc = -EACCES;
-+		goto err_out1;
++		goto err_out2;
 +	}
 +
 +	if (req->FileAttributes && !(req->FileAttributes & ATTR_MASK_LE)) {
 +		pr_err("Invalid file attribute : 0x%x\n",
 +		       le32_to_cpu(req->FileAttributes));
 +		rc = -EINVAL;
-+		goto err_out1;
++		goto err_out2;
 +	}
 +
 +	if (req->CreateContextsOffset) {
@@ -26494,19 +26603,19 @@ index 000000000000..0557aa4d91ce
 +		context = smb2_find_context_vals(req, SMB2_CREATE_EA_BUFFER, 4);
 +		if (IS_ERR(context)) {
 +			rc = PTR_ERR(context);
-+			goto err_out1;
++			goto err_out2;
 +		} else if (context) {
 +			ea_buf = (struct create_ea_buf_req *)context;
 +			if (le16_to_cpu(context->DataOffset) +
 +			    le32_to_cpu(context->DataLength) <
 +			    sizeof(struct create_ea_buf_req)) {
 +				rc = -EINVAL;
-+				goto err_out1;
++				goto err_out2;
 +			}
 +			if (req->CreateOptions & FILE_NO_EA_KNOWLEDGE_LE) {
 +				rsp->hdr.Status = STATUS_ACCESS_DENIED;
 +				rc = -EACCES;
-+				goto err_out1;
++				goto err_out2;
 +			}
 +		}
 +
@@ -26514,7 +26623,7 @@ index 000000000000..0557aa4d91ce
 +						 SMB2_CREATE_QUERY_MAXIMAL_ACCESS_REQUEST, 4);
 +		if (IS_ERR(context)) {
 +			rc = PTR_ERR(context);
-+			goto err_out1;
++			goto err_out2;
 +		} else if (context) {
 +			ksmbd_debug(SMB,
 +				    "get query maximal access context\n");
@@ -26525,11 +26634,11 @@ index 000000000000..0557aa4d91ce
 +						 SMB2_CREATE_TIMEWARP_REQUEST, 4);
 +		if (IS_ERR(context)) {
 +			rc = PTR_ERR(context);
-+			goto err_out1;
++			goto err_out2;
 +		} else if (context) {
 +			ksmbd_debug(SMB, "get timewarp context\n");
 +			rc = -EBADF;
-+			goto err_out1;
++			goto err_out2;
 +		}
 +
 +		if (tcon->posix_extensions) {
@@ -26537,7 +26646,7 @@ index 000000000000..0557aa4d91ce
 +							 SMB2_CREATE_TAG_POSIX, 16);
 +			if (IS_ERR(context)) {
 +				rc = PTR_ERR(context);
-+				goto err_out1;
++				goto err_out2;
 +			} else if (context) {
 +				struct create_posix *posix =
 +					(struct create_posix *)context;
@@ -26545,7 +26654,7 @@ index 000000000000..0557aa4d91ce
 +				    le32_to_cpu(context->DataLength) <
 +				    sizeof(struct create_posix) - 4) {
 +					rc = -EINVAL;
-+					goto err_out1;
++					goto err_out2;
 +				}
 +				ksmbd_debug(SMB, "get posix context\n");
 +
@@ -26557,7 +26666,7 @@ index 000000000000..0557aa4d91ce
 +
 +	if (ksmbd_override_fsids(work)) {
 +		rc = -ENOMEM;
-+		goto err_out1;
++		goto err_out2;
 +	}
 +
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
@@ -26788,7 +26897,7 @@ index 000000000000..0557aa4d91ce
 +		}
 +	}
 +
-+	rc = ksmbd_query_inode_status(d_inode(path.dentry->d_parent));
++	rc = ksmbd_query_inode_status(path.dentry->d_parent);
 +	if (rc == KSMBD_INODE_STATUS_PENDING_DELETE) {
 +		rc = -EBUSY;
 +		goto err_out;
@@ -26925,7 +27034,8 @@ index 000000000000..0557aa4d91ce
 +#endif
 +								    &path,
 +								    pntsd,
-+								    pntsd_size);
++								    pntsd_size,
++								    false);
 +					kfree(pntsd);
 +					if (rc)
 +						pr_err("failed to store ntacl in xattr : %d\n",
@@ -26948,11 +27058,6 @@ index 000000000000..0557aa4d91ce
 +
 +	fp->attrib_only = !(req->DesiredAccess & ~(FILE_READ_ATTRIBUTES_LE |
 +			FILE_WRITE_ATTRIBUTES_LE | FILE_SYNCHRONIZE_LE));
-+	if (!S_ISDIR(file_inode(filp)->i_mode) && open_flags & O_TRUNC &&
-+	    !fp->attrib_only && !stream_name) {
-+		smb_break_all_oplock(work, fp);
-+		need_truncate = 1;
-+	}
 +
 +	/* fp should be searchable through ksmbd_inode.m_fp_list
 +	 * after daccess, saccess, attrib_only, and stream are
@@ -26968,23 +27073,48 @@ index 000000000000..0557aa4d91ce
 +		goto err_out;
 +	}
 +
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
++	if (file_present || created)
++		ksmbd_vfs_kern_path_unlock(&parent_path, &path);
++#else
++	if (file_present || created)
++		path_put(&path);
++#endif
++
++	if (!S_ISDIR(file_inode(filp)->i_mode) && open_flags & O_TRUNC &&
++	    !fp->attrib_only && !stream_name) {
++		smb_break_all_oplock(work, fp);
++		need_truncate = 1;
++	}
++
++	req_op_level = req->RequestedOplockLevel;
++	if (req_op_level == SMB2_OPLOCK_LEVEL_LEASE)
++		lc = parse_lease_state(req, S_ISDIR(file_inode(filp)->i_mode));
++
 +	share_ret = ksmbd_smb_check_shared_mode(fp->filp, fp);
 +	if (!test_share_config_flag(work->tcon->share_conf, KSMBD_SHARE_FLAG_OPLOCKS) ||
 +	    (req_op_level == SMB2_OPLOCK_LEVEL_LEASE &&
 +	     !(conn->vals->capabilities & SMB2_GLOBAL_CAP_LEASING))) {
 +		if (share_ret < 0 && !S_ISDIR(file_inode(fp->filp)->i_mode)) {
 +			rc = share_ret;
-+			goto err_out;
++			goto err_out1;
 +		}
 +	} else {
 +		if (req_op_level == SMB2_OPLOCK_LEVEL_LEASE) {
++			/*
++			 * Compare parent lease using parent key. If there is no
++			 * a lease that has same parent key, Send lease break
++			 * notification.
++			 */
++			smb_send_parent_lease_break_noti(fp, lc);
++
 +			req_op_level = smb2_map_lease_to_oplock(lc->req_state);
 +			ksmbd_debug(SMB,
 +				    "lease req for(%s) req oplock state 0x%x, lease state 0x%x\n",
 +				    name, req_op_level, lc->req_state);
 +			rc = find_same_lease_key(sess, fp->f_ci, lc);
 +			if (rc)
-+				goto err_out;
++				goto err_out1;
 +		} else if (open_flags == O_RDONLY &&
 +			   (req_op_level == SMB2_OPLOCK_LEVEL_BATCH ||
 +			    req_op_level == SMB2_OPLOCK_LEVEL_EXCLUSIVE))
@@ -26995,16 +27125,16 @@ index 000000000000..0557aa4d91ce
 +				      le32_to_cpu(req->hdr.Id.SyncId.TreeId),
 +				      lc, share_ret);
 +		if (rc < 0)
-+			goto err_out;
++			goto err_out1;
 +	}
 +
 +	if (req->CreateOptions & FILE_DELETE_ON_CLOSE_LE)
 +		ksmbd_fd_set_delete_on_close(fp, file_info);
 +
 +	if (need_truncate) {
-+		rc = smb2_create_truncate(&path);
++		rc = smb2_create_truncate(&fp->filp->f_path);
 +		if (rc)
-+			goto err_out;
++			goto err_out1;
 +	}
 +
 +	if (req->CreateContextsOffset) {
@@ -27014,7 +27144,7 @@ index 000000000000..0557aa4d91ce
 +					SMB2_CREATE_ALLOCATION_SIZE, 4);
 +		if (IS_ERR(az_req)) {
 +			rc = PTR_ERR(az_req);
-+			goto err_out;
++			goto err_out1;
 +		} else if (az_req) {
 +			loff_t alloc_size;
 +			int err;
@@ -27023,7 +27153,7 @@ index 000000000000..0557aa4d91ce
 +			    le32_to_cpu(az_req->ccontext.DataLength) <
 +			    sizeof(struct create_alloc_size_req)) {
 +				rc = -EINVAL;
-+				goto err_out;
++				goto err_out1;
 +			}
 +			alloc_size = le64_to_cpu(az_req->AllocationSize);
 +			ksmbd_debug(SMB,
@@ -27041,7 +27171,7 @@ index 000000000000..0557aa4d91ce
 +		context = smb2_find_context_vals(req, SMB2_CREATE_QUERY_ON_DISK_ID, 4);
 +		if (IS_ERR(context)) {
 +			rc = PTR_ERR(context);
-+			goto err_out;
++			goto err_out1;
 +		} else if (context) {
 +			ksmbd_debug(SMB, "get query on disk id context\n");
 +			query_disk_id = 1;
@@ -27050,7 +27180,7 @@ index 000000000000..0557aa4d91ce
 +
 +	rc = ksmbd_vfs_getattr(&path, &stat);
 +	if (rc)
-+		goto err_out;
++		goto err_out1;
 +
 +	if (stat.result_mask & STATX_BTIME)
 +		fp->create_time = ksmbd_UnixTimeToNT(stat.btime);
@@ -27176,17 +27306,15 @@ index 000000000000..0557aa4d91ce
 +
 +err_out:
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	if (file_present || created) {
-+		inode_unlock(d_inode(parent_path.dentry));
-+		path_put(&path);
-+		path_put(&parent_path);
-+	}
++	if (rc && (file_present || created))
++		ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
-+	if (file_present || created)
++	if (rc && (file_present || created))
 +		path_put(&path);
 +#endif
-+	ksmbd_revert_fsids(work);
 +err_out1:
++	ksmbd_revert_fsids(work);
++err_out2:
 +	if (!rc) {
 +		ksmbd_update_fstate(&work->sess->file_table, fp, FP_INITED);
 +		rc = ksmbd_iov_pin_rsp(work, (void *)rsp, iov_len);
@@ -28783,9 +28911,17 @@ index 000000000000..0557aa4d91ce
 +
 +	file_info = (struct smb311_posix_qinfo *)rsp->Buffer;
 +	file_info->CreationTime = cpu_to_le64(fp->create_time);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
++	time = ksmbd_UnixTimeToNT(inode_get_atime(inode));
++#else
 +	time = ksmbd_UnixTimeToNT(inode->i_atime);
++#endif
 +	file_info->LastAccessTime = cpu_to_le64(time);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
++	time = ksmbd_UnixTimeToNT(inode_get_mtime(inode));
++#else
 +	time = ksmbd_UnixTimeToNT(inode->i_mtime);
++#endif
 +	file_info->LastWriteTime = cpu_to_le64(time);
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 +	time = ksmbd_UnixTimeToNT(inode_get_ctime(inode));
@@ -29433,9 +29569,17 @@ index 000000000000..0557aa4d91ce
 +		rsp->EndOfFile = cpu_to_le64(inode->i_size);
 +		rsp->Attributes = fp->f_ci->m_fattr;
 +		rsp->CreationTime = cpu_to_le64(fp->create_time);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
++		time = ksmbd_UnixTimeToNT(inode_get_atime(inode));
++#else
 +		time = ksmbd_UnixTimeToNT(inode->i_atime);
++#endif
 +		rsp->LastAccessTime = cpu_to_le64(time);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
++		time = ksmbd_UnixTimeToNT(inode_get_mtime(inode));
++#else
 +		time = ksmbd_UnixTimeToNT(inode->i_mtime);
++#endif
 +		rsp->LastWriteTime = cpu_to_le64(time);
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 +		time = ksmbd_UnixTimeToNT(inode_get_ctime(inode));
@@ -29532,7 +29676,7 @@ index 000000000000..0557aa4d91ce
 +		rc = ksmbd_vfs_setxattr(file_mnt_idmap(fp->filp),
 +					&fp->filp->f_path,
 +					xattr_stream_name,
-+					NULL, 0, 0);
++					NULL, 0, 0, true);
 +		if (rc < 0) {
 +			pr_err("failed to store stream name in xattr: %d\n",
 +			       rc);
@@ -29635,7 +29779,7 @@ index 000000000000..0557aa4d91ce
 +#endif
 +					&fp->filp->f_path,
 +					xattr_stream_name,
-+					NULL, 0, 0);
++					NULL, 0, 0, true);
 +		if (rc < 0) {
 +			pr_err("failed to store stream name in xattr: %d\n",
 +			       rc);
@@ -29774,11 +29918,8 @@ index 000000000000..0557aa4d91ce
 +		rc = -EINVAL;
 +out:
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	if (file_present) {
-+		inode_unlock(d_inode(parent_path.dentry));
-+		path_put(&path);
-+		path_put(&parent_path);
-+	}
++	if (file_present)
++		ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#endif
 +	if (!IS_ERR(link_name))
 +		kfree(link_name);
@@ -29858,7 +29999,8 @@ index 000000000000..0557aa4d91ce
 +		da.flags = XATTR_DOSINFO_ATTRIB | XATTR_DOSINFO_CREATE_TIME |
 +			XATTR_DOSINFO_ITIME;
 +
-+		rc = compat_ksmbd_vfs_set_dos_attrib_xattr(&filp->f_path, &da);
++		rc = compat_ksmbd_vfs_set_dos_attrib_xattr(&filp->f_path, &da,
++				true);
 +		if (rc)
 +			ksmbd_debug(SMB,
 +				    "failed to restore file attribute in EA\n");
@@ -30040,7 +30182,7 @@ index 000000000000..0557aa4d91ce
 +		return ret;
 +	}
 +
-+	parent_fp = ksmbd_lookup_fd_inode(d_inode(parent));
++	parent_fp = ksmbd_lookup_fd_inode(parent);
 +	inode_unlock(d_inode(parent));
 +	dput(parent);
 +
@@ -30251,7 +30393,7 @@ index 000000000000..0557aa4d91ce
 +	fp->saccess |= FILE_SHARE_DELETE_LE;
 +
 +	return set_info_sec(fp->conn, fp->tcon, &fp->filp->f_path, pntsd,
-+			buf_len, false);
++			buf_len, false, true);
 +}
 +
 +/**
@@ -31819,7 +31961,8 @@ index 000000000000..0557aa4d91ce
 +
 +		da.attr = le32_to_cpu(fp->f_ci->m_fattr);
 +		ret = compat_ksmbd_vfs_set_dos_attrib_xattr(&fp->filp->f_path,
-+							    &da);
++							    &da,
++							    true);
 +		if (ret)
 +			fp->f_ci->m_fattr = old_fattr;
 +	}
@@ -32445,17 +32588,17 @@ index 000000000000..0557aa4d91ce
 +			    le32_to_cpu(req->LeaseState));
 +	}
 +
++	if (ret < 0) {
++		rsp->hdr.Status = err;
++		goto err_out;
++	}
++
 +	lease_state = lease->state;
 +	opinfo->op_state = OPLOCK_STATE_NONE;
 +	wake_up_interruptible_all(&opinfo->oplock_q);
 +	atomic_dec(&opinfo->breaking_cnt);
 +	wake_up_interruptible_all(&opinfo->oplock_brk);
 +	opinfo_put(opinfo);
-+
-+	if (ret < 0) {
-+		rsp->hdr.Status = err;
-+		goto err_out;
-+	}
 +
 +	rsp->StructureSize = cpu_to_le16(36);
 +	rsp->Reserved = 0;
@@ -32468,7 +32611,6 @@ index 000000000000..0557aa4d91ce
 +		return;
 +
 +err_out:
-+	opinfo->op_state = OPLOCK_STATE_NONE;
 +	wake_up_interruptible_all(&opinfo->oplock_q);
 +	atomic_dec(&opinfo->breaking_cnt);
 +	wake_up_interruptible_all(&opinfo->oplock_brk);
@@ -32880,10 +33022,10 @@ index 000000000000..0557aa4d91ce
 +}
 diff --git a/fs/ksmbd/smb2pdu.h b/fs/ksmbd/smb2pdu.h
 new file mode 100644
-index 000000000000..1ad06336aa46
+index 000000000000..b8aac10af67c
 --- /dev/null
 +++ b/fs/ksmbd/smb2pdu.h
-@@ -0,0 +1,1725 @@
+@@ -0,0 +1,1726 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -33632,6 +33774,7 @@ index 000000000000..1ad06336aa46
 +#define SMB2_LEASE_WRITE_CACHING_LE		cpu_to_le32(0x04)
 +
 +#define SMB2_LEASE_FLAG_BREAK_IN_PROGRESS_LE	cpu_to_le32(0x02)
++#define SMB2_LEASE_FLAG_PARENT_LEASE_KEY_SET_LE	cpu_to_le32(0x04)
 +
 +#define SMB2_LEASE_KEY_SIZE			16
 +
@@ -35998,7 +36141,7 @@ index 000000000000..db800429b88c
 +#endif /* __SMB_COMMON_H__ */
 diff --git a/fs/ksmbd/smbacl.c b/fs/ksmbd/smbacl.c
 new file mode 100644
-index 000000000000..a2e2bae23cfa
+index 000000000000..416420ef483a
 --- /dev/null
 +++ b/fs/ksmbd/smbacl.c
 @@ -0,0 +1,1668 @@
@@ -37328,7 +37471,7 @@ index 000000000000..a2e2bae23cfa
 +#else
 +		ksmbd_vfs_set_sd_xattr(conn, user_ns,
 +#endif
-+				       path, pntsd, pntsd_size);
++				       path, pntsd, pntsd_size, false);
 +		kfree(pntsd);
 +	}
 +
@@ -37540,7 +37683,7 @@ index 000000000000..a2e2bae23cfa
 +
 +int set_info_sec(struct ksmbd_conn *conn, struct ksmbd_tree_connect *tcon,
 +		 const struct path *path, struct smb_ntsd *pntsd, int ntsd_len,
-+		 bool type_check)
++		 bool type_check, bool get_write)
 +{
 +	int rc;
 +	struct smb_fattr fattr = {{0}};
@@ -37653,7 +37796,7 @@ index 000000000000..a2e2bae23cfa
 +		ksmbd_vfs_remove_sd_xattrs(user_ns, path);
 +		ksmbd_vfs_set_sd_xattr(conn, user_ns,
 +#endif
-+				       path, pntsd, ntsd_len);
++				       path, pntsd, ntsd_len, get_write);
 +	}
 +
 +out:
@@ -37672,7 +37815,7 @@ index 000000000000..a2e2bae23cfa
 +}
 diff --git a/fs/ksmbd/smbacl.h b/fs/ksmbd/smbacl.h
 new file mode 100644
-index 000000000000..4e000665bce5
+index 000000000000..e486fa3dd783
 --- /dev/null
 +++ b/fs/ksmbd/smbacl.h
 @@ -0,0 +1,307 @@
@@ -37896,7 +38039,7 @@ index 000000000000..4e000665bce5
 +			__le32 *pdaccess, int uid);
 +int set_info_sec(struct ksmbd_conn *conn, struct ksmbd_tree_connect *tcon,
 +		 const struct path *path, struct smb_ntsd *pntsd, int ntsd_len,
-+		 bool type_check);
++		 bool type_check, bool get_write);
 +void id_to_sid(unsigned int cid, uint sidtype, struct smb_sid *ssid);
 +void ksmbd_init_domain(u32 *sub_auth);
 +
@@ -45354,10 +45497,10 @@ index 000000000000..26583b776897
 +#endif /* __KSMBD_UNIUPR_H */
 diff --git a/fs/ksmbd/vfs.c b/fs/ksmbd/vfs.c
 new file mode 100644
-index 000000000000..f7ac1fecb16f
+index 000000000000..826028bca5b5
 --- /dev/null
 +++ b/fs/ksmbd/vfs.c
-@@ -0,0 +1,3398 @@
+@@ -0,0 +1,3415 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -45487,6 +45630,13 @@ index 000000000000..f7ac1fecb16f
 +		return -ENOENT;
 +	}
 +
++	err = mnt_want_write(parent_path->mnt);
++	if (err) {
++		path_put(parent_path);
++		putname(filename);
++		return -ENOENT;
++	}
++
 +	inode_lock_nested(parent_path->dentry->d_inode, I_MUTEX_PARENT);
 +	d = lookup_one_qstr_excl(&last, parent_path->dentry, 0);
 +	if (IS_ERR(d))
@@ -45513,6 +45663,7 @@ index 000000000000..f7ac1fecb16f
 +
 +err_out:
 +	inode_unlock(d_inode(parent_path->dentry));
++	mnt_drop_write(parent_path->mnt);
 +	path_put(parent_path);
 +	putname(filename);
 +	return -ENOENT;
@@ -46069,7 +46220,8 @@ index 000000000000..f7ac1fecb16f
 +				 fp->stream.name,
 +				 (void *)stream_buf,
 +				 size,
-+				 0);
++				 0,
++				 true);
 +	if (err < 0)
 +		goto out;
 +
@@ -46125,6 +46277,9 @@ index 000000000000..f7ac1fecb16f
 +			goto out;
 +		}
 +	}
++
++	/* Reserve lease break for parent dir at closing time */
++	fp->reserve_lease_break = true;
 +
 +	/* Do we need to break any of a levelII oplock? */
 +	smb_break_all_levII_oplock(work, fp, 1);
@@ -46468,9 +46623,7 @@ index 000000000000..f7ac1fecb16f
 +				    path.dentry,
 +				    ksmbd_kstat);
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0)
-+	inode_unlock(d_inode(parent_path.dentry));
-+	path_put(&path);
-+	path_put(&parent_path);
++	ksmbd_vfs_kern_path_unlock(&parent_path, &path);
 +#else
 +	path_put(&path);
 +#endif
@@ -46524,10 +46677,6 @@ index 000000000000..f7ac1fecb16f
 +		goto out_err;
 +	}
 +
-+	err = mnt_want_write(path->mnt);
-+	if (err)
-+		goto out_err;
-+
 +	idmap = mnt_idmap(path->mnt);
 +	if (S_ISDIR(d_inode(path->dentry)->i_mode)) {
 +		err = vfs_rmdir(idmap, d_inode(parent), path->dentry);
@@ -46538,7 +46687,6 @@ index 000000000000..f7ac1fecb16f
 +		if (err)
 +			ksmbd_debug(VFS, "unlink failed, err %d\n", err);
 +	}
-+	mnt_drop_write(path->mnt);
 +
 +out_err:
 +	ksmbd_revert_fsids(work);
@@ -46744,7 +46892,7 @@ index 000000000000..f7ac1fecb16f
 +		goto out3;
 +	}
 +
-+	parent_fp = ksmbd_lookup_fd_inode(d_inode(old_child->d_parent));
++	parent_fp = ksmbd_lookup_fd_inode(old_child->d_parent);
 +	if (parent_fp) {
 +		if (parent_fp->daccess & FILE_DELETE_LE) {
 +			pr_err("parent dir is opened with delete access\n");
@@ -46826,7 +46974,7 @@ index 000000000000..f7ac1fecb16f
 +		if (d_really_is_negative(dst_dent))
 +			continue;
 +
-+		child_fp = ksmbd_lookup_fd_inode(d_inode(dst_dent));
++		child_fp = ksmbd_lookup_fd_inode(dst_dent);
 +		if (child_fp) {
 +			spin_unlock(&src_dent->d_lock);
 +			ksmbd_debug(VFS, "Forbid rename, sub file/dir is in use\n");
@@ -47203,16 +47351,20 @@ index 000000000000..f7ac1fecb16f
 +#endif
 +		       const struct path *path, const char *attr_name,
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
-+		       void *attr_value, size_t attr_size, int flags)
++		       void *attr_value, size_t attr_size, int flags,
++		       bool get_write)
 +#else
-+		       const void *attr_value, size_t attr_size, int flags)
++		       const void *attr_value, size_t attr_size, int flags,
++		       bool get_write)
 +#endif
 +{
 +	int err;
 +
-+	err = mnt_want_write(path->mnt);
-+	if (err)
-+		return err;
++	if (get_write == true) {
++		err = mnt_want_write(path->mnt);
++		if (err)
++			return err;
++	}
 +
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
@@ -47230,7 +47382,8 @@ index 000000000000..f7ac1fecb16f
 +			   flags);
 +	if (err)
 +		ksmbd_debug(VFS, "setxattr failed, err %d\n", err);
-+	mnt_drop_write(path->mnt);
++	if (get_write == true)
++		mnt_drop_write(path->mnt);
 +	return err;
 +}
 +
@@ -47469,7 +47622,8 @@ index 000000000000..f7ac1fecb16f
 +			   struct user_namespace *user_ns,
 +#endif
 +			   const struct path *path,
-+			   struct smb_ntsd *pntsd, int len)
++			   struct smb_ntsd *pntsd, int len,
++			   bool get_write)
 +{
 +	int rc;
 +	struct ndr sd_ndr = {0}, acl_ndr = {0};
@@ -47545,7 +47699,7 @@ index 000000000000..f7ac1fecb16f
 +	rc = ksmbd_vfs_setxattr(user_ns, path,
 +#endif
 +				XATTR_NAME_SD, sd_ndr.data,
-+				sd_ndr.offset, 0);
++				sd_ndr.offset, 0, get_write);
 +	if (rc < 0)
 +		pr_err("Failed to store XATTR ntacl :%d\n", rc);
 +
@@ -47658,7 +47812,8 @@ index 000000000000..f7ac1fecb16f
 +int ksmbd_vfs_set_dos_attrib_xattr(struct user_namespace *user_ns,
 +#endif
 +				   const struct path *path,
-+				   struct xattr_dos_attrib *da)
++				   struct xattr_dos_attrib *da,
++				   bool get_write)
 +{
 +	struct ndr n;
 +	int err;
@@ -47672,7 +47827,7 @@ index 000000000000..f7ac1fecb16f
 +#else
 +	err = ksmbd_vfs_setxattr(user_ns, path, XATTR_NAME_DOS_ATTRIBUTE,
 +#endif
-+				 (void *)n.data, n.offset, 0);
++				 (void *)n.data, n.offset, 0, get_write);
 +	if (err)
 +		ksmbd_debug(SMB, "failed to store dos attribute in xattr\n");
 +	kfree(n.data);
@@ -48170,14 +48325,31 @@ index 000000000000..f7ac1fecb16f
 +	}
 +
 +	if (!err) {
-+		err = ksmbd_vfs_lock_parent(parent_path->dentry, path->dentry);
++		err = mnt_want_write(parent_path->mnt);
 +		if (err) {
 +			path_put(path);
 +			path_put(parent_path);
++			return err;
++		}
++
++		err = ksmbd_vfs_lock_parent(parent_path->dentry, path->dentry);
++		if (err) {
++			mnt_drop_write(parent_path->mnt);
++			path_put(parent_path);
++			path_put(path);
 +		}
 +	}
 +	return err;
 +}
++
++void ksmbd_vfs_kern_path_unlock(struct path *parent_path, struct path *path)
++{
++	inode_unlock(d_inode(parent_path->dentry));
++	mnt_drop_write(parent_path->mnt);
++	path_put(path);
++	path_put(parent_path);
++}
++
 +#else
 +/**
 + * ksmbd_vfs_kern_path() - lookup a file and get path info
@@ -48629,10 +48801,6 @@ index 000000000000..f7ac1fecb16f
 +	}
 +	posix_state_to_acl(&acl_state, acls->a_entries);
 +
-+	rc = mnt_want_write(path->mnt);
-+	if (rc)
-+		goto out_err;
-+
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0)
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
@@ -48668,9 +48836,7 @@ index 000000000000..f7ac1fecb16f
 +			ksmbd_debug(SMB, "Set posix acl(ACL_TYPE_DEFAULT) failed, rc : %d\n",
 +				    rc);
 +	}
-+	mnt_drop_write(path->mnt);
 +
-+out_err:
 +	free_acl_state(&acl_state);
 +	posix_acl_release(acls);
 +	return rc;
@@ -48709,10 +48875,6 @@ index 000000000000..f7ac1fecb16f
 +		}
 +	}
 +
-+	rc = mnt_want_write(path->mnt);
-+	if (rc)
-+		goto out_err;
-+
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0)
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
@@ -48750,18 +48912,16 @@ index 000000000000..f7ac1fecb16f
 +			ksmbd_debug(SMB, "Set posix acl(ACL_TYPE_DEFAULT) failed, rc : %d\n",
 +				    rc);
 +	}
-+	mnt_drop_write(path->mnt);
 +
-+out_err:
 +	posix_acl_release(acls);
 +	return rc;
 +}
 diff --git a/fs/ksmbd/vfs.h b/fs/ksmbd/vfs.h
 new file mode 100644
-index 000000000000..8389608e4ea9
+index 000000000000..eb5b291af7b4
 --- /dev/null
 +++ b/fs/ksmbd/vfs.h
-@@ -0,0 +1,340 @@
+@@ -0,0 +1,346 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/*
 + *   Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -48982,9 +49142,11 @@ index 000000000000..8389608e4ea9
 +#endif
 +		       const struct path *path, const char *attr_name,
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)
-+		       void *attr_value, size_t attr_size, int flags);
++		       void *attr_value, size_t attr_size, int flags,
++		       bool get_write);
 +#else
-+		       const void *attr_value, size_t attr_size, int flags);
++		       const void *attr_value, size_t attr_size, int flags,
++		       bool get_write);
 +#endif
 +int ksmbd_vfs_fsetxattr(struct ksmbd_work *work, const char *filename,
 +			const char *attr_name, const void *attr_value,
@@ -49001,6 +49163,7 @@ index 000000000000..8389608e4ea9
 +int ksmbd_vfs_kern_path_locked(struct ksmbd_work *work, char *name,
 +			       unsigned int flags, struct path *parent_path,
 +			       struct path *path, bool caseless);
++void ksmbd_vfs_kern_path_unlock(struct path *parent_path, struct path *path);
 +#else
 +int ksmbd_vfs_kern_path(struct ksmbd_work *work,
 +			char *name, unsigned int flags, struct path *path,
@@ -49064,7 +49227,8 @@ index 000000000000..8389608e4ea9
 +			   struct user_namespace *user_ns,
 +#endif
 +			   const struct path *path,
-+			   struct smb_ntsd *pntsd, int len);
++			   struct smb_ntsd *pntsd, int len,
++			   bool get_write);
 +int ksmbd_vfs_get_sd_xattr(struct ksmbd_conn *conn,
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 +			   struct mnt_idmap *idmap,
@@ -49076,14 +49240,16 @@ index 000000000000..8389608e4ea9
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
 +int ksmbd_vfs_set_dos_attrib_xattr(struct mnt_idmap *idmap,
 +				   const struct path *path,
-+				   struct xattr_dos_attrib *da);
++				   struct xattr_dos_attrib *da,
++				   bool get_write);
 +int ksmbd_vfs_get_dos_attrib_xattr(struct mnt_idmap *idmap,
 +				   struct dentry *dentry,
 +				   struct xattr_dos_attrib *da);
 +#else
 +int ksmbd_vfs_set_dos_attrib_xattr(struct user_namespace *user_ns,
 +				   const struct path *path,
-+				   struct xattr_dos_attrib *da);
++				   struct xattr_dos_attrib *da,
++				   bool get_write);
 +int ksmbd_vfs_get_dos_attrib_xattr(struct user_namespace *user_ns,
 +				   struct dentry *dentry,
 +				   struct xattr_dos_attrib *da);
@@ -49104,10 +49270,10 @@ index 000000000000..8389608e4ea9
 +#endif /* __KSMBD_VFS_H__ */
 diff --git a/fs/ksmbd/vfs_cache.c b/fs/ksmbd/vfs_cache.c
 new file mode 100644
-index 000000000000..c3684969827b
+index 000000000000..59eb1efa2d52
 --- /dev/null
 +++ b/fs/ksmbd/vfs_cache.c
-@@ -0,0 +1,802 @@
+@@ -0,0 +1,806 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
 + * Copyright (C) 2016 Namjae Jeon <linkinjeon@kernel.org>
@@ -49179,14 +49345,14 @@ index 000000000000..c3684969827b
 +	return tmp & inode_hash_mask;
 +}
 +
-+static struct ksmbd_inode *__ksmbd_inode_lookup(struct inode *inode)
++static struct ksmbd_inode *__ksmbd_inode_lookup(struct dentry *de)
 +{
 +	struct hlist_head *head = inode_hashtable +
-+		inode_hash(inode->i_sb, inode->i_ino);
++		inode_hash(d_inode(de)->i_sb, (unsigned long)de);
 +	struct ksmbd_inode *ci = NULL, *ret_ci = NULL;
 +
 +	hlist_for_each_entry(ci, head, m_hash) {
-+		if (ci->m_inode == inode) {
++		if (ci->m_de == de) {
 +			if (atomic_inc_not_zero(&ci->m_count))
 +				ret_ci = ci;
 +			break;
@@ -49197,26 +49363,27 @@ index 000000000000..c3684969827b
 +
 +static struct ksmbd_inode *ksmbd_inode_lookup(struct ksmbd_file *fp)
 +{
-+	return __ksmbd_inode_lookup(file_inode(fp->filp));
++	return __ksmbd_inode_lookup(fp->filp->f_path.dentry);
 +}
 +
-+static struct ksmbd_inode *ksmbd_inode_lookup_by_vfsinode(struct inode *inode)
++struct ksmbd_inode *ksmbd_inode_lookup_lock(struct dentry *d)
 +{
 +	struct ksmbd_inode *ci;
 +
 +	read_lock(&inode_hash_lock);
-+	ci = __ksmbd_inode_lookup(inode);
++	ci = __ksmbd_inode_lookup(d);
 +	read_unlock(&inode_hash_lock);
++
 +	return ci;
 +}
 +
-+int ksmbd_query_inode_status(struct inode *inode)
++int ksmbd_query_inode_status(struct dentry *dentry)
 +{
 +	struct ksmbd_inode *ci;
 +	int ret = KSMBD_INODE_STATUS_UNKNOWN;
 +
 +	read_lock(&inode_hash_lock);
-+	ci = __ksmbd_inode_lookup(inode);
++	ci = __ksmbd_inode_lookup(dentry);
 +	if (ci) {
 +		ret = KSMBD_INODE_STATUS_OK;
 +		if (ci->m_flags & (S_DEL_PENDING | S_DEL_ON_CLS))
@@ -49256,7 +49423,7 @@ index 000000000000..c3684969827b
 +static void ksmbd_inode_hash(struct ksmbd_inode *ci)
 +{
 +	struct hlist_head *b = inode_hashtable +
-+		inode_hash(ci->m_inode->i_sb, ci->m_inode->i_ino);
++		inode_hash(d_inode(ci->m_de)->i_sb, (unsigned long)ci->m_de);
 +
 +	hlist_add_head(&ci->m_hash, b);
 +}
@@ -49270,7 +49437,6 @@ index 000000000000..c3684969827b
 +
 +static int ksmbd_inode_init(struct ksmbd_inode *ci, struct ksmbd_file *fp)
 +{
-+	ci->m_inode = file_inode(fp->filp);
 +	atomic_set(&ci->m_count, 1);
 +	atomic_set(&ci->op_count, 0);
 +	atomic_set(&ci->sop_count, 0);
@@ -49279,6 +49445,7 @@ index 000000000000..c3684969827b
 +	INIT_LIST_HEAD(&ci->m_fp_list);
 +	INIT_LIST_HEAD(&ci->m_op_list);
 +	rwlock_init(&ci->m_lock);
++	ci->m_de = fp->filp->f_path.dentry;
 +	return 0;
 +}
 +
@@ -49322,7 +49489,7 @@ index 000000000000..c3684969827b
 +	kfree(ci);
 +}
 +
-+static void ksmbd_inode_put(struct ksmbd_inode *ci)
++void ksmbd_inode_put(struct ksmbd_inode *ci)
 +{
 +	if (atomic_dec_and_test(&ci->m_count))
 +		ksmbd_inode_free(ci);
@@ -49652,12 +49819,15 @@ index 000000000000..c3684969827b
 +}
 +#endif
 +
-+struct ksmbd_file *ksmbd_lookup_fd_inode(struct inode *inode)
++struct ksmbd_file *ksmbd_lookup_fd_inode(struct dentry *dentry)
 +{
 +	struct ksmbd_file	*lfp;
 +	struct ksmbd_inode	*ci;
++	struct inode		*inode = d_inode(dentry);
 +
-+	ci = ksmbd_inode_lookup_by_vfsinode(inode);
++	read_lock(&inode_hash_lock);
++	ci = __ksmbd_inode_lookup(dentry);
++	read_unlock(&inode_hash_lock);
 +	if (!ci)
 +		return NULL;
 +
@@ -49912,10 +50082,10 @@ index 000000000000..c3684969827b
 +}
 diff --git a/fs/ksmbd/vfs_cache.h b/fs/ksmbd/vfs_cache.h
 new file mode 100644
-index 000000000000..d732a82dcdc1
+index 000000000000..de8c43eb1332
 --- /dev/null
 +++ b/fs/ksmbd/vfs_cache.h
-@@ -0,0 +1,193 @@
+@@ -0,0 +1,196 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/*
 + *   Copyright (C) 2019 Samsung Electronics Co., Ltd.
@@ -49969,7 +50139,7 @@ index 000000000000..d732a82dcdc1
 +	atomic_t			op_count;
 +	/* opinfo count for streams */
 +	atomic_t			sop_count;
-+	struct inode			*m_inode;
++	struct dentry			*m_de;
 +	unsigned int			m_flags;
 +	struct hlist_node		m_hash;
 +	struct list_head		m_fp_list;
@@ -50037,6 +50207,7 @@ index 000000000000..d732a82dcdc1
 +	struct ksmbd_readdir_data	readdir_data;
 +	int				dot_dotdot[2];
 +	unsigned int			f_state;
++	bool				reserve_lease_break;
 +};
 +
 +static inline void set_ctx_actor(struct dir_context *ctx,
@@ -50070,12 +50241,14 @@ index 000000000000..d732a82dcdc1
 +struct ksmbd_file *ksmbd_lookup_fd_slow(struct ksmbd_work *work, u64 id,
 +					u64 pid);
 +void ksmbd_fd_put(struct ksmbd_work *work, struct ksmbd_file *fp);
++struct ksmbd_inode *ksmbd_inode_lookup_lock(struct dentry *d);
++void ksmbd_inode_put(struct ksmbd_inode *ci);
 +struct ksmbd_file *ksmbd_lookup_durable_fd(unsigned long long id);
 +struct ksmbd_file *ksmbd_lookup_fd_cguid(char *cguid);
 +#ifdef CONFIG_SMB_INSECURE_SERVER
 +struct ksmbd_file *ksmbd_lookup_fd_filename(struct ksmbd_work *work, char *filename);
 +#endif
-+struct ksmbd_file *ksmbd_lookup_fd_inode(struct inode *inode);
++struct ksmbd_file *ksmbd_lookup_fd_inode(struct dentry *dentry);
 +unsigned int ksmbd_open_durable_fd(struct ksmbd_file *fp);
 +struct ksmbd_file *ksmbd_open_fd(struct ksmbd_work *work, struct file *filp);
 +void ksmbd_close_tree_conn_fds(struct ksmbd_work *work);
@@ -50100,7 +50273,7 @@ index 000000000000..d732a82dcdc1
 +	KSMBD_INODE_STATUS_PENDING_DELETE,
 +};
 +
-+int ksmbd_query_inode_status(struct inode *inode);
++int ksmbd_query_inode_status(struct dentry *dentry);
 +bool ksmbd_inode_pending_delete(struct ksmbd_file *fp);
 +void ksmbd_set_inode_pending_delete(struct ksmbd_file *fp);
 +void ksmbd_clear_inode_pending_delete(struct ksmbd_file *fp);
