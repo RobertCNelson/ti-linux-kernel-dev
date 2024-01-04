@@ -1,9 +1,9 @@
-From 7af19b162757d5f8fb965fa8b3c0b283bc32b7b1 Mon Sep 17 00:00:00 2001
+From 8a0b1b3513a830d5b34f1366cd11198629bbd5a9 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Sat, 16 Dec 2023 18:11:15 -0600
+Date: Thu, 4 Jan 2024 16:03:42 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v6.1.68
+Reference: v6.1.70
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/accel/adxl313_i2c.c               |  4 +-
@@ -11,21 +11,25 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/exynos_adc.c                  | 24 +++---
  drivers/iio/adc/imx8qxp-adc.c                 |  4 +-
  drivers/iio/adc/stm32-adc-core.c              |  9 ++-
+ drivers/iio/adc/ti_am335x_adc.c               |  4 +-
  drivers/iio/adc/xilinx-xadc-core.c            | 39 ++++------
  drivers/iio/adc/xilinx-xadc.h                 |  2 +
  drivers/iio/addac/Kconfig                     |  2 +
  drivers/iio/afe/iio-rescale.c                 | 19 ++++-
+ .../buffer/industrialio-triggered-buffer.c    | 10 +++
  .../cros_ec_sensors/cros_ec_sensors_core.c    |  6 +-
+ .../iio/common/ms_sensors/ms_sensors_i2c.c    |  4 +-
  drivers/iio/dac/ad3552r.c                     |  4 +-
  drivers/iio/frequency/adf4350.c               | 75 ++++++-------------
  drivers/iio/frequency/admv1013.c              |  4 +-
  drivers/iio/imu/bno055/Kconfig                |  2 +
+ drivers/iio/imu/inv_mpu6050/inv_mpu_core.c    |  4 +-
  drivers/iio/industrialio-core.c               | 38 ++++++++++
  drivers/iio/pressure/bmp280-core.c            |  2 +-
  drivers/iio/pressure/dps310.c                 |  8 +-
  drivers/iio/pressure/ms5611_core.c            |  2 +-
  include/linux/iio/iio.h                       |  2 +
- 19 files changed, 164 insertions(+), 124 deletions(-)
+ 23 files changed, 181 insertions(+), 129 deletions(-)
 
 diff --git a/drivers/iio/accel/adxl313_i2c.c b/drivers/iio/accel/adxl313_i2c.c
 index 99cc7fc29488..68785bd3ef2f 100644
@@ -195,6 +199,22 @@ index 81d5db91c67b..dee47b899e5d 100644
  	priv->nb_adc_max = priv->cfg->num_adcs;
  	spin_lock_init(&priv->common.lock);
  
+diff --git a/drivers/iio/adc/ti_am335x_adc.c b/drivers/iio/adc/ti_am335x_adc.c
+index 642c5c4895e3..3ac253a27dd9 100644
+--- a/drivers/iio/adc/ti_am335x_adc.c
++++ b/drivers/iio/adc/ti_am335x_adc.c
+@@ -671,8 +671,10 @@ static int tiadc_probe(struct platform_device *pdev)
+ 	platform_set_drvdata(pdev, indio_dev);
+ 
+ 	err = tiadc_request_dma(pdev, adc_dev);
+-	if (err && err == -EPROBE_DEFER)
++	if (err && err != -ENODEV) {
++		dev_err_probe(&pdev->dev, err, "DMA request failed\n");
+ 		goto err_dma;
++	}
+ 
+ 	return 0;
+ 
 diff --git a/drivers/iio/adc/xilinx-xadc-core.c b/drivers/iio/adc/xilinx-xadc-core.c
 index 292f2892d223..abb8891b9e82 100644
 --- a/drivers/iio/adc/xilinx-xadc-core.c
@@ -343,6 +363,27 @@ index 1f280c360701..56e5913ab82d 100644
  	} else if (iio_channel_has_info(schan, IIO_CHAN_INFO_PROCESSED)) {
  		dev_info(dev, "using processed channel\n");
  		rescale->chan_processed = true;
+diff --git a/drivers/iio/buffer/industrialio-triggered-buffer.c b/drivers/iio/buffer/industrialio-triggered-buffer.c
+index 8d4fc97d1005..2b7873e8a959 100644
+--- a/drivers/iio/buffer/industrialio-triggered-buffer.c
++++ b/drivers/iio/buffer/industrialio-triggered-buffer.c
+@@ -46,6 +46,16 @@ int iio_triggered_buffer_setup_ext(struct iio_dev *indio_dev,
+ 	struct iio_buffer *buffer;
+ 	int ret;
+ 
++	/*
++	 * iio_triggered_buffer_cleanup() assumes that the buffer allocated here
++	 * is assigned to indio_dev->buffer but this is only the case if this
++	 * function is the first caller to iio_device_attach_buffer(). If
++	 * indio_dev->buffer is already set then we can't proceed otherwise the
++	 * cleanup function will try to free a buffer that was not allocated here.
++	 */
++	if (indio_dev->buffer)
++		return -EADDRINUSE;
++
+ 	buffer = iio_kfifo_allocate();
+ 	if (!buffer) {
+ 		ret = -ENOMEM;
 diff --git a/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c b/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c
 index d98f7e4d202c..1ddce991fb3f 100644
 --- a/drivers/iio/common/cros_ec_sensors/cros_ec_sensors_core.c
@@ -368,6 +409,21 @@ index d98f7e4d202c..1ddce991fb3f 100644
  	return 0;
  }
  EXPORT_SYMBOL_GPL(cros_ec_sensors_push_data);
+diff --git a/drivers/iio/common/ms_sensors/ms_sensors_i2c.c b/drivers/iio/common/ms_sensors/ms_sensors_i2c.c
+index 6633b35a94e6..9c9bc77003c7 100644
+--- a/drivers/iio/common/ms_sensors/ms_sensors_i2c.c
++++ b/drivers/iio/common/ms_sensors/ms_sensors_i2c.c
+@@ -15,8 +15,8 @@
+ /* Conversion times in us */
+ static const u16 ms_sensors_ht_t_conversion_time[] = { 50000, 25000,
+ 						       13000, 7000 };
+-static const u16 ms_sensors_ht_h_conversion_time[] = { 16000, 3000,
+-						       5000, 8000 };
++static const u16 ms_sensors_ht_h_conversion_time[] = { 16000, 5000,
++						       3000, 8000 };
+ static const u16 ms_sensors_tp_conversion_time[] = { 500, 1100, 2100,
+ 						     4100, 8220, 16440 };
+ 
 diff --git a/drivers/iio/dac/ad3552r.c b/drivers/iio/dac/ad3552r.c
 index d5ea1a1be122..a492e8f2fc0f 100644
 --- a/drivers/iio/dac/ad3552r.c
@@ -542,6 +598,26 @@ index fa79b1ac4f85..83e53acfbe88 100644
  
  config BOSCH_BNO055_SERIAL
  	tristate "Bosch BNO055 attached via UART"
+diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
+index 86fbbe904050..19a1ef5351d2 100644
+--- a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
++++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
+@@ -736,13 +736,13 @@ inv_mpu6050_read_raw(struct iio_dev *indio_dev,
+ 			ret = inv_mpu6050_sensor_show(st, st->reg->gyro_offset,
+ 						chan->channel2, val);
+ 			mutex_unlock(&st->lock);
+-			return IIO_VAL_INT;
++			return ret;
+ 		case IIO_ACCEL:
+ 			mutex_lock(&st->lock);
+ 			ret = inv_mpu6050_sensor_show(st, st->reg->accl_offset,
+ 						chan->channel2, val);
+ 			mutex_unlock(&st->lock);
+-			return IIO_VAL_INT;
++			return ret;
+ 
+ 		default:
+ 			return -EINVAL;
 diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
 index f3f8392623a4..c9614982cb67 100644
 --- a/drivers/iio/industrialio-core.c

@@ -3,8 +3,8 @@
 #https://packages.debian.org/source/bookworm/linux
 
 #
-abi="6.1.0-15"
-kernel="6.1.66-1"
+abi="6.1.0-17"
+kernel="6.1.69-1"
 #
 
 debian_site="http://ftp.us.debian.org/debian/pool/main/l/linux"
@@ -25,7 +25,7 @@ dl_deb () {
 }
 
 dpkg_arch="arm64"
-image="arm64"
+image="rt-arm64"
 unsigned="-unsigned"
 dl_deb
 
