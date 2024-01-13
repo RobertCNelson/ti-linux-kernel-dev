@@ -161,47 +161,6 @@ wpanusb () {
 	dir 'external/wpanusb'
 }
 
-ksmbd () {
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		cd ../
-		if [ -d ./ksmbd ] ; then
-			rm -rf ./ksmbd || true
-		fi
-
-		${git_bin} clone https://github.com/cifsd-team/ksmbd --depth=1
-		cd ./ksmbd
-			ksmbd_hash=$(git rev-parse HEAD)
-			rm -rf .git || true
-		cd -
-
-		cd ./KERNEL/
-
-		mkdir -p ./fs/ksmbd/
-		rsync -av --delete ../ksmbd/* fs/ksmbd/
-
-		${git_bin} add .
-		${git_bin} commit -a -m 'merge: ksmbd: https://github.com/cifsd-team/ksmbd' -m "https://github.com/cifsd-team/ksmbd/commit/${ksmbd_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/external/ksmbd/
-		echo "KSMBD: https://github.com/cifsd-team/ksmbd/commit/${ksmbd_hash}" > ../patches/external/git/KSMBD
-
-		rm -rf ../ksmbd/ || true
-
-		${git_bin} reset --hard HEAD~1
-
-		start_cleanup
-
-		${git} "${DIR}/patches/external/ksmbd/0001-merge-ksmbd-https-github.com-cifsd-team-ksmbd.patch"
-
-		wdir="external/ksmbd"
-		number=1
-		cleanup
-
-		exit 2
-	fi
-	dir 'external/ksmbd'
-}
-
 rt_cleanup () {
 	echo "rt: needs fixup"
 	exit 2
@@ -375,14 +334,6 @@ beagleboard_dtbs () {
 #		device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
 #		device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
 
-#		device="am335x-bone-uboot-univ.dtb" ; arm_dtb_makefile_append
-#		device="am335x-boneblack-uboot-univ.dtb" ; arm_dtb_makefile_append
-#		device="am335x-bonegreen-wireless-uboot-univ.dtb" ; arm_dtb_makefile_append
-
-#		device="am335x-sancloud-bbe-uboot-univ.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-lite-uboot-univ.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-extended-wifi-uboot-univ.dtb" ; arm_dtb_makefile_append
-
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
 		#device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
@@ -416,7 +367,6 @@ local_patch () {
 
 external_git
 wpanusb
-ksmbd
 rt
 wireless_regdb
 beagleboard_dtbs
@@ -484,7 +434,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.204"
+	backport_tag="v5.10.207"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -500,7 +450,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.70"
+	backport_tag="v6.1.72"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -531,8 +481,7 @@ backports () {
 
 		post_rpibackports
 		exit 2
-	#else
-	#TI merged these in: https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/09.01.00.006
+	else
 		patch_backports
 	fi
 
@@ -554,8 +503,8 @@ drivers () {
 	#git revert --no-edit 2338e7bcef445059a99848a3eddde0b556277663
 	#git revert --no-edit bd1e336aa8535a99f339e2d66a611984262221ce
 	#git revert --no-edit bdc7ca008e1f5539e891187032cb2cbbc3decb5e
-	dir 'mikrobus_pre'
-	dir 'mikrobus'
+#	dir 'mikrobus_pre'
+#	dir 'mikrobus'
 	dir 'pcie'
 #	#dir 'fixes'
 
@@ -587,7 +536,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.70"
+		backport_tag="v6.1.72"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
