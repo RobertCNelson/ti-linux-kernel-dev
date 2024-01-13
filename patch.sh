@@ -462,6 +462,10 @@ backports () {
 		rsync -av ~/linux-src/drivers/iio/* ./drivers/iio/
 		rsync -av ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
 
+		#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=v6.1.72&id=481561a431fff2e00b353fabe59cef7ba6d6f946
+		cp -v ~/linux-src/include/linux/spi/spi.h ./include/linux/spi/spi.h
+		cp -v ~/linux-src/drivers/spi/spi.c ./drivers/spi/spi.c
+
 		post_backports
 		exit 2
 	else
