@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2023 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2024 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -129,7 +129,7 @@ wpanusb () {
 			rm -rf ./wpanusb || true
 		fi
 
-		${git_bin} clone https://git.beagleboard.org/beagleconnect/linux/wpanusb --depth=1
+		${git_bin} clone https://openbeagle.org/beagleconnect/linux/wpanusb --depth=1
 		cd ./wpanusb
 			wpanusb_hash=$(git rev-parse HEAD)
 		cd -
@@ -140,9 +140,9 @@ wpanusb () {
 		cp -v ../wpanusb/wpanusb.c drivers/net/ieee802154/
 
 		${git_bin} add .
-		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://git.beagleboard.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
+		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/external/wpanusb/
-		echo "WPANUSB: https://git.beagleboard.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/external/git/WPANUSB
+		echo "WPANUSB: https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/external/git/WPANUSB
 
 		rm -rf ../wpanusb/ || true
 
@@ -459,7 +459,6 @@ post_rpibackports () {
 		cd -
 	fi
 
-	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
 	${git_bin} add .
 	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
