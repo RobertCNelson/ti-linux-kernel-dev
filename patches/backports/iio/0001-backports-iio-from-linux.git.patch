@@ -1,9 +1,9 @@
-From e77440b79468687eebb71c56cf24e2724857bb89 Mon Sep 17 00:00:00 2001
+From 54618cce4b5f86b196cc8ba17b3360372ae4dbac Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Thu, 28 Dec 2023 16:22:44 -0600
+Date: Fri, 19 Jan 2024 14:58:37 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v5.10.205
+Reference: v5.10.208
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  drivers/iio/Kconfig                           |   1 +
@@ -18,14 +18,17 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/adc/palmas_gpadc.c                |   2 +-
  drivers/iio/adc/stx104.c                      |  96 +++++++---
  drivers/iio/adc/ti-ads7950.c                  |   1 +
+ drivers/iio/adc/ti_am335x_adc.c               |   4 +-
  drivers/iio/adc/xilinx-xadc-core.c            | 179 +++++++-----------
  drivers/iio/addac/Kconfig                     |   8 +
  drivers/iio/addac/Makefile                    |   6 +
  .../cros_ec_sensors/cros_ec_sensors_core.c    |   2 +-
+ .../iio/common/ms_sensors/ms_sensors_i2c.c    |   4 +-
  drivers/iio/dac/Makefile                      |   2 +-
  drivers/iio/dac/cio-dac.c                     |   4 +-
  drivers/iio/dac/mcp4725.c                     |  16 +-
  .../imu/inv_icm42600/inv_icm42600_buffer.c    |  10 +-
+ drivers/iio/imu/inv_mpu6050/inv_mpu_core.c    |   4 +-
  drivers/iio/light/cm32181.c                   |  12 ++
  drivers/iio/light/max44009.c                  |  13 +-
  drivers/iio/light/tsl2772.c                   |   1 +
@@ -34,7 +37,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/iio/pressure/dps310.c                 |   8 +-
  drivers/iio/pressure/ms5611_core.c            |   2 +-
  drivers/staging/iio/resolver/ad2s1210.c       |   2 +-
- 28 files changed, 242 insertions(+), 187 deletions(-)
+ 31 files changed, 249 insertions(+), 192 deletions(-)
  create mode 100644 drivers/iio/addac/Kconfig
  create mode 100644 drivers/iio/addac/Makefile
 
@@ -523,6 +526,22 @@ index a2b83f0bd526..d4583b76f1fe 100644
  	st->chip.base = -1;
  	st->chip.ngpio = TI_ADS7950_NUM_GPIOS;
  	st->chip.get_direction = ti_ads7950_get_direction;
+diff --git a/drivers/iio/adc/ti_am335x_adc.c b/drivers/iio/adc/ti_am335x_adc.c
+index e946903b0993..0ae57d6cfc49 100644
+--- a/drivers/iio/adc/ti_am335x_adc.c
++++ b/drivers/iio/adc/ti_am335x_adc.c
+@@ -640,8 +640,10 @@ static int tiadc_probe(struct platform_device *pdev)
+ 	platform_set_drvdata(pdev, indio_dev);
+ 
+ 	err = tiadc_request_dma(pdev, adc_dev);
+-	if (err && err == -EPROBE_DEFER)
++	if (err && err != -ENODEV) {
++		dev_err_probe(&pdev->dev, err, "DMA request failed\n");
+ 		goto err_dma;
++	}
+ 
+ 	return 0;
+ 
 diff --git a/drivers/iio/adc/xilinx-xadc-core.c b/drivers/iio/adc/xilinx-xadc-core.c
 index f93c34fe5873..30b5a17ce41a 100644
 --- a/drivers/iio/adc/xilinx-xadc-core.c
@@ -873,6 +892,21 @@ index e3f507771f17..829077bcd09d 100644
  				max((u16)sizeof(struct ec_params_motion_sense),
  				state->ec->max_response), GFP_KERNEL);
  	if (!state->msg)
+diff --git a/drivers/iio/common/ms_sensors/ms_sensors_i2c.c b/drivers/iio/common/ms_sensors/ms_sensors_i2c.c
+index b9e2038d05ef..74806807a071 100644
+--- a/drivers/iio/common/ms_sensors/ms_sensors_i2c.c
++++ b/drivers/iio/common/ms_sensors/ms_sensors_i2c.c
+@@ -15,8 +15,8 @@
+ /* Conversion times in us */
+ static const u16 ms_sensors_ht_t_conversion_time[] = { 50000, 25000,
+ 						       13000, 7000 };
+-static const u16 ms_sensors_ht_h_conversion_time[] = { 16000, 3000,
+-						       5000, 8000 };
++static const u16 ms_sensors_ht_h_conversion_time[] = { 16000, 5000,
++						       3000, 8000 };
+ static const u16 ms_sensors_tp_conversion_time[] = { 500, 1100, 2100,
+ 						     4100, 8220, 16440 };
+ 
 diff --git a/drivers/iio/dac/Makefile b/drivers/iio/dac/Makefile
 index 2fc481167724..09506d248c9e 100644
 --- a/drivers/iio/dac/Makefile
@@ -994,6 +1028,26 @@ index 99576b2c171f..32d7f8364230 100644
  out_unlock:
  	mutex_unlock(&st->lock);
  
+diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
+index ae391ec4a727..533c71a0dd01 100644
+--- a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
++++ b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
+@@ -707,13 +707,13 @@ inv_mpu6050_read_raw(struct iio_dev *indio_dev,
+ 			ret = inv_mpu6050_sensor_show(st, st->reg->gyro_offset,
+ 						chan->channel2, val);
+ 			mutex_unlock(&st->lock);
+-			return IIO_VAL_INT;
++			return ret;
+ 		case IIO_ACCEL:
+ 			mutex_lock(&st->lock);
+ 			ret = inv_mpu6050_sensor_show(st, st->reg->accl_offset,
+ 						chan->channel2, val);
+ 			mutex_unlock(&st->lock);
+-			return IIO_VAL_INT;
++			return ret;
+ 
+ 		default:
+ 			return -EINVAL;
 diff --git a/drivers/iio/light/cm32181.c b/drivers/iio/light/cm32181.c
 index 97649944f1df..c14a630dd683 100644
 --- a/drivers/iio/light/cm32181.c
