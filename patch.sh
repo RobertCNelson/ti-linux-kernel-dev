@@ -98,7 +98,8 @@ cherrypick () {
 }
 
 external_git () {
-	git_tag="ti-linux-${KERNEL_REL}.y"
+	#git_tag="ti-linux-${KERNEL_REL}.y"
+	git_tag="ti-linux-${KERNEL_REL}.y-cicd"
 	echo "pulling: [${git_patchset} ${git_tag}]"
 	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
 	top_of_branch=$(${git_bin} describe)
@@ -449,7 +450,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.75"
+	backport_tag="v6.1.77"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -539,7 +540,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.75"
+		backport_tag="v6.1.77"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
