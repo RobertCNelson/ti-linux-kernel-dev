@@ -3,8 +3,8 @@
 #
 #https://packages.debian.org/source/bookworm/linux
 #
-abi="6.1.0-17"
-kernel="6.1.69-1"
+abi="6.1.0-18"
+kernel="6.1.76-1"
 #
 
 mirror_site="http://192.168.1.12/debian/pool/main/l/linux"

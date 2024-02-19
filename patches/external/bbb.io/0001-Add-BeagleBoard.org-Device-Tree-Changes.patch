@@ -1,11 +1,11 @@
-From ec03f05b4552e6b16517863b41960af7c70669ee Mon Sep 17 00:00:00 2001
+From 5000e3c2cafbbb2c6ad08733c6dce81b814ae34e Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 29 Jan 2024 11:41:50 -0600
+Date: Mon, 19 Feb 2024 15:38:44 -0600
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v6.1.x-Beagle
 
-https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/1d05b494c08176e50eee31b4ae0fb76e927a6c39
+https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/25306228ff534a9cc5cbac44abf03b94b24f5cd4
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  arch/arm/boot/dts/AM335X-PRU-UIO-00A0.dtso    |   28 +
@@ -73,21 +73,15 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm/boot/dts/bbai-bone-buses.dtsi        |   75 +
  arch/arm/boot/dts/dra7.dtsi                   |    5 +-
  arch/arm/boot/dts/dra74x-mmc-iodelay.dtsi     |   44 +-
+ arch/arm/boot/dts/dra74x.dtsi                 |   64 -
  arch/arm/boot/dts/omap3-beagle-xm.dts         |   16 +-
  arch/arm/boot/dts/omap3-beagle.dts            |   20 +-
- arch/arm/boot/dts/omap34xx.dtsi               |    5 +
  arch/arm/boot/dts/omap36xx.dtsi               |    4 +
  arch/arm/boot/dts/omap4-panda-common.dtsi     |   34 +-
  arch/arm/boot/dts/omap4-panda-es.dts          |    8 +-
  arch/arm/boot/dts/omap4-sdp.dts               |   36 +-
- arch/arm/boot/dts/omap4.dtsi                  |    5 +
  arch/arm/boot/dts/twl6030_omap4.dtsi          |    4 +-
- arch/arm64/boot/dts/ti/k3-am62-main.dtsi      |    7 +
- arch/arm64/boot/dts/ti/k3-am62-mcu.dtsi       |    1 +
- arch/arm64/boot/dts/ti/k3-am62-wakeup.dtsi    |    2 +
- arch/arm64/boot/dts/ti/k3-am62.dtsi           |    3 +
- .../arm64/boot/dts/ti/k3-am625-beagleplay.dts |  282 +-
- arch/arm64/boot/dts/ti/k3-am625-sk.dts        |    9 +
+ .../arm64/boot/dts/ti/k3-am625-beagleplay.dts |  290 ++-
  .../boot/dts/ti/k3-j721e-beagleboneai64.dts   |   82 +-
  arch/arm64/boot/dts/ti/k3-j721e-main.dtsi     |   39 +-
  arch/arm64/boot/dts/ti/k3-j721e-sk.dts        |   37 +-
@@ -96,9 +90,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  arch/arm64/boot/dts/ti/k3-j722s.dtsi          |    1 +
  include/dt-bindings/board/am335x-bone-pins.h  |  253 ++
  include/dt-bindings/mailbox/miv-ihc.h         |   17 +
- include/dt-bindings/mux/ti-serdes.h           |    8 +
  include/dt-bindings/pinctrl/omap.h            |    8 +-
- 90 files changed, 11490 insertions(+), 630 deletions(-)
+ 83 files changed, 11456 insertions(+), 696 deletions(-)
  create mode 100644 arch/arm/boot/dts/AM335X-PRU-UIO-00A0.dtso
  create mode 100644 arch/arm/boot/dts/BB-ADC-00A0.dtso
  create mode 100644 arch/arm/boot/dts/BB-BBBW-WL1835-00A0.dtso
@@ -3395,7 +3388,7 @@ index 000000000000..6dc003082c03
 +	model = "SeeedStudio BeagleBone Green Gateway";
 +};
 diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
-index 160b7f886830..6d52e9fef81d 100644
+index a5cfe55c28b0..ff331aaf7607 100644
 --- a/arch/arm/boot/dts/Makefile
 +++ b/arch/arm/boot/dts/Makefile
 @@ -1,11 +1,15 @@
@@ -12854,6 +12847,79 @@ index b9d040135c5f..e2fdb0702f5c 100644
  		pinctrl-single,pins = <
  			DRA7XX_CORE_IOPAD(0x37e8, PIN_INPUT_PULLUP | MODE_SELECT | MUX_MODE3) /* uart1_ctsn.mmc4_clk */
  			DRA7XX_CORE_IOPAD(0x37ec, PIN_INPUT_PULLUP | MODE_SELECT | MUX_MODE3) /* uart1_rtsn.mmc4_cmd */
+diff --git a/arch/arm/boot/dts/dra74x.dtsi b/arch/arm/boot/dts/dra74x.dtsi
+index 03c2e2ecf610..cfb39dde4930 100644
+--- a/arch/arm/boot/dts/dra74x.dtsi
++++ b/arch/arm/boot/dts/dra74x.dtsi
+@@ -229,68 +229,4 @@ usb4: usb@10000 {
+ 			};
+ 		};
+ 	};
+-
+-	target-module@190000 {			/* 0x48990000, ap 23 2e.0 */
+-		compatible = "ti,sysc-omap4", "ti,sysc";
+-		reg = <0x190010 0x4>;
+-		reg-names = "sysc";
+-		ti,sysc-midle = <SYSC_IDLE_FORCE>,
+-				<SYSC_IDLE_NO>,
+-				<SYSC_IDLE_SMART>;
+-		ti,sysc-sidle = <SYSC_IDLE_FORCE>,
+-				<SYSC_IDLE_NO>,
+-				<SYSC_IDLE_SMART>;
+-		clocks = <&cam_clkctrl DRA7_CAM_VIP2_CLKCTRL 0>;
+-		clock-names = "fck";
+-		#address-cells = <1>;
+-		#size-cells = <1>;
+-		ranges = <0x0 0x190000 0x10000>;
+-
+-		vip2: vip@0 {
+-			compatible = "ti,dra7-vip2";
+-			label = "vip2";
+-			reg = <0x0000 0x114>,
+-			      <0x5500 0xd8>,
+-			      <0x5700 0x18>,
+-			      <0x5800 0x80>,
+-			      <0x5a00 0xd8>,
+-			      <0x5c00 0x18>,
+-			      <0x5d00 0x80>,
+-			      <0xd000 0x400>;
+-			reg-names = "vip",
+-				    "parser0",
+-				    "csc0",
+-				    "sc0",
+-				    "parser1",
+-				    "csc1",
+-				    "sc1",
+-				    "vpdma";
+-			interrupts = <GIC_SPI 352 IRQ_TYPE_LEVEL_HIGH>,
+-				     <GIC_SPI 393 IRQ_TYPE_LEVEL_HIGH>;
+-			/* CTRL_CORE_SMA_SW_1 */
+-			ti,vip-clk-polarity = <&scm_conf 0x534>;
+-
+-			ports {
+-				#address-cells = <1>;
+-				#size-cells = <0>;
+-
+-				vin3a: port@0 {
+-					reg = <0>;
+-					label = "vin3a";
+-				};
+-				vin4a: port@1 {
+-					reg = <1>;
+-					label = "vin4a";
+-				};
+-				vin3b: port@2 {
+-					reg = <2>;
+-					label = "vin3b";
+-				};
+-				vin4b: port@3 {
+-					reg = <3>;
+-					label = "vin4b";
+-				};
+-			};
+-		};
+-	};
+ };
 diff --git a/arch/arm/boot/dts/omap3-beagle-xm.dts b/arch/arm/boot/dts/omap3-beagle-xm.dts
 index 35eced6521ef..08ee0f8ea68f 100644
 --- a/arch/arm/boot/dts/omap3-beagle-xm.dts
@@ -13013,22 +13079,6 @@ index 0548b391334f..4d9a8eab6abf 100644
  		pinctrl-single,pins = <
  			OMAP3430_CORE2_IOPAD(0x25f0, PIN_OUTPUT | MUX_MODE3)		/* etk_d10.hsusb2_clk */
  			OMAP3430_CORE2_IOPAD(0x25f2, PIN_OUTPUT | MUX_MODE3)		/* etk_d11.hsusb2_stp */
-diff --git a/arch/arm/boot/dts/omap34xx.dtsi b/arch/arm/boot/dts/omap34xx.dtsi
-index 1ae53a348781..f86fe5e0b5d3 100644
---- a/arch/arm/boot/dts/omap34xx.dtsi
-+++ b/arch/arm/boot/dts/omap34xx.dtsi
-@@ -166,6 +166,11 @@ sgx_module: target-module@50000000 {
- 			#size-cells = <1>;
- 			ranges = <0 0x50000000 0x10000>;
- 
-+			/*
-+			 * Closed source PowerVR driver, no child device
-+			 * binding or driver in mainline
-+			 */
-+
- 			sgx: gpu@0 {
- 				compatible = "ti,omap3530-sgx530", "img,sgx530";
- 				reg = <0x0 0x10000>; /* 64kB */
 diff --git a/arch/arm/boot/dts/omap36xx.dtsi b/arch/arm/boot/dts/omap36xx.dtsi
 index 32ac7924a130..6529071ad2dd 100644
 --- a/arch/arm/boot/dts/omap36xx.dtsi
@@ -13407,22 +13457,6 @@ index b2cb93edbc3a..9e976140f34a 100644
  		pinctrl-single,pins = <
  			/* ENET_INT */
  			OMAP4_IOPAD(0x054, PIN_INPUT_PULLUP | MUX_MODE3)	/* gpmc_ad10.gpio_34 */
-diff --git a/arch/arm/boot/dts/omap4.dtsi b/arch/arm/boot/dts/omap4.dtsi
-index ce48f19c4c54..a2c71e04ace2 100644
---- a/arch/arm/boot/dts/omap4.dtsi
-+++ b/arch/arm/boot/dts/omap4.dtsi
-@@ -501,6 +501,11 @@ sgx_module: target-module@56000000 {
- 			#size-cells = <1>;
- 			ranges = <0 0x56000000 0x2000000>;
- 
-+			/*
-+			 * Closed source PowerVR driver, no child device
-+			 * binding or driver in mainline
-+			 */
-+
- 			gpu@0 {
- 				compatible = "ti,omap4430-sgx540", "img,sgx540";
- 				reg = <0x0 0x2000000>; /* 32MB */
 diff --git a/arch/arm/boot/dts/twl6030_omap4.dtsi b/arch/arm/boot/dts/twl6030_omap4.dtsi
 index 64e38c7c8be7..5730e46b0067 100644
 --- a/arch/arm/boot/dts/twl6030_omap4.dtsi
@@ -13445,124 +13479,8 @@ index 64e38c7c8be7..5730e46b0067 100644
  		pinctrl-single,pins = <
  			OMAP4_IOPAD(0x19e, WAKEUP_EN | PIN_INPUT_PULLUP | MUX_MODE0)	/* sys_nirq1.sys_nirq1 */
  		>;
-diff --git a/arch/arm64/boot/dts/ti/k3-am62-main.dtsi b/arch/arm64/boot/dts/ti/k3-am62-main.dtsi
-index a9ccf7bb2ecc..e02123f97c83 100644
---- a/arch/arm64/boot/dts/ti/k3-am62-main.dtsi
-+++ b/arch/arm64/boot/dts/ti/k3-am62-main.dtsi
-@@ -86,6 +86,7 @@ audio_refclk1: clock@82e4 {
- 	};
- 
- 	dmss: bus@48000000 {
-+		bootph-all;
- 		compatible = "simple-mfd";
- 		#address-cells = <2>;
- 		#size-cells = <2>;
-@@ -95,6 +96,7 @@ dmss: bus@48000000 {
- 		ti,sci-dev-id = <25>;
- 
- 		secure_proxy_main: mailbox@4d000000 {
-+			bootph-all;
- 			compatible = "ti,am654-secure-proxy";
- 			#mbox-cells = <1>;
- 			reg-names = "target_data", "rt", "scfg";
-@@ -179,16 +181,19 @@ dmsc: system-controller@44043000 {
- 		reg = <0x00 0x44043000 0x00 0xfe0>;
- 
- 		k3_pds: power-controller {
-+			bootph-all;
- 			compatible = "ti,sci-pm-domain";
- 			#power-domain-cells = <2>;
- 		};
- 
- 		k3_clks: clock-controller {
-+			bootph-all;
- 			compatible = "ti,k2g-sci-clk";
- 			#clock-cells = <2>;
- 		};
- 
- 		k3_reset: reset-controller {
-+			bootph-all;
- 			compatible = "ti,sci-reset";
- 			#reset-cells = <2>;
- 		};
-@@ -229,6 +234,7 @@ secure_proxy_sa3: mailbox@43600000 {
- 	};
- 
- 	main_pmx0: pinctrl@f4000 {
-+		bootph-all;
- 		compatible = "ti,am6-padconf";
- 		reg = <0x00 0xf4000 0x00 0x2ac>;
- 		#pinctrl-cells = <1>;
-@@ -240,6 +246,7 @@ main_pmx0: pinctrl@f4000 {
- 	};
- 
- 	main_timer0: timer@2400000 {
-+		bootph-all;
- 		compatible = "ti,am654-timer";
- 		reg = <0x00 0x2400000 0x00 0x400>;
- 		interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
-diff --git a/arch/arm64/boot/dts/ti/k3-am62-mcu.dtsi b/arch/arm64/boot/dts/ti/k3-am62-mcu.dtsi
-index a51fc237b283..0bd95d8a39b0 100644
---- a/arch/arm64/boot/dts/ti/k3-am62-mcu.dtsi
-+++ b/arch/arm64/boot/dts/ti/k3-am62-mcu.dtsi
-@@ -7,6 +7,7 @@
- 
- &cbass_mcu {
- 	mcu_pmx0: pinctrl@4084000 {
-+		bootph-all;
- 		compatible = "pinctrl-single";
- 		reg = <0x00 0x04084000 0x00 0x88>;
- 		#pinctrl-cells = <1>;
-diff --git a/arch/arm64/boot/dts/ti/k3-am62-wakeup.dtsi b/arch/arm64/boot/dts/ti/k3-am62-wakeup.dtsi
-index f6ae44e2ab98..880ed6e1761f 100644
---- a/arch/arm64/boot/dts/ti/k3-am62-wakeup.dtsi
-+++ b/arch/arm64/boot/dts/ti/k3-am62-wakeup.dtsi
-@@ -7,6 +7,7 @@
- 
- &cbass_wakeup {
- 	wkup_conf: syscon@43000000 {
-+		bootph-all;
- 		compatible = "syscon", "simple-mfd";
- 		reg = <0x00 0x43000000 0x00 0x20000>;
- 		#address-cells = <1>;
-@@ -14,6 +15,7 @@ wkup_conf: syscon@43000000 {
- 		ranges = <0x0 0x00 0x43000000 0x20000>;
- 
- 		chipid: chipid@14 {
-+			bootph-all;
- 			compatible = "ti,am654-chipid";
- 			reg = <0x14 0x4>;
- 		};
-diff --git a/arch/arm64/boot/dts/ti/k3-am62.dtsi b/arch/arm64/boot/dts/ti/k3-am62.dtsi
-index 982fc1dce728..3cb6045ea01d 100644
---- a/arch/arm64/boot/dts/ti/k3-am62.dtsi
-+++ b/arch/arm64/boot/dts/ti/k3-am62.dtsi
-@@ -47,6 +47,7 @@ pmu: pmu {
- 	};
- 
- 	cbass_main: bus@f0000 {
-+		bootph-all;
- 		compatible = "simple-bus";
- 		#address-cells = <2>;
- 		#size-cells = <2>;
-@@ -91,6 +92,7 @@ cbass_main: bus@f0000 {
- 			 <0x00 0x78100000 0x00 0x78100000 0x00 0x00008000>; /* DM R5 BTCM*/
- 
- 		cbass_mcu: bus@4000000 {
-+			bootph-all;
- 			compatible = "simple-bus";
- 			#address-cells = <2>;
- 			#size-cells = <2>;
-@@ -98,6 +100,7 @@ cbass_mcu: bus@4000000 {
- 		};
- 
- 		cbass_wakeup: bus@b00000 {
-+			bootph-all;
- 			compatible = "simple-bus";
- 			#address-cells = <2>;
- 			#size-cells = <2>;
 diff --git a/arch/arm64/boot/dts/ti/k3-am625-beagleplay.dts b/arch/arm64/boot/dts/ti/k3-am625-beagleplay.dts
-index 4e68eb762a1d..aab0db539d01 100644
+index 40fe3d3ad64b..aab0db539d01 100644
 --- a/arch/arm64/boot/dts/ti/k3-am625-beagleplay.dts
 +++ b/arch/arm64/boot/dts/ti/k3-am625-beagleplay.dts
 @@ -14,7 +14,7 @@
@@ -13685,7 +13603,19 @@ index 4e68eb762a1d..aab0db539d01 100644
  			function = LED_FUNCTION_WLAN;
  		};
  	};
-@@ -264,6 +286,33 @@ cpsw3g_phy1: ethernet-phy@1 {
+@@ -230,9 +252,11 @@ sound {
+ 		simple-audio-card,format = "i2s";
+ 		simple-audio-card,bitclock-master = <&hdmi_dailink_master>;
+ 		simple-audio-card,frame-master = <&hdmi_dailink_master>;
++		simple-audio-card,mclk-fs = <2182>;
+ 
+ 		hdmi_dailink_master: simple-audio-card,cpu {
+ 			sound-dai = <&mcasp1>;
++			system-clock-frequency = <24000000>;
+ 			system-clock-direction-out;
+ 		};
+ 
+@@ -262,6 +286,33 @@ cpsw3g_phy1: ethernet-phy@1 {
  			reset-deassert-us = <60000>; /* T2 */
  		};
  	};
@@ -13719,7 +13649,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  };
  
  &main_pmx0 {
-@@ -307,7 +356,8 @@ AM62X_IOPAD(0x0054, PIN_OUTPUT_PULLUP, 7) /* (P21) GPMC0_AD6.GPIO0_21 */
+@@ -305,7 +356,8 @@ AM62X_IOPAD(0x0054, PIN_OUTPUT_PULLUP, 7) /* (P21) GPMC0_AD6.GPIO0_21 */
  		>;
  	};
  
@@ -13729,7 +13659,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x0004, PIN_INPUT, 7) /* (G25) OSPI0_LBCLKO.GPIO0_1 */
  			AM62X_IOPAD(0x0008, PIN_INPUT, 7) /* (J24) OSPI0_DQS.GPIO0_2 */
-@@ -326,33 +376,35 @@ AM62X_IOPAD(0x00ac, PIN_INPUT, 7) /* (L21) GPMC0_CSn1.GPIO0_42 */
+@@ -324,33 +376,35 @@ AM62X_IOPAD(0x00ac, PIN_INPUT, 7) /* (L21) GPMC0_CSn1.GPIO0_42 */
  		>;
  	};
  
@@ -13770,7 +13700,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x00b0, PIN_INPUT_PULLUP, 1) /* (K22) GPMC0_CSn2.I2C2_SCL */
  			AM62X_IOPAD(0x00b4, PIN_INPUT_PULLUP, 1) /* (K24) GPMC0_CSn3.I2C2_SDA */
-@@ -370,14 +422,14 @@ AM62X_IOPAD(0x007c, PIN_INPUT, 2) /* (P25) GPMC0_CLK.MCASP1_AXR3 */
+@@ -368,14 +422,14 @@ AM62X_IOPAD(0x007c, PIN_INPUT, 2) /* (P25) GPMC0_CLK.MCASP1_AXR3 */
  		>;
  	};
  
@@ -13787,7 +13717,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x014c, PIN_INPUT, 0) /* (AB17) RGMII1_RD0 */
  			AM62X_IOPAD(0x0150, PIN_INPUT, 0) /* (AC17) RGMII1_RD1 */
-@@ -394,7 +446,8 @@ AM62X_IOPAD(0x012c, PIN_OUTPUT, 0) /* (AD19) RGMII1_TX_CTL */
+@@ -392,7 +446,8 @@ AM62X_IOPAD(0x012c, PIN_OUTPUT, 0) /* (AD19) RGMII1_TX_CTL */
  		>;
  	};
  
@@ -13797,7 +13727,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x0220, PIN_INPUT, 0) /* (Y3) MMC0_CMD */
  			AM62X_IOPAD(0x0218, PIN_INPUT, 0) /* (AB1) MMC0_CLK */
-@@ -409,13 +462,15 @@ AM62X_IOPAD(0x01f8, PIN_INPUT, 0) /* (AC2) MMC0_DAT7 */
+@@ -407,13 +462,15 @@ AM62X_IOPAD(0x01f8, PIN_INPUT, 0) /* (AC2) MMC0_DAT7 */
  		>;
  	};
  
@@ -13815,7 +13745,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x023c, PIN_INPUT, 0) /* (A21) MMC1_CMD */
  			AM62X_IOPAD(0x0234, PIN_INPUT, 0) /* (B22) MMC1_CLK */
-@@ -427,7 +482,7 @@ AM62X_IOPAD(0x0240, PIN_INPUT, 7) /* (D17) MMC1_SDCD.GPIO1_48 */
+@@ -425,7 +482,7 @@ AM62X_IOPAD(0x0240, PIN_INPUT, 7) /* (D17) MMC1_SDCD.GPIO1_48 */
  		>;
  	};
  
@@ -13824,7 +13754,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x0120, PIN_INPUT, 0) /* (C24) MMC2_CMD */
  			AM62X_IOPAD(0x0118, PIN_INPUT, 0) /* (D25) MMC2_CLK */
-@@ -440,13 +495,13 @@ AM62X_IOPAD(0x11c, PIN_INPUT, 0) /* (#N/A) MMC2_CLKB */
+@@ -438,13 +495,13 @@ AM62X_IOPAD(0x11c, PIN_INPUT, 0) /* (#N/A) MMC2_CLKB */
  		>;
  	};
  
@@ -13840,7 +13770,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x00a8, PIN_INPUT, 7) /* (M21) GPMC0_CSn0.GPIO0_41 */
  		>;
-@@ -477,7 +532,7 @@ AM62X_IOPAD(0x02a4, PIN_OUTPUT, 0) /* (AD5) OLDI0_CLK1P */
+@@ -475,7 +532,7 @@ AM62X_IOPAD(0x02a4, PIN_OUTPUT, 0) /* (AD5) OLDI0_CLK1P */
  		>;
  	};
  
@@ -13849,7 +13779,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x0168, PIN_INPUT, 1) /* (AE21) RGMII2_TXC.RMII2_CRS_DV */
  			AM62X_IOPAD(0x0180, PIN_INPUT, 1) /* (AD23) RGMII2_RXC.RMII2_REF_CLK */
-@@ -493,21 +548,35 @@ AM62X_IOPAD(0x01f0, PIN_OUTPUT, 5) /* (A18) EXT_REFCLK1.CLKOUT0 */
+@@ -491,21 +548,35 @@ AM62X_IOPAD(0x01f0, PIN_OUTPUT, 5) /* (A18) EXT_REFCLK1.CLKOUT0 */
  		>;
  	};
  
@@ -13888,7 +13818,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x01b0, PIN_INPUT, 1) /* (A20) MCASP0_ACLKR.SPI2_CLK */
  			AM62X_IOPAD(0x01ac, PIN_INPUT, 1) /* (E19) MCASP0_AFSR.SPI2_CS0 */
-@@ -516,7 +585,17 @@ AM62X_IOPAD(0x0198, PIN_INPUT, 1) /* (A19) MCASP0_AXR2.SPI2_D1 */
+@@ -514,7 +585,17 @@ AM62X_IOPAD(0x0198, PIN_INPUT, 1) /* (A19) MCASP0_AXR2.SPI2_D1 */
  		>;
  	};
  
@@ -13907,7 +13837,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x019c, PIN_INPUT, 7) /* (B18) MCASP0_AXR1.GPIO1_9 */
  			AM62X_IOPAD(0x01a0, PIN_INPUT, 7) /* (E18) MCASP0_AXR0.GPIO1_10 */
-@@ -524,6 +603,27 @@ AM62X_IOPAD(0x01a8, PIN_INPUT, 7) /* (D20) MCASP0_AFSX.GPIO1_12 */
+@@ -522,6 +603,27 @@ AM62X_IOPAD(0x01a8, PIN_INPUT, 7) /* (D20) MCASP0_AFSX.GPIO1_12 */
  		>;
  	};
  
@@ -13935,7 +13865,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  	touchscreen_pins_default: touchscreen-pins-default {
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x01b4, PIN_OUTPUT, 7) /* (A13) SPI0_CS0.GPIO1_15 */
-@@ -538,27 +638,20 @@ AM62X_IOPAD(0x01b8, PIN_OUTPUT, 2) /* (C13) SPI0_CS1.EHRPWM0_B */
+@@ -536,27 +638,20 @@ AM62X_IOPAD(0x01b8, PIN_OUTPUT, 2) /* (C13) SPI0_CS1.EHRPWM0_B */
  		>;
  	};
  
@@ -13966,7 +13896,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_IOPAD(0x01f4, PIN_INPUT_PULLUP, 0) /* (D16) EXTINTn */
  		>;
-@@ -566,27 +659,27 @@ AM62X_IOPAD(0x01f4, PIN_INPUT_PULLUP, 0) /* (D16) EXTINTn */
+@@ -564,27 +659,27 @@ AM62X_IOPAD(0x01f4, PIN_INPUT_PULLUP, 0) /* (D16) EXTINTn */
  };
  
  &mcu_pmx0 {
@@ -13998,7 +13928,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		pinctrl-single,pins = <
  			AM62X_MCU_IOPAD(0x0084, PIN_OUTPUT, 0) /* (A12) WKUP_CLKOUT0 */
  		>;
-@@ -606,6 +699,7 @@ &wkup_i2c0 {
+@@ -604,6 +699,7 @@ &wkup_i2c0 {
  	pinctrl-0 = <&i2c_csi_pins_default>;
  	clock-frequency = <400000>;
  	/* Enable with overlay for camera sensor */
@@ -14006,7 +13936,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  };
  
  &mcu_i2c0 {
-@@ -613,6 +707,7 @@ &mcu_i2c0 {
+@@ -611,6 +707,7 @@ &mcu_i2c0 {
  	pinctrl-0 = <&i2c_qwiic_pins_default>;
  	clock-frequency = <100000>;
  	status = "okay";
@@ -14014,7 +13944,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  };
  
  &mcu_m4fss {
-@@ -677,6 +772,7 @@ &cpsw3g_mdio {
+@@ -675,6 +772,7 @@ &cpsw3g_mdio {
  };
  
  &main_gpio0 {
@@ -14022,7 +13952,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  	pinctrl-names = "default";
  	pinctrl-0 = <&gpio0_pins_default>;
  	gpio-line-names = "BL_EN_3V3", "SPE_PO_EN", "RTC_INT",	/* 0-2 */
-@@ -696,6 +792,7 @@ &main_gpio0 {
+@@ -694,6 +792,7 @@ &main_gpio0 {
  };
  
  &main_gpio1 {
@@ -14030,7 +13960,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  	pinctrl-names = "default";
  	pinctrl-0 = <&mikrobus_gpio_pins_default>;
  	gpio-line-names = "", "", "", "", "",			/* 0-4 */
-@@ -712,7 +809,17 @@ &main_gpio1 {
+@@ -710,7 +809,17 @@ &main_gpio1 {
  		"SD_CD", "SD_VOLT_SEL", "", "";			/* 48-51 */
  };
  
@@ -14048,7 +13978,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  	pinctrl-names = "default";
  	pinctrl-0 = <&local_i2c_pins_default>;
  	clock-frequency = <400000>;
-@@ -731,6 +838,7 @@ rtc: rtc@68 {
+@@ -729,6 +838,7 @@ rtc: rtc@68 {
  	};
  
  	tps65219: pmic@30 {
@@ -14056,7 +13986,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  		compatible = "ti,tps65219";
  		reg = <0x30>;
  		buck1-supply = <&vsys_5v0>;
-@@ -822,6 +930,7 @@ &main_i2c1 {
+@@ -820,6 +930,7 @@ &main_i2c1 {
  	pinctrl-0 = <&grove_pins_default>;
  	clock-frequency = <100000>;
  	status = "okay";
@@ -14064,7 +13994,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  };
  
  &main_i2c2 {
-@@ -831,20 +940,17 @@ &main_i2c2 {
+@@ -829,20 +940,17 @@ &main_i2c2 {
  	status = "okay";
  
  	it66121hdmitx: hdmitx@4c {
@@ -14089,7 +14019,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  
  		ports {
  			#address-cells = <1>;
-@@ -875,61 +981,26 @@ &main_i2c3 {
+@@ -873,76 +981,42 @@ &main_i2c3 {
  	pinctrl-0 = <&mikrobus_i2c_pins_default>;
  	clock-frequency = <400000>;
  	status = "okay";
@@ -14108,11 +14038,13 @@ index 4e68eb762a1d..aab0db539d01 100644
  };
  
 -&mcasp1 {
+-	status = "okay";
 -	pinctrl-names = "default";
 -	pinctrl-0 = <&mcasp_hdmi_pins_default>;
 -
 -	#sound-dai-cells = <0>;
 -
+-	auxclk-fs-ratio = <2177>;
 -	op-mode = <0>;          /* MCASP_IIS_MODE */
 -	tdm-slots = <2>;
 -
@@ -14153,8 +14085,10 @@ index 4e68eb762a1d..aab0db539d01 100644
 +	bootph-all;
  	pinctrl-names = "default";
  	pinctrl-0 = <&emmc_pins_default>;
- 	ti,driver-strength-ohm = <50>;
-@@ -939,6 +1010,7 @@ &sdhci0 {
++	ti,driver-strength-ohm = <50>;
+ 	disable-wp;
+ 	status = "okay";
+ };
  
  &sdhci1 {
  	/* SD/MMC */
@@ -14162,7 +14096,26 @@ index 4e68eb762a1d..aab0db539d01 100644
  	pinctrl-names = "default";
  	pinctrl-0 = <&sd_pins_default>;
  
-@@ -979,8 +1051,9 @@ wlcore: wlcore@2 {
+ 	vmmc-supply = <&vdd_3v3_sd>;
+ 	vqmmc-supply = <&vdd_sd_dv>;
++	ti,driver-strength-ohm = <50>;
+ 	disable-wp;
+ 	cd-gpios = <&main_gpio1 48 GPIO_ACTIVE_LOW>;
+ 	cd-debounce-delay-ms = <100>;
+@@ -954,10 +1028,12 @@ &sdhci2 {
+ 	vmmc-supply = <&wlan_en>;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&wifi_pins_default>, <&wifi_32k_clk>;
++	bus-width = <4>;
+ 	non-removable;
+ 	ti,fails-without-test-cd;
+ 	cap-power-off-card;
+ 	keep-power-in-suspend;
++	ti,driver-strength-ohm = <50>;
+ 	assigned-clocks = <&k3_clks 157 158>;
+ 	assigned-clock-parents = <&k3_clks 157 160>;
+ 	#address-cells = <1>;
+@@ -975,8 +1051,9 @@ wlcore: wlcore@2 {
  };
  
  &main_uart0 {
@@ -14173,7 +14126,7 @@ index 4e68eb762a1d..aab0db539d01 100644
  	status = "okay";
  };
  
-@@ -993,10 +1066,57 @@ &main_uart5 {
+@@ -989,10 +1066,57 @@ &main_uart5 {
  	pinctrl-names = "default";
  	pinctrl-0 = <&mikrobus_uart_pins_default>;
  	status = "okay";
@@ -14231,82 +14184,6 @@ index 4e68eb762a1d..aab0db539d01 100644
 +	tx-num-evt = <32>;
 +	rx-num-evt = <32>;
  };
-diff --git a/arch/arm64/boot/dts/ti/k3-am625-sk.dts b/arch/arm64/boot/dts/ti/k3-am625-sk.dts
-index 83525949aafd..9f61df30b9b2 100644
---- a/arch/arm64/boot/dts/ti/k3-am625-sk.dts
-+++ b/arch/arm64/boot/dts/ti/k3-am625-sk.dts
-@@ -31,6 +31,7 @@ memory@80000000 {
- 
- 	vmain_pd: regulator-0 {
- 		/* TPS65988 PD CONTROLLER OUTPUT */
-+		bootph-all;
- 		compatible = "regulator-fixed";
- 		regulator-name = "vmain_pd";
- 		regulator-min-microvolt = <5000000>;
-@@ -41,6 +42,7 @@ vmain_pd: regulator-0 {
- 
- 	vcc_5v0: regulator-1 {
- 		/* Output of LM34936 */
-+		bootph-all;
- 		compatible = "regulator-fixed";
- 		regulator-name = "vcc_5v0";
- 		regulator-min-microvolt = <5000000>;
-@@ -52,6 +54,7 @@ vcc_5v0: regulator-1 {
- 
- 	vcc_3v3_sys: regulator-2 {
- 		/* output of LM61460-Q1 */
-+		bootph-all;
- 		compatible = "regulator-fixed";
- 		regulator-name = "vcc_3v3_sys";
- 		regulator-min-microvolt = <3300000>;
-@@ -63,6 +66,7 @@ vcc_3v3_sys: regulator-2 {
- 
- 	vdd_mmc1: regulator-3 {
- 		/* TPS22918DBVR */
-+		bootph-all;
- 		compatible = "regulator-fixed";
- 		regulator-name = "vdd_mmc1";
- 		regulator-min-microvolt = <3300000>;
-@@ -75,6 +79,7 @@ vdd_mmc1: regulator-3 {
- 
- 	vdd_sd_dv: regulator-4 {
- 		/* Output of TLV71033 */
-+		bootph-all;
- 		compatible = "regulator-gpio";
- 		regulator-name = "tlv71033";
- 		pinctrl-names = "default";
-@@ -205,6 +210,7 @@ AM62X_IOPAD(0x128, PIN_INPUT, 7) /* (B23) MMC2_SDWP.GPIO0_72 */
- 
- &main_i2c1 {
- 	exp1: gpio@22 {
-+		bootph-all;
- 		compatible = "ti,tca6424";
- 		reg = <0x22>;
- 		gpio-controller;
-@@ -296,6 +302,7 @@ mbox_m4_0: mbox-m4-0 {
- };
- 
- &ospi0 {
-+	bootph-all;
- 	status = "okay";
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&ospi0_pins_default>;
-@@ -313,6 +320,7 @@ flash@0{
- 		cdns,read-delay = <4>;
- 
- 		partitions {
-+			bootph-all;
- 			compatible = "fixed-partitions";
- 			#address-cells = <1>;
- 			#size-cells = <1>;
-@@ -348,6 +356,7 @@ partition@800000 {
- 			};
- 
- 			partition@3fc0000 {
-+				bootph-pre-ram;
- 				label = "ospi.phypattern";
- 				reg = <0x3fc0000 0x40000>;
- 			};
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts b/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
 index 490a5fe4a07c..25342cfefa94 100644
 --- a/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dts
@@ -15052,10 +14929,10 @@ index 63ec27822ddf..78f7f9d59760 100644
  			<&c71_0_memory_region>;
  };
 diff --git a/arch/arm64/boot/dts/ti/k3-j722s-evm.dts b/arch/arm64/boot/dts/ti/k3-j722s-evm.dts
-index 730181af2310..ddcd83078eab 100644
+index 21da82407284..987f60dc54e9 100644
 --- a/arch/arm64/boot/dts/ti/k3-j722s-evm.dts
 +++ b/arch/arm64/boot/dts/ti/k3-j722s-evm.dts
-@@ -215,6 +215,7 @@ led-1 {
+@@ -219,6 +219,7 @@ led-1 {
  };
  
  &main_pmx0 {
@@ -15063,7 +14940,7 @@ index 730181af2310..ddcd83078eab 100644
  
  	main_i2c0_pins_default: main-i2c0-default-pins {
  		pinctrl-single,pins = <
-@@ -319,6 +320,7 @@ &main_uart0 {
+@@ -329,6 +330,7 @@ &main_uart0 {
  };
  
  &mcu_pmx0 {
@@ -15072,10 +14949,10 @@ index 730181af2310..ddcd83078eab 100644
  	wkup_uart0_pins_default: wkup-uart0-default-pins {
  		pinctrl-single,pins = <
 diff --git a/arch/arm64/boot/dts/ti/k3-j722s.dtsi b/arch/arm64/boot/dts/ti/k3-j722s.dtsi
-index 5da5d0b32b96..07fc4708250f 100644
+index 9a1ba152901f..b2aadac10dd1 100644
 --- a/arch/arm64/boot/dts/ti/k3-j722s.dtsi
 +++ b/arch/arm64/boot/dts/ti/k3-j722s.dtsi
-@@ -20,6 +20,7 @@ cbass_main: bus@f0000 {
+@@ -29,6 +29,7 @@ cbass_main: bus@f0000 {
  		compatible = "simple-bus";
  		#address-cells = <2>;
  		#size-cells = <2>;
@@ -15365,23 +15242,6 @@ index 000000000000..747d9805c561
 +#define IHC_HART4_INT	177
 +
 +#endif
-diff --git a/include/dt-bindings/mux/ti-serdes.h b/include/dt-bindings/mux/ti-serdes.h
-index fe7ec160db00..8c6ad2165443 100644
---- a/include/dt-bindings/mux/ti-serdes.h
-+++ b/include/dt-bindings/mux/ti-serdes.h
-@@ -199,4 +199,12 @@
- #define J784S4_SERDES4_LANE3_USB		0x2
- #define J784S4_SERDES4_LANE3_IP4_UNUSED		0x3
- 
-+/* J722S */
-+
-+#define J722S_SERDES0_LANE0_USB0		0x0
-+#define J722S_SERDES0_LANE0_QSGMII_LANE2	0x1
-+
-+#define J722S_SERDES1_LANE0_PCIE0_LANE0		0x0
-+#define J722S_SERDES1_LANE0_QSGMII_LANE1	0x1
-+
- #endif /* _DT_BINDINGS_MUX_TI_SERDES */
 diff --git a/include/dt-bindings/pinctrl/omap.h b/include/dt-bindings/pinctrl/omap.h
 index f48245ff87e5..76f0d2fa5f3b 100644
 --- a/include/dt-bindings/pinctrl/omap.h
