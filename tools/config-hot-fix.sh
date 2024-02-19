@@ -206,4 +206,8 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 #removed in 6.7-rc1
 ./scripts/config --disable CONFIG_DEV_APPLETALK
 
+#09.02.00.005
+./scripts/config --module CONFIG_VIDEO_TI_VIP
+./scripts/config --module CONFIG_VIDEO_OV1063X
+
 cd ${DIR}/
