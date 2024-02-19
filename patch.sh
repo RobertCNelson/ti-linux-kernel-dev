@@ -540,6 +540,7 @@ drivers () {
 	#../
 	#dir 'overlays'
 
+	dir 'drivers/android'
 	dir 'drivers/ar1021_i2c'
 
 	dir 'drivers/ti/serial'
