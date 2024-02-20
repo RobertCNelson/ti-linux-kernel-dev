@@ -262,4 +262,6 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --disable CONFIG_CAVIUM_TX2_ERRATUM_219
 ./scripts/config --disable CONFIG_FUJITSU_ERRATUM_010001
 
+./scripts/config  --enable CONFIG_USB_ONBOARD_HUB
+
 cd ${DIR}/
