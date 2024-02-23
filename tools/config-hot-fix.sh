@@ -265,5 +265,10 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config  --enable CONFIG_USB_ONBOARD_HUB
 
 ./scripts/config --module CONFIG_VIDEO_CADENCE_CSI2TX
+./scripts/config --module CONFIG_VIDEO_OV2312
+./scripts/config --module CONFIG_VIDEO_OV5640
+./scripts/config --module CONFIG_VIDEO_OV5645
+./scripts/config --module CONFIG_VIDEO_IMX219
+./scripts/config --module CONFIG_VIDEO_IMX390
 
 cd ${DIR}/

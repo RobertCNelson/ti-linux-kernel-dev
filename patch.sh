@@ -25,9 +25,6 @@
 shopt -s nullglob
 
 . ${DIR}/version.sh
-if [ -f ${DIR}/system.sh ] ; then
-	. ${DIR}/system.sh
-fi
 git_bin=$(which git)
 #git hard requirements:
 #git: --no-edit
@@ -35,7 +32,12 @@ git_bin=$(which git)
 git="${git_bin} am"
 #git_patchset="git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git"
 git_patchset="https://github.com/RobertCNelson/ti-linux-kernel.git"
+unset git_patchset_options
 #git_opts
+
+if [ -f ${DIR}/system.sh ] ; then
+	. ${DIR}/system.sh
+fi
 
 if [ "${RUN_BISECT}" ] ; then
 	git="${git_bin} apply"
@@ -99,8 +101,8 @@ cherrypick () {
 
 external_git () {
 	git_tag="ti-linux-${KERNEL_REL}.y"
-	echo "pulling: [${git_patchset} ${git_tag}]"
-	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
+	echo "pulling: [${git_patchset_options} pull --no-edit  ${git_patchset} ${git_tag}]"
+	${git_bin} ${git_patchset_options} pull --no-edit ${git_patchset} ${git_tag}
 	top_of_branch=$(${git_bin} describe)
 	if [ ! "x${ti_git_new_release}" = "x" ] ; then
 		${git_bin} checkout master -f
@@ -511,6 +513,7 @@ drivers () {
 	#git revert --no-edit bdc7ca008e1f5539e891187032cb2cbbc3decb5e
 #	dir 'mikrobus_pre'
 #	dir 'mikrobus'
+
 #	#dir 'fixes'
 
 #	dir 'tusb322'
