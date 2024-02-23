@@ -493,6 +493,9 @@ backports () {
 
 drivers () {
 	dir 'boris'
+	dir 'pcie'
+	dir 'drivers/android'
+
 	#cd KERNEL/
 	#git checkout v5.10-rc1 -b tmp
 	#git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git topic/overlays-v5.10-rc1
@@ -502,15 +505,12 @@ drivers () {
 	#../
 	#dir 'overlays'
 
-	dir 'drivers/android'
-
 #	dir 'drivers/eqep'
 	#git revert --no-edit 2338e7bcef445059a99848a3eddde0b556277663
 	#git revert --no-edit bd1e336aa8535a99f339e2d66a611984262221ce
 	#git revert --no-edit bdc7ca008e1f5539e891187032cb2cbbc3decb5e
 #	dir 'mikrobus_pre'
 #	dir 'mikrobus'
-	dir 'pcie'
 #	#dir 'fixes'
 
 #	dir 'tusb322'
