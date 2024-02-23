@@ -25,9 +25,6 @@
 shopt -s nullglob
 
 . ${DIR}/version.sh
-if [ -f ${DIR}/system.sh ] ; then
-	. ${DIR}/system.sh
-fi
 git_bin=$(which git)
 #git hard requirements:
 #git: --no-edit
@@ -36,6 +33,10 @@ git="${git_bin} am"
 #git_patchset="git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git"
 git_patchset="https://github.com/RobertCNelson/ti-linux-kernel.git"
 #git_opts
+
+if [ -f ${DIR}/system.sh ] ; then
+	. ${DIR}/system.sh
+fi
 
 if [ "${RUN_BISECT}" ] ; then
 	git="${git_bin} apply"
