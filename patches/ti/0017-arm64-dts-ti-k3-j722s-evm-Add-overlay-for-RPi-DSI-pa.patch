@@ -1,0 +1,179 @@
+From c327caca4e5072b390490cfa8e7b3fc133fdd637 Mon Sep 17 00:00:00 2001
+From: Jayesh Choudhary <j-choudhary@ti.com>
+Date: Mon, 26 Feb 2024 11:34:47 +0530
+Subject: [PATCH 17/27] arm64: dts: ti: k3-j722s-evm: Add overlay for RPi DSI
+ panel
+
+J722S-EVM has option to drive DSI either through DSI-2-eDP bridge
+or through DSI Flex connector. It has onboard SN65DSI86 bridge which
+is connected to DisplayPort to drive display. The other route can be
+described through the endpoint connection:
+DSS1 (VP1) => CDNS-DSI => DSI-Panel (through DSI flex connector)
+Add overlay for RPi DSI 7 inch panel describing the above connection.
+
+The RPi DSI panel[0] uses Toshiba TC358762 for decoding the DSI video
+signals back to DPI for its consumption.
+
+[0]: https://www.raspberrypi.com/products/raspberry-pi-touch-display/
+
+Signed-off-by: Jayesh Choudhary <j-choudhary@ti.com>
+---
+ arch/arm64/boot/dts/ti/Makefile               |   1 +
+ .../ti/k3-j722s-evm-dsi-rpi-7inch-panel.dtso  | 133 ++++++++++++++++++
+ 2 files changed, 134 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/ti/k3-j722s-evm-dsi-rpi-7inch-panel.dtso
+
+diff --git a/arch/arm64/boot/dts/ti/Makefile b/arch/arm64/boot/dts/ti/Makefile
+index 08debd688600..c4a769b747d0 100644
+--- a/arch/arm64/boot/dts/ti/Makefile
++++ b/arch/arm64/boot/dts/ti/Makefile
+@@ -114,6 +114,7 @@ dtb-$(CONFIG_ARCH_K3) += k3-j722s-evm.dtb
+ dtb-$(CONFIG_ARCH_K3) += k3-j722s-evm-csi2-ov5640.dtbo
+ dtb-$(CONFIG_ARCH_K3) += k3-j722s-evm-csi2-rpi-cam-imx219.dtbo
+ dtb-$(CONFIG_ARCH_K3) += k3-j722s-evm-csi2-tevi-ov5640.dtbo
++dtb-$(CONFIG_ARCH_K3) += k3-j722s-evm-dsi-rpi-7inch-panel.dtbo
+ 
+ # Boards with J784s4 SoC
+ dtb-$(CONFIG_ARCH_K3) += k3-am69-sk.dtb
+diff --git a/arch/arm64/boot/dts/ti/k3-j722s-evm-dsi-rpi-7inch-panel.dtso b/arch/arm64/boot/dts/ti/k3-j722s-evm-dsi-rpi-7inch-panel.dtso
+new file mode 100644
+index 000000000000..a47495625081
+--- /dev/null
++++ b/arch/arm64/boot/dts/ti/k3-j722s-evm-dsi-rpi-7inch-panel.dtso
+@@ -0,0 +1,133 @@
++// SPDX-License-Identifier: GPL-2.0
++/**
++ * DT Overlay for RPi 7inch touchscreen panel interfaced with DSI on
++ * J722S EVM.
++ *
++ * RPi DSI Panel: https://www.raspberrypi.com/products/raspberry-pi-touch-display/
++ *
++ * Copyright (C) 2024 Texas Instruments Incorporated - https://www.ti.com/
++ */
++
++/dts-v1/;
++/plugin/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++#include "k3-pinctrl.h"
++
++&{/} {
++	panel0 {
++		compatible = "raspberrypi,7inch-dsi", "simple-panel";
++		backlight = <&display_reg>;
++		power-supply = <&display_reg>;
++
++		port {
++			panel_in: endpoint {
++				remote-endpoint = <&panel_bridge_out>;
++			};
++		};
++	};
++
++	bridge_reg: bridge-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "bridge-reg";
++		gpio = <&display_reg 0 0>;
++		vin-supply = <&display_reg>;
++		enable-active-high;
++	};
++};
++
++&exp2 {
++	p00-hog {
++		/* P00 - DSI_Mux_SEL_2 */
++		gpio-hog;
++		gpios = <0 GPIO_ACTIVE_HIGH>;
++		output-high;
++		line-name = "DSI_Mux_SEL_2";
++	};
++};
++
++&dphy_tx0 {
++	status = "okay";
++};
++
++&main_i2c1 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	display_reg: regulator@45 {
++		compatible = "raspberrypi,7inch-touchscreen-panel-regulator";
++		reg = <0x45>;
++		gpio-controller;
++		#gpio-cells = <2>;
++	};
++};
++
++&dsi0 {
++	status = "okay";
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	ports {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		port@0 {
++			reg = <0>;
++
++			dsi0_out: endpoint {
++				remote-endpoint = <&panel_bridge_in>;
++			};
++		};
++
++		port@1 {
++			reg = <1>;
++
++			dsi0_in: endpoint {
++				remote-endpoint = <&dss1_dpi1_out>;
++			};
++		};
++	};
++
++	bridge@0 {
++		status = "okay";
++		compatible = "toshiba,tc358762";
++		reg = <0>;
++		vddc-supply = <&bridge_reg>;
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++
++				panel_bridge_in: endpoint {
++					remote-endpoint = <&dsi0_out>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++
++				panel_bridge_out: endpoint {
++					remote-endpoint = <&panel_in>;
++				};
++			};
++		};
++	};
++};
++
++&dss1_ports {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	/* DSS1-VP1: DSI Output */
++	port@1 {
++		reg = <1>;
++
++		dss1_dpi1_out: endpoint {
++			remote-endpoint = <&dsi0_in>;
++		};
++	};
++};
+-- 
+2.39.2
+

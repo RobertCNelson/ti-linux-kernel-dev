@@ -120,6 +120,7 @@ external_git () {
 	else
 		echo "${top_of_branch}"
 	fi
+	dir 'ti'
 	#exit 2
 }
 
@@ -435,7 +436,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.209"
+	backport_tag="v5.10.210"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -451,7 +452,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.78"
+	backport_tag="v6.1.79"
 
 	subsystem="iio"
 	#regenerate="enable"
@@ -544,7 +545,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.78"
+		backport_tag="v6.1.79"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
