@@ -410,7 +410,7 @@ local_patch () {
 #wpanusb
 #rt
 wireless_regdb
-#ti_pm_firmware
+ti_pm_firmware
 #beagleboard_dtbs
 #local_patch
 
