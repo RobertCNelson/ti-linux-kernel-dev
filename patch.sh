@@ -406,12 +406,12 @@ local_patch () {
 	${git} "${DIR}/patches/dir/0001-patch.patch"
 }
 
-external_git
-wpanusb
+#external_git
+#wpanusb
 #rt
 wireless_regdb
-ti_pm_firmware
-beagleboard_dtbs
+#ti_pm_firmware
+#beagleboard_dtbs
 #local_patch
 
 pre_backports () {
@@ -555,8 +555,8 @@ drivers () {
 }
 
 ###
-backports
-drivers
+#backports
+#drivers
 
 packaging () {
 	echo "Update: package scripts"

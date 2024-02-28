@@ -4,12 +4,12 @@ ARCH=$(uname -m)
 
 config="multi_v7_defconfig"
 
-build_prefix="-ti-r"
-branch_prefix="ti-linux-"
+build_prefix="-ti-arm32-r"
+branch_prefix="ti-linux-arm32-"
 branch_postfix=".y"
-bborg_branch="6.1"
+bborg_branch="6.6-arm32"
 
-#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.1-rc1
+#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.6-rc1
 #arm
 KERNEL_ARCH=arm
 DEBARCH=armhf
@@ -19,8 +19,8 @@ DEBARCH=armhf
 #toolchain="gcc_9_arm"
 #toolchain="gcc_10_arm"
 #toolchain="gcc_11_arm"
-toolchain="gcc_12_arm"
-#toolchain="gcc_13_arm"
+#toolchain="gcc_12_arm"
+toolchain="gcc_13_arm"
 #arm64
 #KERNEL_ARCH=arm64
 #DEBARCH=arm64
@@ -44,11 +44,11 @@ toolchain="gcc_12_arm"
 #toolchain="gcc_13_riscv64"
 
 #Kernel
-KERNEL_REL=6.1
-KERNEL_TAG=${KERNEL_REL}.69
-kernel_rt=".69-rt21"
+KERNEL_REL=6.6
+KERNEL_TAG=${KERNEL_REL}.15
+kernel_rt=".15-rt22"
 #Kernel Build
-BUILD=${build_prefix}25
+BUILD=${build_prefix}0
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -59,8 +59,8 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-ti_git_old_release="78d2216bc679e98b7edb07ffabddb6d0337b5fcb"
-ti_git_new_release="77aa27cbdca359bf0735b36ada464ec65b520943"
-TISDK="09.02.00.005"
+#ti_git_old_release="78d2216bc679e98b7edb07ffabddb6d0337b5fcb"
+ti_git_new_release="755274496cb38d395e5c7c572d73da596e5f7994"
+#TISDK="09.02.00.005"
 
 #
