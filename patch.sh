@@ -25,9 +25,6 @@
 shopt -s nullglob
 
 . ${DIR}/version.sh
-if [ -f ${DIR}/system.sh ] ; then
-	. ${DIR}/system.sh
-fi
 git_bin=$(which git)
 #git hard requirements:
 #git: --no-edit
@@ -35,7 +32,12 @@ git_bin=$(which git)
 git="${git_bin} am"
 #git_patchset="git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git"
 git_patchset="https://github.com/RobertCNelson/ti-linux-kernel.git"
+unset git_patchset_options
 #git_opts
+
+if [ -f ${DIR}/system.sh ] ; then
+	. ${DIR}/system.sh
+fi
 
 if [ "${RUN_BISECT}" ] ; then
 	git="${git_bin} apply"
@@ -99,8 +101,8 @@ cherrypick () {
 
 external_git () {
 	git_tag="ti-linux-${KERNEL_REL}.y"
-	echo "pulling: [${git_patchset} ${git_tag}]"
-	${git_bin} pull --no-edit ${git_patchset} ${git_tag}
+	echo "pulling: [${git_patchset_options} pull --no-edit  ${git_patchset} ${git_tag}]"
+	${git_bin} ${git_patchset_options} pull --no-edit ${git_patchset} ${git_tag}
 	top_of_branch=$(${git_bin} describe)
 	if [ ! "x${ti_git_new_release}" = "x" ] ; then
 		${git_bin} checkout master -f
@@ -538,6 +540,7 @@ pre_backports () {
 	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
 	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
+		echo "${git_bin} checkout ${backport_tag} -f"
 		${git_bin} checkout ${backport_tag} -f
 	fi
 	cd -
@@ -550,7 +553,6 @@ post_backports () {
 		cd -
 	fi
 
-	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
 	${git_bin} add .
 	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
