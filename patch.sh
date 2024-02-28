@@ -368,7 +368,7 @@ local_patch () {
 	${git} "${DIR}/patches/dir/0001-patch.patch"
 }
 
-#external_git
+external_git
 #wpanusb
 #rt
 wireless_regdb

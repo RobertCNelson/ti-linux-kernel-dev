@@ -9,7 +9,7 @@ branch_prefix="ti-linux-arm64-"
 branch_postfix=".y"
 bborg_branch="6.6-arm64"
 
-#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.1-rc1
+#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.6-rc1
 #arm
 #KERNEL_ARCH=arm
 #DEBARCH=armhf
