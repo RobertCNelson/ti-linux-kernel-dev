@@ -281,25 +281,25 @@ cleanup_dts_builds () {
 	rm -rf arch/arm64/boot/dts/ti/*dtbo || true
 }
 
-arm_makefile_patch_of_overlays () {
-	cat arch/arm/boot/dts/Makefile  | grep -v '#'> arch/arm/boot/dts/Makefile.bak
-	echo "# SPDX-License-Identifier: GPL-2.0" > arch/arm/boot/dts/Makefile
-	echo "" >> arch/arm/boot/dts/Makefile
-	echo "ifeq (\$(CONFIG_OF_OVERLAY),y)" >> arch/arm/boot/dts/Makefile
-	echo "DTC_FLAGS += -@" >> arch/arm/boot/dts/Makefile
-	echo "endif" >> arch/arm/boot/dts/Makefile
-	echo "" >> arch/arm/boot/dts/Makefile
-	cat arch/arm/boot/dts/Makefile.bak >> arch/arm/boot/dts/Makefile
-	rm -rf arch/arm/boot/dts/Makefile.bak
+omap_makefile_patch_of_overlays () {
+	cat arch/arm/boot/dts/ti/omap/Makefile  | grep -v '#'> arch/arm/boot/dts/ti/omap/Makefile.bak
+	echo "# SPDX-License-Identifier: GPL-2.0" > arch/arm/boot/dts/ti/omap/Makefile
+	echo "" >> arch/arm/boot/dts/ti/omap/Makefile
+	echo "ifeq (\$(CONFIG_OF_OVERLAY),y)" >> arch/arm/boot/dts/ti/omap/Makefile
+	echo "DTC_FLAGS += -@" >> arch/arm/boot/dts/ti/omap/Makefile
+	echo "endif" >> arch/arm/boot/dts/ti/omap/Makefile
+	echo "" >> arch/arm/boot/dts/ti/omap/Makefile
+	cat arch/arm/boot/dts/ti/omap/Makefile.bak >> arch/arm/boot/dts/ti/omap/Makefile
+	rm -rf arch/arm/boot/dts/ti/omap/Makefile.bak
 }
 
 arm_dtb_makefile_append () {
-	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/Makefile
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device' \\:g' arch/arm/boot/dts/ti/omap/Makefile
 }
 
 arm_dtbo_makefile_append () {
-	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device'.dtbo \\:g' arch/arm/boot/dts/Makefile
-	cp -v ../${work_dir}/src/arm/overlays/${device}.dts arch/arm/boot/dts/${device}.dtso
+	sed -i -e 's:am335x-boneblack.dtb \\:am335x-boneblack.dtb \\\n\t'$device'.dtbo \\:g' arch/arm/boot/dts/ti/omap/Makefile
+	cp -v ../${work_dir}/src/arm/overlays/${device}.dts arch/arm/boot/dts/ti/omap/${device}.dtso
 }
 
 k3_dtb_makefile_append () {
@@ -307,7 +307,7 @@ k3_dtb_makefile_append () {
 }
 
 beagleboard_dtbs () {
-	branch="v6.1.x-Beagle"
+	branch="v6.6.x-Beagle"
 	https_repo="https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
@@ -325,12 +325,12 @@ beagleboard_dtbs () {
 		cd ./KERNEL/
 
 		cleanup_dts_builds
-		rm -rf arch/arm/boot/dts/overlays/ || true
+		rm -rf arch/arm/boot/dts/ti/omap/overlays/ || true
 		rm -rf arch/arm64/boot/dts/ti/overlays/ || true
-		arm_makefile_patch_of_overlays
+		omap_makefile_patch_of_overlays
 
-		cp -v ../${work_dir}/src/arm/ti/omap/*.dts arch/arm/boot/dts/
-		cp -v ../${work_dir}/src/arm/ti/omap/*.dtsi arch/arm/boot/dts/
+		cp -v ../${work_dir}/src/arm/ti/omap/*.dts arch/arm/boot/dts/ti/omap/
+		cp -v ../${work_dir}/src/arm/ti/omap/*.dtsi arch/arm/boot/dts/ti/omap/
 		cp -v ../${work_dir}/src/arm64/ti/*.dts arch/arm64/boot/dts/ti/
 		cp -v ../${work_dir}/src/arm64/ti/*.dtsi arch/arm64/boot/dts/ti/
 		cp -v ../${work_dir}/src/arm64/ti/*.h arch/arm64/boot/dts/ti/
@@ -411,7 +411,7 @@ external_git
 #rt
 wireless_regdb
 ti_pm_firmware
-#beagleboard_dtbs
+beagleboard_dtbs
 #local_patch
 
 pre_backports () {
