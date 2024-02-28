@@ -120,7 +120,7 @@ external_git () {
 	else
 		echo "${top_of_branch}"
 	fi
-	dir 'ti'
+	#dir 'ti'
 	#exit 2
 }
 
@@ -369,10 +369,10 @@ local_patch () {
 }
 
 external_git
-wpanusb
+#wpanusb
 rt
 wireless_regdb
-beagleboard_dtbs
+#beagleboard_dtbs
 #local_patch
 
 pre_backports () {
@@ -548,8 +548,8 @@ drivers () {
 }
 
 ###
-backports
-drivers
+#backports
+#drivers
 
 packaging () {
 	echo "Update: package scripts"

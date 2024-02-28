@@ -1,10 +1,10 @@
 #!/bin/bash
 
 #
-#https://packages.debian.org/source/bookworm/linux
+#https://packages.debian.org/source/trixie/linux
 #
-abi="6.1.0-18"
-kernel="6.1.76-1"
+abi="6.6.15"
+kernel="6.6.15-2"
 #
 
 mirror_site="http://192.168.1.10/debian/pool/main/l/linux"
