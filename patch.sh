@@ -383,6 +383,7 @@ pre_backports () {
 	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git master --tags
 	${git_bin} pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
+		echo "${git_bin} checkout ${backport_tag} -f"
 		${git_bin} checkout ${backport_tag} -f
 	fi
 	cd -
@@ -395,7 +396,6 @@ post_backports () {
 		cd -
 	fi
 
-	rm -f arch/arm/boot/dts/overlays/*.dtbo || true
 	${git_bin} add .
 	${git_bin} commit -a -m "backports: ${subsystem}: from: linux.git" -m "Reference: ${backport_tag}" -s
 	if [ ! -d ../patches/backports/${subsystem}/ ] ; then
@@ -410,6 +410,7 @@ pre_rpibackports () {
 	cd ~/linux-rpi/
 	${git_bin} fetch --tags
 	if [ ! "x${backport_tag}" = "x" ] ; then
+		echo "${git_bin} checkout ${backport_tag} -f"
 		${git_bin} checkout ${backport_tag} -f
 	fi
 	cd -
