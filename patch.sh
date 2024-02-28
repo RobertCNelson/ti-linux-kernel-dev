@@ -860,6 +860,7 @@ drivers () {
 	dir 'drivers/fb_ssd1306'
 	dir 'drivers/hackaday'
 	dir 'drivers/qcacld'
+	dir 'drivers/android'
 }
 
 soc () {
