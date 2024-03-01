@@ -476,7 +476,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.209"
+	backport_tag="v5.10.210"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -492,31 +492,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.78"
-
-	subsystem="iio"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		rsync -av ~/linux-src/include/linux/iio/* ./include/linux/iio/
-		rsync -av ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
-		rsync -av ~/linux-src/drivers/iio/* ./drivers/iio/
-		rsync -av ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
-
-		#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=v6.1.72&id=481561a431fff2e00b353fabe59cef7ba6d6f946
-		cp -v ~/linux-src/include/linux/spi/spi.h ./include/linux/spi/spi.h
-		cp -v ~/linux-src/drivers/spi/spi.c ./drivers/spi/spi.c
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-#		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
-#		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
-	fi
-
-	backport_tag="rpi-6.1.y"
+	backport_tag="rpi-6.6.y"
 
 	subsystem="edt-ft5x06"
 	#regenerate="enable"
@@ -534,35 +510,36 @@ backports () {
 
 drivers () {
 	dir 'boris'
-	#cd KERNEL/
-	#git checkout v5.10-rc1 -b tmp
-	#git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git topic/overlays-v5.10-rc1
-	#mkdir ../patches/overlays
-	#git format-patch -12 -o ../patches/overlays/
-	#https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git/log/?h=topic/overlays-v5.10-rc1
-	#../
-	#dir 'overlays'
 
-	dir 'drivers/android'
-	dir 'drivers/ar1021_i2c'
+#	#cd KERNEL/
+#	#git checkout v5.10-rc1 -b tmp
+#	#git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git topic/overlays-v5.10-rc1
+#	#mkdir ../patches/overlays
+#	#git format-patch -12 -o ../patches/overlays/
+#	#https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git/log/?h=topic/overlays-v5.10-rc1
+#	#../
+#	#dir 'overlays'
 
-	dir 'drivers/ti/serial'
-	dir 'drivers/ti/tsc'
-	#dir 'drivers/ti/gpio'
-	dir 'drivers/fb_ssd1306'
-	dir 'drivers/hackaday'
-	#dir 'drivers/qcacld'
+#	dir 'drivers/android'
+#	dir 'drivers/ar1021_i2c'
+
+#	dir 'drivers/ti/serial'
+#	dir 'drivers/ti/tsc'
+#	#dir 'drivers/ti/gpio'
+#	dir 'drivers/fb_ssd1306'
+#	dir 'drivers/hackaday'
+#	#dir 'drivers/qcacld'
 }
 
 ###
-#backports
-#drivers
+backports
+drivers
 
 packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.78"
+		backport_tag="v6.6.18"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
