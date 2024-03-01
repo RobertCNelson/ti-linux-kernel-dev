@@ -120,7 +120,6 @@ external_git () {
 	else
 		echo "${top_of_branch}"
 	fi
-	#dir 'ti'
 	#exit 2
 }
 
@@ -453,31 +452,7 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.79"
-
-	subsystem="iio"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		rsync -av ~/linux-src/include/linux/iio/* ./include/linux/iio/
-		rsync -av ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
-		rsync -av ~/linux-src/drivers/iio/* ./drivers/iio/
-		rsync -av ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
-
-		#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=v6.1.72&id=481561a431fff2e00b353fabe59cef7ba6d6f946
-		cp -v ~/linux-src/include/linux/spi/spi.h ./include/linux/spi/spi.h
-		cp -v ~/linux-src/drivers/spi/spi.c ./drivers/spi/spi.c
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-#		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
-#		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
-	fi
-
-	backport_tag="rpi-6.1.y"
+	backport_tag="rpi-6.6.y"
 
 	subsystem="edt-ft5x06"
 	#regenerate="enable"
@@ -491,23 +466,21 @@ backports () {
 	else
 		patch_backports
 	fi
-
-	dir 'greybus/gb-beagleplay'
 }
 
 drivers () {
 	dir 'boris'
 	dir 'pcie'
-	dir 'drivers/android'
+#	dir 'drivers/android'
 
-	#cd KERNEL/
-	#git checkout v5.10-rc1 -b tmp
-	#git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git topic/overlays-v5.10-rc1
-	#mkdir ../patches/overlays
-	#git format-patch -12 -o ../patches/overlays/
-	#https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git/log/?h=topic/overlays-v5.10-rc1
-	#../
-	#dir 'overlays'
+#	#cd KERNEL/
+#	#git checkout v5.10-rc1 -b tmp
+#	#git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git topic/overlays-v5.10-rc1
+#	#mkdir ../patches/overlays
+#	#git format-patch -12 -o ../patches/overlays/
+#	#https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git/log/?h=topic/overlays-v5.10-rc1
+#	#../
+#	#dir 'overlays'
 
 #	dir 'drivers/eqep'
 
@@ -517,13 +490,13 @@ drivers () {
 	#git revert --no-edit 0b5e729d4e357071781c3683c1257c10349e29ea
 	#git revert --no-edit 4b2b4cc50ba6d607d1611ea6b2046a58d16e45eb
 	#exit 2
-	dir 'mikrobus_i2c'
+#	dir 'mikrobus_i2c'
 
 	#spi
 	#git revert --no-edit bdc7ca008e1f5539e891187032cb2cbbc3decb5e
 	#exit 2
-	dir 'mikrobus_spi'
-	dir 'mikrobus'
+#	dir 'mikrobus_spi'
+#	dir 'mikrobus'
 
 #	#dir 'fixes'
 
@@ -548,14 +521,14 @@ drivers () {
 }
 
 ###
-#backports
-#drivers
+backports
+drivers
 
 packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.79"
+		backport_tag="v6.6.18"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
