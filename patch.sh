@@ -492,30 +492,6 @@ backports () {
 		dir 'drivers/ti/uio'
 	fi
 
-	backport_tag="v6.1.80"
-
-	subsystem="iio"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		rsync -av ~/linux-src/include/linux/iio/* ./include/linux/iio/
-		rsync -av ~/linux-src/include/uapi/linux/iio/* ./include/uapi/linux/iio/
-		rsync -av ~/linux-src/drivers/iio/* ./drivers/iio/
-		rsync -av ~/linux-src/drivers/staging/iio/* ./drivers/staging/iio/
-
-		#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=v6.1.72&id=481561a431fff2e00b353fabe59cef7ba6d6f946
-		cp -v ~/linux-src/include/linux/spi/spi.h ./include/linux/spi/spi.h
-		cp -v ~/linux-src/drivers/spi/spi.c ./drivers/spi/spi.c
-
-		post_backports
-		exit 2
-	else
-		patch_backports
-#		${git} "${DIR}/patches/backports/${subsystem}/0003-dt-bindings-iio-adc-ti-adc128s052-Add-adc08c-and-adc.patch"
-#		${git} "${DIR}/patches/backports/${subsystem}/0004-iio-adc-ti-adc128s052-Add-lower-resolution-devices-s.patch"
-	fi
-
 	backport_tag="rpi-6.1.y"
 
 	subsystem="edt-ft5x06"
