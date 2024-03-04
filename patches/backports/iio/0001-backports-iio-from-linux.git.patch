@@ -1,11 +1,12 @@
-From 2ab1ddb9b945e9a3376b656dbd844ed5cab6fcc8 Mon Sep 17 00:00:00 2001
+From 94ab5c77e51e691b56bc2051ab5c66bd941301b7 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Mon, 19 Feb 2024 15:47:13 -0600
+Date: Mon, 4 Mar 2024 13:10:25 -0600
 Subject: [PATCH] backports: iio: from: linux.git
 
-Reference: v6.1.78
+Reference: v6.1.80
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
+ drivers/iio/accel/Kconfig                     |   2 +
  drivers/iio/adc/ad7091r-base.c                | 175 +++++++++++++++++-
  drivers/iio/adc/ad7091r-base.h                |   8 +
  drivers/iio/adc/ad7091r5.c                    |  28 +--
@@ -15,12 +16,37 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../buffer/industrialio-triggered-buffer.c    |  10 +
  .../iio/common/ms_sensors/ms_sensors_i2c.c    |   4 +-
  drivers/iio/imu/adis16475.c                   | 117 +++++++-----
+ drivers/iio/imu/bno055/Kconfig                |   1 +
  drivers/iio/imu/inv_mpu6050/inv_mpu_core.c    |   4 +-
+ drivers/iio/industrialio-core.c               |   5 +-
+ drivers/iio/light/hid-sensor-als.c            |   1 +
+ drivers/iio/magnetometer/rm3100-core.c        |  10 +-
  drivers/spi/spi.c                             |  96 +++++++---
+ .../staging/iio/impedance-analyzer/ad5933.c   |   2 +-
+ include/linux/iio/adc/ad_sigma_delta.h        |   4 +-
  include/linux/iio/adc/adi-axi-adc.h           |   4 +
+ include/linux/iio/common/st_sensors.h         |   4 +-
+ include/linux/iio/imu/adis.h                  |   3 +-
  include/linux/spi/spi.h                       |  23 +++
- 13 files changed, 471 insertions(+), 181 deletions(-)
+ 22 files changed, 495 insertions(+), 189 deletions(-)
 
+diff --git a/drivers/iio/accel/Kconfig b/drivers/iio/accel/Kconfig
+index ffac66db7ac9..1f34747a68bf 100644
+--- a/drivers/iio/accel/Kconfig
++++ b/drivers/iio/accel/Kconfig
+@@ -219,10 +219,12 @@ config BMA400
+ 
+ config BMA400_I2C
+ 	tristate
++	select REGMAP_I2C
+ 	depends on BMA400
+ 
+ config BMA400_SPI
+ 	tristate
++	select REGMAP_SPI
+ 	depends on BMA400
+ 
+ config BMC150_ACCEL
 diff --git a/drivers/iio/adc/ad7091r-base.c b/drivers/iio/adc/ad7091r-base.c
 index 8e252cde735b..76002b91c86a 100644
 --- a/drivers/iio/adc/ad7091r-base.c
@@ -812,6 +838,18 @@ index aec55f7e1f26..2d939773445d 100644
  };
  module_spi_driver(adis16475_driver);
  
+diff --git a/drivers/iio/imu/bno055/Kconfig b/drivers/iio/imu/bno055/Kconfig
+index 83e53acfbe88..c7f5866a177d 100644
+--- a/drivers/iio/imu/bno055/Kconfig
++++ b/drivers/iio/imu/bno055/Kconfig
+@@ -8,6 +8,7 @@ config BOSCH_BNO055
+ config BOSCH_BNO055_SERIAL
+ 	tristate "Bosch BNO055 attached via UART"
+ 	depends on SERIAL_DEV_BUS
++	select REGMAP
+ 	select BOSCH_BNO055
+ 	help
+ 	  Enable this to support Bosch BNO055 IMUs attached via UART.
 diff --git a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c b/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
 index 86fbbe904050..19a1ef5351d2 100644
 --- a/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c
@@ -832,6 +870,66 @@ index 86fbbe904050..19a1ef5351d2 100644
  
  		default:
  			return -EINVAL;
+diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
+index c9614982cb67..a2f8278f0085 100644
+--- a/drivers/iio/industrialio-core.c
++++ b/drivers/iio/industrialio-core.c
+@@ -1601,10 +1601,13 @@ static int iio_device_register_sysfs(struct iio_dev *indio_dev)
+ 	ret = iio_device_register_sysfs_group(indio_dev,
+ 					      &iio_dev_opaque->chan_attr_group);
+ 	if (ret)
+-		goto error_clear_attrs;
++		goto error_free_chan_attrs;
+ 
+ 	return 0;
+ 
++error_free_chan_attrs:
++	kfree(iio_dev_opaque->chan_attr_group.attrs);
++	iio_dev_opaque->chan_attr_group.attrs = NULL;
+ error_clear_attrs:
+ 	iio_free_chan_devattr_list(&iio_dev_opaque->channel_attr_list);
+ 
+diff --git a/drivers/iio/light/hid-sensor-als.c b/drivers/iio/light/hid-sensor-als.c
+index 5a1a625d8d16..85097b769c20 100644
+--- a/drivers/iio/light/hid-sensor-als.c
++++ b/drivers/iio/light/hid-sensor-als.c
+@@ -228,6 +228,7 @@ static int als_capture_sample(struct hid_sensor_hub_device *hsdev,
+ 	case HID_USAGE_SENSOR_TIME_TIMESTAMP:
+ 		als_state->timestamp = hid_sensor_convert_timestamp(&als_state->common_attributes,
+ 								    *(s64 *)raw_data);
++		ret = 0;
+ 		break;
+ 	default:
+ 		break;
+diff --git a/drivers/iio/magnetometer/rm3100-core.c b/drivers/iio/magnetometer/rm3100-core.c
+index 69938204456f..42b70cd42b39 100644
+--- a/drivers/iio/magnetometer/rm3100-core.c
++++ b/drivers/iio/magnetometer/rm3100-core.c
+@@ -530,6 +530,7 @@ int rm3100_common_probe(struct device *dev, struct regmap *regmap, int irq)
+ 	struct rm3100_data *data;
+ 	unsigned int tmp;
+ 	int ret;
++	int samp_rate_index;
+ 
+ 	indio_dev = devm_iio_device_alloc(dev, sizeof(*data));
+ 	if (!indio_dev)
+@@ -586,9 +587,14 @@ int rm3100_common_probe(struct device *dev, struct regmap *regmap, int irq)
+ 	ret = regmap_read(regmap, RM3100_REG_TMRC, &tmp);
+ 	if (ret < 0)
+ 		return ret;
++
++	samp_rate_index = tmp - RM3100_TMRC_OFFSET;
++	if (samp_rate_index < 0 || samp_rate_index >=  RM3100_SAMP_NUM) {
++		dev_err(dev, "The value read from RM3100_REG_TMRC is invalid!\n");
++		return -EINVAL;
++	}
+ 	/* Initializing max wait time, which is double conversion time. */
+-	data->conversion_time = rm3100_samp_rates[tmp - RM3100_TMRC_OFFSET][2]
+-				* 2;
++	data->conversion_time = rm3100_samp_rates[samp_rate_index][2] * 2;
+ 
+ 	/* Cycle count values may not be what we want. */
+ 	if ((tmp - RM3100_TMRC_OFFSET) == 0)
 diff --git a/drivers/spi/spi.c b/drivers/spi/spi.c
 index 5d046be8b2dd..19688f333e0b 100644
 --- a/drivers/spi/spi.c
@@ -1072,6 +1170,41 @@ index 5d046be8b2dd..19688f333e0b 100644
  		size_t maxsize;
  		int ret;
  
+diff --git a/drivers/staging/iio/impedance-analyzer/ad5933.c b/drivers/staging/iio/impedance-analyzer/ad5933.c
+index f177b20f0f2d..ceba63213894 100644
+--- a/drivers/staging/iio/impedance-analyzer/ad5933.c
++++ b/drivers/staging/iio/impedance-analyzer/ad5933.c
+@@ -608,7 +608,7 @@ static void ad5933_work(struct work_struct *work)
+ 		struct ad5933_state, work.work);
+ 	struct iio_dev *indio_dev = i2c_get_clientdata(st->client);
+ 	__be16 buf[2];
+-	int val[2];
++	u16 val[2];
+ 	unsigned char status;
+ 	int ret;
+ 
+diff --git a/include/linux/iio/adc/ad_sigma_delta.h b/include/linux/iio/adc/ad_sigma_delta.h
+index 7852f6c9a714..719cf9cc6e1a 100644
+--- a/include/linux/iio/adc/ad_sigma_delta.h
++++ b/include/linux/iio/adc/ad_sigma_delta.h
+@@ -8,6 +8,8 @@
+ #ifndef __AD_SIGMA_DELTA_H__
+ #define __AD_SIGMA_DELTA_H__
+ 
++#include <linux/iio/iio.h>
++
+ enum ad_sigma_delta_mode {
+ 	AD_SD_MODE_CONTINUOUS = 0,
+ 	AD_SD_MODE_SINGLE = 1,
+@@ -99,7 +101,7 @@ struct ad_sigma_delta {
+ 	 * 'rx_buf' is up to 32 bits per sample + 64 bit timestamp,
+ 	 * rounded to 16 bytes to take into account padding.
+ 	 */
+-	uint8_t				tx_buf[4] ____cacheline_aligned;
++	uint8_t				tx_buf[4] __aligned(IIO_DMA_MINALIGN);
+ 	uint8_t				rx_buf[16] __aligned(8);
+ };
+ 
 diff --git a/include/linux/iio/adc/adi-axi-adc.h b/include/linux/iio/adc/adi-axi-adc.h
 index 52620e5b8052..b7904992d561 100644
 --- a/include/linux/iio/adc/adi-axi-adc.h
@@ -1094,6 +1227,43 @@ index 52620e5b8052..b7904992d561 100644
  };
  
  struct adi_axi_adc_conv *devm_adi_axi_adc_conv_register(struct device *dev,
+diff --git a/include/linux/iio/common/st_sensors.h b/include/linux/iio/common/st_sensors.h
+index db4a1b260348..c34e648f07e2 100644
+--- a/include/linux/iio/common/st_sensors.h
++++ b/include/linux/iio/common/st_sensors.h
+@@ -261,9 +261,9 @@ struct st_sensor_data {
+ 	bool hw_irq_trigger;
+ 	s64 hw_timestamp;
+ 
+-	char buffer_data[ST_SENSORS_MAX_BUFFER_SIZE] ____cacheline_aligned;
+-
+ 	struct mutex odr_lock;
++
++	char buffer_data[ST_SENSORS_MAX_BUFFER_SIZE] __aligned(IIO_DMA_MINALIGN);
+ };
+ 
+ #ifdef CONFIG_IIO_BUFFER
+diff --git a/include/linux/iio/imu/adis.h b/include/linux/iio/imu/adis.h
+index bcbefb757475..af083aa0c431 100644
+--- a/include/linux/iio/imu/adis.h
++++ b/include/linux/iio/imu/adis.h
+@@ -11,6 +11,7 @@
+ 
+ #include <linux/spi/spi.h>
+ #include <linux/interrupt.h>
++#include <linux/iio/iio.h>
+ #include <linux/iio/types.h>
+ 
+ #define ADIS_WRITE_REG(reg) ((0x80 | (reg)))
+@@ -131,7 +132,7 @@ struct adis {
+ 	unsigned long		irq_flag;
+ 	void			*buffer;
+ 
+-	u8			tx[10] ____cacheline_aligned;
++	u8			tx[10] __aligned(IIO_DMA_MINALIGN);
+ 	u8			rx[4];
+ };
+ 
 diff --git a/include/linux/spi/spi.h b/include/linux/spi/spi.h
 index 877395e075af..8e9054d9f6df 100644
 --- a/include/linux/spi/spi.h
