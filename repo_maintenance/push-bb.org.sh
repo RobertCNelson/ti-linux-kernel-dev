@@ -30,7 +30,7 @@ cat_files () {
 DIR=$PWD
 git_bin=$(which git)
 
-repo_gitlab="git@git.beagleboard.org:beagleboard/linux.git"
+repo_gitlab="git@openbeagle.org:beagleboard/linux.git"
 example="bb.org"
 compare="https://github.com/RobertCNelson/ti-linux-kernel/compare"
 
