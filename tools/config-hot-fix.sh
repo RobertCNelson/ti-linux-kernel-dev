@@ -273,4 +273,7 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_VIDEO_IMX219
 ./scripts/config --module CONFIG_VIDEO_IMX390
 
+#20240305: regression on discord, some systemd can no longer load *.xz modules...
+./scripts/config --disable CONFIG_MODULE_DECOMPRESS
+
 cd ${DIR}/
