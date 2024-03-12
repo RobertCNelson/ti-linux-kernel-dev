@@ -123,46 +123,6 @@ external_git () {
 	#exit 2
 }
 
-wpanusb () {
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		cd ../
-		if [ -d ./wpanusb ] ; then
-			rm -rf ./wpanusb || true
-		fi
-
-		${git_bin} clone https://openbeagle.org/beagleconnect/linux/wpanusb --depth=1
-		cd ./wpanusb
-			wpanusb_hash=$(git rev-parse HEAD)
-		cd -
-
-		cd ./KERNEL/
-
-		cp -v ../wpanusb/wpanusb.h drivers/net/ieee802154/
-		cp -v ../wpanusb/wpanusb.c drivers/net/ieee802154/
-
-		${git_bin} add .
-		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/external/wpanusb/
-		echo "WPANUSB: https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/external/git/WPANUSB
-
-		rm -rf ../wpanusb/ || true
-
-		${git_bin} reset --hard HEAD~1
-
-		start_cleanup
-
-		${git} "${DIR}/patches/external/wpanusb/0001-merge-wpanusb-https-git.beagleboard.org-beagleconnec.patch"
-
-		wdir="external/wpanusb"
-		number=1
-		cleanup
-
-		exit 2
-	fi
-	dir 'external/wpanusb'
-}
-
 rt_cleanup () {
 	echo "rt: needs fixup"
 	exit 2
@@ -368,7 +328,6 @@ local_patch () {
 }
 
 external_git
-#wpanusb
 #rt
 wireless_regdb
 beagleboard_dtbs
@@ -436,7 +395,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.211"
+	backport_tag="v5.10.212"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -470,7 +429,9 @@ backports () {
 
 drivers () {
 	dir 'boris'
-	dir 'pcie'
+	dir 'soc/ti/pcie'
+	dir 'mikrobus'
+
 #	dir 'drivers/android'
 
 #	#cd KERNEL/
@@ -483,20 +444,6 @@ drivers () {
 #	#dir 'overlays'
 
 #	dir 'drivers/eqep'
-
-	#i2c
-	#git revert --no-edit 2338e7bcef445059a99848a3eddde0b556277663
-	#git revert --no-edit bd1e336aa8535a99f339e2d66a611984262221ce
-	#git revert --no-edit 0b5e729d4e357071781c3683c1257c10349e29ea
-	#git revert --no-edit 4b2b4cc50ba6d607d1611ea6b2046a58d16e45eb
-	#exit 2
-#	dir 'mikrobus_i2c'
-
-	#spi
-	#git revert --no-edit bdc7ca008e1f5539e891187032cb2cbbc3decb5e
-	#exit 2
-#	dir 'mikrobus_spi'
-#	dir 'mikrobus'
 
 #	#dir 'fixes'
 

@@ -1,0 +1,76 @@
+From 566306a21dcb4cb211d233a80f9ffa27507067de Mon Sep 17 00:00:00 2001
+From: Ayush Singh <ayushdevel1325@gmail.com>
+Date: Mon, 16 Oct 2023 10:44:20 +0530
+Subject: [PATCH 2/6] w1 eeprom changes
+
+Signed-off-by: Ayush Singh <ayushdevel1325@gmail.com>
+---
+ drivers/w1/w1.c     |  3 ++-
+ drivers/w1/w1_int.c | 27 +++++++++++++++++++++++++++
+ include/linux/w1.h  |  1 +
+ 3 files changed, 30 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/w1/w1.c b/drivers/w1/w1.c
+index afb1cc4606c5..047825948360 100644
+--- a/drivers/w1/w1.c
++++ b/drivers/w1/w1.c
+@@ -673,7 +673,8 @@ static int __w1_attach_slave_device(struct w1_slave *sl)
+ 	sl->dev.of_node = of_find_matching_node(sl->master->dev.of_node,
+ 						sl->family->of_match_table);
+ 
+-	dev_set_name(&sl->dev, "%02x-%012llx",
++	dev_set_name(&sl->dev, "%s-%02x-%012llx",
++		 sl->master->name,
+ 		 (unsigned int) sl->reg_num.family,
+ 		 (unsigned long long) sl->reg_num.id);
+ 	snprintf(&sl->name[0], sizeof(sl->name),
+diff --git a/drivers/w1/w1_int.c b/drivers/w1/w1_int.c
+index 3a71c5eb2f83..2bfef8e67687 100644
+--- a/drivers/w1/w1_int.c
++++ b/drivers/w1/w1_int.c
+@@ -242,3 +242,30 @@ void w1_remove_master_device(struct w1_bus_master *bm)
+ 	__w1_remove_master_device(found);
+ }
+ EXPORT_SYMBOL(w1_remove_master_device);
++
++/**
++ * w1_find_master_device() - find a master device
++ * @bm:	master bus device to search
++ */
++struct w1_master *w1_find_master_device(struct w1_bus_master *bm)
++{
++	struct w1_master *dev, *found = NULL;
++
++	list_for_each_entry(dev, &w1_masters, w1_master_entry) {
++		if (!dev->initialized)
++			continue;
++
++		if (dev->bus_master->data == bm->data) {
++			found = dev;
++			break;
++		}
++	}
++
++	if (!found) {
++		pr_err("device doesn't exist.\n");
++		return ERR_PTR(-ENODEV);
++	}
++
++	return found;
++}
++EXPORT_SYMBOL(w1_find_master_device);
+diff --git a/include/linux/w1.h b/include/linux/w1.h
+index 9a2a0ef39018..24269d0dd5d1 100644
+--- a/include/linux/w1.h
++++ b/include/linux/w1.h
+@@ -242,6 +242,7 @@ struct w1_master {
+ 
+ int w1_add_master_device(struct w1_bus_master *master);
+ void w1_remove_master_device(struct w1_bus_master *master);
++struct w1_master *w1_find_master_device(struct w1_bus_master *master);
+ 
+ /**
+  * struct w1_family_ops - operations for a family type
+-- 
+2.39.2
+
