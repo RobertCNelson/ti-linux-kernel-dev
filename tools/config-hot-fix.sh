@@ -262,8 +262,13 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --disable CONFIG_CAVIUM_TX2_ERRATUM_219
 ./scripts/config --disable CONFIG_FUJITSU_ERRATUM_010001
 
+./scripts/config  --enable CONFIG_USB_CDNS_SUPPORT
+./scripts/config  --enable CONFIG_USB_CDNS3
+./scripts/config  --enable CONFIG_USB_CDNS3_TI
 ./scripts/config  --enable CONFIG_USB_ONBOARD_HUB
 
+./scripts/config --module CONFIG_VIDEO_WAVE_VPU
+./scripts/config --module CONFIG_VIDEO_CADENCE_CSI2RX
 ./scripts/config --module CONFIG_VIDEO_TI_J721E_CSI2RX
 ./scripts/config --module CONFIG_PHY_CADENCE_DPHY_RX
 ./scripts/config --module CONFIG_VIDEO_CADENCE_CSI2TX
@@ -275,5 +280,9 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 
 #20240305: regression on discord, some systemd can no longer load *.xz modules...
 ./scripts/config --disable CONFIG_MODULE_DECOMPRESS
+
+#enable MIKROBUS
+./scripts/config --enable CONFIG_SPI_OMAP24XX
+./scripts/config --enable CONFIG_W1
 
 cd ${DIR}/
