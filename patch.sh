@@ -473,6 +473,7 @@ backports () {
 drivers () {
 	dir 'boris'
 	dir 'pcie'
+	dir 'mikrobus'
 	dir 'drivers/android'
 
 	#cd KERNEL/
@@ -485,20 +486,6 @@ drivers () {
 	#dir 'overlays'
 
 #	dir 'drivers/eqep'
-
-	#i2c
-	#git revert --no-edit 2338e7bcef445059a99848a3eddde0b556277663
-	#git revert --no-edit bd1e336aa8535a99f339e2d66a611984262221ce
-	#git revert --no-edit 0b5e729d4e357071781c3683c1257c10349e29ea
-	#git revert --no-edit 4b2b4cc50ba6d607d1611ea6b2046a58d16e45eb
-	#exit 2
-	dir 'mikrobus_i2c'
-
-	#spi
-	#git revert --no-edit bdc7ca008e1f5539e891187032cb2cbbc3decb5e
-	#exit 2
-	dir 'mikrobus_spi'
-	dir 'mikrobus'
 
 #	#dir 'fixes'
 
