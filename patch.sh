@@ -475,6 +475,7 @@ drivers () {
 	dir 'pcie'
 	dir 'mikrobus'
 	dir 'drivers/android'
+	dir 'fixes'
 
 	#cd KERNEL/
 	#git checkout v5.10-rc1 -b tmp
