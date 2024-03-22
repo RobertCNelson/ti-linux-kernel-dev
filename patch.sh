@@ -407,7 +407,7 @@ local_patch () {
 }
 
 external_git
-#wpanusb
+wpanusb
 #rt
 wireless_regdb
 beagleboard_dtbs
@@ -475,7 +475,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.212"
+	backport_tag="v5.10.213"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -509,10 +509,10 @@ backports () {
 
 drivers () {
 	dir 'boris'
+	dir 'drivers/sdhci-omap'
 	dir 'soc/ti/pcie'
 	dir 'mikrobus'
-
-#	dir 'drivers/android'
+	dir 'drivers/android'
 
 #	#cd KERNEL/
 #	#git checkout v5.10-rc1 -b tmp
@@ -555,7 +555,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.6.20"
+		backport_tag="v6.6.22"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
