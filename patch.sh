@@ -100,7 +100,7 @@ cherrypick () {
 }
 
 external_git () {
-	git_tag="ti-linux-${KERNEL_REL}.y-cicd"
+	git_tag="ti-linux-${KERNEL_REL}.y"
 	echo "pulling: [${git_patchset_options} pull --no-edit  ${git_patchset} ${git_tag}]"
 	${git_bin} ${git_patchset_options} pull --no-edit ${git_patchset} ${git_tag}
 	top_of_branch=$(${git_bin} describe)
@@ -436,7 +436,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.212"
+	backport_tag="v5.10.213"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -472,6 +472,7 @@ backports () {
 
 drivers () {
 	dir 'boris'
+	dir 'drivers/sdhci-omap'
 	dir 'pcie'
 	dir 'mikrobus'
 	dir 'drivers/android'
@@ -487,8 +488,6 @@ drivers () {
 
 #	dir 'drivers/eqep'
 
-#	#dir 'fixes'
-
 #	dir 'tusb322'
 #	dir 'drivers/ti/uio'
 #	dir 'rpi-panel'
@@ -497,7 +496,6 @@ drivers () {
 #	dir 'drm-bridge'
 
 #	dir 'tiam62x'
-##	dir 'android'
 #	dir 'ti-edgeai'
 #	dir 'lincolntech'
 #	dir 'tidss'
@@ -517,7 +515,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.81"
+		backport_tag="v6.1.82"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
