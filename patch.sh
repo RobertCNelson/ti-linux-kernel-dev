@@ -290,7 +290,6 @@ ti_pm_firmware () {
 		${git_bin} add -f ./firmware/am*
 		${git_bin} commit -a -m 'Add AM335x CM3 Power Managment Firmware' -m "http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=commit;h=${ti_amx3_cm3_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/drivers/ti/firmware/
-		echo "TI_AMX3_CM3: http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=commit;h=${ti_amx3_cm3_hash}" > ../patches/external/git/TI_AMX3_CM3
 
 		rm -rf ../ti-amx3-cm3-pm-firmware/ || true
 
@@ -446,7 +445,7 @@ local_patch () {
 }
 
 external_git
-#wpanusb
+wpanusb
 #rt
 wireless_regdb
 ti_pm_firmware
@@ -515,7 +514,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.211"
+	backport_tag="v5.10.213"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -549,6 +548,10 @@ backports () {
 
 drivers () {
 	dir 'boris'
+	dir 'drivers/sdhci-omap'
+#	dir 'soc/ti/pcie'
+#	dir 'mikrobus'
+	dir 'drivers/android'
 
 #	#cd KERNEL/
 #	#git checkout v5.10-rc1 -b tmp
@@ -559,7 +562,6 @@ drivers () {
 #	#../
 #	#dir 'overlays'
 
-#	dir 'drivers/android'
 #	dir 'drivers/ar1021_i2c'
 
 #	dir 'drivers/ti/serial'
@@ -578,7 +580,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.6.20"
+		backport_tag="v6.6.22"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
