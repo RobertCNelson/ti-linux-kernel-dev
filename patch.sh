@@ -190,7 +190,7 @@ rt () {
 }
 
 wireless_regdb () {
-	#https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/
+	#https://git.kernel.org/pub/scm/linux/kernel/git/wens/wireless-regdb.git/
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		cd ../
@@ -198,7 +198,7 @@ wireless_regdb () {
 			rm -rf ./wireless-regdb || true
 		fi
 
-		${git_bin} clone https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git --depth=1
+		${git_bin} clone https://git.kernel.org/pub/scm/linux/kernel/git/wens/wireless-regdb.git --depth=1
 		cd ./wireless-regdb
 			wireless_regdb_hash=$(git rev-parse HEAD)
 		cd -
@@ -209,10 +209,10 @@ wireless_regdb () {
 		cp -v ../wireless-regdb/regulatory.db ./firmware/
 		cp -v ../wireless-regdb/regulatory.db.p7s ./firmware/
 		${git_bin} add -f ./firmware/regulatory.*
-		${git_bin} commit -a -m 'Add wireless-regdb regulatory database file' -m "https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/commit/?id=${wireless_regdb_hash}" -s
+		${git_bin} commit -a -m 'Add wireless-regdb regulatory database file' -m "https://git.kernel.org/pub/scm/linux/kernel/git/wens/wireless-regdb.git/commit/?id=${wireless_regdb_hash}" -s
 
 		${git_bin} format-patch -1 -o ../patches/external/wireless_regdb/
-		echo "WIRELESS_REGDB: https://git.kernel.org/pub/scm/linux/kernel/git/sforshee/wireless-regdb.git/commit/?id=${wireless_regdb_hash}" > ../patches/external/git/WIRELESS_REGDB
+		echo "WIRELESS_REGDB: https://git.kernel.org/pub/scm/linux/kernel/git/wens/wireless-regdb.git/commit/?id=${wireless_regdb_hash}" > ../patches/external/git/WIRELESS_REGDB
 
 		rm -rf ../wireless-regdb/ || true
 
@@ -251,7 +251,6 @@ ti_pm_firmware () {
 		${git_bin} add -f ./firmware/am*
 		${git_bin} commit -a -m 'Add AM335x CM3 Power Managment Firmware' -m "http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=commit;h=${ti_amx3_cm3_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/drivers/ti/firmware/
-		echo "TI_AMX3_CM3: http://git.ti.com/gitweb/?p=processor-firmware/ti-amx3-cm3-pm-firmware.git;a=commit;h=${ti_amx3_cm3_hash}" > ../patches/external/git/TI_AMX3_CM3
 
 		rm -rf ../ti-amx3-cm3-pm-firmware/ || true
 
@@ -476,7 +475,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="v5.10.211"
+	backport_tag="v5.10.213"
 
 	subsystem="uio"
 	#regenerate="enable"
@@ -510,6 +509,9 @@ backports () {
 
 drivers () {
 	dir 'boris'
+	dir 'drivers/sdhci-omap'
+	dir 'drivers/android'
+
 	#cd KERNEL/
 	#git checkout v5.10-rc1 -b tmp
 	#git pull --no-edit https://git.kernel.org/pub/scm/linux/kernel/git/geert/renesas-drivers.git topic/overlays-v5.10-rc1
@@ -519,7 +521,6 @@ drivers () {
 	#../
 	#dir 'overlays'
 
-	dir 'drivers/android'
 	dir 'drivers/ar1021_i2c'
 
 	dir 'drivers/ti/serial'
@@ -538,7 +539,7 @@ packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
 	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.80"
+		backport_tag="v6.1.82"
 
 		subsystem="bindeb-pkg"
 		#regenerate="enable"
