@@ -18,19 +18,19 @@ cat_files () {
 		cat ../patches/external/git/WIRELESS_REGDB >> ${wfile}
 	fi
 
-	if [ -f ../patches/external/git/TI_AMX3_CM3 ] ; then
-		cat ../patches/external/git/TI_AMX3_CM3 >> ${wfile}
-	fi
-
 	if [ -f ../patches/external/git/WPANUSB ] ; then
 		cat ../patches/external/git/WPANUSB >> ${wfile}
+	fi
+
+	if [ -f ../patches/external/git/BCFSERIAL ] ; then
+		cat ../patches/external/git/BCFSERIAL >> ${wfile}
 	fi
 }
 
 DIR=$PWD
 git_bin=$(which git)
 
-repo_gitlab="git@git.beagleboard.org:beagleboard/linux.git"
+repo_gitlab="git@openbeagle.org:beagleboard/linux.git"
 example="bb.org"
 compare="https://github.com/RobertCNelson/ti-linux-kernel/compare"
 

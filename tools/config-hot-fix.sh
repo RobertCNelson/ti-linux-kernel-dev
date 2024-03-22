@@ -210,4 +210,11 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 ./scripts/config --module CONFIG_VIDEO_TI_VIP
 ./scripts/config --module CONFIG_VIDEO_OV1063X
 
+#20240305: regression on discord, some systemd can no longer load *.xz modules...
+./scripts/config --disable CONFIG_MODULE_DECOMPRESS
+
+#enable CONFIG_DYNAMIC_FTRACE
+./scripts/config --enable CONFIG_FUNCTION_TRACER
+./scripts/config --enable CONFIG_DYNAMIC_FTRACE
+
 cd ${DIR}/
