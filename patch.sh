@@ -530,6 +530,7 @@ drivers () {
 	dir 'mikrobus'
 	dir 'drivers/android'
 	dir 'fixes'
+	dir 'drivers/cc33xx'
 
 	#cd KERNEL/
 	#git checkout v5.10-rc1 -b tmp
