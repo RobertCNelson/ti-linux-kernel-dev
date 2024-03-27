@@ -1,0 +1,72 @@
+From 5b5ae3a75791121d042c7967e487e8053c7b4736 Mon Sep 17 00:00:00 2001
+From: Jared McArthur <j-mcarthur@ti.com>
+Date: Mon, 11 Mar 2024 21:04:52 -0500
+Subject: [PATCH] hard-code the RPi clock speed, use the min max method for any
+ other clock speed
+
+---
+ drivers/clk/keystone/sci-clk.c | 36 ++++++++++++++++++++++++----------
+ 1 file changed, 26 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/clk/keystone/sci-clk.c b/drivers/clk/keystone/sci-clk.c
+index 02d9e93e6924..b19fd7e39833 100644
+--- a/drivers/clk/keystone/sci-clk.c
++++ b/drivers/clk/keystone/sci-clk.c
+@@ -176,18 +176,28 @@ static int sci_clk_determine_rate(struct clk_hw *hw,
+ 		return 0;
+ 	}
+ 
+-	ret = clk->provider->ops->get_best_match_freq(clk->provider->sci,
++	if (req->rate == 28569000) {
++		ret = clk->provider->ops->get_best_match_freq(clk->provider->sci,
+ 						      clk->dev_id,
+ 						      clk->clk_id,
+-						      req->min_rate,
+ 						      req->rate,
+-						      req->max_rate,
++						      req->rate,
++						      req->rate,
+ 						      &new_rate);
+-	if (ret) {
+-		dev_err(clk->provider->dev,
+-			"determine-rate failed for dev=%d, clk=%d, ret=%d\n",
+-			clk->dev_id, clk->clk_id, ret);
+-		return ret;
++	} else {
++		ret = clk->provider->ops->get_best_match_freq(clk->provider->sci,
++								clk->dev_id,
++								clk->clk_id,
++								req->min_rate,
++								req->rate,
++								req->max_rate,
++								&new_rate);
++		if (ret) {
++			dev_err(clk->provider->dev,
++				"determine-rate failed for dev=%d, clk=%d, ret=%d\n",
++				clk->dev_id, clk->clk_id, ret);
++			return ret;
++		}
+ 	}
+ 
+ 	clk->cached_req = req->rate;
+@@ -212,9 +222,15 @@ static int sci_clk_set_rate(struct clk_hw *hw, unsigned long rate,
+ {
+ 	struct sci_clk *clk = to_sci_clk(hw);
+ 
++	if (rate == 28569000) {
++		return clk->provider->ops->set_freq(clk->provider->sci, clk->dev_id,
++							clk->clk_id, rate, rate,
++							rate);
++	}
++
+ 	return clk->provider->ops->set_freq(clk->provider->sci, clk->dev_id,
+-					    clk->clk_id, rate / 10 * 9, rate,
+-					    rate / 10 * 11);
++						clk->clk_id, rate / 10 * 9, rate,
++						rate / 10 * 11);
+ }
+ 
+ /**
+-- 
+2.39.2
+
