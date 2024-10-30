@@ -303,7 +303,7 @@ k3_makefile_patch_cleanup_overlays () {
 }
 
 beagleboard_dtbs () {
-	branch="v6.6.x-Beagle"
+	branch="v6.12.x-Beagle"
 	https_repo="https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
@@ -481,8 +481,8 @@ local_patch () {
 }
 
 external_git
-mainline_patches
-wpanusb
+#mainline_patches
+#wpanusb
 rt
 wireless_regdb
 beagleboard_dtbs
@@ -552,7 +552,7 @@ patch_backports () {
 }
 
 backports () {
-	backport_tag="rpi-6.6.y"
+	backport_tag="rpi-6.12.y"
 
 	subsystem="edt-ft5x06"
 	#regenerate="enable"
@@ -561,8 +561,8 @@ backports () {
 
 		cp -v ~/linux-rpi/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/
 
-	#	post_rpibackports
-	#else
+		post_rpibackports
+	else
 		patch_backports
 	fi
 }
@@ -571,11 +571,11 @@ drivers () {
 	dir 'branding/boris'
 
 	dir 'drivers/davinci-mcasp'
-	dir 'drivers/ite-it66121-hpd'
+#	dir 'drivers/ite-it66121-hpd'
 	dir 'drivers/pcie'
-	dir 'drivers/tidss'
+#	dir 'drivers/tidss'
 
-	dir 'external/android'
+#	dir 'external/android'
 	dir 'external/cadence'
 	dir 'external/gasket'
 }
@@ -583,6 +583,8 @@ drivers () {
 ###
 backports
 drivers
+
+dir 'fixes'
 
 packaging () {
 	echo "Update: package scripts"

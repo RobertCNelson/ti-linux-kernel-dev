@@ -32,8 +32,8 @@ DEBARCH=arm64
 #toolchain="gcc_10_aarch64"
 #toolchain="gcc_11_aarch64"
 #toolchain="gcc_12_aarch64"
-toolchain="gcc_13_aarch64"
-#toolchain="gcc_14_aarch64"
+#toolchain="gcc_13_aarch64"
+toolchain="gcc_14_aarch64"
 #riscv64
 #KERNEL_ARCH=riscv
 #DEBARCH=riscv64
@@ -47,17 +47,16 @@ toolchain="gcc_13_aarch64"
 #toolchain="gcc_14_riscv64"
 
 #Kernel
-#linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git"
+linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git"
 #linux_stable_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git"
-linux_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
 linux_stable_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
 #
-KERNEL_REL=6.6
-KERNEL_TAG=${KERNEL_REL}.44
-#https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.6/
-kernel_rt=".44-rt39"
+KERNEL_REL=6.12
+KERNEL_TAG=${KERNEL_REL}-rc5
+#https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.12/
+kernel_rt="-rc4-rt6"
 #Kernel Build
-BUILD=${build_prefix}14
+BUILD=${build_prefix}0.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -68,8 +67,8 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-sdk_git_old_release="c0deda7906ed2661afaa841e1d822932a37f38f6"
-sdk_git_new_release="325ad3650d0b50a4943b9151fb43411f08ad5d0c"
-SDK="10.01.02"
+sdk_git_old_release="b0e715522353879e6c3c1b56dafad6fb681b1e55"
+sdk_git_new_release="b0e715522353879e6c3c1b56dafad6fb681b1e55"
+#SDK="10.00.05"
 
 #

@@ -260,9 +260,8 @@ git_shallow () {
 . "${DIR}/system.sh"
 
 if [ "${USE_LOCAL_GIT_MIRROR}" ] ; then
-	#linux_repo="https://git.gfnd.rcn-ee.org/kernel.org/mirror-linux-stable.git"
+	linux_repo="https://git.gfnd.rcn-ee.org/kernel.org/mirror-linux-stable.git"
 	#linux_stable_repo="https://git.gfnd.rcn-ee.org/kernel.org/mirror-linux-stable.git"
-	linux_repo="https://git.gfnd.rcn-ee.org/TexasInstruments/ti-linux-kernel.git"
 	linux_stable_repo="https://git.gfnd.rcn-ee.org/TexasInstruments/ti-linux-kernel.git"
 fi
 
