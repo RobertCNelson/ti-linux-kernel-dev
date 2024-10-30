@@ -7,9 +7,9 @@ config="multi_v7_defconfig"
 build_prefix="-ti-arm32-r"
 branch_prefix="ti-linux-arm32-"
 branch_postfix=".y"
-bborg_branch="6.6-arm32"
+bborg_branch="6.12-arm32"
 
-#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.6-rc1
+#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.12-rc1
 #arm
 KERNEL_ARCH=arm
 DEBARCH=armhf
@@ -20,8 +20,8 @@ DEBARCH=armhf
 #toolchain="gcc_10_arm"
 #toolchain="gcc_11_arm"
 #toolchain="gcc_12_arm"
-toolchain="gcc_13_arm"
-#toolchain="gcc_14_arm"
+#toolchain="gcc_13_arm"
+toolchain="gcc_14_arm"
 #arm64
 #KERNEL_ARCH=arm64
 #DEBARCH=arm64
@@ -52,12 +52,12 @@ toolchain="gcc_13_arm"
 linux_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
 linux_stable_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
 #
-KERNEL_REL=6.6
-KERNEL_TAG=${KERNEL_REL}.32
-#https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.6/
-kernel_rt=".32-rt32"
+KERNEL_REL=6.12
+KERNEL_TAG=${KERNEL_REL}-rc5
+#https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.12/
+kernel_rt="-rc4-rt6"
 #Kernel Build
-BUILD=${build_prefix}7.1
+BUILD=${build_prefix}0.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -68,8 +68,8 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-sdk_git_old_release="4bd0d44f69cbda913ca7fcb809ae0fa682416b14"
-sdk_git_new_release="dd0c137e219ab179c10ecb067bdf67a268004e14"
-SDK="10.00.05"
+sdk_git_old_release="b0e715522353879e6c3c1b56dafad6fb681b1e55"
+sdk_git_new_release="b0e715522353879e6c3c1b56dafad6fb681b1e55"
+#SDK="10.00.05"
 
 #

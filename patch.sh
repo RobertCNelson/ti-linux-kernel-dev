@@ -296,7 +296,7 @@ k3_makefile_patch_cleanup_overlays () {
 }
 
 beagleboard_dtbs () {
-	branch="v6.6.x-Beagle"
+	branch="v6.12.x-Beagle"
 	https_repo="https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
@@ -417,7 +417,7 @@ local_patch () {
 }
 
 external_git
-wpanusb
+#wpanusb
 rt
 wireless_regdb
 beagleboard_dtbs
@@ -487,20 +487,7 @@ patch_backports () {
 }
 
 backports () {
-	subsystem="uio"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		unset backport_tag
-
-		cp -v ../patches/drivers/ti/uio/uio_pruss.c ./drivers/uio/
-
-		post_backports
-	else
-		patch_backports
-		dir 'drivers/ti/uio'
-	fi
-
-	backport_tag="rpi-6.6.y"
+	backport_tag="rpi-6.12.y"
 
 	subsystem="edt-ft5x06"
 	#regenerate="enable"
@@ -509,8 +496,8 @@ backports () {
 
 		cp -v ~/linux-rpi/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/
 
-	#	post_rpibackports
-	#else
+		post_rpibackports
+	else
 		patch_backports
 	fi
 }
@@ -524,7 +511,7 @@ drivers () {
 #	dir 'drivers/fb_ssd1306'
 #	dir 'drivers/hackaday'
 
-	dir 'external/android'
+	#dir 'external/android'
 	dir 'external/ti-amx3-cm3-pm-firmware'
 }
 
