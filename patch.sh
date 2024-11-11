@@ -576,8 +576,6 @@ drivers () {
 backports
 drivers
 
-dir 'fixes'
-
 packaging () {
 	echo "Update: package scripts"
 	#do_backport="enable"
