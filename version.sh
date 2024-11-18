@@ -7,7 +7,7 @@ config="defconfig"
 build_prefix="-ti-arm64-r"
 branch_prefix="ti-linux-arm64-"
 branch_postfix=".y"
-bborg_branch="6.6-arm64"
+bborg_branch="6.12-arm64"
 
 #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.6-rc1
 #arm
@@ -52,11 +52,11 @@ linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/li
 linux_stable_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
 #
 KERNEL_REL=6.12
-KERNEL_TAG=${KERNEL_REL}-rc6
+KERNEL_TAG=${KERNEL_REL}
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.12/
 kernel_rt="-rc4-rt6"
 #Kernel Build
-BUILD=${build_prefix}2
+BUILD=${build_prefix}2.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -67,8 +67,8 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-sdk_git_old_release="f8f8c0b547f67d2d4d653cc59753f85275ff54f2"
-sdk_git_new_release="f8f8c0b547f67d2d4d653cc59753f85275ff54f2"
+sdk_git_old_release="ade72d105eb7c9a2a4addfd0204eb4551b8efa7a"
+sdk_git_new_release="ade72d105eb7c9a2a4addfd0204eb4551b8efa7a"
 #SDK="10.00.05"
 
 #
