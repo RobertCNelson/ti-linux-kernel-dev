@@ -151,7 +151,6 @@ wpanusb () {
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/external/wpanusb/
-		echo "WPANUSB: https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/external/git/WPANUSB
 
 		rm -rf ../wpanusb/ || true
 
@@ -186,6 +185,8 @@ rt () {
 			xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 			rm -f patch-${rt_patch}.patch.xz
 			rm -f localversion-rt
+ 			rm -rf drivers/tty/serial/8250/8250_omap.c.orig || true
+			rm -rf include/linux/netdevice.h.orig || true
 			${git_bin} add .
 			${git_bin} commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -m "patch-${rt_patch}.patch.xz" -s
 			${git_bin} format-patch -1 -o ../patches/external/rt/
@@ -561,8 +562,8 @@ backports () {
 
 		cp -v ~/linux-rpi/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/
 
-	#	post_rpibackports
-	#else
+		post_rpibackports
+	else
 		patch_backports
 	fi
 }
