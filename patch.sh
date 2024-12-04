@@ -367,9 +367,9 @@ beagleboard_dtbs () {
 
 		device="am335x-boneblack-uboot.dtb" ; arm_dtb_makefile_append
 
-#		device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
 
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
 		#device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
