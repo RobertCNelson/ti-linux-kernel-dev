@@ -260,7 +260,7 @@ k3_makefile_patch_cleanup_overlays () {
 	echo "# Enable support for device-tree overlays" >> arch/arm64/boot/dts/ti/Makefile
 	cat arch/arm64/boot/dts/ti/Makefile.dtc >> arch/arm64/boot/dts/ti/Makefile
 	rm arch/arm64/boot/dts/ti/Makefile.dtc
-	echo "DTC_FLAGS_k3-am625-pocketbeagle2 += -@" >> arch/arm64/boot/dts/ti/Makefile
+	echo "DTC_FLAGS_k3-am6232-pocketbeagle2 += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-am67a-beagley-ai += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-j721e-beagleboneai64 += -@" >> arch/arm64/boot/dts/ti/Makefile
 }
@@ -335,10 +335,9 @@ beagleboard_dtbs () {
 		#device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
 
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
-		#device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
-		device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
+		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
 		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
 
 		device="BONE-I2C1" ; k3_dtbo_makefile_append
