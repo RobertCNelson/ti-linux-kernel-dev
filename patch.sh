@@ -539,7 +539,7 @@ drivers () {
 #	dir 'drivers/ite-it66121-hpd'
 #	dir 'drivers/tidss'
 
-#	dir 'external/android'
+	dir 'external/android'
 	dir 'external/cadence'
 	dir 'external/gasket'
 }
