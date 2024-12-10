@@ -130,44 +130,6 @@ mainline_patches () {
 	#exit 2
 }
 
-wpanusb () {
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		cd ../
-		if [ -d ./wpanusb ] ; then
-			rm -rf ./wpanusb || true
-		fi
-
-		${git_bin} clone https://openbeagle.org/beagleconnect/linux/wpanusb.git --depth=1
-		cd ./wpanusb
-			wpanusb_hash=$(git rev-parse HEAD)
-		cd -
-
-		cd ./KERNEL/
-
-		cp -v ../wpanusb/wpanusb.h drivers/net/ieee802154/
-		cp -v ../wpanusb/wpanusb.c drivers/net/ieee802154/
-
-		${git_bin} add .
-		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
-		${git_bin} format-patch -1 -o ../patches/external/wpanusb/
-		echo "WPANUSB: https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/external/git/WPANUSB
-
-		rm -rf ../wpanusb/ || true
-
-		${git_bin} reset --hard HEAD~1
-
-		start_cleanup
-
-		${git} "${DIR}/patches/external/wpanusb/0001-merge-wpanusb-https-git.beagleboard.org-beagleconnec.patch"
-
-		wdir="external/wpanusb"
-		number=1
-		cleanup
-	fi
-	dir 'external/wpanusb'
-}
-
 rt_cleanup () {
 	echo "rt: needs fixup"
 	exit 2
@@ -368,9 +330,9 @@ beagleboard_dtbs () {
 
 		device="am335x-boneblack-uboot.dtb" ; arm_dtb_makefile_append
 
-#		device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
 
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
 		#device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
@@ -486,7 +448,6 @@ local_patch () {
 
 external_git
 #mainline_patches
-#wpanusb
 rt
 wireless_regdb
 beagleboard_dtbs
@@ -576,7 +537,6 @@ drivers () {
 
 	dir 'drivers/davinci-mcasp'
 #	dir 'drivers/ite-it66121-hpd'
-	dir 'drivers/pcie'
 #	dir 'drivers/tidss'
 
 #	dir 'external/android'
@@ -589,23 +549,6 @@ backports
 drivers
 
 packaging () {
-	echo "Update: package scripts"
-	#do_backport="enable"
-	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.6.36"
-
-		subsystem="bindeb-pkg"
-		#regenerate="enable"
-		if [ "x${regenerate}" = "xenable" ] ; then
-			pre_backports
-
-			cp -v ~/linux-src/scripts/package/* ./scripts/package/
-
-			post_backports
-		else
-			patch_backports
-		fi
-	fi
 	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
 }
 
