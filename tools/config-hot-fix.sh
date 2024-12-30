@@ -353,7 +353,18 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_HX9023S
 ./scripts/config --module CONFIG_AW96103
 
+#new in 6.12.6-1
+./scripts/config --enable CONFIG_ZRAM_BACKEND_LZ4
+./scripts/config --enable CONFIG_ZRAM_BACKEND_LZ4HC
+./scripts/config --enable CONFIG_ZRAM_BACKEND_ZSTD
+./scripts/config --enable CONFIG_ZRAM_BACKEND_DEFLATE
+./scripts/config --enable CONFIG_ZRAM_DEF_COMP_LZ4
+./scripts/config --set-str CONFIG_ZRAM_DEF_COMP "lz4"
+
 #configure CONFIG_EXTRA_FIRMWARE
 ./scripts/config --set-str CONFIG_EXTRA_FIRMWARE "regulatory.db regulatory.db.p7s cadence/mhdp8546.bin"
+./scripts/config --enable CONFIG_FW_LOADER_COMPRESS
+./scripts/config --enable CONFIG_FW_LOADER_COMPRESS_XZ
+./scripts/config --disable CONFIG_FW_LOADER_COMPRESS_ZSTD
 
 cd ${DIR}/
