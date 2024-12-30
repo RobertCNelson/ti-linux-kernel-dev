@@ -537,6 +537,7 @@ drivers () {
 	dir 'drivers/davinci-mcasp'
 #	dir 'drivers/ite-it66121-hpd'
 #	dir 'drivers/tidss'
+	dir 'drivers/mspm0'
 
 	dir 'external/android'
 	dir 'external/cadence'

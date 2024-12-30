@@ -367,4 +367,7 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_FW_LOADER_COMPRESS_XZ
 ./scripts/config --disable CONFIG_FW_LOADER_COMPRESS_ZSTD
 
+#BeagleBoard.org
+./scripts/config --module CONFIG_MSPM0_I2C
+
 cd ${DIR}/
