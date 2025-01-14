@@ -9,7 +9,7 @@ branch_prefix="ti-linux-arm64-"
 branch_postfix=".y"
 bborg_branch="6.12-arm64"
 
-#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.6-rc1
+#https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.12-rc1
 #arm
 #KERNEL_ARCH=arm
 #DEBARCH=armhf
@@ -56,7 +56,7 @@ KERNEL_TAG=${KERNEL_REL}
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.12/
 kernel_rt="-rc4-rt6"
 #Kernel Build
-BUILD=${build_prefix}9
+BUILD=${build_prefix}9.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
