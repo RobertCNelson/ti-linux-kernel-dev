@@ -123,13 +123,6 @@ external_git () {
 	#exit 2
 }
 
-mainline_patches () {
-	#exit 2
-#	dir 'mainline/greybus'
-	dir 'rfc/mainline'
-	#exit 2
-}
-
 rt_cleanup () {
 	echo "rt: needs fixup"
 	exit 2
@@ -446,7 +439,6 @@ local_patch () {
 }
 
 external_git
-#mainline_patches
 rt
 wireless_regdb
 beagleboard_dtbs
@@ -548,10 +540,6 @@ drivers () {
 backports
 drivers
 
-packaging () {
-	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
-}
-
 readme () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -576,7 +564,6 @@ readme () {
 	fi
 }
 
-packaging
 readme
 echo "patch.sh ran successfully"
 #
