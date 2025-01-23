@@ -144,7 +144,6 @@ wpanusb () {
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/external/wpanusb/
-		echo "WPANUSB: https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/external/git/WPANUSB
 
 		rm -rf ../wpanusb/ || true
 
@@ -361,9 +360,9 @@ beagleboard_dtbs () {
 
 		device="am335x-boneblack-uboot.dtb" ; arm_dtb_makefile_append
 
-#		device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
 
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
 		#device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
@@ -586,23 +585,6 @@ backports
 drivers
 
 packaging () {
-	echo "Update: package scripts"
-	#do_backport="enable"
-	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.1.96"
-
-		subsystem="bindeb-pkg"
-		#regenerate="enable"
-		if [ "x${regenerate}" = "xenable" ] ; then
-			pre_backports
-
-			cp -v ~/linux-src/scripts/package/* ./scripts/package/
-
-			post_backports
-		else
-			patch_backports
-		fi
-	fi
 	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
 }
 
