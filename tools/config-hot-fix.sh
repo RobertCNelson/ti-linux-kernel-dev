@@ -67,28 +67,27 @@ config_value () {
 cd ${DIR}/KERNEL/
 
 #Docker.io
-config="CONFIG_NETFILTER_XT_MATCH_IPVS"; config_enable
-config="CONFIG_CGROUP_BPF"; config_enable
-
-config="CONFIG_BLK_DEV_THROTTLING"; config_enable
-config="CONFIG_NET_CLS_CGROUP"; config_enable
-config="CONFIG_CGROUP_NET_PRIO"; config_enable
-config="CONFIG_IP_NF_TARGET_REDIRECT"; config_enable
-config="CONFIG_IP_VS"; config_enable
-config="CONFIG_IP_VS_NFCT"; config_enable
-config="CONFIG_IP_VS_PROTO_TCP"; config_enable
-config="CONFIG_IP_VS_PROTO_UDP"; config_enable
-config="CONFIG_IP_VS_RR"; config_enable
-config="CONFIG_SECURITY_SELINUX"; config_enable
-config="CONFIG_SECURITY_APPARMOR"; config_enable
-config="CONFIG_VXLAN"; config_enable
-config="CONFIG_IPVLAN"; config_enable
-config="CONFIG_DUMMY"; config_enable
-config="CONFIG_NF_NAT_FTP"; config_enable
-config="CONFIG_NF_CONNTRACK_FTP"; config_enable
-config="CONFIG_NF_NAT_TFTP"; config_enable
-config="CONFIG_NF_CONNTRACK_TFTP"; config_enable
-config="CONFIG_DM_THIN_PROVISIONING"; config_enable
+./scripts/config --enable CONFIG_NETFILTER_XT_MATCH_IPVS
+./scripts/config --enable CONFIG_CGROUP_BPF
+./scripts/config --enable CONFIG_BLK_DEV_THROTTLING
+./scripts/config --enable CONFIG_NET_CLS_CGROUP
+./scripts/config --enable CONFIG_CGROUP_NET_PRIO
+./scripts/config --enable CONFIG_IP_NF_TARGET_REDIRECT
+./scripts/config --enable CONFIG_IP_VS
+./scripts/config --enable CONFIG_IP_VS_NFCT
+./scripts/config --enable CONFIG_IP_VS_PROTO_TCP
+./scripts/config --enable CONFIG_IP_VS_PROTO_UDP
+./scripts/config --enable CONFIG_IP_VS_RR
+./scripts/config --enable CONFIG_SECURITY_SELINUX
+./scripts/config --enable CONFIG_SECURITY_APPARMOR
+./scripts/config --enable CONFIG_VXLAN
+./scripts/config --enable CONFIG_IPVLAN
+./scripts/config --enable CONFIG_DUMMY
+./scripts/config --enable CONFIG_NF_NAT_FTP
+./scripts/config --enable CONFIG_NF_CONNTRACK_FTP
+./scripts/config --enable CONFIG_NF_NAT_TFTP
+./scripts/config --enable CONFIG_NF_CONNTRACK_TFTP
+./scripts/config --enable CONFIG_DM_THIN_PROVISIONING
 
 #abi="5.13.0-trunk"
 #kernel="5.13.9-1~exp2"
@@ -301,16 +300,81 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --disable CONFIG_BT_HCIBTSDIO
 ./scripts/config --disable CONFIG_BT_TI
 
+#Gone on Mainline, supporting 32bit only...
+./scripts/config --disable CONFIG_UIO
+./scripts/config --disable CONFIG_UIO_PRUSS
+
+./scripts/config --module CONFIG_CC33XX
+./scripts/config --module CONFIG_CC33XX_SDIO
+
+./scripts/config --module CONFIG_VIDEO_IMG_VXD_DEC
+./scripts/config --module CONFIG_VIDEO_IMG_VXE_ENC
+./scripts/config --module CONFIG_VIDEO_E5010_JPEG_ENC
+./scripts/config --module CONFIG_TI_EQEP
+./scripts/config --enable CONFIG_CRYPTO_DEV_TI_MCRC64
+
 #PCI Express Precision Time Measurement support
 ./scripts/config --enable CONFIG_PCIE_PTM
 
-#TI delta 09.01.00.010:
-./scripts/config --module CONFIG_DRM_PANEL_ILITEK_ILI9881C
+./scripts/config --module CONFIG_RPMSG
+./scripts/config --module CONFIG_RPMSG_NS
+./scripts/config --module CONFIG_RPMSG_VIRTIO
 
-#Removed from mainline
-./scripts/config --disable CONFIG_UIO_PRUSS
+#Google Coral Gasket
+./scripts/config --module CONFIG_STAGING_GASKET_FRAMEWORK
+./scripts/config --module CONFIG_STAGING_APEX_DRIVER
+
+#TI: 10.00.04
+./scripts/config --enable CONFIG_FB_SIMPLE
+./scripts/config --module CONFIG_RPMSG_PRU
+
+#TI: 10.00.06
+./scripts/config --disable CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
+./scripts/config --enable CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE
+./scripts/config --disable CONFIG_MTD_SPI_NOR_USE_4K_SECTORS
+
+#TI: 10.01.01
+./scripts/config --module CONFIG_OMAP2PLUS_MBOX
+
+#new in v6.12.x
+./scripts/config --enable CONFIG_PREEMPT_RT
+./scripts/config --enable CONFIG_RPMB
+./scripts/config --enable CONFIG_DRM_PANIC
+./scripts/config --module CONFIG_TI_K3_M4_REMOTEPROC
+./scripts/config --module CONFIG_ADXL380_SPI
+./scripts/config --module CONFIG_ADXL380_I2C
+./scripts/config --module CONFIG_AD4000
+./scripts/config --module CONFIG_AD4695
+./scripts/config --module CONFIG_PAC1921
+./scripts/config --module CONFIG_LTC2664
+./scripts/config --module CONFIG_ENS210
+./scripts/config --module CONFIG_BH1745
+./scripts/config --module CONFIG_SDP500
+./scripts/config --module CONFIG_HX9023S
+./scripts/config --module CONFIG_AW96103
+
+#debian 6.12~rc6-1~exp1
+./scripts/config --enable CONFIG_ZONE_DEVICE
+./scripts/config --module CONFIG_IP_VS_TWOS
+./scripts/config --module CONFIG_VIDEO_OV5648
+./scripts/config --enable CONFIG_DRM_DISPLAY_DP_AUX_CHARDEV
+./scripts/config --module CONFIG_TI_PRUSS
+
+#debian 6.12.6-1
+./scripts/config --enable CONFIG_ZRAM_BACKEND_LZ4
+./scripts/config --enable CONFIG_ZRAM_BACKEND_LZ4HC
+./scripts/config --enable CONFIG_ZRAM_BACKEND_ZSTD
+./scripts/config --enable CONFIG_ZRAM_BACKEND_DEFLATE
+./scripts/config --enable CONFIG_ZRAM_DEF_COMP_LZ4
+./scripts/config --set-str CONFIG_ZRAM_DEF_COMP "lz4"
 
 #configure CONFIG_EXTRA_FIRMWARE
 ./scripts/config --set-str CONFIG_EXTRA_FIRMWARE "regulatory.db regulatory.db.p7s cadence/mhdp8546.bin"
+./scripts/config --enable CONFIG_FW_LOADER_COMPRESS
+./scripts/config --enable CONFIG_FW_LOADER_COMPRESS_XZ
+./scripts/config --enable CONFIG_FW_LOADER_COMPRESS_ZSTD
+
+#BeagleBoard.org
+./scripts/config --enable CONFIG_MSPM0_I2C
 
 cd ${DIR}/

@@ -47,9 +47,8 @@ toolchain="gcc_12_aarch64"
 #toolchain="gcc_14_riscv64"
 
 #Kernel
-#linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git"
+linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git"
 #linux_stable_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git"
-linux_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
 linux_stable_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
 #
 KERNEL_REL=6.1
@@ -57,7 +56,7 @@ KERNEL_TAG=${KERNEL_REL}.83
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.1/
 kernel_rt=".83-rt28"
 #Kernel Build
-BUILD=${build_prefix}64
+BUILD=${build_prefix}64.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
