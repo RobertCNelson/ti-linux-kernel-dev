@@ -354,8 +354,6 @@ beagleboard_dtbs () {
 		device="k3-am625-beaglemod-rtc" ; k3_dtbo_makefile_append
 		device="k3-am625-beaglemod-wl1835" ; k3_dtbo_makefile_append
 
-		device="k3-am625-pocketbeagle2" ; k3_dtbo_makefile_append
-
 		#ls src/arm64/overlays/ | grep beagley
 
 		device="k3-am67a-beagley-ai-csi0-imx219" ; k3_dtbo_makefile_append
