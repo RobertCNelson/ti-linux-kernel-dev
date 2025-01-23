@@ -123,6 +123,13 @@ external_git () {
 	#exit 2
 }
 
+mainline_patches () {
+	#exit 2
+#	dir 'mainline/greybus'
+	dir 'rfc/mainline'
+	#exit 2
+}
+
 wpanusb () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -144,7 +151,6 @@ wpanusb () {
 		${git_bin} add .
 		${git_bin} commit -a -m 'merge: wpanusb: https://git.beagleboard.org/beagleconnect/linux/wpanusb' -m "https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/external/wpanusb/
-		echo "WPANUSB: https://openbeagle.org/beagleconnect/linux/wpanusb/-/commit/${wpanusb_hash}" > ../patches/external/git/WPANUSB
 
 		rm -rf ../wpanusb/ || true
 
@@ -179,6 +185,8 @@ rt () {
 			xzcat patch-${rt_patch}.patch.xz | patch -p1 || rt_cleanup
 			rm -f patch-${rt_patch}.patch.xz
 			rm -f localversion-rt
+ 			rm -rf drivers/tty/serial/8250/8250_omap.c.orig || true
+			rm -rf include/linux/netdevice.h.orig || true
 			${git_bin} add .
 			${git_bin} commit -a -m 'merge: CONFIG_PREEMPT_RT Patch Set' -m "patch-${rt_patch}.patch.xz" -s
 			${git_bin} format-patch -1 -o ../patches/external/rt/
@@ -291,6 +299,7 @@ k3_makefile_patch_cleanup_overlays () {
 	echo "# Enable support for device-tree overlays" >> arch/arm64/boot/dts/ti/Makefile
 	cat arch/arm64/boot/dts/ti/Makefile.dtc >> arch/arm64/boot/dts/ti/Makefile
 	rm arch/arm64/boot/dts/ti/Makefile.dtc
+	echo "DTC_FLAGS_k3-am6232-pocketbeagle2 += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-am67a-beagley-ai += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-j721e-beagleboneai64 += -@" >> arch/arm64/boot/dts/ti/Makefile
 }
@@ -360,14 +369,14 @@ beagleboard_dtbs () {
 
 		device="am335x-boneblack-uboot.dtb" ; arm_dtb_makefile_append
 
-#		device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
-#		device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
+		#device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
 
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
-		#device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
+		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
 		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
 
 		device="BONE-I2C1" ; k3_dtbo_makefile_append
@@ -474,6 +483,7 @@ local_patch () {
 }
 
 external_git
+mainline_patches
 wpanusb
 rt
 wireless_regdb
@@ -566,8 +576,8 @@ backports () {
 
 		cp -v ~/linux-rpi/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/
 
-	#	post_rpibackports
-	#else
+		post_rpibackports
+	else
 		patch_backports
 	fi
 }
@@ -581,6 +591,8 @@ drivers () {
 #	dir 'drivers/fb_ssd1306'
 #	dir 'drivers/hackaday'
 
+	dir 'drivers/mmc'
+
 	dir 'external/android'
 	dir 'external/ti-amx3-cm3-pm-firmware'
 }
@@ -590,23 +602,6 @@ backports
 drivers
 
 packaging () {
-	echo "Update: package scripts"
-	#do_backport="enable"
-	if [ "x${do_backport}" = "xenable" ] ; then
-		backport_tag="v6.6.36"
-
-		subsystem="bindeb-pkg"
-		#regenerate="enable"
-		if [ "x${regenerate}" = "xenable" ] ; then
-			pre_backports
-
-			cp -v ~/linux-src/scripts/package/* ./scripts/package/
-
-			post_backports
-		else
-			patch_backports
-		fi
-	fi
 	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
 }
 
