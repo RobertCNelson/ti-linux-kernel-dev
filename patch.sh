@@ -400,8 +400,6 @@ beagleboard_dtbs () {
 		device="k3-am625-beaglemod-rtc" ; k3_dtbo_makefile_append
 		device="k3-am625-beaglemod-wl1835" ; k3_dtbo_makefile_append
 
-		device="k3-am625-pocketbeagle2" ; k3_dtbo_makefile_append
-
 		#ls src/arm64/overlays/ | grep beagley
 
 		device="k3-am67a-beagley-ai-csi0-imx219" ; k3_dtbo_makefile_append
@@ -588,10 +586,6 @@ drivers () {
 backports
 drivers
 
-packaging () {
-	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
-}
-
 readme () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -616,7 +610,6 @@ readme () {
 	fi
 }
 
-packaging
 readme
 echo "patch.sh ran successfully"
 #
