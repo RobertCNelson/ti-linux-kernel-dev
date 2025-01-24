@@ -85,9 +85,9 @@ make_deb () {
 	build_opts="${build_opts} KDEB_COMPRESS=xz"
 
 	echo "-----------------------------"
-	echo "make ${build_opts} CROSS_COMPILE="${CC}" bindeb-pkg"
+	echo "make V=1 ${build_opts} CROSS_COMPILE="${CC}" bindeb-pkg"
 	echo "-----------------------------"
-	make ${build_opts} CROSS_COMPILE="${CC}" bindeb-pkg
+	make V=1 ${build_opts} CROSS_COMPILE="${CC}" bindeb-pkg
 
 	mv "${DIR}"/*.buildinfo "${DIR}/deploy/" || true
 	mv "${DIR}"/*.changes "${DIR}/deploy/" || true
