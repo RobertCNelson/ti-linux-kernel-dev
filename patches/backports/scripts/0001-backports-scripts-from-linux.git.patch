@@ -1,0 +1,1277 @@
+From 247f738c10523b3e09a5150d70d0cbf7bd641d7b Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Fri, 24 Jan 2025 18:03:16 -0600
+Subject: [PATCH] backports: scripts: from: linux.git
+
+Reference: v5.10.233
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ Makefile                                      | 30 +++++---
+ scripts/Kconfig.include                       |  6 ++
+ scripts/Makefile.extrawarn                    |  2 +
+ scripts/as-version.sh                         | 69 +++++++++++++++++++
+ scripts/asn1_compiler.c                       |  2 +-
+ scripts/bpf_helpers_doc.py                    |  2 +-
+ scripts/checkkconfigsymbols.py                | 13 +++-
+ scripts/checkstack.pl                         |  8 +--
+ scripts/clang-tools/gen_compile_commands.py   |  2 +-
+ scripts/clang-tools/run-clang-tools.py        | 21 ++++--
+ scripts/decode_stacktrace.sh                  | 64 +++++++++++++----
+ scripts/diffconfig                            | 16 ++++-
+ scripts/dummy-tools/gcc                       | 12 +++-
+ scripts/gcc-plugins/gcc-common.h              | 13 +++-
+ scripts/gcc-plugins/randomize_layout_plugin.c | 11 ++-
+ scripts/gcc-x86_32-has-stack-protector.sh     |  6 +-
+ scripts/gcc-x86_64-has-stack-protector.sh     |  2 +-
+ scripts/gdb/linux/clk.py                      |  2 +
+ scripts/gdb/linux/genpd.py                    |  4 +-
+ scripts/gdb/linux/timerlist.py                |  4 +-
+ scripts/gdb/linux/utils.py                    |  5 +-
+ scripts/get_abi.pl                            |  2 +-
+ scripts/kconfig/expr.c                        | 29 --------
+ scripts/kconfig/expr.h                        |  1 -
+ scripts/kconfig/gconf.c                       |  3 +-
+ scripts/kconfig/lexer.l                       |  7 +-
+ scripts/kconfig/menu.c                        |  2 -
+ scripts/kconfig/merge_config.sh               |  2 +
+ scripts/kconfig/preprocess.c                  |  3 +
+ scripts/kconfig/qconf.cc                      |  2 +-
+ scripts/kconfig/symbol.c                      | 20 +++---
+ scripts/kernel-doc                            |  3 +-
+ scripts/link-vmlinux.sh                       | 11 ++-
+ scripts/mod/file2alias.c                      | 21 +++---
+ scripts/mod/modpost.c                         | 28 ++++++--
+ scripts/mod/sumversion.c                      |  7 +-
+ scripts/package/mkdebian                      |  2 +-
+ scripts/recordmcount.c                        |  6 +-
+ scripts/sign-file.c                           | 12 ++--
+ scripts/tags.sh                               | 20 ++++--
+ 40 files changed, 340 insertions(+), 135 deletions(-)
+ create mode 100755 scripts/as-version.sh
+
+diff --git a/Makefile b/Makefile
+index 3228504bfd42..120115064c20 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
+ VERSION = 5
+ PATCHLEVEL = 10
+-SUBLEVEL = 168
++SUBLEVEL = 233
+ EXTRAVERSION =
+ NAME = Dare mighty things
+ 
+@@ -93,9 +93,16 @@ endif
+ 
+ # If the user is running make -s (silent mode), suppress echoing of
+ # commands
++# make-4.0 (and later) keep single letter options in the 1st word of MAKEFLAGS.
+ 
+-ifneq ($(findstring s,$(filter-out --%,$(MAKEFLAGS))),)
+-  quiet=silent_
++ifeq ($(filter 3.%,$(MAKE_VERSION)),)
++silence:=$(findstring s,$(firstword -$(MAKEFLAGS)))
++else
++silence:=$(findstring s,$(filter-out --%,$(MAKEFLAGS)))
++endif
++
++ifeq ($(silence),s)
++quiet=silent_
+ endif
+ 
+ export quiet Q KBUILD_VERBOSE
+@@ -573,8 +580,10 @@ endif
+ ifneq ($(GCC_TOOLCHAIN),)
+ CLANG_FLAGS	+= --gcc-toolchain=$(GCC_TOOLCHAIN)
+ endif
+-ifneq ($(LLVM_IAS),1)
+-CLANG_FLAGS	+= -no-integrated-as
++ifeq ($(LLVM_IAS),1)
++CLANG_FLAGS	+= -fintegrated-as
++else
++CLANG_FLAGS	+= -fno-integrated-as
+ endif
+ CLANG_FLAGS	+= -Werror=unknown-warning-option
+ KBUILD_CFLAGS	+= $(CLANG_FLAGS)
+@@ -799,6 +808,10 @@ endif
+ KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
+ 
+ KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
++
++# These result in bogus false positives
++KBUILD_CFLAGS += $(call cc-disable-warning, dangling-pointer)
++
+ ifdef CONFIG_FRAME_POINTER
+ KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
+ else
+@@ -842,7 +855,7 @@ else
+ DEBUG_CFLAGS	+= -g
+ endif
+ 
+-ifeq ($(LLVM_IAS),1)
++ifdef CONFIG_AS_IS_LLVM
+ KBUILD_AFLAGS	+= -g
+ else
+ KBUILD_AFLAGS	+= -Wa,-gdwarf-2
+@@ -1369,9 +1382,6 @@ ifneq ($(dtstree),)
+ %.dtb: include/config/kernel.release scripts_dtc
+ 	$(Q)$(MAKE) $(build)=$(dtstree) $(dtstree)/$@
+ 
+-%.dtbo: include/config/kernel.release scripts_dtc
+-	$(Q)$(MAKE) $(build)=$(dtstree) $(dtstree)/$@
+-
+ PHONY += dtbs dtbs_install dtbs_check
+ dtbs: include/config/kernel.release scripts_dtc
+ 	$(Q)$(MAKE) $(build)=$(dtstree)
+@@ -1833,7 +1843,7 @@ clean: $(clean-dirs)
+ 	@find $(if $(KBUILD_EXTMOD), $(KBUILD_EXTMOD), .) $(RCS_FIND_IGNORE) \
+ 		\( -name '*.[aios]' -o -name '*.ko' -o -name '.*.cmd' \
+ 		-o -name '*.ko.*' \
+-		-o -name '*.dtb' -o -name '*.dtbo' -o -name '*.dtb.S' -o -name '*.dt.yaml' \
++		-o -name '*.dtb' -o -name '*.dtb.S' -o -name '*.dt.yaml' \
+ 		-o -name '*.dwo' -o -name '*.lst' \
+ 		-o -name '*.su' -o -name '*.mod' \
+ 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
+diff --git a/scripts/Kconfig.include b/scripts/Kconfig.include
+index a5fe72c504ff..6d37cb780452 100644
+--- a/scripts/Kconfig.include
++++ b/scripts/Kconfig.include
+@@ -42,6 +42,12 @@ $(error-if,$(failure,command -v $(LD)),linker '$(LD)' not found)
+ # Fail if the linker is gold as it's not capable of linking the kernel proper
+ $(error-if,$(success, $(LD) -v | grep -q gold), gold linker '$(LD)' not supported)
+ 
++# Get the assembler name, version, and error out if it is not supported.
++as-info := $(shell,$(srctree)/scripts/as-version.sh $(CC) $(CLANG_FLAGS))
++$(error-if,$(success,test -z "$(as-info)"),Sorry$(comma) this assembler is not supported.)
++as-name := $(shell,set -- $(as-info) && echo $1)
++as-version := $(shell,set -- $(as-info) && echo $2)
++
+ # machine bit flags
+ #  $(m32-flag): -m32 if the compiler supports it, or an empty string otherwise.
+ #  $(m64-flag): -m64 if the compiler supports it, or an empty string otherwise.
+diff --git a/scripts/Makefile.extrawarn b/scripts/Makefile.extrawarn
+index fe327a4532dd..eb01e8d07e28 100644
+--- a/scripts/Makefile.extrawarn
++++ b/scripts/Makefile.extrawarn
+@@ -53,6 +53,8 @@ KBUILD_CFLAGS += $(call cc-disable-warning, pointer-to-enum-cast)
+ KBUILD_CFLAGS += -Wno-tautological-constant-out-of-range-compare
+ KBUILD_CFLAGS += $(call cc-disable-warning, unaligned-access)
+ KBUILD_CFLAGS += $(call cc-disable-warning, cast-function-type-strict)
++KBUILD_CFLAGS += -Wno-enum-compare-conditional
++KBUILD_CFLAGS += -Wno-enum-enum-conversion
+ endif
+ 
+ endif
+diff --git a/scripts/as-version.sh b/scripts/as-version.sh
+new file mode 100755
+index 000000000000..532270bd4b7e
+--- /dev/null
++++ b/scripts/as-version.sh
+@@ -0,0 +1,69 @@
++#!/bin/sh
++# SPDX-License-Identifier: GPL-2.0-only
++#
++# Print the assembler name and its version in a 5 or 6-digit form.
++# Also, perform the minimum version check.
++# (If it is the integrated assembler, return 0 as the version, and
++# skip the version check.)
++
++set -e
++
++# Convert the version string x.y.z to a canonical 5 or 6-digit form.
++get_canonical_version()
++{
++	IFS=.
++	set -- $1
++
++	# If the 2nd or 3rd field is missing, fill it with a zero.
++	#
++	# The 4th field, if present, is ignored.
++	# This occurs in development snapshots as in 2.35.1.20201116
++	echo $((10000 * $1 + 100 * ${2:-0} + ${3:-0}))
++}
++
++# Clang fails to handle -Wa,--version unless -fno-integrated-as is given.
++# We check -fintegrated-as, expecting it is explicitly passed in for the
++# integrated assembler case.
++check_integrated_as()
++{
++	while [ $# -gt 0 ]; do
++		if [ "$1" = -fintegrated-as ]; then
++			# For the integrated assembler, we do not check the
++			# version here. It is the same as the clang version, and
++			# it has been already checked by scripts/cc-version.sh.
++			echo LLVM 0
++			exit 0
++		fi
++		shift
++	done
++}
++
++check_integrated_as "$@"
++
++orig_args="$@"
++
++# Get the first line of the --version output.
++IFS='
++'
++set -- $(LC_ALL=C "$@" -Wa,--version -c -x assembler /dev/null -o /dev/null 2>/dev/null)
++
++# Split the line on spaces.
++IFS=' '
++set -- $1
++
++if [ "$1" = GNU -a "$2" = assembler ]; then
++	shift $(($# - 1))
++	version=$1
++	name=GNU
++else
++	echo "$orig_args: unknown assembler invoked" >&2
++	exit 1
++fi
++
++# Some distributions append a package release number, as in 2.34-4.fc32
++# Trim the hyphen and any characters that follow.
++version=${version%-*}
++
++cversion=$(get_canonical_version $version)
++
++echo $name $cversion
+diff --git a/scripts/asn1_compiler.c b/scripts/asn1_compiler.c
+index adabd4145264..985fb81cae79 100644
+--- a/scripts/asn1_compiler.c
++++ b/scripts/asn1_compiler.c
+@@ -625,7 +625,7 @@ int main(int argc, char **argv)
+ 	p = strrchr(argv[1], '/');
+ 	p = p ? p + 1 : argv[1];
+ 	grammar_name = strdup(p);
+-	if (!p) {
++	if (!grammar_name) {
+ 		perror(NULL);
+ 		exit(1);
+ 	}
+diff --git a/scripts/bpf_helpers_doc.py b/scripts/bpf_helpers_doc.py
+index 31484377b8b1..806240dda609 100755
+--- a/scripts/bpf_helpers_doc.py
++++ b/scripts/bpf_helpers_doc.py
+@@ -284,7 +284,7 @@ eBPF programs can have an associated license, passed along with the bytecode
+ instructions to the kernel when the programs are loaded. The format for that
+ string is identical to the one in use for kernel modules (Dual licenses, such
+ as "Dual BSD/GPL", may be used). Some helper functions are only accessible to
+-programs that are compatible with the GNU Privacy License (GPL).
++programs that are compatible with the GNU General Public License (GNU GPL).
+ 
+ In order to use such helpers, the eBPF program must be loaded with the correct
+ license string passed (via **attr**) to the **bpf**\ () system call, and this
+diff --git a/scripts/checkkconfigsymbols.py b/scripts/checkkconfigsymbols.py
+index 1548f9ce4682..697972432bbe 100755
+--- a/scripts/checkkconfigsymbols.py
++++ b/scripts/checkkconfigsymbols.py
+@@ -113,7 +113,7 @@ def parse_options():
+     return args
+ 
+ 
+-def main():
++def print_undefined_symbols():
+     """Main function of this module."""
+     args = parse_options()
+ 
+@@ -472,5 +472,16 @@ def parse_kconfig_file(kfile):
+     return defined, references
+ 
+ 
++def main():
++    try:
++        print_undefined_symbols()
++    except BrokenPipeError:
++        # Python flushes standard streams on exit; redirect remaining output
++        # to devnull to avoid another BrokenPipeError at shutdown
++        devnull = os.open(os.devnull, os.O_WRONLY)
++        os.dup2(devnull, sys.stdout.fileno())
++        sys.exit(1)  # Python exits with error code 1 on EPIPE
++
++
+ if __name__ == "__main__":
+     main()
+diff --git a/scripts/checkstack.pl b/scripts/checkstack.pl
+index d2c38584ece6..758884b61f92 100755
+--- a/scripts/checkstack.pl
++++ b/scripts/checkstack.pl
+@@ -142,15 +142,11 @@ $total_size = 0;
+ while (my $line = <STDIN>) {
+ 	if ($line =~ m/$funcre/) {
+ 		$func = $1;
+-		next if $line !~ m/^($xs*)/;
++		next if $line !~ m/^($x*)/;
+ 		if ($total_size > $min_stack) {
+ 			push @stack, "$intro$total_size\n";
+ 		}
+-
+-		$addr = $1;
+-		$addr =~ s/ /0/g;
+-		$addr = "0x$addr";
+-
++		$addr = "0x$1";
+ 		$intro = "$addr $func [$file]:";
+ 		my $padlen = 56 - length($intro);
+ 		while ($padlen > 0) {
+diff --git a/scripts/clang-tools/gen_compile_commands.py b/scripts/clang-tools/gen_compile_commands.py
+index 8bf55bb4f515..96e4865ee934 100755
+--- a/scripts/clang-tools/gen_compile_commands.py
++++ b/scripts/clang-tools/gen_compile_commands.py
+@@ -176,7 +176,7 @@ def process_line(root_directory, command_prefix, file_path):
+     # escape the pound sign '#', either as '\#' or '$(pound)' (depending on the
+     # kernel version). The compile_commands.json file is not interepreted
+     # by Make, so this code replaces the escaped version with '#'.
+-    prefix = command_prefix.replace('\#', '#').replace('$(pound)', '#')
++    prefix = command_prefix.replace(r'\#', '#').replace('$(pound)', '#')
+ 
+     # Use os.path.abspath() to normalize the path resolving '.' and '..' .
+     abs_path = os.path.abspath(os.path.join(root_directory, file_path))
+diff --git a/scripts/clang-tools/run-clang-tools.py b/scripts/clang-tools/run-clang-tools.py
+index f754415af398..f42699134f1c 100755
+--- a/scripts/clang-tools/run-clang-tools.py
++++ b/scripts/clang-tools/run-clang-tools.py
+@@ -60,14 +60,21 @@ def run_analysis(entry):
+ 
+ 
+ def main():
+-    args = parse_arguments()
++    try:
++        args = parse_arguments()
+ 
+-    lock = multiprocessing.Lock()
+-    pool = multiprocessing.Pool(initializer=init, initargs=(lock, args))
+-    # Read JSON data into the datastore variable
+-    with open(args.path, "r") as f:
+-        datastore = json.load(f)
+-        pool.map(run_analysis, datastore)
++        lock = multiprocessing.Lock()
++        pool = multiprocessing.Pool(initializer=init, initargs=(lock, args))
++        # Read JSON data into the datastore variable
++        with open(args.path, "r") as f:
++            datastore = json.load(f)
++            pool.map(run_analysis, datastore)
++    except BrokenPipeError:
++        # Python flushes standard streams on exit; redirect remaining output
++        # to devnull to avoid another BrokenPipeError at shutdown
++        devnull = os.open(os.devnull, os.O_WRONLY)
++        os.dup2(devnull, sys.stdout.fileno())
++        sys.exit(1)  # Python exits with error code 1 on EPIPE
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/scripts/decode_stacktrace.sh b/scripts/decode_stacktrace.sh
+index 90398347e366..3463f0f6c3f4 100755
+--- a/scripts/decode_stacktrace.sh
++++ b/scripts/decode_stacktrace.sh
+@@ -9,6 +9,29 @@ if [[ $# < 1 ]]; then
+ 	exit 1
+ fi
+ 
++# Try to find a Rust demangler
++if type llvm-cxxfilt >/dev/null 2>&1 ; then
++	cppfilt=llvm-cxxfilt
++elif type c++filt >/dev/null 2>&1 ; then
++	cppfilt=c++filt
++	cppfilt_opts=-i
++fi
++
++UTIL_SUFFIX=
++if [[ -z ${LLVM:-} ]]; then
++	UTIL_PREFIX=${CROSS_COMPILE:-}
++else
++	UTIL_PREFIX=llvm-
++	if [[ ${LLVM} == */ ]]; then
++		UTIL_PREFIX=${LLVM}${UTIL_PREFIX}
++	elif [[ ${LLVM} == -* ]]; then
++		UTIL_SUFFIX=${LLVM}
++	fi
++fi
++
++READELF=${UTIL_PREFIX}readelf${UTIL_SUFFIX}
++ADDR2LINE=${UTIL_PREFIX}addr2line${UTIL_SUFFIX}
++
+ if [[ $1 == "-r" ]] ; then
+ 	vmlinux=""
+ 	basepath="auto"
+@@ -33,13 +56,18 @@ else
+ 	release=""
+ fi
+ 
+-declare -A cache
+-declare -A modcache
++declare aarray_support=true
++declare -A cache 2>/dev/null
++if [[ $? != 0 ]]; then
++	aarray_support=false
++else
++	declare -A modcache
++fi
+ 
+ find_module() {
+ 	if [[ "$modpath" != "" ]] ; then
+ 		for fn in $(find "$modpath" -name "${module//_/[-_]}.ko*") ; do
+-			if readelf -WS "$fn" | grep -qwF .debug_line ; then
++			if ${READELF} -WS "$fn" | grep -qwF .debug_line ; then
+ 				echo $fn
+ 				return
+ 			fi
+@@ -51,7 +79,7 @@ find_module() {
+ 	find_module && return
+ 
+ 	if [[ $release == "" ]] ; then
+-		release=$(gdb -ex 'print init_uts_ns.name.release' -ex 'quit' -quiet -batch "$vmlinux" | sed -n 's/\$1 = "\(.*\)".*/\1/p')
++		release=$(gdb -ex 'print init_uts_ns.name.release' -ex 'quit' -quiet -batch "$vmlinux" 2>/dev/null | sed -n 's/\$1 = "\(.*\)".*/\1/p')
+ 	fi
+ 
+ 	for dn in {/usr/lib/debug,}/lib/modules/$release ; do
+@@ -74,7 +102,7 @@ parse_symbol() {
+ 
+ 	if [[ $module == "" ]] ; then
+ 		local objfile=$vmlinux
+-	elif [[ "${modcache[$module]+isset}" == "isset" ]]; then
++	elif [[ $aarray_support == true && "${modcache[$module]+isset}" == "isset" ]]; then
+ 		local objfile=${modcache[$module]}
+ 	else
+ 		local objfile=$(find_module)
+@@ -82,7 +110,9 @@ parse_symbol() {
+ 			echo "WARNING! Modules path isn't set, but is needed to parse this symbol" >&2
+ 			return
+ 		fi
+-		modcache[$module]=$objfile
++		if [[ $aarray_support == true ]]; then
++			modcache[$module]=$objfile
++		fi
+ 	fi
+ 
+ 	# Remove the englobing parenthesis
+@@ -102,15 +132,17 @@ parse_symbol() {
+ 	# Use 'nm vmlinux' to figure out the base address of said symbol.
+ 	# It's actually faster to call it every time than to load it
+ 	# all into bash.
+-	if [[ "${cache[$module,$name]+isset}" == "isset" ]]; then
++	if [[ $aarray_support == true && "${cache[$module,$name]+isset}" == "isset" ]]; then
+ 		local base_addr=${cache[$module,$name]}
+ 	else
+-		local base_addr=$(nm "$objfile" | awk '$3 == "'$name'" && ($2 == "t" || $2 == "T") {print $1; exit}')
++		local base_addr=$(nm "$objfile" 2>/dev/null | awk '$3 == "'$name'" && ($2 == "t" || $2 == "T") {print $1; exit}')
+ 		if [[ $base_addr == "" ]] ; then
+ 			# address not found
+ 			return
+ 		fi
+-		cache[$module,$name]="$base_addr"
++		if [[ $aarray_support == true ]]; then
++			cache[$module,$name]="$base_addr"
++		fi
+ 	fi
+ 	# Let's start doing the math to get the exact address into the
+ 	# symbol. First, strip out the symbol total length.
+@@ -126,11 +158,13 @@ parse_symbol() {
+ 
+ 	# Pass it to addr2line to get filename and line number
+ 	# Could get more than one result
+-	if [[ "${cache[$module,$address]+isset}" == "isset" ]]; then
++	if [[ $aarray_support == true && "${cache[$module,$address]+isset}" == "isset" ]]; then
+ 		local code=${cache[$module,$address]}
+ 	else
+-		local code=$(${CROSS_COMPILE}addr2line -i -e "$objfile" "$address")
+-		cache[$module,$address]=$code
++		local code=$(${ADDR2LINE} -i -e "$objfile" "$address" 2>/dev/null)
++		if [[ $aarray_support == true ]]; then
++			cache[$module,$address]=$code
++		fi
+ 	fi
+ 
+ 	# addr2line doesn't return a proper error code if it fails, so
+@@ -146,6 +180,12 @@ parse_symbol() {
+ 	# In the case of inlines, move everything to same line
+ 	code=${code//$'\n'/' '}
+ 
++	# Demangle if the name looks like a Rust symbol and if
++	# we got a Rust demangler
++	if [[ $name =~ ^_R && $cppfilt != "" ]] ; then
++		name=$("$cppfilt" "$cppfilt_opts" "$name")
++	fi
++
+ 	# Replace old address with pretty line numbers
+ 	symbol="$segment$name ($code)"
+ }
+diff --git a/scripts/diffconfig b/scripts/diffconfig
+index d5da5fa05d1d..43f0f3d273ae 100755
+--- a/scripts/diffconfig
++++ b/scripts/diffconfig
+@@ -65,7 +65,7 @@ def print_config(op, config, value, new_value):
+         else:
+             print(" %s %s -> %s" % (config, value, new_value))
+ 
+-def main():
++def show_diff():
+     global merge_style
+ 
+     # parse command line args
+@@ -129,4 +129,16 @@ def main():
+     for config in new:
+         print_config("+", config, None, b[config])
+ 
+-main()
++def main():
++    try:
++        show_diff()
++    except BrokenPipeError:
++        # Python flushes standard streams on exit; redirect remaining output
++        # to devnull to avoid another BrokenPipeError at shutdown
++        devnull = os.open(os.devnull, os.O_WRONLY)
++        os.dup2(devnull, sys.stdout.fileno())
++        sys.exit(1)  # Python exits with error code 1 on EPIPE
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/scripts/dummy-tools/gcc b/scripts/dummy-tools/gcc
+index 346757a87dbc..91df612bf937 100755
+--- a/scripts/dummy-tools/gcc
++++ b/scripts/dummy-tools/gcc
+@@ -67,10 +67,20 @@ if arg_contain -E "$@"; then
+ 	fi
+ fi
+ 
++# To set CONFIG_AS_IS_GNU
++if arg_contain -Wa,--version "$@"; then
++	echo "GNU assembler (scripts/dummy-tools) 2.50"
++	exit 0
++fi
++
+ if arg_contain -S "$@"; then
+ 	# For scripts/gcc-x86-*-has-stack-protector.sh
+ 	if arg_contain -fstack-protector "$@"; then
+-		echo "%gs"
++		if arg_contain -mstack-protector-guard-reg=fs "$@"; then
++			echo "%fs"
++		else
++			echo "%gs"
++		fi
+ 		exit 0
+ 	fi
+ fi
+diff --git a/scripts/gcc-plugins/gcc-common.h b/scripts/gcc-plugins/gcc-common.h
+index 9ad76b7f3f10..0c037b884530 100644
+--- a/scripts/gcc-plugins/gcc-common.h
++++ b/scripts/gcc-plugins/gcc-common.h
+@@ -108,7 +108,13 @@
+ #include "varasm.h"
+ #include "stor-layout.h"
+ #include "internal-fn.h"
++#endif
++
++#include "gimple.h"
++
++#if BUILDING_GCC_VERSION >= 4009
+ #include "gimple-expr.h"
++#include "gimple-iterator.h"
+ #include "gimple-fold.h"
+ #include "context.h"
+ #include "tree-ssa-alias.h"
+@@ -124,13 +130,10 @@
+ #include "gimplify.h"
+ #endif
+ 
+-#include "gimple.h"
+-
+ #if BUILDING_GCC_VERSION >= 4009
+ #include "tree-ssa-operands.h"
+ #include "tree-phinodes.h"
+ #include "tree-cfg.h"
+-#include "gimple-iterator.h"
+ #include "gimple-ssa.h"
+ #include "ssa-iterators.h"
+ #endif
+@@ -977,4 +980,8 @@ static inline void debug_gimple_stmt(const_gimple s)
+ #define SET_DECL_MODE(decl, mode)	DECL_MODE(decl) = (mode)
+ #endif
+ 
++#if BUILDING_GCC_VERSION >= 14000
++#define last_stmt(x)			last_nondebug_stmt(x)
++#endif
++
+ #endif
+diff --git a/scripts/gcc-plugins/randomize_layout_plugin.c b/scripts/gcc-plugins/randomize_layout_plugin.c
+index bd29e4e7a524..c7ff92b4189c 100644
+--- a/scripts/gcc-plugins/randomize_layout_plugin.c
++++ b/scripts/gcc-plugins/randomize_layout_plugin.c
+@@ -209,12 +209,14 @@ static void partition_struct(tree *fields, unsigned long length, struct partitio
+ 
+ static void performance_shuffle(tree *newtree, unsigned long length, ranctx *prng_state)
+ {
+-	unsigned long i, x;
++	unsigned long i, x, index;
+ 	struct partition_group size_group[length];
+ 	unsigned long num_groups = 0;
+ 	unsigned long randnum;
+ 
+ 	partition_struct(newtree, length, (struct partition_group *)&size_group, &num_groups);
++
++	/* FIXME: this group shuffle is currently a no-op. */
+ 	for (i = num_groups - 1; i > 0; i--) {
+ 		struct partition_group tmp;
+ 		randnum = ranval(prng_state) % (i + 1);
+@@ -224,11 +226,14 @@ static void performance_shuffle(tree *newtree, unsigned long length, ranctx *prn
+ 	}
+ 
+ 	for (x = 0; x < num_groups; x++) {
+-		for (i = size_group[x].start + size_group[x].length - 1; i > size_group[x].start; i--) {
++		for (index = size_group[x].length - 1; index > 0; index--) {
+ 			tree tmp;
++
++			i = size_group[x].start + index;
+ 			if (DECL_BIT_FIELD_TYPE(newtree[i]))
+ 				continue;
+-			randnum = ranval(prng_state) % (i + 1);
++			randnum = ranval(prng_state) % (index + 1);
++			randnum += size_group[x].start;
+ 			// we could handle this case differently if desired
+ 			if (DECL_BIT_FIELD_TYPE(newtree[randnum]))
+ 				continue;
+diff --git a/scripts/gcc-x86_32-has-stack-protector.sh b/scripts/gcc-x86_32-has-stack-protector.sh
+index f5c119495254..9459ca4f0f11 100755
+--- a/scripts/gcc-x86_32-has-stack-protector.sh
++++ b/scripts/gcc-x86_32-has-stack-protector.sh
+@@ -1,4 +1,8 @@
+ #!/bin/sh
+ # SPDX-License-Identifier: GPL-2.0
+ 
+-echo "int foo(void) { char X[200]; return 3; }" | $* -S -x c -c -m32 -O0 -fstack-protector - -o - 2> /dev/null | grep -q "%gs"
++# This requires GCC 8.1 or better.  Specifically, we require
++# -mstack-protector-guard-reg, added by
++# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81708
++
++echo "int foo(void) { char X[200]; return 3; }" | $* -S -x c -m32 -O0 -fstack-protector -mstack-protector-guard-reg=fs -mstack-protector-guard-symbol=__stack_chk_guard - -o - 2> /dev/null | grep -q "%fs"
+diff --git a/scripts/gcc-x86_64-has-stack-protector.sh b/scripts/gcc-x86_64-has-stack-protector.sh
+index 75e4e22b986a..f680bb01aeeb 100755
+--- a/scripts/gcc-x86_64-has-stack-protector.sh
++++ b/scripts/gcc-x86_64-has-stack-protector.sh
+@@ -1,4 +1,4 @@
+ #!/bin/sh
+ # SPDX-License-Identifier: GPL-2.0
+ 
+-echo "int foo(void) { char X[200]; return 3; }" | $* -S -x c -c -m64 -O0 -mcmodel=kernel -fno-PIE -fstack-protector - -o - 2> /dev/null | grep -q "%gs"
++echo "int foo(void) { char X[200]; return 3; }" | $* -S -x c -m64 -O0 -mcmodel=kernel -fno-PIE -fstack-protector - -o - 2> /dev/null | grep -q "%gs"
+diff --git a/scripts/gdb/linux/clk.py b/scripts/gdb/linux/clk.py
+index 061aecfa294e..7a01fdc3e844 100644
+--- a/scripts/gdb/linux/clk.py
++++ b/scripts/gdb/linux/clk.py
+@@ -41,6 +41,8 @@ are cached and potentially out of date"""
+             self.show_subtree(child, level + 1)
+ 
+     def invoke(self, arg, from_tty):
++        if utils.gdb_eval_or_none("clk_root_list") is None:
++            raise gdb.GdbError("No clocks registered")
+         gdb.write("                                 enable  prepare  protect               \n")
+         gdb.write("   clock                          count    count    count        rate   \n")
+         gdb.write("------------------------------------------------------------------------\n")
+diff --git a/scripts/gdb/linux/genpd.py b/scripts/gdb/linux/genpd.py
+index 39cd1abd8559..b53649c0a77a 100644
+--- a/scripts/gdb/linux/genpd.py
++++ b/scripts/gdb/linux/genpd.py
+@@ -5,7 +5,7 @@
+ import gdb
+ import sys
+ 
+-from linux.utils import CachedType
++from linux.utils import CachedType, gdb_eval_or_none
+ from linux.lists import list_for_each_entry
+ 
+ generic_pm_domain_type = CachedType('struct generic_pm_domain')
+@@ -70,6 +70,8 @@ Output is similar to /sys/kernel/debug/pm_genpd/pm_genpd_summary'''
+             gdb.write('    %-50s  %s\n' % (kobj_path, rtpm_status_str(dev)))
+ 
+     def invoke(self, arg, from_tty):
++        if gdb_eval_or_none("&gpd_list") is None:
++            raise gdb.GdbError("No power domain(s) registered")
+         gdb.write('domain                          status          children\n');
+         gdb.write('    /device                                             runtime status\n');
+         gdb.write('----------------------------------------------------------------------\n');
+diff --git a/scripts/gdb/linux/timerlist.py b/scripts/gdb/linux/timerlist.py
+index 071d0dd5a634..51def847f1ef 100644
+--- a/scripts/gdb/linux/timerlist.py
++++ b/scripts/gdb/linux/timerlist.py
+@@ -73,7 +73,7 @@ def print_cpu(hrtimer_bases, cpu, max_clock_bases):
+     ts = cpus.per_cpu(tick_sched_ptr, cpu)
+ 
+     text = "cpu: {}\n".format(cpu)
+-    for i in xrange(max_clock_bases):
++    for i in range(max_clock_bases):
+         text += " clock {}:\n".format(i)
+         text += print_base(cpu_base['clock_base'][i])
+ 
+@@ -158,6 +158,8 @@ def pr_cpumask(mask):
+     num_bytes = (nr_cpu_ids + 7) / 8
+     buf = utils.read_memoryview(inf, bits, num_bytes).tobytes()
+     buf = binascii.b2a_hex(buf)
++    if type(buf) is not str:
++        buf=buf.decode()
+ 
+     chunks = []
+     i = num_bytes
+diff --git a/scripts/gdb/linux/utils.py b/scripts/gdb/linux/utils.py
+index ff7c1799d588..db59f986c7fd 100644
+--- a/scripts/gdb/linux/utils.py
++++ b/scripts/gdb/linux/utils.py
+@@ -89,7 +89,10 @@ def get_target_endianness():
+ 
+ 
+ def read_memoryview(inf, start, length):
+-    return memoryview(inf.read_memory(start, length))
++    m = inf.read_memory(start, length)
++    if type(m) is memoryview:
++        return m
++    return memoryview(m)
+ 
+ 
+ def read_u16(buffer, offset):
+diff --git a/scripts/get_abi.pl b/scripts/get_abi.pl
+index 92d9aa6cc4f5..db6098c42fa6 100755
+--- a/scripts/get_abi.pl
++++ b/scripts/get_abi.pl
+@@ -75,7 +75,7 @@ sub parse_abi {
+ 	$name =~ s,.*/,,;
+ 
+ 	my $fn = $file;
+-	$fn =~ s,Documentation/ABI/,,;
++	$fn =~ s,.*Documentation/ABI/,,;
+ 
+ 	my $nametag = "File $fn";
+ 	$data{$nametag}->{what} = "File $name";
+diff --git a/scripts/kconfig/expr.c b/scripts/kconfig/expr.c
+index 81ebf8108ca7..81dfdf4470f7 100644
+--- a/scripts/kconfig/expr.c
++++ b/scripts/kconfig/expr.c
+@@ -396,35 +396,6 @@ static struct expr *expr_eliminate_yn(struct expr *e)
+ 	return e;
+ }
+ 
+-/*
+- * bool FOO!=n => FOO
+- */
+-struct expr *expr_trans_bool(struct expr *e)
+-{
+-	if (!e)
+-		return NULL;
+-	switch (e->type) {
+-	case E_AND:
+-	case E_OR:
+-	case E_NOT:
+-		e->left.expr = expr_trans_bool(e->left.expr);
+-		e->right.expr = expr_trans_bool(e->right.expr);
+-		break;
+-	case E_UNEQUAL:
+-		// FOO!=n -> FOO
+-		if (e->left.sym->type == S_TRISTATE) {
+-			if (e->right.sym == &symbol_no) {
+-				e->type = E_SYMBOL;
+-				e->right.sym = NULL;
+-			}
+-		}
+-		break;
+-	default:
+-		;
+-	}
+-	return e;
+-}
+-
+ /*
+  * e1 || e2 -> ?
+  */
+diff --git a/scripts/kconfig/expr.h b/scripts/kconfig/expr.h
+index 5c3443692f34..385a47daa364 100644
+--- a/scripts/kconfig/expr.h
++++ b/scripts/kconfig/expr.h
+@@ -302,7 +302,6 @@ void expr_free(struct expr *e);
+ void expr_eliminate_eq(struct expr **ep1, struct expr **ep2);
+ int expr_eq(struct expr *e1, struct expr *e2);
+ tristate expr_calc_value(struct expr *e);
+-struct expr *expr_trans_bool(struct expr *e);
+ struct expr *expr_eliminate_dups(struct expr *e);
+ struct expr *expr_transform(struct expr *e);
+ int expr_contains_symbol(struct expr *dep, struct symbol *sym);
+diff --git a/scripts/kconfig/gconf.c b/scripts/kconfig/gconf.c
+index 5527482c3077..409799912731 100644
+--- a/scripts/kconfig/gconf.c
++++ b/scripts/kconfig/gconf.c
+@@ -1484,7 +1484,6 @@ int main(int ac, char *av[])
+ 
+ 	conf_parse(name);
+ 	fixup_rootmenu(&rootmenu);
+-	conf_read(NULL);
+ 
+ 	/* Load the interface and connect signals */
+ 	init_main_window(glade_file);
+@@ -1492,6 +1491,8 @@ int main(int ac, char *av[])
+ 	init_left_tree();
+ 	init_right_tree();
+ 
++	conf_read(NULL);
++
+ 	switch (view_mode) {
+ 	case SINGLE_VIEW:
+ 		display_tree_part();
+diff --git a/scripts/kconfig/lexer.l b/scripts/kconfig/lexer.l
+index 240109f965ae..72e5e9ac52bb 100644
+--- a/scripts/kconfig/lexer.l
++++ b/scripts/kconfig/lexer.l
+@@ -305,8 +305,11 @@ static char *expand_token(const char *in, size_t n)
+ 	new_string();
+ 	append_string(in, n);
+ 
+-	/* get the whole line because we do not know the end of token. */
+-	while ((c = input()) != EOF) {
++	/*
++	 * get the whole line because we do not know the end of token.
++	 * input() returns 0 (not EOF!) when it reachs the end of file.
++	 */
++	while ((c = input()) != 0) {
+ 		if (c == '\n') {
+ 			unput(c);
+ 			break;
+diff --git a/scripts/kconfig/menu.c b/scripts/kconfig/menu.c
+index a5fbd6ccc006..e5ad6313cfa1 100644
+--- a/scripts/kconfig/menu.c
++++ b/scripts/kconfig/menu.c
+@@ -401,8 +401,6 @@ void menu_finalize(struct menu *parent)
+ 				dep = expr_transform(dep);
+ 				dep = expr_alloc_and(expr_copy(basedep), dep);
+ 				dep = expr_eliminate_dups(dep);
+-				if (menu->sym && menu->sym->type != S_TRISTATE)
+-					dep = expr_trans_bool(dep);
+ 				prop->visible.expr = dep;
+ 
+ 				/*
+diff --git a/scripts/kconfig/merge_config.sh b/scripts/kconfig/merge_config.sh
+index 63c8565206a4..d7d5c58b8b6a 100755
+--- a/scripts/kconfig/merge_config.sh
++++ b/scripts/kconfig/merge_config.sh
+@@ -150,6 +150,8 @@ for ORIG_MERGE_FILE in $MERGE_LIST ; do
+ 			sed -i "/$CFG[ =]/d" $MERGE_FILE
+ 		fi
+ 	done
++	# In case the previous file lacks a new line at the end
++	echo >> $TMP_FILE
+ 	cat $MERGE_FILE >> $TMP_FILE
+ done
+ 
+diff --git a/scripts/kconfig/preprocess.c b/scripts/kconfig/preprocess.c
+index 748da578b418..d1f5bcff4b62 100644
+--- a/scripts/kconfig/preprocess.c
++++ b/scripts/kconfig/preprocess.c
+@@ -396,6 +396,9 @@ static char *eval_clause(const char *str, size_t len, int argc, char *argv[])
+ 
+ 		p++;
+ 	}
++
++	if (new_argc >= FUNCTION_MAX_ARGS)
++		pperror("too many function arguments");
+ 	new_argv[new_argc++] = prev;
+ 
+ 	/*
+diff --git a/scripts/kconfig/qconf.cc b/scripts/kconfig/qconf.cc
+index f7eb093614f2..b889fe604e42 100644
+--- a/scripts/kconfig/qconf.cc
++++ b/scripts/kconfig/qconf.cc
+@@ -1167,7 +1167,7 @@ void ConfigInfoView::clicked(const QUrl &url)
+ {
+ 	QByteArray str = url.toEncoded();
+ 	const std::size_t count = str.size();
+-	char *data = new char[count + 1];
++	char *data = new char[count + 2];  // '$' + '\0'
+ 	struct symbol **result;
+ 	struct menu *m = NULL;
+ 
+diff --git a/scripts/kconfig/symbol.c b/scripts/kconfig/symbol.c
+index ffa3ec65cc90..ff4c5d314b4d 100644
+--- a/scripts/kconfig/symbol.c
++++ b/scripts/kconfig/symbol.c
+@@ -13,18 +13,21 @@
+ 
+ struct symbol symbol_yes = {
+ 	.name = "y",
++	.type = S_TRISTATE,
+ 	.curr = { "y", yes },
+ 	.flags = SYMBOL_CONST|SYMBOL_VALID,
+ };
+ 
+ struct symbol symbol_mod = {
+ 	.name = "m",
++	.type = S_TRISTATE,
+ 	.curr = { "m", mod },
+ 	.flags = SYMBOL_CONST|SYMBOL_VALID,
+ };
+ 
+ struct symbol symbol_no = {
+ 	.name = "n",
++	.type = S_TRISTATE,
+ 	.curr = { "n", no },
+ 	.flags = SYMBOL_CONST|SYMBOL_VALID,
+ };
+@@ -123,9 +126,9 @@ static long long sym_get_range_val(struct symbol *sym, int base)
+ static void sym_validate_range(struct symbol *sym)
+ {
+ 	struct property *prop;
++	struct symbol *range_sym;
+ 	int base;
+ 	long long val, val2;
+-	char str[64];
+ 
+ 	switch (sym->type) {
+ 	case S_INT:
+@@ -141,17 +144,15 @@ static void sym_validate_range(struct symbol *sym)
+ 	if (!prop)
+ 		return;
+ 	val = strtoll(sym->curr.val, NULL, base);
+-	val2 = sym_get_range_val(prop->expr->left.sym, base);
++	range_sym = prop->expr->left.sym;
++	val2 = sym_get_range_val(range_sym, base);
+ 	if (val >= val2) {
+-		val2 = sym_get_range_val(prop->expr->right.sym, base);
++		range_sym = prop->expr->right.sym;
++		val2 = sym_get_range_val(range_sym, base);
+ 		if (val <= val2)
+ 			return;
+ 	}
+-	if (sym->type == S_INT)
+-		sprintf(str, "%lld", val2);
+-	else
+-		sprintf(str, "0x%llx", val2);
+-	sym->curr.val = xstrdup(str);
++	sym->curr.val = range_sym->curr.val;
+ }
+ 
+ static void sym_set_changed(struct symbol *sym)
+@@ -778,8 +779,7 @@ const char *sym_get_string_value(struct symbol *sym)
+ 		case no:
+ 			return "n";
+ 		case mod:
+-			sym_calc_value(modules_sym);
+-			return (modules_sym->curr.tri == no) ? "n" : "m";
++			return "m";
+ 		case yes:
+ 			return "y";
+ 		}
+diff --git a/scripts/kernel-doc b/scripts/kernel-doc
+index 19af6dd160e6..8e3257f1ea2c 100755
+--- a/scripts/kernel-doc
++++ b/scripts/kernel-doc
+@@ -1232,7 +1232,8 @@ sub dump_struct($$) {
+ 	$members =~ s/DECLARE_KFIFO\s*\(([^,)]+),\s*([^,)]+),\s*([^,)]+)\)/$2 \*$1/gos;
+ 	# replace DECLARE_KFIFO_PTR
+ 	$members =~ s/DECLARE_KFIFO_PTR\s*\(([^,)]+),\s*([^,)]+)\)/$2 \*$1/gos;
+-
++	# replace DECLARE_FLEX_ARRAY
++	$members =~ s/(?:__)?DECLARE_FLEX_ARRAY\s*\(([^,)]+),\s*([^,)]+)\)/$1 $2\[\]/gos;
+ 	my $declaration = $members;
+ 
+ 	# Split nested struct/union elements as newer ones
+diff --git a/scripts/link-vmlinux.sh b/scripts/link-vmlinux.sh
+index acd07a70a2f4..bf534a323fdd 100755
+--- a/scripts/link-vmlinux.sh
++++ b/scripts/link-vmlinux.sh
+@@ -171,8 +171,13 @@ gen_btf()
+ 	${OBJCOPY} --only-section=.BTF --set-section-flags .BTF=alloc,readonly \
+ 		--strip-all ${1} ${2} 2>/dev/null
+ 	# Change e_type to ET_REL so that it can be used to link final vmlinux.
+-	# Unlike GNU ld, lld does not allow an ET_EXEC input.
+-	printf '\1' | dd of=${2} conv=notrunc bs=1 seek=16 status=none
++	# GNU ld 2.35+ and lld do not allow an ET_EXEC input.
++	if [ -n "${CONFIG_CPU_BIG_ENDIAN}" ]; then
++		et_rel='\0\1'
++	else
++		et_rel='\1\0'
++	fi
++	printf "${et_rel}" | dd of=${2} conv=notrunc bs=1 seek=16 status=none
+ }
+ 
+ # Create ${2} .S file with all symbols from the ${1} object file
+@@ -208,7 +213,7 @@ kallsyms_step()
+ 	vmlinux_link ${kallsyms_vmlinux} "${kallsymso_prev}" ${btf_vmlinux_bin_o}
+ 	kallsyms ${kallsyms_vmlinux} ${kallsyms_S}
+ 
+-	info AS ${kallsyms_S}
++	info AS ${kallsymso}
+ 	${CC} ${NOSTDINC_FLAGS} ${LINUXINCLUDE} ${KBUILD_CPPFLAGS} \
+ 	      ${KBUILD_AFLAGS} ${KBUILD_AFLAGS_KERNEL} \
+ 	      -c -o ${kallsymso} ${kallsyms_S}
+diff --git a/scripts/mod/file2alias.c b/scripts/mod/file2alias.c
+index 2417dd1dee33..92b9b9e8bf10 100644
+--- a/scripts/mod/file2alias.c
++++ b/scripts/mod/file2alias.c
+@@ -719,8 +719,8 @@ static void do_input(char *alias,
+ 
+ 	for (i = min / BITS_PER_LONG; i < max / BITS_PER_LONG + 1; i++)
+ 		arr[i] = TO_NATIVE(arr[i]);
+-	for (i = min; i < max; i++)
+-		if (arr[i / BITS_PER_LONG] & (1L << (i%BITS_PER_LONG)))
++	for (i = min; i <= max; i++)
++		if (arr[i / BITS_PER_LONG] & (1ULL << (i%BITS_PER_LONG)))
+ 			sprintf(alias + strlen(alias), "%X,*", i);
+ }
+ 
+@@ -786,10 +786,7 @@ static int do_eisa_entry(const char *filename, void *symval,
+ 		char *alias)
+ {
+ 	DEF_FIELD_ADDR(symval, eisa_device_id, sig);
+-	if (sig[0])
+-		sprintf(alias, EISA_DEVICE_MODALIAS_FMT "*", *sig);
+-	else
+-		strcat(alias, "*");
++	sprintf(alias, EISA_DEVICE_MODALIAS_FMT "*", *sig);
+ 	return 1;
+ }
+ 
+@@ -1326,13 +1323,13 @@ static int do_typec_entry(const char *filename, void *symval, char *alias)
+ /* Looks like: tee:uuid */
+ static int do_tee_entry(const char *filename, void *symval, char *alias)
+ {
+-	DEF_FIELD(symval, tee_client_device_id, uuid);
++	DEF_FIELD_ADDR(symval, tee_client_device_id, uuid);
+ 
+ 	sprintf(alias, "tee:%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+-		uuid.b[0], uuid.b[1], uuid.b[2], uuid.b[3], uuid.b[4],
+-		uuid.b[5], uuid.b[6], uuid.b[7], uuid.b[8], uuid.b[9],
+-		uuid.b[10], uuid.b[11], uuid.b[12], uuid.b[13], uuid.b[14],
+-		uuid.b[15]);
++		uuid->b[0], uuid->b[1], uuid->b[2], uuid->b[3], uuid->b[4],
++		uuid->b[5], uuid->b[6], uuid->b[7], uuid->b[8], uuid->b[9],
++		uuid->b[10], uuid->b[11], uuid->b[12], uuid->b[13], uuid->b[14],
++		uuid->b[15]);
+ 
+ 	add_wildcard(alias);
+ 	return 1;
+@@ -1490,7 +1487,7 @@ void handle_moddevtable(struct module *mod, struct elf_info *info,
+ 	/* First handle the "special" cases */
+ 	if (sym_is(name, namelen, "usb"))
+ 		do_usb_table(symval, sym->st_size, mod);
+-	if (sym_is(name, namelen, "of"))
++	else if (sym_is(name, namelen, "of"))
+ 		do_of_table(symval, sym->st_size, mod);
+ 	else if (sym_is(name, namelen, "pnp"))
+ 		do_pnp_device_entry(symval, sym->st_size, mod);
+diff --git a/scripts/mod/modpost.c b/scripts/mod/modpost.c
+index e48742760fec..fd77ac48dcc1 100644
+--- a/scripts/mod/modpost.c
++++ b/scripts/mod/modpost.c
+@@ -951,7 +951,7 @@ static void check_section(const char *modname, struct elf_info *elf,
+ 		".kprobes.text", ".cpuidle.text", ".noinstr.text"
+ #define OTHER_TEXT_SECTIONS ".ref.text", ".head.text", ".spinlock.text", \
+ 		".fixup", ".entry.text", ".exception.text", ".text.*", \
+-		".coldtext"
++		".coldtext", ".irqentry.text"
+ 
+ #define INIT_SECTIONS      ".init.*"
+ #define MEM_INIT_SECTIONS  ".meminit.*"
+@@ -1313,6 +1313,10 @@ static Elf_Sym *find_elf_symbol(struct elf_info *elf, Elf64_Sword addr,
+ 	if (relsym->st_name != 0)
+ 		return relsym;
+ 
++	/*
++	 * Strive to find a better symbol name, but the resulting name may not
++	 * match the symbol referenced in the original code.
++	 */
+ 	relsym_secindex = get_secindex(elf, relsym);
+ 	for (sym = elf->symtab_start; sym < elf->symtab_stop; sym++) {
+ 		if (get_secindex(elf, sym) != relsym_secindex)
+@@ -1617,7 +1621,7 @@ static void default_mismatch_handler(const char *modname, struct elf_info *elf,
+ 
+ static int is_executable_section(struct elf_info* elf, unsigned int section_index)
+ {
+-	if (section_index > elf->num_sections)
++	if (section_index >= elf->num_sections)
+ 		fatal("section_index is outside elf->num_sections!\n");
+ 
+ 	return ((elf->sechdrs[section_index].sh_flags & SHF_EXECINSTR) == SHF_EXECINSTR);
+@@ -1792,19 +1796,33 @@ static int addend_386_rel(struct elf_info *elf, Elf_Shdr *sechdr, Elf_Rela *r)
+ #define	R_ARM_THM_JUMP19	51
+ #endif
+ 
++static int32_t sign_extend32(int32_t value, int index)
++{
++	uint8_t shift = 31 - index;
++
++	return (int32_t)(value << shift) >> shift;
++}
++
+ static int addend_arm_rel(struct elf_info *elf, Elf_Shdr *sechdr, Elf_Rela *r)
+ {
+ 	unsigned int r_typ = ELF_R_TYPE(r->r_info);
++	Elf_Sym *sym = elf->symtab_start + ELF_R_SYM(r->r_info);
++	void *loc = reloc_location(elf, sechdr, r);
++	uint32_t inst;
++	int32_t offset;
+ 
+ 	switch (r_typ) {
+ 	case R_ARM_ABS32:
+-		/* From ARM ABI: (S + A) | T */
+-		r->r_addend = (int)(long)
+-			      (elf->symtab_start + ELF_R_SYM(r->r_info));
++		inst = TO_NATIVE(*(uint32_t *)loc);
++		r->r_addend = inst + sym->st_value;
+ 		break;
+ 	case R_ARM_PC24:
+ 	case R_ARM_CALL:
+ 	case R_ARM_JUMP24:
++		inst = TO_NATIVE(*(uint32_t *)loc);
++		offset = sign_extend32((inst & 0x00ffffff) << 2, 25);
++		r->r_addend = offset + sym->st_value + 8;
++		break;
+ 	case R_ARM_THM_CALL:
+ 	case R_ARM_THM_JUMP24:
+ 	case R_ARM_THM_JUMP19:
+diff --git a/scripts/mod/sumversion.c b/scripts/mod/sumversion.c
+index d587f40f1117..b6eda411be15 100644
+--- a/scripts/mod/sumversion.c
++++ b/scripts/mod/sumversion.c
+@@ -328,7 +328,12 @@ static int parse_source_files(const char *objfile, struct md4_ctx *md)
+ 
+ 	/* Sum all files in the same dir or subdirs. */
+ 	while ((line = get_line(&pos))) {
+-		char* p = line;
++		char* p;
++
++		/* trim the leading spaces away */
++		while (isspace(*line))
++			line++;
++		p = line;
+ 
+ 		if (strncmp(line, "source_", sizeof("source_")-1) == 0) {
+ 			p = strrchr(line, ' ');
+diff --git a/scripts/package/mkdebian b/scripts/package/mkdebian
+index 60a2a63a5e90..32d528a36786 100755
+--- a/scripts/package/mkdebian
++++ b/scripts/package/mkdebian
+@@ -236,7 +236,7 @@ binary-arch: build-arch
+ 	KBUILD_BUILD_VERSION=${revision} -f \$(srctree)/Makefile intdeb-pkg
+ 
+ clean:
+-	rm -rf debian/*tmp debian/files
++	rm -rf debian/files debian/linux-*
+ 	\$(MAKE) clean
+ 
+ binary: binary-arch
+diff --git a/scripts/recordmcount.c b/scripts/recordmcount.c
+index cce12e1971d8..ec692af8ce9e 100644
+--- a/scripts/recordmcount.c
++++ b/scripts/recordmcount.c
+@@ -102,6 +102,7 @@ static ssize_t uwrite(void const *const buf, size_t const count)
+ {
+ 	size_t cnt = count;
+ 	off_t idx = 0;
++	void *p = NULL;
+ 
+ 	file_updated = 1;
+ 
+@@ -109,7 +110,10 @@ static ssize_t uwrite(void const *const buf, size_t const count)
+ 		off_t aoffset = (file_ptr + count) - file_end;
+ 
+ 		if (aoffset > file_append_size) {
+-			file_append = realloc(file_append, aoffset);
++			p = realloc(file_append, aoffset);
++			if (!p)
++				free(file_append);
++			file_append = p;
+ 			file_append_size = aoffset;
+ 		}
+ 		if (!file_append) {
+diff --git a/scripts/sign-file.c b/scripts/sign-file.c
+index 7434e9ea926e..12acc70e5a7a 100644
+--- a/scripts/sign-file.c
++++ b/scripts/sign-file.c
+@@ -322,7 +322,7 @@ int main(int argc, char **argv)
+ 				     CMS_NOSMIMECAP | use_keyid |
+ 				     use_signed_attrs),
+ 		    "CMS_add1_signer");
+-		ERR(CMS_final(cms, bm, NULL, CMS_NOCERTS | CMS_BINARY) < 0,
++		ERR(CMS_final(cms, bm, NULL, CMS_NOCERTS | CMS_BINARY) != 1,
+ 		    "CMS_final");
+ 
+ #else
+@@ -341,10 +341,10 @@ int main(int argc, char **argv)
+ 			b = BIO_new_file(sig_file_name, "wb");
+ 			ERR(!b, "%s", sig_file_name);
+ #ifndef USE_PKCS7
+-			ERR(i2d_CMS_bio_stream(b, cms, NULL, 0) < 0,
++			ERR(i2d_CMS_bio_stream(b, cms, NULL, 0) != 1,
+ 			    "%s", sig_file_name);
+ #else
+-			ERR(i2d_PKCS7_bio(b, pkcs7) < 0,
++			ERR(i2d_PKCS7_bio(b, pkcs7) != 1,
+ 			    "%s", sig_file_name);
+ #endif
+ 			BIO_free(b);
+@@ -374,9 +374,9 @@ int main(int argc, char **argv)
+ 
+ 	if (!raw_sig) {
+ #ifndef USE_PKCS7
+-		ERR(i2d_CMS_bio_stream(bd, cms, NULL, 0) < 0, "%s", dest_name);
++		ERR(i2d_CMS_bio_stream(bd, cms, NULL, 0) != 1, "%s", dest_name);
+ #else
+-		ERR(i2d_PKCS7_bio(bd, pkcs7) < 0, "%s", dest_name);
++		ERR(i2d_PKCS7_bio(bd, pkcs7) != 1, "%s", dest_name);
+ #endif
+ 	} else {
+ 		BIO *b;
+@@ -396,7 +396,7 @@ int main(int argc, char **argv)
+ 	ERR(BIO_write(bd, &sig_info, sizeof(sig_info)) < 0, "%s", dest_name);
+ 	ERR(BIO_write(bd, magic_number, sizeof(magic_number) - 1) < 0, "%s", dest_name);
+ 
+-	ERR(BIO_free(bd) < 0, "%s", dest_name);
++	ERR(BIO_free(bd) != 1, "%s", dest_name);
+ 
+ 	/* Finally, if we're signing in place, replace the original. */
+ 	if (replace_orig)
+diff --git a/scripts/tags.sh b/scripts/tags.sh
+index fd96734deff1..d17801c9d85a 100755
+--- a/scripts/tags.sh
++++ b/scripts/tags.sh
+@@ -32,6 +32,13 @@ else
+ 	ignore="$ignore ( -path ${tree}tools ) -prune -o"
+ fi
+ 
++# gtags(1) refuses to index any file outside of its current working dir.
++# If gtags indexing is requested and the build output directory is not
++# the kernel source tree, index all files in absolute-path form.
++if [[ "$1" == "gtags" && -n "${tree}" ]]; then
++	tree=$(realpath "$tree")/
++fi
++
+ # Detect if ALLSOURCE_ARCHS is set. If not, we assume SRCARCH
+ if [ "${ALLSOURCE_ARCHS}" = "" ]; then
+ 	ALLSOURCE_ARCHS=${SRCARCH}
+@@ -95,10 +102,13 @@ all_sources()
+ 
+ all_compiled_sources()
+ {
+-	realpath -es $([ -z "$KBUILD_ABS_SRCTREE" ] && echo --relative-to=.) \
+-		include/generated/autoconf.h $(find $ignore -name "*.cmd" -exec \
+-		grep -Poh '(?(?=^source_.* \K).*|(?=^  \K\S).*(?= \\))' {} \+ |
+-		awk '!a[$0]++') | sort -u
++	{
++		echo include/generated/autoconf.h
++		find $ignore -name "*.cmd" -exec \
++			sed -n -E 's/^source_.* (.*)/\1/p; s/^  (\S.*) \\/\1/p' {} \+ |
++		awk '!a[$0]++'
++	} | xargs realpath -es $([ -z "$KBUILD_ABS_SRCTREE" ] && echo --relative-to=.) |
++	sort -u
+ }
+ 
+ all_target_sources()
+@@ -128,7 +138,7 @@ docscope()
+ 
+ dogtags()
+ {
+-	all_target_sources | gtags -i -f -
++	all_target_sources | gtags -i -C "${tree:-.}" -f - "$PWD"
+ }
+ 
+ # Basic regular expressions with an optional /kind-spec/ for ctags and
+-- 
+2.45.2
+
