@@ -1,0 +1,734 @@
+From e95e5074a55fbbb64ad86065591cca11a806dd26 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Mon, 27 Jan 2025 12:57:34 -0600
+Subject: [PATCH] backports: scripts: from: linux.git
+
+Reference: v6.1.127
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ Makefile                                  | 11 +++---
+ scripts/Makefile.build                    | 19 ++++++-----
+ scripts/Makefile.dtbinst                  |  2 +-
+ scripts/Makefile.extrawarn                |  2 ++
+ scripts/Makefile.host                     | 27 ++++++++-------
+ scripts/Makefile.lib                      | 28 ++++------------
+ scripts/Makefile.modfinal                 |  4 +--
+ scripts/bpf_doc.py                        |  4 +--
+ scripts/gcc-plugins/gcc-common.h          |  4 +++
+ scripts/gcc-plugins/stackleak_plugin.c    |  2 ++
+ scripts/gcc-x86_32-has-stack-protector.sh |  2 +-
+ scripts/gcc-x86_64-has-stack-protector.sh |  2 +-
+ scripts/gdb/linux/constants.py.in         | 12 +++----
+ scripts/kconfig/expr.c                    | 29 ----------------
+ scripts/kconfig/expr.h                    |  1 -
+ scripts/kconfig/gconf.c                   |  3 +-
+ scripts/kconfig/menu.c                    |  2 --
+ scripts/kconfig/merge_config.sh           |  2 ++
+ scripts/kconfig/qconf.cc                  |  2 +-
+ scripts/kconfig/symbol.c                  |  6 ++--
+ scripts/ld-version.sh                     |  8 +++--
+ scripts/link-vmlinux.sh                   |  2 +-
+ scripts/mod/file2alias.c                  |  9 ++---
+ scripts/mod/modpost.c                     |  4 +--
+ scripts/rust_is_available.sh              | 41 +++++++++++++++++++----
+ scripts/sorttable.h                       |  6 +++-
+ 26 files changed, 115 insertions(+), 119 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 2598b83430a6..9c703cff00bb 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
+ VERSION = 6
+ PATCHLEVEL = 1
+-SUBLEVEL = 83
++SUBLEVEL = 127
+ EXTRAVERSION =
+ NAME = Curry Ramen
+ 
+@@ -980,7 +980,6 @@ endif
+ ifdef CONFIG_LTO_CLANG
+ ifdef CONFIG_LTO_CLANG_THIN
+ CC_FLAGS_LTO	:= -flto=thin -fsplit-lto-unit
+-KBUILD_LDFLAGS	+= --thinlto-cache-dir=$(extmod_prefix).thinlto-cache
+ else
+ CC_FLAGS_LTO	:= -flto
+ endif
+@@ -1588,7 +1587,7 @@ endif # CONFIG_MODULES
+ # Directories & files removed with 'make clean'
+ CLEAN_FILES += include/ksym vmlinux.symvers modules-only.symvers \
+ 	       modules.builtin modules.builtin.modinfo modules.nsdeps \
+-	       compile_commands.json .thinlto-cache rust/test rust/doc \
++	       compile_commands.json rust/test rust/doc \
+ 	       .vmlinux.objs .vmlinux.export.c
+ 
+ # Directories & files removed with 'make mrproper'
+@@ -1884,7 +1883,7 @@ PHONY += compile_commands.json
+ 
+ clean-dirs := $(KBUILD_EXTMOD)
+ clean: rm-files := $(KBUILD_EXTMOD)/Module.symvers $(KBUILD_EXTMOD)/modules.nsdeps \
+-	$(KBUILD_EXTMOD)/compile_commands.json $(KBUILD_EXTMOD)/.thinlto-cache
++	$(KBUILD_EXTMOD)/compile_commands.json
+ 
+ PHONY += prepare
+ # now expand this into a simple variable to reduce the cost of shell evaluations
+@@ -2019,9 +2018,7 @@ clean: $(clean-dirs)
+ 	@find $(or $(KBUILD_EXTMOD), .) $(RCS_FIND_IGNORE) \
+ 		\( -name '*.[aios]' -o -name '*.rsi' -o -name '*.ko' -o -name '.*.cmd' \
+ 		-o -name '*.ko.*' \
+-		-o -name '*.dtb' -o -name '*.dtbo' \
+-		-o -name '*.dtb.S' -o -name '*.dtbo.S' \
+-		-o -name '*.dt.yaml' \
++		-o -name '*.dtb' -o -name '*.dtbo' -o -name '*.dtb.S' -o -name '*.dt.yaml' \
+ 		-o -name '*.dwo' -o -name '*.lst' \
+ 		-o -name '*.su' -o -name '*.mod' -o -name '*.usyms' \
+ 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
+diff --git a/scripts/Makefile.build b/scripts/Makefile.build
+index 3ceab076127b..1827bc1db1e9 100644
+--- a/scripts/Makefile.build
++++ b/scripts/Makefile.build
+@@ -277,17 +277,20 @@ $(obj)/%.lst: $(src)/%.c FORCE
+ 
+ rust_allowed_features := core_ffi_c
+ 
++# `--out-dir` is required to avoid temporaries being created by `rustc` in the
++# current working directory, which may be not accessible in the out-of-tree
++# modules case.
+ rust_common_cmd = \
+ 	RUST_MODFILE=$(modfile) $(RUSTC_OR_CLIPPY) $(rust_flags) \
+ 	-Zallow-features=$(rust_allowed_features) \
+ 	-Zcrate-attr=no_std \
+ 	-Zcrate-attr='feature($(rust_allowed_features))' \
+ 	--extern alloc --extern kernel \
+-	--crate-type rlib --out-dir $(obj) -L $(objtree)/rust/ \
+-	--crate-name $(basename $(notdir $@))
++	--crate-type rlib -L $(objtree)/rust/ \
++	--crate-name $(basename $(notdir $@)) \
++	--out-dir $(dir $@) --emit=dep-info=$(depfile)
+ 
+ rust_handle_depfile = \
+-	mv $(obj)/$(basename $(notdir $@)).d $(depfile); \
+ 	sed -i '/^\#/d' $(depfile)
+ 
+ # `--emit=obj`, `--emit=asm` and `--emit=llvm-ir` imply a single codegen unit
+@@ -300,7 +303,7 @@ rust_handle_depfile = \
+ 
+ quiet_cmd_rustc_o_rs = $(RUSTC_OR_CLIPPY_QUIET) $(quiet_modtag) $@
+       cmd_rustc_o_rs = \
+-	$(rust_common_cmd) --emit=dep-info,obj $<; \
++	$(rust_common_cmd) --emit=obj=$@ $<; \
+ 	$(rust_handle_depfile)
+ 
+ $(obj)/%.o: $(src)/%.rs FORCE
+@@ -308,7 +311,7 @@ $(obj)/%.o: $(src)/%.rs FORCE
+ 
+ quiet_cmd_rustc_rsi_rs = $(RUSTC_OR_CLIPPY_QUIET) $(quiet_modtag) $@
+       cmd_rustc_rsi_rs = \
+-	$(rust_common_cmd) --emit=dep-info -Zunpretty=expanded $< >$@; \
++	$(rust_common_cmd) -Zunpretty=expanded $< >$@; \
+ 	command -v $(RUSTFMT) >/dev/null && $(RUSTFMT) $@; \
+ 	$(rust_handle_depfile)
+ 
+@@ -317,7 +320,7 @@ $(obj)/%.rsi: $(src)/%.rs FORCE
+ 
+ quiet_cmd_rustc_s_rs = $(RUSTC_OR_CLIPPY_QUIET) $(quiet_modtag) $@
+       cmd_rustc_s_rs = \
+-	$(rust_common_cmd) --emit=dep-info,asm $<; \
++	$(rust_common_cmd) --emit=asm=$@ $<; \
+ 	$(rust_handle_depfile)
+ 
+ $(obj)/%.s: $(src)/%.rs FORCE
+@@ -325,7 +328,7 @@ $(obj)/%.s: $(src)/%.rs FORCE
+ 
+ quiet_cmd_rustc_ll_rs = $(RUSTC_OR_CLIPPY_QUIET) $(quiet_modtag) $@
+       cmd_rustc_ll_rs = \
+-	$(rust_common_cmd) --emit=dep-info,llvm-ir $<; \
++	$(rust_common_cmd) --emit=llvm-ir=$@ $<; \
+ 	$(rust_handle_depfile)
+ 
+ $(obj)/%.ll: $(src)/%.rs FORCE
+@@ -468,12 +471,10 @@ intermediate_targets = $(foreach sfx, $(2), \
+ 					$(filter %$(strip $(1)), $(targets))))
+ # %.asn1.o <- %.asn1.[ch] <- %.asn1
+ # %.dtb.o <- %.dtb.S <- %.dtb <- %.dts
+-# %.dtbo.o <- %.dtbo.S <- %.dtbo <- %.dtso
+ # %.lex.o <- %.lex.c <- %.l
+ # %.tab.o <- %.tab.[ch] <- %.y
+ targets += $(call intermediate_targets, .asn1.o, .asn1.c .asn1.h) \
+ 	   $(call intermediate_targets, .dtb.o, .dtb.S .dtb) \
+-	   $(call intermediate_targets, .dtbo.o, .dtbo.S .dtbo) \
+ 	   $(call intermediate_targets, .lex.o, .lex.c) \
+ 	   $(call intermediate_targets, .tab.o, .tab.c .tab.h)
+ 
+diff --git a/scripts/Makefile.dtbinst b/scripts/Makefile.dtbinst
+index 190d781e84f4..3668259ddb65 100644
+--- a/scripts/Makefile.dtbinst
++++ b/scripts/Makefile.dtbinst
+@@ -24,7 +24,7 @@ __dtbs_install: $(dtbs) $(subdirs)
+ 	@:
+ 
+ quiet_cmd_dtb_install = INSTALL $@
+-      cmd_dtb_install = install -D $< $@
++      cmd_dtb_install = install -D -m 0644 $< $@
+ 
+ $(dst)/%.dtb: $(obj)/%.dtb
+ 	$(call cmd,dtb_install)
+diff --git a/scripts/Makefile.extrawarn b/scripts/Makefile.extrawarn
+index 6bbba36c5969..fa5ef4180688 100644
+--- a/scripts/Makefile.extrawarn
++++ b/scripts/Makefile.extrawarn
+@@ -65,6 +65,8 @@ KBUILD_CFLAGS += $(call cc-disable-warning, pointer-to-enum-cast)
+ KBUILD_CFLAGS += -Wno-tautological-constant-out-of-range-compare
+ KBUILD_CFLAGS += $(call cc-disable-warning, unaligned-access)
+ KBUILD_CFLAGS += $(call cc-disable-warning, cast-function-type-strict)
++KBUILD_CFLAGS += -Wno-enum-compare-conditional
++KBUILD_CFLAGS += -Wno-enum-enum-conversion
+ endif
+ 
+ endif
+diff --git a/scripts/Makefile.host b/scripts/Makefile.host
+index da133780b751..a447c91893de 100644
+--- a/scripts/Makefile.host
++++ b/scripts/Makefile.host
+@@ -80,25 +80,28 @@ host-rust	:= $(addprefix $(obj)/,$(host-rust))
+ #####
+ # Handle options to gcc. Support building with separate output directory
+ 
+-_hostc_flags   = $(KBUILD_HOSTCFLAGS)   $(HOST_EXTRACFLAGS)   \
++hostc_flags    = -Wp,-MMD,$(depfile) \
++                 $(KBUILD_HOSTCFLAGS) $(HOST_EXTRACFLAGS) \
+                  $(HOSTCFLAGS_$(target-stem).o)
+-_hostcxx_flags = $(KBUILD_HOSTCXXFLAGS) $(HOST_EXTRACXXFLAGS) \
++hostcxx_flags  = -Wp,-MMD,$(depfile) \
++                 $(KBUILD_HOSTCXXFLAGS) $(HOST_EXTRACXXFLAGS) \
+                  $(HOSTCXXFLAGS_$(target-stem).o)
+-_hostrust_flags = $(KBUILD_HOSTRUSTFLAGS) $(HOST_EXTRARUSTFLAGS) \
+-                  $(HOSTRUSTFLAGS_$(target-stem))
++
++# `--out-dir` is required to avoid temporaries being created by `rustc` in the
++# current working directory, which may be not accessible in the out-of-tree
++# modules case.
++hostrust_flags = --out-dir $(dir $@) --emit=dep-info=$(depfile) \
++                 $(KBUILD_HOSTRUSTFLAGS) $(HOST_EXTRARUSTFLAGS) \
++                 $(HOSTRUSTFLAGS_$(target-stem))
+ 
+ # $(objtree)/$(obj) for including generated headers from checkin source files
+ ifeq ($(KBUILD_EXTMOD),)
+ ifdef building_out_of_srctree
+-_hostc_flags   += -I $(objtree)/$(obj)
+-_hostcxx_flags += -I $(objtree)/$(obj)
++hostc_flags   += -I $(objtree)/$(obj)
++hostcxx_flags += -I $(objtree)/$(obj)
+ endif
+ endif
+ 
+-hostc_flags    = -Wp,-MMD,$(depfile) $(_hostc_flags)
+-hostcxx_flags  = -Wp,-MMD,$(depfile) $(_hostcxx_flags)
+-hostrust_flags = $(_hostrust_flags)
+-
+ #####
+ # Compile programs on the host
+ 
+@@ -149,9 +152,7 @@ $(host-cxxobjs): $(obj)/%.o: $(src)/%.cc FORCE
+ # host-rust -> Executable
+ quiet_cmd_host-rust	= HOSTRUSTC $@
+       cmd_host-rust	= \
+-	$(HOSTRUSTC) $(hostrust_flags) --emit=dep-info,link \
+-		--out-dir=$(obj)/ $<; \
+-	mv $(obj)/$(target-stem).d $(depfile); \
++	$(HOSTRUSTC) $(hostrust_flags) --emit=link=$@ $<; \
+ 	sed -i '/^\#/d' $(depfile)
+ $(host-rust): $(obj)/%: $(src)/%.rs FORCE
+ 	$(call if_changed_dep,host-rust)
+diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
+index 3a14676079f0..d236e5658f9b 100644
+--- a/scripts/Makefile.lib
++++ b/scripts/Makefile.lib
+@@ -358,7 +358,7 @@ DTC_FLAGS += $(DTC_FLAGS_$(basetarget))
+ DTC_FLAGS += $(if $(filter $(patsubst $(obj)/%,%,$@), $(base-dtb-y)), -@)
+ 
+ # Generate an assembly file to wrap the output of the device tree compiler
+-quiet_cmd_dt_S_dtb= DTBS    $@
++quiet_cmd_dt_S_dtb= DTB     $@
+ cmd_dt_S_dtb=						\
+ {							\
+ 	echo '\#include <asm-generic/vmlinux.lds.h>'; 	\
+@@ -375,24 +375,6 @@ cmd_dt_S_dtb=						\
+ $(obj)/%.dtb.S: $(obj)/%.dtb FORCE
+ 	$(call if_changed,dt_S_dtb)
+ 
+-# Generate an assembly file to wrap the output of the device tree compiler
+-quiet_cmd_dt_S_dtbo= DTBOS   $@
+-cmd_dt_S_dtbo=						\
+-{							\
+-	echo '\#include <asm-generic/vmlinux.lds.h>';	\
+-	echo '.section .dtb.init.rodata,"a"';		\
+-	echo '.balign STRUCT_ALIGNMENT';		\
+-	echo '.global __dtbo_$(subst -,_,$(*F))_begin';	\
+-	echo '__dtbo_$(subst -,_,$(*F))_begin:';	\
+-	echo '.incbin "$<" ';				\
+-	echo '__dtbo_$(subst -,_,$(*F))_end:';		\
+-	echo '.global __dtbo_$(subst -,_,$(*F))_end';	\
+-	echo '.balign STRUCT_ALIGNMENT';		\
+-} > $@
+-
+-$(obj)/%.dtbo.S: $(obj)/%.dtbo FORCE
+-	$(call if_changed,dt_S_dtbo)
+-
+ quiet_cmd_dtc = DTC     $@
+ cmd_dtc = $(HOSTCC) -E $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $< ; \
+ 	$(DTC) -o $@ -b 0 \
+@@ -400,8 +382,12 @@ cmd_dtc = $(HOSTCC) -E $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $< ;
+ 		-d $(depfile).dtc.tmp $(dtc-tmp) ; \
+ 	cat $(depfile).pre.tmp $(depfile).dtc.tmp > $(depfile)
+ 
++# NOTE:
++# Do not replace $(filter %.dtb %.dtbo, $^) with $(real-prereqs). When a single
++# DTB is turned into a multi-blob DTB, $^ will contain header file dependencies
++# recorded in the .*.cmd file.
+ quiet_cmd_fdtoverlay = DTOVL   $@
+-      cmd_fdtoverlay = $(objtree)/scripts/dtc/fdtoverlay -o $@ -i $(real-prereqs)
++      cmd_fdtoverlay = $(objtree)/scripts/dtc/fdtoverlay -o $@ -i $(filter %.dtb %.dtbo, $^)
+ 
+ $(multi-dtb-y): FORCE
+ 	$(call if_changed,fdtoverlay)
+@@ -423,7 +409,7 @@ endif
+ $(obj)/%.dtb: $(src)/%.dts $(DTC) $(DT_TMP_SCHEMA) FORCE
+ 	$(call if_changed_dep,dtb)
+ 
+-$(obj)/%.dtbo: $(src)/%.dtso $(DTC) FORCE
++$(obj)/%.dtbo: $(src)/%.dts $(DTC) FORCE
+ 	$(call if_changed_dep,dtc)
+ 
+ dtc-tmp = $(subst $(comma),_,$(dot-target).dts.tmp)
+diff --git a/scripts/Makefile.modfinal b/scripts/Makefile.modfinal
+index 3af5e5807983..0faee3a47705 100644
+--- a/scripts/Makefile.modfinal
++++ b/scripts/Makefile.modfinal
+@@ -23,7 +23,7 @@ modname = $(notdir $(@:.mod.o=))
+ part-of-module = y
+ 
+ quiet_cmd_cc_o_c = CC [M]  $@
+-      cmd_cc_o_c = $(CC) $(filter-out $(CC_FLAGS_CFI) $(CFLAGS_GCOV), $(c_flags)) -c -o $@ $<
++      cmd_cc_o_c = $(CC) $(filter-out $(CC_FLAGS_CFI) $(CFLAGS_GCOV) $(CFLAGS_KCSAN), $(c_flags)) -c -o $@ $<
+ 
+ %.mod.o: %.mod.c FORCE
+ 	$(call if_changed_dep,cc_o_c)
+@@ -41,8 +41,6 @@ quiet_cmd_btf_ko = BTF [M] $@
+       cmd_btf_ko = 							\
+ 	if [ ! -f vmlinux ]; then					\
+ 		printf "Skipping BTF generation for %s due to unavailability of vmlinux\n" $@ 1>&2; \
+-	elif [ -n "$(CONFIG_RUST)" ] && $(srctree)/scripts/is_rust_module.sh $@; then 		\
+-		printf "Skipping BTF generation for %s because it's a Rust module\n" $@ 1>&2; \
+ 	else								\
+ 		LLVM_OBJCOPY="$(OBJCOPY)" $(PAHOLE) -J $(PAHOLE_FLAGS) --btf_base vmlinux $@; \
+ 		$(RESOLVE_BTFIDS) -b vmlinux $@; 			\
+diff --git a/scripts/bpf_doc.py b/scripts/bpf_doc.py
+index 4de98b7bbea9..c2da6ed32104 100755
+--- a/scripts/bpf_doc.py
++++ b/scripts/bpf_doc.py
+@@ -396,8 +396,8 @@ class PrinterRST(Printer):
+             version = version.stdout.decode().rstrip()
+         except:
+             try:
+-                version = subprocess.run(['make', 'kernelversion'], cwd=linuxRoot,
+-                                         capture_output=True, check=True)
++                version = subprocess.run(['make', '-s', '--no-print-directory', 'kernelversion'],
++                                         cwd=linuxRoot, capture_output=True, check=True)
+                 version = version.stdout.decode().rstrip()
+             except:
+                 return 'Linux'
+diff --git a/scripts/gcc-plugins/gcc-common.h b/scripts/gcc-plugins/gcc-common.h
+index 84c730da36dd..1ae39b9f4a95 100644
+--- a/scripts/gcc-plugins/gcc-common.h
++++ b/scripts/gcc-plugins/gcc-common.h
+@@ -440,4 +440,8 @@ static inline void debug_gimple_stmt(const_gimple s)
+ #define SET_DECL_MODE(decl, mode)	DECL_MODE(decl) = (mode)
+ #endif
+ 
++#if BUILDING_GCC_VERSION >= 14000
++#define last_stmt(x)			last_nondebug_stmt(x)
++#endif
++
+ #endif
+diff --git a/scripts/gcc-plugins/stackleak_plugin.c b/scripts/gcc-plugins/stackleak_plugin.c
+index c5c2ce113c92..d20c47d21ad8 100644
+--- a/scripts/gcc-plugins/stackleak_plugin.c
++++ b/scripts/gcc-plugins/stackleak_plugin.c
+@@ -467,6 +467,8 @@ static bool stackleak_gate(void)
+ 			return false;
+ 		if (STRING_EQUAL(section, ".entry.text"))
+ 			return false;
++		if (STRING_EQUAL(section, ".head.text"))
++			return false;
+ 	}
+ 
+ 	return track_frame_size >= 0;
+diff --git a/scripts/gcc-x86_32-has-stack-protector.sh b/scripts/gcc-x86_32-has-stack-protector.sh
+index 825c75c5b715..9459ca4f0f11 100755
+--- a/scripts/gcc-x86_32-has-stack-protector.sh
++++ b/scripts/gcc-x86_32-has-stack-protector.sh
+@@ -5,4 +5,4 @@
+ # -mstack-protector-guard-reg, added by
+ # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81708
+ 
+-echo "int foo(void) { char X[200]; return 3; }" | $* -S -x c -c -m32 -O0 -fstack-protector -mstack-protector-guard-reg=fs -mstack-protector-guard-symbol=__stack_chk_guard - -o - 2> /dev/null | grep -q "%fs"
++echo "int foo(void) { char X[200]; return 3; }" | $* -S -x c -m32 -O0 -fstack-protector -mstack-protector-guard-reg=fs -mstack-protector-guard-symbol=__stack_chk_guard - -o - 2> /dev/null | grep -q "%fs"
+diff --git a/scripts/gcc-x86_64-has-stack-protector.sh b/scripts/gcc-x86_64-has-stack-protector.sh
+index 75e4e22b986a..f680bb01aeeb 100755
+--- a/scripts/gcc-x86_64-has-stack-protector.sh
++++ b/scripts/gcc-x86_64-has-stack-protector.sh
+@@ -1,4 +1,4 @@
+ #!/bin/sh
+ # SPDX-License-Identifier: GPL-2.0
+ 
+-echo "int foo(void) { char X[200]; return 3; }" | $* -S -x c -c -m64 -O0 -mcmodel=kernel -fno-PIE -fstack-protector - -o - 2> /dev/null | grep -q "%gs"
++echo "int foo(void) { char X[200]; return 3; }" | $* -S -x c -m64 -O0 -mcmodel=kernel -fno-PIE -fstack-protector - -o - 2> /dev/null | grep -q "%gs"
+diff --git a/scripts/gdb/linux/constants.py.in b/scripts/gdb/linux/constants.py.in
+index 08f0587d15ea..0ff707bc1896 100644
+--- a/scripts/gdb/linux/constants.py.in
++++ b/scripts/gdb/linux/constants.py.in
+@@ -46,12 +46,12 @@ if IS_BUILTIN(CONFIG_COMMON_CLK):
+     LX_GDBPARSED(CLK_GET_RATE_NOCACHE)
+ 
+ /* linux/fs.h */
+-LX_VALUE(SB_RDONLY)
+-LX_VALUE(SB_SYNCHRONOUS)
+-LX_VALUE(SB_MANDLOCK)
+-LX_VALUE(SB_DIRSYNC)
+-LX_VALUE(SB_NOATIME)
+-LX_VALUE(SB_NODIRATIME)
++LX_GDBPARSED(SB_RDONLY)
++LX_GDBPARSED(SB_SYNCHRONOUS)
++LX_GDBPARSED(SB_MANDLOCK)
++LX_GDBPARSED(SB_DIRSYNC)
++LX_GDBPARSED(SB_NOATIME)
++LX_GDBPARSED(SB_NODIRATIME)
+ 
+ /* linux/htimer.h */
+ LX_GDBPARSED(hrtimer_resolution)
+diff --git a/scripts/kconfig/expr.c b/scripts/kconfig/expr.c
+index 81ebf8108ca7..81dfdf4470f7 100644
+--- a/scripts/kconfig/expr.c
++++ b/scripts/kconfig/expr.c
+@@ -396,35 +396,6 @@ static struct expr *expr_eliminate_yn(struct expr *e)
+ 	return e;
+ }
+ 
+-/*
+- * bool FOO!=n => FOO
+- */
+-struct expr *expr_trans_bool(struct expr *e)
+-{
+-	if (!e)
+-		return NULL;
+-	switch (e->type) {
+-	case E_AND:
+-	case E_OR:
+-	case E_NOT:
+-		e->left.expr = expr_trans_bool(e->left.expr);
+-		e->right.expr = expr_trans_bool(e->right.expr);
+-		break;
+-	case E_UNEQUAL:
+-		// FOO!=n -> FOO
+-		if (e->left.sym->type == S_TRISTATE) {
+-			if (e->right.sym == &symbol_no) {
+-				e->type = E_SYMBOL;
+-				e->right.sym = NULL;
+-			}
+-		}
+-		break;
+-	default:
+-		;
+-	}
+-	return e;
+-}
+-
+ /*
+  * e1 || e2 -> ?
+  */
+diff --git a/scripts/kconfig/expr.h b/scripts/kconfig/expr.h
+index 9c9caca5bd5f..c91060e19e47 100644
+--- a/scripts/kconfig/expr.h
++++ b/scripts/kconfig/expr.h
+@@ -296,7 +296,6 @@ void expr_free(struct expr *e);
+ void expr_eliminate_eq(struct expr **ep1, struct expr **ep2);
+ int expr_eq(struct expr *e1, struct expr *e2);
+ tristate expr_calc_value(struct expr *e);
+-struct expr *expr_trans_bool(struct expr *e);
+ struct expr *expr_eliminate_dups(struct expr *e);
+ struct expr *expr_transform(struct expr *e);
+ int expr_contains_symbol(struct expr *dep, struct symbol *sym);
+diff --git a/scripts/kconfig/gconf.c b/scripts/kconfig/gconf.c
+index 17adabfd6e6b..5d1404178e48 100644
+--- a/scripts/kconfig/gconf.c
++++ b/scripts/kconfig/gconf.c
+@@ -1481,7 +1481,6 @@ int main(int ac, char *av[])
+ 
+ 	conf_parse(name);
+ 	fixup_rootmenu(&rootmenu);
+-	conf_read(NULL);
+ 
+ 	/* Load the interface and connect signals */
+ 	init_main_window(glade_file);
+@@ -1489,6 +1488,8 @@ int main(int ac, char *av[])
+ 	init_left_tree();
+ 	init_right_tree();
+ 
++	conf_read(NULL);
++
+ 	switch (view_mode) {
+ 	case SINGLE_VIEW:
+ 		display_tree_part();
+diff --git a/scripts/kconfig/menu.c b/scripts/kconfig/menu.c
+index 109325f31bef..9d4c3f366a06 100644
+--- a/scripts/kconfig/menu.c
++++ b/scripts/kconfig/menu.c
+@@ -380,8 +380,6 @@ void menu_finalize(struct menu *parent)
+ 				dep = expr_transform(dep);
+ 				dep = expr_alloc_and(expr_copy(basedep), dep);
+ 				dep = expr_eliminate_dups(dep);
+-				if (menu->sym && menu->sym->type != S_TRISTATE)
+-					dep = expr_trans_bool(dep);
+ 				prop->visible.expr = dep;
+ 
+ 				/*
+diff --git a/scripts/kconfig/merge_config.sh b/scripts/kconfig/merge_config.sh
+index e5b46980c22a..72da3b8d6f30 100755
+--- a/scripts/kconfig/merge_config.sh
++++ b/scripts/kconfig/merge_config.sh
+@@ -160,6 +160,8 @@ for ORIG_MERGE_FILE in $MERGE_LIST ; do
+ 			sed -i "/$CFG[ =]/d" $MERGE_FILE
+ 		fi
+ 	done
++	# In case the previous file lacks a new line at the end
++	echo >> $TMP_FILE
+ 	cat $MERGE_FILE >> $TMP_FILE
+ done
+ 
+diff --git a/scripts/kconfig/qconf.cc b/scripts/kconfig/qconf.cc
+index 78087b2d9ac6..61b679f6c2f2 100644
+--- a/scripts/kconfig/qconf.cc
++++ b/scripts/kconfig/qconf.cc
+@@ -1172,7 +1172,7 @@ void ConfigInfoView::clicked(const QUrl &url)
+ {
+ 	QByteArray str = url.toEncoded();
+ 	const std::size_t count = str.size();
+-	char *data = new char[count + 1];
++	char *data = new char[count + 2];  // '$' + '\0'
+ 	struct symbol **result;
+ 	struct menu *m = NULL;
+ 
+diff --git a/scripts/kconfig/symbol.c b/scripts/kconfig/symbol.c
+index a76925b46ce6..7b1df55b0176 100644
+--- a/scripts/kconfig/symbol.c
++++ b/scripts/kconfig/symbol.c
+@@ -13,18 +13,21 @@
+ 
+ struct symbol symbol_yes = {
+ 	.name = "y",
++	.type = S_TRISTATE,
+ 	.curr = { "y", yes },
+ 	.flags = SYMBOL_CONST|SYMBOL_VALID,
+ };
+ 
+ struct symbol symbol_mod = {
+ 	.name = "m",
++	.type = S_TRISTATE,
+ 	.curr = { "m", mod },
+ 	.flags = SYMBOL_CONST|SYMBOL_VALID,
+ };
+ 
+ struct symbol symbol_no = {
+ 	.name = "n",
++	.type = S_TRISTATE,
+ 	.curr = { "n", no },
+ 	.flags = SYMBOL_CONST|SYMBOL_VALID,
+ };
+@@ -775,8 +778,7 @@ const char *sym_get_string_value(struct symbol *sym)
+ 		case no:
+ 			return "n";
+ 		case mod:
+-			sym_calc_value(modules_sym);
+-			return (modules_sym->curr.tri == no) ? "n" : "m";
++			return "m";
+ 		case yes:
+ 			return "y";
+ 		}
+diff --git a/scripts/ld-version.sh b/scripts/ld-version.sh
+index a78b804b680c..b9513d224476 100755
+--- a/scripts/ld-version.sh
++++ b/scripts/ld-version.sh
+@@ -57,9 +57,11 @@ else
+ 	fi
+ fi
+ 
+-# Some distributions append a package release number, as in 2.34-4.fc32
+-# Trim the hyphen and any characters that follow.
+-version=${version%-*}
++# There may be something after the version, such as a distribution's package
++# release number (like Fedora's "2.34-4.fc32") or punctuation (like LLD briefly
++# added before the "compatible with GNU linkers" string), so remove everything
++# after just numbers and periods.
++version=${version%%[!0-9.]*}
+ 
+ cversion=$(get_canonical_version $version)
+ min_cversion=$(get_canonical_version $min_version)
+diff --git a/scripts/link-vmlinux.sh b/scripts/link-vmlinux.sh
+index 458b2948b580..019560548ac9 100755
+--- a/scripts/link-vmlinux.sh
++++ b/scripts/link-vmlinux.sh
+@@ -182,7 +182,7 @@ kallsyms_step()
+ 	mksysmap ${kallsyms_vmlinux} ${kallsyms_vmlinux}.syms
+ 	kallsyms ${kallsyms_vmlinux}.syms ${kallsyms_S}
+ 
+-	info AS ${kallsyms_S}
++	info AS ${kallsymso}
+ 	${CC} ${NOSTDINC_FLAGS} ${LINUXINCLUDE} ${KBUILD_CPPFLAGS} \
+ 	      ${KBUILD_AFLAGS} ${KBUILD_AFLAGS_KERNEL} \
+ 	      -c -o ${kallsymso} ${kallsyms_S}
+diff --git a/scripts/mod/file2alias.c b/scripts/mod/file2alias.c
+index 39e2c8883ddd..ba09484ef910 100644
+--- a/scripts/mod/file2alias.c
++++ b/scripts/mod/file2alias.c
+@@ -741,8 +741,8 @@ static void do_input(char *alias,
+ 
+ 	for (i = min / BITS_PER_LONG; i < max / BITS_PER_LONG + 1; i++)
+ 		arr[i] = TO_NATIVE(arr[i]);
+-	for (i = min; i < max; i++)
+-		if (arr[i / BITS_PER_LONG] & (1L << (i%BITS_PER_LONG)))
++	for (i = min; i <= max; i++)
++		if (arr[i / BITS_PER_LONG] & (1ULL << (i%BITS_PER_LONG)))
+ 			sprintf(alias + strlen(alias), "%X,*", i);
+ }
+ 
+@@ -808,10 +808,7 @@ static int do_eisa_entry(const char *filename, void *symval,
+ 		char *alias)
+ {
+ 	DEF_FIELD_ADDR(symval, eisa_device_id, sig);
+-	if (sig[0])
+-		sprintf(alias, EISA_DEVICE_MODALIAS_FMT "*", *sig);
+-	else
+-		strcat(alias, "*");
++	sprintf(alias, EISA_DEVICE_MODALIAS_FMT "*", *sig);
+ 	return 1;
+ }
+ 
+diff --git a/scripts/mod/modpost.c b/scripts/mod/modpost.c
+index 686eed37f978..c2161d77672d 100644
+--- a/scripts/mod/modpost.c
++++ b/scripts/mod/modpost.c
+@@ -829,7 +829,7 @@ static void check_section(const char *modname, struct elf_info *elf,
+ 		".ltext", ".ltext.*"
+ #define OTHER_TEXT_SECTIONS ".ref.text", ".head.text", ".spinlock.text", \
+ 		".fixup", ".entry.text", ".exception.text", \
+-		".coldtext", ".softirqentry.text"
++		".coldtext", ".softirqentry.text", ".irqentry.text"
+ 
+ #define INIT_SECTIONS      ".init.*"
+ #define MEM_INIT_SECTIONS  ".meminit.*"
+@@ -889,7 +889,7 @@ enum mismatch {
+ struct sectioncheck {
+ 	const char *fromsec[20];
+ 	const char *bad_tosec[20];
+-	const char *good_tosec[20];
++	const char *good_tosec[21];
+ 	enum mismatch mismatch;
+ 	void (*handler)(const char *modname, struct elf_info *elf,
+ 			const struct sectioncheck* const mismatch,
+diff --git a/scripts/rust_is_available.sh b/scripts/rust_is_available.sh
+index 7a925d2b20fc..141644c16463 100755
+--- a/scripts/rust_is_available.sh
++++ b/scripts/rust_is_available.sh
+@@ -38,10 +38,21 @@ fi
+ # Check that the Rust compiler version is suitable.
+ #
+ # Non-stable and distributions' versions may have a version suffix, e.g. `-dev`.
++rust_compiler_output=$( \
++	LC_ALL=C "$RUSTC" --version 2>/dev/null
++) || rust_compiler_code=$?
++if [ -n "$rust_compiler_code" ]; then
++	echo >&2 "***"
++	echo >&2 "*** Running '$RUSTC' to check the Rust compiler version failed with"
++	echo >&2 "*** code $rust_compiler_code. See output and docs below for details:"
++	echo >&2 "***"
++	echo >&2 "$rust_compiler_output"
++	echo >&2 "***"
++	exit 1
++fi
+ rust_compiler_version=$( \
+-	LC_ALL=C "$RUSTC" --version 2>/dev/null \
+-		| head -n 1 \
+-		| grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
++	echo "$rust_compiler_output" \
++		| sed -nE '1s:.*rustc ([0-9]+\.[0-9]+\.[0-9]+).*:\1:p'
+ )
+ rust_compiler_min_version=$($min_tool_version rustc)
+ rust_compiler_cversion=$(get_canonical_version $rust_compiler_version)
+@@ -65,10 +76,25 @@ fi
+ # Check that the Rust bindings generator is suitable.
+ #
+ # Non-stable and distributions' versions may have a version suffix, e.g. `-dev`.
++#
++# The dummy parameter `workaround-for-0.69.0` is required to support 0.69.0
++# (https://github.com/rust-lang/rust-bindgen/pull/2678). It can be removed when
++# the minimum version is upgraded past that (0.69.1 already fixed the issue).
++rust_bindings_generator_output=$( \
++	LC_ALL=C "$BINDGEN" --version workaround-for-0.69.0 2>/dev/null
++) || rust_bindings_generator_code=$?
++if [ -n "$rust_bindings_generator_code" ]; then
++	echo >&2 "***"
++	echo >&2 "*** Running '$BINDGEN' to check the Rust bindings generator version failed with"
++	echo >&2 "*** code $rust_bindings_generator_code. See output and docs below for details:"
++	echo >&2 "***"
++	echo >&2 "$rust_bindings_generator_output"
++	echo >&2 "***"
++	exit 1
++fi
+ rust_bindings_generator_version=$( \
+-	LC_ALL=C "$BINDGEN" --version 2>/dev/null \
+-		| head -n 1 \
+-		| grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
++	echo "$rust_bindings_generator_output" \
++		| sed -nE '1s:.*bindgen ([0-9]+\.[0-9]+\.[0-9]+).*:\1:p'
+ )
+ rust_bindings_generator_min_version=$($min_tool_version bindgen)
+ rust_bindings_generator_cversion=$(get_canonical_version $rust_bindings_generator_version)
+@@ -110,6 +136,9 @@ fi
+ 
+ # `bindgen` returned successfully, thus use the output to check that the version
+ # of the `libclang` found by the Rust bindings generator is suitable.
++#
++# Unlike other version checks, note that this one does not necessarily appear
++# in the first line of the output, thus no `sed` address is provided.
+ bindgen_libclang_version=$( \
+ 	echo "$bindgen_libclang_output" \
+ 		| sed -nE 's:.*clang version ([0-9]+\.[0-9]+\.[0-9]+).*:\1:p'
+diff --git a/scripts/sorttable.h b/scripts/sorttable.h
+index deb7c1d3e979..f0ba2bf5a886 100644
+--- a/scripts/sorttable.h
++++ b/scripts/sorttable.h
+@@ -110,7 +110,7 @@ static inline unsigned long orc_ip(const int *ip)
+ 
+ static int orc_sort_cmp(const void *_a, const void *_b)
+ {
+-	struct orc_entry *orc_a;
++	struct orc_entry *orc_a, *orc_b;
+ 	const int *a = g_orc_ip_table + *(int *)_a;
+ 	const int *b = g_orc_ip_table + *(int *)_b;
+ 	unsigned long a_val = orc_ip(a);
+@@ -128,6 +128,10 @@ static int orc_sort_cmp(const void *_a, const void *_b)
+ 	 * whitelisted .o files which didn't get objtool generation.
+ 	 */
+ 	orc_a = g_orc_table + (a - g_orc_ip_table);
++	orc_b = g_orc_table + (b - g_orc_ip_table);
++	if (orc_a->sp_reg == ORC_REG_UNDEFINED && !orc_a->end &&
++	    orc_b->sp_reg == ORC_REG_UNDEFINED && !orc_b->end)
++		return 0;
+ 	return orc_a->sp_reg == ORC_REG_UNDEFINED && !orc_a->end ? -1 : 1;
+ }
+ 
+-- 
+2.45.2
+
