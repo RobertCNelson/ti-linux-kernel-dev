@@ -473,13 +473,6 @@ local_patch () {
 	${git} "${DIR}/patches/dir/0001-patch.patch"
 }
 
-external_git
-wpanusb
-rt
-wireless_regdb
-beagleboard_dtbs
-#local_patch
-
 pre_backports () {
 	echo "dir: backports/${subsystem}"
 
@@ -510,6 +503,42 @@ post_backports () {
 	exit 2
 }
 
+external_git
+rt
+
+patch_backports () {
+	echo "dir: backports/${subsystem}"
+	${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-linux.git.patch"
+}
+
+linux_scripts () {
+	echo "Update: package scripts"
+	do_backport="enable"
+	if [ "x${do_backport}" = "xenable" ] ; then
+		backport_tag="v6.1.127"
+
+		subsystem="scripts"
+		#regenerate="enable"
+		if [ "x${regenerate}" = "xenable" ] ; then
+			pre_backports
+
+			rsync -av ~/linux-src/scripts/* ./scripts/
+			cp -v ~/linux-src/Makefile ./Makefile
+
+			post_backports
+		else
+			patch_backports
+			${git} "${DIR}/patches/backports/${subsystem}/0002-fixup.patch"
+		fi
+	fi
+}
+
+linux_scripts
+wpanusb
+wireless_regdb
+beagleboard_dtbs
+#local_patch
+
 pre_rpibackports () {
 	echo "dir: backports/${subsystem}"
 
@@ -536,11 +565,6 @@ post_rpibackports () {
 	fi
 	${git_bin} format-patch -1 -o ../patches/backports/${subsystem}/
 	exit 2
-}
-
-patch_backports () {
-	echo "dir: backports/${subsystem}"
-	${git} "${DIR}/patches/backports/${subsystem}/0001-backports-${subsystem}-from-linux.git.patch"
 }
 
 backports () {
@@ -593,6 +617,7 @@ backports
 drivers
 
 packaging () {
+	echo "Update: package scripts"
 	${git} "${DIR}/patches/backports/bindeb-pkg/0002-builddeb-Install-our-dtbs-under-boot-dtbs-version.patch"
 }
 
