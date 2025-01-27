@@ -1,0 +1,421 @@
+From ba36711993a65a320574676192d90302fef34f38 Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Mon, 27 Jan 2025 15:05:03 -0600
+Subject: [PATCH] backports: scripts: from: linux.git
+
+Reference: v6.6.74
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ Makefile                 |  2 +-
+ scripts/checkpatch.pl    | 61 ++++++++++++++++++++++++++--------------
+ scripts/mod/file2alias.c |  9 ++----
+ scripts/mod/modpost.c    | 47 +++++++------------------------
+ scripts/setlocalversion  | 54 ++++++++++++++++++++++++-----------
+ scripts/sorttable.h      |  5 +++-
+ 6 files changed, 96 insertions(+), 82 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index f80e78c7cf20..b8e5c6591086 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,7 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
+ VERSION = 6
+ PATCHLEVEL = 6
+-SUBLEVEL = 58
++SUBLEVEL = 74
+ EXTRAVERSION =
+ NAME = Pinguïn Aangedreven
+ 
+diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
+index 7d16f863edf1..6744b58c3508 100755
+--- a/scripts/checkpatch.pl
++++ b/scripts/checkpatch.pl
+@@ -28,6 +28,7 @@ my %verbose_messages = ();
+ my %verbose_emitted = ();
+ my $tree = 1;
+ my $chk_signoff = 1;
++my $chk_fixes_tag = 1;
+ my $chk_patch = 1;
+ my $tst_only;
+ my $emacs = 0;
+@@ -88,6 +89,7 @@ Options:
+   -v, --verbose              verbose mode
+   --no-tree                  run without a kernel tree
+   --no-signoff               do not check for 'Signed-off-by' line
++  --no-fixes-tag             do not check for 'Fixes:' tag
+   --patch                    treat FILE as patchfile (default)
+   --emacs                    emacs compile window format
+   --terse                    one line per report
+@@ -295,6 +297,7 @@ GetOptions(
+ 	'v|verbose!'	=> \$verbose,
+ 	'tree!'		=> \$tree,
+ 	'signoff!'	=> \$chk_signoff,
++	'fixes-tag!'	=> \$chk_fixes_tag,
+ 	'patch!'	=> \$chk_patch,
+ 	'emacs!'	=> \$emacs,
+ 	'terse!'	=> \$terse,
+@@ -1256,6 +1259,7 @@ sub git_commit_info {
+ }
+ 
+ $chk_signoff = 0 if ($file);
++$chk_fixes_tag = 0 if ($file);
+ 
+ my @rawlines = ();
+ my @lines = ();
+@@ -2635,6 +2639,9 @@ sub process {
+ 
+ 	our $clean = 1;
+ 	my $signoff = 0;
++	my $fixes_tag = 0;
++	my $is_revert = 0;
++	my $needs_fixes_tag = "";
+ 	my $author = '';
+ 	my $authorsignoff = 0;
+ 	my $author_sob = '';
+@@ -3188,38 +3195,44 @@ sub process {
+ 			}
+ 		}
+ 
++# These indicate a bug fix
++		if (!$in_header_lines && !$is_patch &&
++			$line =~ /^This reverts commit/) {
++			$is_revert = 1;
++		}
++
++		if (!$in_header_lines && !$is_patch &&
++		    $line =~ /((?:(?:BUG: K.|UB)SAN: |Call Trace:|stable\@|syzkaller))/) {
++			$needs_fixes_tag = $1;
++		}
+ 
+ # Check Fixes: styles is correct
+ 		if (!$in_header_lines &&
+-		    $line =~ /^\s*fixes:?\s*(?:commit\s*)?[0-9a-f]{5,}\b/i) {
+-			my $orig_commit = "";
+-			my $id = "0123456789ab";
+-			my $title = "commit title";
+-			my $tag_case = 1;
+-			my $tag_space = 1;
+-			my $id_length = 1;
+-			my $id_case = 1;
++		    $line =~ /^\s*(fixes:?)\s*(?:commit\s*)?([0-9a-f]{5,40})(?:\s*($balanced_parens))?/i) {
++			my $tag = $1;
++			my $orig_commit = $2;
++			my $title;
+ 			my $title_has_quotes = 0;
+-
+-			if ($line =~ /(\s*fixes:?)\s+([0-9a-f]{5,})\s+($balanced_parens)/i) {
+-				my $tag = $1;
+-				$orig_commit = $2;
+-				$title = $3;
+-
+-				$tag_case = 0 if $tag eq "Fixes:";
+-				$tag_space = 0 if ($line =~ /^fixes:? [0-9a-f]{5,} ($balanced_parens)/i);
+-
+-				$id_length = 0 if ($orig_commit =~ /^[0-9a-f]{12}$/i);
+-				$id_case = 0 if ($orig_commit !~ /[A-F]/);
+-
++			$fixes_tag = 1;
++			if (defined $3) {
+ 				# Always strip leading/trailing parens then double quotes if existing
+-				$title = substr($title, 1, -1);
++				$title = substr($3, 1, -1);
+ 				if ($title =~ /^".*"$/) {
+ 					$title = substr($title, 1, -1);
+ 					$title_has_quotes = 1;
+ 				}
++			} else {
++				$title = "commit title"
+ 			}
+ 
++
++			my $tag_case = not ($tag eq "Fixes:");
++			my $tag_space = not ($line =~ /^fixes:? [0-9a-f]{5,40} ($balanced_parens)/i);
++
++			my $id_length = not ($orig_commit =~ /^[0-9a-f]{12}$/i);
++			my $id_case = not ($orig_commit !~ /[A-F]/);
++
++			my $id = "0123456789ab";
+ 			my ($cid, $ctitle) = git_commit_info($orig_commit, $id,
+ 							     $title);
+ 
+@@ -7680,6 +7693,12 @@ sub process {
+ 		ERROR("NOT_UNIFIED_DIFF",
+ 		      "Does not appear to be a unified-diff format patch\n");
+ 	}
++	if ($is_patch && $has_commit_log && $chk_fixes_tag) {
++		if ($needs_fixes_tag ne "" && !$is_revert && !$fixes_tag) {
++			WARN("MISSING_FIXES_TAG",
++				 "The commit message has '$needs_fixes_tag', perhaps it also needs a 'Fixes:' tag?\n");
++		}
++	}
+ 	if ($is_patch && $has_commit_log && $chk_signoff) {
+ 		if ($signoff == 0) {
+ 			ERROR("MISSING_SIGN_OFF",
+diff --git a/scripts/mod/file2alias.c b/scripts/mod/file2alias.c
+index 6583b36dbe69..ea498eff1f2a 100644
+--- a/scripts/mod/file2alias.c
++++ b/scripts/mod/file2alias.c
+@@ -742,8 +742,8 @@ static void do_input(char *alias,
+ 
+ 	for (i = min / BITS_PER_LONG; i < max / BITS_PER_LONG + 1; i++)
+ 		arr[i] = TO_NATIVE(arr[i]);
+-	for (i = min; i < max; i++)
+-		if (arr[i / BITS_PER_LONG] & (1L << (i%BITS_PER_LONG)))
++	for (i = min; i <= max; i++)
++		if (arr[i / BITS_PER_LONG] & (1ULL << (i%BITS_PER_LONG)))
+ 			sprintf(alias + strlen(alias), "%X,*", i);
+ }
+ 
+@@ -809,10 +809,7 @@ static int do_eisa_entry(const char *filename, void *symval,
+ 		char *alias)
+ {
+ 	DEF_FIELD_ADDR(symval, eisa_device_id, sig);
+-	if (sig[0])
+-		sprintf(alias, EISA_DEVICE_MODALIAS_FMT "*", *sig);
+-	else
+-		strcat(alias, "*");
++	sprintf(alias, EISA_DEVICE_MODALIAS_FMT "*", *sig);
+ 	return 1;
+ }
+ 
+diff --git a/scripts/mod/modpost.c b/scripts/mod/modpost.c
+index 828d5cc36716..3eb7fda8a98f 100644
+--- a/scripts/mod/modpost.c
++++ b/scripts/mod/modpost.c
+@@ -792,25 +792,15 @@ static void check_section(const char *modname, struct elf_info *elf,
+ 
+ 
+ #define ALL_INIT_DATA_SECTIONS \
+-	".init.setup", ".init.rodata", ".meminit.rodata", \
+-	".init.data", ".meminit.data"
+-#define ALL_EXIT_DATA_SECTIONS \
+-	".exit.data", ".memexit.data"
+-
+-#define ALL_INIT_TEXT_SECTIONS \
+-	".init.text", ".meminit.text"
+-#define ALL_EXIT_TEXT_SECTIONS \
+-	".exit.text"
++	".init.setup", ".init.rodata", ".init.data"
+ 
+ #define ALL_PCI_INIT_SECTIONS	\
+ 	".pci_fixup_early", ".pci_fixup_header", ".pci_fixup_final", \
+ 	".pci_fixup_enable", ".pci_fixup_resume", \
+ 	".pci_fixup_resume_early", ".pci_fixup_suspend"
+ 
+-#define ALL_XXXINIT_SECTIONS MEM_INIT_SECTIONS
+-
+-#define ALL_INIT_SECTIONS INIT_SECTIONS, ALL_XXXINIT_SECTIONS
+-#define ALL_EXIT_SECTIONS EXIT_SECTIONS
++#define ALL_INIT_SECTIONS ".init.*"
++#define ALL_EXIT_SECTIONS ".exit.*"
+ 
+ #define DATA_SECTIONS ".data", ".data.rel"
+ #define TEXT_SECTIONS ".text", ".text.*", ".sched.text", \
+@@ -818,14 +808,9 @@ static void check_section(const char *modname, struct elf_info *elf,
+ 		".ltext", ".ltext.*"
+ #define OTHER_TEXT_SECTIONS ".ref.text", ".head.text", ".spinlock.text", \
+ 		".fixup", ".entry.text", ".exception.text", \
+-		".coldtext", ".softirqentry.text"
+-
+-#define INIT_SECTIONS      ".init.*"
+-#define MEM_INIT_SECTIONS  ".meminit.*"
++		".coldtext", ".softirqentry.text", ".irqentry.text"
+ 
+-#define EXIT_SECTIONS      ".exit.*"
+-
+-#define ALL_TEXT_SECTIONS  ALL_INIT_TEXT_SECTIONS, ALL_EXIT_TEXT_SECTIONS, \
++#define ALL_TEXT_SECTIONS  ".init.text", ".exit.text", \
+ 		TEXT_SECTIONS, OTHER_TEXT_SECTIONS
+ 
+ enum mismatch {
+@@ -869,7 +854,7 @@ static const struct sectioncheck sectioncheck[] = {
+ },
+ {
+ 	.fromsec = { DATA_SECTIONS, NULL },
+-	.bad_tosec = { ALL_XXXINIT_SECTIONS, INIT_SECTIONS, NULL },
++	.bad_tosec = { ALL_INIT_SECTIONS, NULL },
+ 	.mismatch = DATA_TO_ANY_INIT,
+ },
+ {
+@@ -877,12 +862,6 @@ static const struct sectioncheck sectioncheck[] = {
+ 	.bad_tosec = { ALL_EXIT_SECTIONS, NULL },
+ 	.mismatch = TEXTDATA_TO_ANY_EXIT,
+ },
+-/* Do not reference init code/data from meminit code/data */
+-{
+-	.fromsec = { ALL_XXXINIT_SECTIONS, NULL },
+-	.bad_tosec = { INIT_SECTIONS, NULL },
+-	.mismatch = XXXINIT_TO_SOME_INIT,
+-},
+ /* Do not use exit code/data from init code */
+ {
+ 	.fromsec = { ALL_INIT_SECTIONS, NULL },
+@@ -897,7 +876,7 @@ static const struct sectioncheck sectioncheck[] = {
+ },
+ {
+ 	.fromsec = { ALL_PCI_INIT_SECTIONS, NULL },
+-	.bad_tosec = { INIT_SECTIONS, NULL },
++	.bad_tosec = { ALL_INIT_SECTIONS, NULL },
+ 	.mismatch = ANY_INIT_TO_ANY_EXIT,
+ },
+ {
+@@ -1009,12 +988,6 @@ static int secref_whitelist(const char *fromsec, const char *fromsym,
+ 				    "*_console")))
+ 		return 0;
+ 
+-	/* symbols in data sections that may refer to meminit sections */
+-	if (match(fromsec, PATTERNS(DATA_SECTIONS)) &&
+-	    match(tosec, PATTERNS(ALL_XXXINIT_SECTIONS)) &&
+-	    match(fromsym, PATTERNS("*driver")))
+-		return 0;
+-
+ 	/*
+ 	 * symbols in data sections must not refer to .exit.*, but there are
+ 	 * quite a few offenders, so hide these unless for W=1 builds until
+@@ -1022,7 +995,7 @@ static int secref_whitelist(const char *fromsec, const char *fromsym,
+ 	 */
+ 	if (!extra_warn &&
+ 	    match(fromsec, PATTERNS(DATA_SECTIONS)) &&
+-	    match(tosec, PATTERNS(EXIT_SECTIONS)) &&
++	    match(tosec, PATTERNS(ALL_EXIT_SECTIONS)) &&
+ 	    match(fromsym, PATTERNS("*driver")))
+ 		return 0;
+ 
+@@ -1187,10 +1160,10 @@ static void check_export_symbol(struct module *mod, struct elf_info *elf,
+ 	    ELF_ST_TYPE(sym->st_info) == STT_LOPROC)
+ 		s->is_func = true;
+ 
+-	if (match(secname, PATTERNS(INIT_SECTIONS)))
++	if (match(secname, PATTERNS(ALL_INIT_SECTIONS)))
+ 		warn("%s: %s: EXPORT_SYMBOL used for init symbol. Remove __init or EXPORT_SYMBOL.\n",
+ 		     mod->name, name);
+-	else if (match(secname, PATTERNS(EXIT_SECTIONS)))
++	else if (match(secname, PATTERNS(ALL_EXIT_SECTIONS)))
+ 		warn("%s: %s: EXPORT_SYMBOL used for exit symbol. Remove __exit or EXPORT_SYMBOL.\n",
+ 		     mod->name, name);
+ }
+diff --git a/scripts/setlocalversion b/scripts/setlocalversion
+index 38b96c6797f4..5818465abba9 100755
+--- a/scripts/setlocalversion
++++ b/scripts/setlocalversion
+@@ -30,6 +30,27 @@ if test $# -gt 0 -o ! -d "$srctree"; then
+ 	usage
+ fi
+ 
++try_tag() {
++	tag="$1"
++
++	# Is $tag an annotated tag?
++	[ "$(git cat-file -t "$tag" 2> /dev/null)" = tag ] || return 1
++
++	# Is it an ancestor of HEAD, and if so, how many commits are in $tag..HEAD?
++	# shellcheck disable=SC2046 # word splitting is the point here
++	set -- $(git rev-list --count --left-right "$tag"...HEAD 2> /dev/null)
++
++	# $1 is 0 if and only if $tag is an ancestor of HEAD. Use
++	# string comparison, because $1 is empty if the 'git rev-list'
++	# command somehow failed.
++	[ "$1" = 0 ] || return 1
++
++	# $2 is the number of commits in the range $tag..HEAD, possibly 0.
++	count="$2"
++
++	return 0
++}
++
+ scm_version()
+ {
+ 	local short=false
+@@ -61,33 +82,33 @@ scm_version()
+ 	# stable kernel:    6.1.7      ->  v6.1.7
+ 	version_tag=v$(echo "${KERNELVERSION}" | sed -E 's/^([0-9]+\.[0-9]+)\.0(.*)$/\1\2/')
+ 
++	# try_tag initializes count if the tag is usable.
++	count=
++
+ 	# If a localversion* file exists, and the corresponding
+ 	# annotated tag exists and is an ancestor of HEAD, use
+ 	# it. This is the case in linux-next.
+-	tag=${file_localversion#-}
+-	desc=
+-	if [ -n "${tag}" ]; then
+-		desc=$(git describe --match=$tag 2>/dev/null)
++	if [ -n "${file_localversion#-}" ] ; then
++		try_tag "${file_localversion#-}"
+ 	fi
+ 
+ 	# Otherwise, if a localversion* file exists, and the tag
+ 	# obtained by appending it to the tag derived from
+ 	# KERNELVERSION exists and is an ancestor of HEAD, use
+ 	# it. This is e.g. the case in linux-rt.
+-	if [ -z "${desc}" ] && [ -n "${file_localversion}" ]; then
+-		tag="${version_tag}${file_localversion}"
+-		desc=$(git describe --match=$tag 2>/dev/null)
++	if [ -z "${count}" ] && [ -n "${file_localversion}" ]; then
++		try_tag "${version_tag}${file_localversion}"
+ 	fi
+ 
+ 	# Otherwise, default to the annotated tag derived from KERNELVERSION.
+-	if [ -z "${desc}" ]; then
+-		tag="${version_tag}"
+-		desc=$(git describe --match=$tag 2>/dev/null)
++	if [ -z "${count}" ]; then
++		try_tag "${version_tag}"
+ 	fi
+ 
+-	# If we are at the tagged commit, we ignore it because the version is
+-	# well-defined.
+-	if [ "${tag}" != "${desc}" ]; then
++	# If we are at the tagged commit, we ignore it because the
++	# version is well-defined. If none of the attempted tags exist
++	# or were usable, $count is still empty.
++	if [ -z "${count}" ] || [ "${count}" -gt 0 ]; then
+ 
+ 		# If only the short version is requested, don't bother
+ 		# running further git commands
+@@ -95,14 +116,15 @@ scm_version()
+ 			echo "+"
+ 			return
+ 		fi
++
+ 		# If we are past the tagged commit, we pretty print it.
+ 		# (like 6.1.0-14595-g292a089d78d3)
+-		if [ -n "${desc}" ]; then
+-			echo "${desc}" | awk -F- '{printf("-%05d", $(NF-1))}'
++		if [ -n "${count}" ]; then
++			printf "%s%05d" "-" "${count}"
+ 		fi
+ 
+ 		# Add -g and exactly 12 hex chars.
+-		printf '%s%s' -g "$(echo $head | cut -c1-12)"
++		printf '%s%.12s' -g "$head"
+ 	fi
+ 
+ 	if ${no_dirty}; then
+diff --git a/scripts/sorttable.h b/scripts/sorttable.h
+index 7bd0184380d3..a7c5445baf00 100644
+--- a/scripts/sorttable.h
++++ b/scripts/sorttable.h
+@@ -110,7 +110,7 @@ static inline unsigned long orc_ip(const int *ip)
+ 
+ static int orc_sort_cmp(const void *_a, const void *_b)
+ {
+-	struct orc_entry *orc_a;
++	struct orc_entry *orc_a, *orc_b;
+ 	const int *a = g_orc_ip_table + *(int *)_a;
+ 	const int *b = g_orc_ip_table + *(int *)_b;
+ 	unsigned long a_val = orc_ip(a);
+@@ -128,6 +128,9 @@ static int orc_sort_cmp(const void *_a, const void *_b)
+ 	 * whitelisted .o files which didn't get objtool generation.
+ 	 */
+ 	orc_a = g_orc_table + (a - g_orc_ip_table);
++	orc_b = g_orc_table + (b - g_orc_ip_table);
++	if (orc_a->type == ORC_TYPE_UNDEFINED && orc_b->type == ORC_TYPE_UNDEFINED)
++		return 0;
+ 	return orc_a->type == ORC_TYPE_UNDEFINED ? -1 : 1;
+ }
+ 
+-- 
+2.45.2
+
