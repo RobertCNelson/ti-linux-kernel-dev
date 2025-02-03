@@ -52,11 +52,11 @@ linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/li
 linux_stable_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
 #
 KERNEL_REL=6.12
-KERNEL_TAG=${KERNEL_REL}
+KERNEL_TAG=${KERNEL_REL}.9
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.12/
-kernel_rt="-rc4-rt6"
+kernel_rt=".8-rt8"
 #Kernel Build
-BUILD=${build_prefix}4
+BUILD=${build_prefix}4.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -68,7 +68,7 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 DISTRO=xross
 
 sdk_git_old_release="ade72d105eb7c9a2a4addfd0204eb4551b8efa7a"
-sdk_git_new_release="ade72d105eb7c9a2a4addfd0204eb4551b8efa7a"
-#SDK="10.00.05"
+sdk_git_new_release="8906665ace32eb0dc12810667ee8646bd660c374"
+SDK="11.00.01"
 
 #
