@@ -530,10 +530,12 @@ drivers () {
 #	dir 'drivers/fb_ssd1306'
 #	dir 'drivers/hackaday'
 
-	dir 'drivers/mmc'
-
 	#dir 'external/android'
 	dir 'external/ti-amx3-cm3-pm-firmware'
+
+	#git revert --no-edit -s 3edf588e7fe00e90d1dc7fb9e599861b2c2cf442
+	#Breaking Kingston eMMC on new BBB's..
+	dir 'drivers/fixes/mmc'
 }
 
 ###
