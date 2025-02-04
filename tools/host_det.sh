@@ -154,6 +154,12 @@ debian_regs () {
 	check_dpkg
 	pkg="zstd"
 	check_dpkg
+	pkg="bindgen"
+	check_dpkg
+	pkg="rustc"
+	check_dpkg
+	pkg="rustfmt"
+	check_dpkg
 
 	unset stop_pkg_search
 	#lsb_release might not be installed...
