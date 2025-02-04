@@ -532,8 +532,6 @@ drivers () {
 	dir 'external/android'
 	dir 'external/cadence'
 	dir 'external/gasket'
-
-	dir 'kernel'
 }
 
 ###
