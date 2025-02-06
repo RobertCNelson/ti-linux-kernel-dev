@@ -533,6 +533,10 @@ drivers () {
 	dir 'external/android'
 	dir 'external/cadence'
 	dir 'external/gasket'
+
+	#git revert --no-edit -s 3edf588e7fe00e90d1dc7fb9e599861b2c2cf442
+	#Breaking Kingston eMMC on new BBB's..
+	dir 'drivers/fixes/mmc'
 }
 
 ###
