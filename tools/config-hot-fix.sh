@@ -387,6 +387,16 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_DMABUF_HEAPS_CMA
 ./scripts/config --enable CONFIG_DMABUF_HEAPS_CARVEOUT
 
+#TI: 11.00.02
+./scripts/config --module CONFIG_REGULATOR_RASPBERRYPI_TOUCHSCREEN_ATTINY
+./scripts/config --module CONFIG_DRM_TOSHIBA_TC358762
+#./scripts/config --module CONFIG_DRM_CDNS_DSI
+#./scripts/config --module CONFIG_DRM_CDNS_DSI_J721E
+#./scripts/config --module CONFIG_HWSPINLOCK_OMAP
+#./scripts/config --module CONFIG_PWM_OMAP_DMTIMER
+#./scripts/config --module CONFIG_PHY_CADENCE_DPHY
+./scripts/config --module CONFIG_TI_ECAP_CAPTURE
+
 #configure CONFIG_EXTRA_FIRMWARE
 ./scripts/config --set-str CONFIG_EXTRA_FIRMWARE "regulatory.db regulatory.db.p7s cadence/mhdp8546.bin"
 ./scripts/config --enable CONFIG_FW_LOADER_COMPRESS
