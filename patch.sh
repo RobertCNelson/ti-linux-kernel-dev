@@ -528,6 +528,7 @@ drivers () {
 #	dir 'drivers/ite-it66121-hpd'
 #	dir 'drivers/tidss'
 	dir 'drivers/mspm0'
+	dir 'drivers/cpufreq'
 
 	dir 'external/android'
 	dir 'external/cadence'
