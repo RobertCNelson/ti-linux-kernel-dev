@@ -82,10 +82,6 @@ config="CONFIG_WIMAX" ; config_disable
 config="CONFIG_WIMAX_I2400M" ; config_disable
 config="CONFIG_WIMAX_I2400M_USB" ; config_disable
 
-#Docker.io:
-config="CONFIG_CGROUP_HUGETLB" ; config_enable
-config="CONFIG_RT_GROUP_SCHED" ; config_enable
-
 #PHY: CONFIG_DP83867_PHY
 config="CONFIG_DP83867_PHY" ; config_enable
 
@@ -292,7 +288,7 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 
 #debian Trixie has fubared lz4/lz4c, back to xz for stabilty...
 #  LZ4     arch/arm/boot/compressed/piggy_data
-#Error : stdout won't be used ! Do you want multiple input files (-m) ? 
+#Error : stdout won't be used ! Do you want multiple input files (-m) ?
 #make[3]: *** [arch/arm/boot/compressed/Makefile:156: arch/arm/boot/compressed/piggy_data] Error 1
 
 ./scripts/config --disable CONFIG_KERNEL_LZO
@@ -307,5 +303,8 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 
 #BeagleBoard.org
 ./scripts/config --enable CONFIG_MSPM0_I2C
+
+./scripts/config --set-val CONFIG_SERIAL_8250_NR_UARTS 16
+
 
 cd ${DIR}/
