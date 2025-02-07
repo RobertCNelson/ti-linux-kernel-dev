@@ -409,5 +409,6 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 #Rust
 ./scripts/config --disable CONFIG_MODVERSIONS
 ./scripts/config --enable CONFIG_RUST
+./scripts/config --enable CONFIG_DRM_PANIC_SCREEN_QR_CODE
 
 cd ${DIR}/
