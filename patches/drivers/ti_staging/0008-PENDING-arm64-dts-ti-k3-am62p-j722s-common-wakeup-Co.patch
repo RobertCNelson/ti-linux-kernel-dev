@@ -1,0 +1,82 @@
+From 69fa96c01b12d99a2523c423e017b26b306cf454 Mon Sep 17 00:00:00 2001
+From: Vibhore Vardhan <vibhore@ti.com>
+Date: Wed, 5 Feb 2025 14:27:59 -0600
+Subject: [PATCH 08/68] PENDING: arm64: dts: ti: k3-am62p-j722s-common-wakeup:
+ Configure ti-sysc for wkup_uart0
+
+Similar to am62-wakeup, am62p-j722s-common-wakeup is capable of
+wakeup from wkup_uart0. ti-sysc manages the sysconfig registers while
+wkup_uart0 is only a portion of the register space.
+
+See the link below for the upstream version of this patch for AM62.
+
+Built and tested on AM62p5-sk board.
+
+[k-willis@ti.com] left the wkup_conf as bus node instead of change to be
+syscon node as in original patch.
+
+Link: https://lore.kernel.org/r/20231219072503.12427-1-tony@atomide.com
+
+Signed-off-by: Vibhore Vardhan <vibhore@ti.com>
+Signed-off-by: Kendall Willis <k-willis@ti.com>
+---
+ .../dts/ti/k3-am62p-j722s-common-wakeup.dtsi  | 34 +++++++++++++++----
+ 1 file changed, 28 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/ti/k3-am62p-j722s-common-wakeup.dtsi b/arch/arm64/boot/dts/ti/k3-am62p-j722s-common-wakeup.dtsi
+index 6f32135f00a5..a185e9e4803e 100644
+--- a/arch/arm64/boot/dts/ti/k3-am62p-j722s-common-wakeup.dtsi
++++ b/arch/arm64/boot/dts/ti/k3-am62p-j722s-common-wakeup.dtsi
+@@ -5,6 +5,8 @@
+  * Copyright (C) 2023-2024 Texas Instruments Incorporated - https://www.ti.com/
+  */
+ 
++#include <dt-bindings/bus/ti-sysc.h>
++
+ &cbass_wakeup {
+ 	wkup_conf: bus@43000000 {
+ 		compatible = "simple-bus";
+@@ -41,14 +43,34 @@ usb1_phy_ctrl: syscon@4018 {
+ 		};
+ 	};
+ 
+-	wkup_uart0: serial@2b300000 {
+-		compatible = "ti,am64-uart", "ti,am654-uart";
+-		reg = <0x00 0x2b300000 0x00 0x100>;
+-		interrupts = <GIC_SPI 186 IRQ_TYPE_LEVEL_HIGH>;
++	target-module@2b300050 {
++		compatible = "ti,sysc-omap2", "ti,sysc";
++		reg = <0 0x2b300050 0 0x4>,
++		      <0 0x2b300054 0 0x4>,
++		      <0 0x2b300058 0 0x4>;
++		reg-names = "rev", "sysc", "syss";
++		ti,sysc-mask = <(SYSC_OMAP2_ENAWAKEUP |
++				 SYSC_OMAP2_SOFTRESET |
++				 SYSC_OMAP2_AUTOIDLE)>;
++		ti,sysc-sidle = <SYSC_IDLE_FORCE>,
++				<SYSC_IDLE_NO>,
++				<SYSC_IDLE_SMART>,
++				<SYSC_IDLE_SMART_WKUP>;
++		ti,syss-mask = <1>;
++		ti,no-reset-on-init;
+ 		power-domains = <&k3_pds 114 TI_SCI_PD_EXCLUSIVE>;
+ 		clocks = <&k3_clks 114 0>;
+-		clock-names = "fclk";
+-		status = "disabled";
++		clock-names = "fck";
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges = <0 0 0x2b300000 0x100000>;
++
++		wkup_uart0: serial@0 {
++			compatible = "ti,am64-uart", "ti,am654-uart";
++			reg = <0 0x100>;
++			interrupts = <GIC_SPI 186 IRQ_TYPE_LEVEL_HIGH>;
++			status = "disabled";
++		};
+ 	};
+ 
+ 	wkup_i2c0: i2c@2b200000 {
+-- 
+2.47.2
+

@@ -121,6 +121,13 @@ external_git () {
 		echo "${top_of_branch}"
 	fi
 	#exit 2
+
+	#cd ./KERNEL/
+	#git pull --no-edit git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-6.12.y-cicd
+	#git format-patch -68 -o ../patches/drivers/ti_staging/
+
+	dir 'drivers/ti_staging'
+	#exit 2
 }
 
 rt_cleanup () {
@@ -528,7 +535,6 @@ drivers () {
 #	dir 'drivers/ite-it66121-hpd'
 #	dir 'drivers/tidss'
 	dir 'drivers/mspm0'
-	dir 'drivers/cpufreq'
 
 	dir 'external/android'
 	dir 'external/cadence'

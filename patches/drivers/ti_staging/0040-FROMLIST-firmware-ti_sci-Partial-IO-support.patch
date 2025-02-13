@@ -1,0 +1,198 @@
+From 06a988947cc2f8fd50ab01b5f5a177d8ec834ed7 Mon Sep 17 00:00:00 2001
+From: Markus Schneider-Pargmann <msp@baylibre.com>
+Date: Tue, 11 Feb 2025 13:58:42 -0600
+Subject: [PATCH 40/68] FROMLIST: firmware: ti_sci: Partial-IO support
+
+Add support for Partial-IO poweroff. In Partial-IO pins of a few
+hardware units can generate system wakeups while DDR memory is not
+powered resulting in a fresh boot of the system. These hardware units in
+the SoC are always powered so that some logic can detect pin activity.
+
+If the system supports Partial-IO as described in the fw capabilities, a
+sys_off handler is added. This sys_off handler decides if the poweroff
+is executed by entering normal poweroff or Partial-IO instead. The
+decision is made by checking if wakeup is enabled on all devices that
+may wake up the SoC from Partial-IO.
+
+The possible wakeup devices are found by checking which devices have the
+"poweroff" in the list of wakeup-source power states. Only devices that
+are actually enabled by the user will be considered as an active wakeup
+source. If none of the wakeup sources is enabled the system will do a
+normal poweroff. If at least one wakeup source is enabled it will
+instead send a TI_SCI_MSG_PREPARE_SLEEP message from the sys_off
+handler. Sending this message will result in an immediate shutdown of
+the system. No execution is expected after this point. The code will
+wait for 5s and do an emergency_restart afterwards if Partial-IO wasn't
+entered at that point.
+
+A short documentation about Partial-IO can be found in section 6.2.4.5
+of the TRM at
+  https://www.ti.com/lit/pdf/spruiv7
+
+Signed-off-by: Markus Schneider-Pargmann <msp@baylibre.com>
+Link: https://lore.kernel.org/r/20241219-topic-am62-partialio-v6-12-b4-v4-2-1cb8eabd407e@baylibre.com
+Signed-off-by: Kendall Willis <k-willis@ti.com>
+---
+ drivers/firmware/ti_sci.c | 115 +++++++++++++++++++++++++++++++++++++-
+ drivers/firmware/ti_sci.h |   5 ++
+ 2 files changed, 119 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/firmware/ti_sci.c b/drivers/firmware/ti_sci.c
+index 9ef86ea27a3c..c17f49c0475a 100644
+--- a/drivers/firmware/ti_sci.c
++++ b/drivers/firmware/ti_sci.c
+@@ -3746,6 +3746,100 @@ static const struct dev_pm_ops ti_sci_pm_ops = {
+ #endif
+ };
+ 
++/*
++ * Enter Partial-IO, which disables everything including DDR with only a small
++ * logic being active for wakeup.
++ */
++static int tisci_enter_partial_io(struct ti_sci_info *info)
++{
++	struct ti_sci_msg_req_prepare_sleep *req;
++	struct ti_sci_xfer *xfer;
++	struct device *dev = info->dev;
++	int ret = 0;
++
++	xfer = ti_sci_get_one_xfer(info, TI_SCI_MSG_PREPARE_SLEEP,
++				   TI_SCI_FLAG_REQ_GENERIC_NORESPONSE,
++				   sizeof(*req), sizeof(struct ti_sci_msg_hdr));
++	if (IS_ERR(xfer)) {
++		ret = PTR_ERR(xfer);
++		dev_err(dev, "Message alloc failed(%d)\n", ret);
++		return ret;
++	}
++
++	req = (struct ti_sci_msg_req_prepare_sleep *)xfer->xfer_buf;
++	req->mode = TISCI_MSG_VALUE_SLEEP_MODE_PARTIAL_IO;
++	req->ctx_lo = 0;
++	req->ctx_hi = 0;
++	req->debug_flags = 0;
++
++	dev_info(dev, "Entering Partial-IO because a powered wakeup-enabled device was found.\n");
++
++	ret = ti_sci_do_xfer(info, xfer);
++	if (ret) {
++		dev_err(dev, "Mbox send fail %d\n", ret);
++		goto fail;
++	}
++
++fail:
++	ti_sci_put_one_xfer(&info->minfo, xfer);
++
++	return ret;
++}
++
++static bool tisci_canuart_wakeup_enabled(struct ti_sci_info *info)
++{
++	struct device_node *wakeup_node = NULL;
++
++	for (wakeup_node = of_find_node_with_property(NULL, "wakeup-source");
++	     wakeup_node;
++	     wakeup_node = of_find_node_with_property(wakeup_node, "wakeup-source")) {
++		struct platform_device *pdev;
++		int index;
++
++		index = of_property_match_string(wakeup_node, "wakeup-source", "poweroff");
++		if (index < 0)
++			continue;
++
++		pdev = of_find_device_by_node(wakeup_node);
++		if (!pdev)
++			break;
++
++		if (device_may_wakeup(&pdev->dev)) {
++			dev_dbg(info->dev, "%pOF identified as wakeup source for Partial-IO\n",
++				wakeup_node);
++			put_device(&pdev->dev);
++			of_node_put(wakeup_node);
++			return true;
++		}
++	}
++
++	return false;
++}
++
++static int tisci_sys_off_handler(struct sys_off_data *data)
++{
++	struct ti_sci_info *info = data->cb_data;
++	bool enter_partial_io = tisci_canuart_wakeup_enabled(info);
++	int ret;
++
++	if (!enter_partial_io)
++		return NOTIFY_DONE;
++
++	ret = tisci_enter_partial_io(info);
++
++	if (ret) {
++		dev_err(info->dev,
++			"Failed to enter Partial-IO %pe, trying to do an emergency restart\n",
++			ERR_PTR(ret));
++		emergency_restart();
++	}
++
++	mdelay(5000);
++	emergency_restart();
++
++	return NOTIFY_DONE;
++}
++
+ /* Description for K2G */
+ static const struct ti_sci_desc ti_sci_pmmc_k2g_desc = {
+ 	.default_host_id = 2,
+@@ -3889,6 +3983,19 @@ static int ti_sci_probe(struct platform_device *pdev)
+ 		goto out;
+ 	}
+ 
++	if (info->fw_caps & MSG_FLAG_CAPS_LPM_PARTIAL_IO) {
++		ret = devm_register_sys_off_handler(dev,
++						    SYS_OFF_MODE_POWER_OFF,
++						    SYS_OFF_PRIO_FIRMWARE,
++						    tisci_sys_off_handler,
++						    info);
++		if (ret) {
++			dev_err(dev, "Failed to register sys_off_handler %pe\n",
++				ERR_PTR(ret));
++			goto out;
++		}
++	}
++
+ 	dev_info(dev, "ABI: %d.%d (firmware rev 0x%04x '%s')\n",
+ 		 info->handle.version.abi_major, info->handle.version.abi_minor,
+ 		 info->handle.version.firmware_revision,
+@@ -3898,7 +4005,13 @@ static int ti_sci_probe(struct platform_device *pdev)
+ 	list_add_tail(&info->node, &ti_sci_list);
+ 	mutex_unlock(&ti_sci_list_mutex);
+ 
+-	return of_platform_populate(dev->of_node, NULL, NULL, dev);
++	ret = of_platform_populate(dev->of_node, NULL, NULL, dev);
++	if (ret) {
++		dev_err(dev, "platform_populate failed %pe\n", ERR_PTR(ret));
++		goto out;
++	}
++	return 0;
++
+ out:
+ 	if (!IS_ERR(info->chan_tx))
+ 		mbox_free_channel(info->chan_tx);
+diff --git a/drivers/firmware/ti_sci.h b/drivers/firmware/ti_sci.h
+index 053387d7baa0..dec9e20cbe5d 100644
+--- a/drivers/firmware/ti_sci.h
++++ b/drivers/firmware/ti_sci.h
+@@ -592,6 +592,11 @@ struct ti_sci_msg_resp_get_clock_freq {
+ struct ti_sci_msg_req_prepare_sleep {
+ 	struct ti_sci_msg_hdr	hdr;
+ 
++/*
++ * When sending perpare_sleep with MODE_PARTIAL_IO no response will be sent,
++ * no further steps are required.
++ */
++#define TISCI_MSG_VALUE_SLEEP_MODE_PARTIAL_IO				0x03
+ #define TISCI_MSG_VALUE_SLEEP_MODE_DM_MANAGED				0xfd
+ 	u8			mode;
+ 	u32			ctx_lo;
+-- 
+2.47.2
+

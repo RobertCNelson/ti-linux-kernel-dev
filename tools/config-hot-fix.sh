@@ -316,13 +316,21 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 #PCI Express Precision Time Measurement support
 ./scripts/config --enable CONFIG_PCIE_PTM
 
+#REMOTEPROC
 ./scripts/config --module CONFIG_RPMSG
 ./scripts/config --module CONFIG_RPMSG_NS
 ./scripts/config --module CONFIG_RPMSG_VIRTIO
+./scripts/config --module CONFIG_TI_K3_DSP_REMOTEPROC
+./scripts/config --module CONFIG_TI_K3_M4_REMOTEPROC
+./scripts/config --module CONFIG_TI_K3_R5_REMOTEPROC
 
 #Google Coral Gasket
 ./scripts/config --module CONFIG_STAGING_GASKET_FRAMEWORK
 ./scripts/config --module CONFIG_STAGING_APEX_DRIVER
+
+#DRM_PANIC
+./scripts/config --enable CONFIG_DRM_PANIC
+./scripts/config --enable CONFIG_DRM_PANIC_SCREEN_QR_CODE
 
 #TI: 10.00.04
 ./scripts/config --enable CONFIG_FB_SIMPLE
@@ -339,8 +347,6 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 #new in v6.12.x
 ./scripts/config --enable CONFIG_PREEMPT_RT
 ./scripts/config --enable CONFIG_RPMB
-./scripts/config --enable CONFIG_DRM_PANIC
-./scripts/config --module CONFIG_TI_K3_M4_REMOTEPROC
 ./scripts/config --module CONFIG_ADXL380_SPI
 ./scripts/config --module CONFIG_ADXL380_I2C
 ./scripts/config --module CONFIG_AD4000
@@ -409,6 +415,5 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 #Rust
 ./scripts/config --disable CONFIG_MODVERSIONS
 ./scripts/config --enable CONFIG_RUST
-./scripts/config --enable CONFIG_DRM_PANIC_SCREEN_QR_CODE
 
 cd ${DIR}/

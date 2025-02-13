@@ -1,0 +1,130 @@
+From a75cbd3626b8085513288822666c18859b23f299 Mon Sep 17 00:00:00 2001
+From: Devarsh Thakkar <devarsht@ti.com>
+Date: Tue, 11 Feb 2025 14:25:23 -0600
+Subject: [PATCH 55/68] FROMLIST: arm64: dts: ti: k3-am62p5-sk: Enable IPC with
+ remote processors
+
+For each remote proc, reserve memory for IPC and bind the mailbox
+assignments. Two memory regions are reserved for each remote processor.
+The first region of 1MB of memory is used for Vring shared buffers
+and the second region is used as external memory to the remote processor
+for the resource table and for tracebuffer allocations.
+
+Link: https://lore.kernel.org/linux-devicetree/20250206235200.3128163-1-jm@ti.com/
+Signed-off-by: Devarsh Thakkar <devarsht@ti.com>
+Signed-off-by: Hari Nagalla <hnagalla@ti.com>
+Signed-off-by: Judith Mendez <jm@ti.com>
+---
+ .../dts/ti/k3-am62p-j722s-common-mcu.dtsi     | 13 +++++
+ arch/arm64/boot/dts/ti/k3-am62p5-sk.dts       | 50 ++++++++++++++++---
+ 2 files changed, 57 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/ti/k3-am62p-j722s-common-mcu.dtsi b/arch/arm64/boot/dts/ti/k3-am62p-j722s-common-mcu.dtsi
+index cf57f954dd3e..94c72f8e3e49 100644
+--- a/arch/arm64/boot/dts/ti/k3-am62p-j722s-common-mcu.dtsi
++++ b/arch/arm64/boot/dts/ti/k3-am62p-j722s-common-mcu.dtsi
+@@ -6,6 +6,18 @@
+  */
+ 
+ &cbass_mcu {
++	mcu_ram: sram@79100000 {
++		compatible = "mmio-sram";
++		reg = <0x00 0x79100000 0x00 0x80000>;
++		ranges = <0x00 0x00 0x79100000 0x80000>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++
++		mcu_sram1@0 {
++			reg = <0x0 0x80000>;
++		};
++	};
++
+ 	mcu_pmx0: pinctrl@4084000 {
+ 		compatible = "pinctrl-single";
+ 		reg = <0x00 0x04084000 0x00 0x88>;
+@@ -215,6 +227,7 @@ mcu_r5fss0_core0: r5f@79000000 {
+ 			ti,atcm-enable = <0>;
+ 			ti,btcm-enable = <1>;
+ 			ti,loczrama = <0>;
++			sram = <&mcu_ram>;
+ 		};
+ 	};
+ };
+diff --git a/arch/arm64/boot/dts/ti/k3-am62p5-sk.dts b/arch/arm64/boot/dts/ti/k3-am62p5-sk.dts
+index 47583ca2b7e0..23bd345a445b 100644
+--- a/arch/arm64/boot/dts/ti/k3-am62p5-sk.dts
++++ b/arch/arm64/boot/dts/ti/k3-am62p5-sk.dts
+@@ -55,19 +55,37 @@ linux,cma {
+ 			linux,cma-default;
+ 		};
+ 
+-		secure_tfa_ddr: tfa@9e780000 {
+-			reg = <0x00 0x9e780000 0x00 0x80000>;
++		mcu_r5fss0_core0_dma_memory_region: mcu-r5fss-dma-memory-region@9b800000 {
++			compatible = "shared-dma-pool";
++			reg = <0x00 0x9b800000 0x00 0x100000>;
+ 			no-map;
+ 		};
+ 
+-		secure_ddr: optee@9e800000 {
+-			reg = <0x00 0x9e800000 0x00 0x01800000>; /* for OP-TEE */
++		mcu_r5fss0_core0_memory_region: mcu-r5fss-memory-region@9b900000 {
++			compatible = "shared-dma-pool";
++			reg = <0x00 0x9b900000 0x00 0xf00000>;
+ 			no-map;
+ 		};
+ 
+-		wkup_r5fss0_core0_memory_region: r5f-dma-memory@9c900000 {
++		wkup_r5fss0_core0_dma_memory_region: r5f-dma-memory@9c800000 {
+ 			compatible = "shared-dma-pool";
+-			reg = <0x00 0x9c900000 0x00 0x01e00000>;
++			reg = <0x00 0x9c800000 0x00 0x100000>;
++			no-map;
++		};
++
++		wkup_r5fss0_core0_memory_region: r5f-memory@9c900000 {
++			compatible = "shared-dma-pool";
++			reg = <0x00 0x9c900000 0x00 0x1e00000>;
++			no-map;
++		};
++
++		secure_tfa_ddr: tfa@9e780000 {
++			reg = <0x00 0x9e780000 0x00 0x80000>;
++			no-map;
++		};
++
++		secure_ddr: optee@9e800000 {
++			reg = <0x00 0x9e800000 0x00 0x01800000>; /* for OP-TEE */
+ 			no-map;
+ 		};
+ 	};
+@@ -725,6 +743,26 @@ mbox_mcu_r5_0: mbox-mcu-r5-0 {
+ 	};
+ };
+ 
++&wkup_r5fss0 {
++	status = "okay";
++};
++
++&wkup_r5fss0_core0 {
++	mboxes = <&mailbox0_cluster0 &mbox_r5_0>;
++	memory-region = <&wkup_r5fss0_core0_dma_memory_region>,
++			<&wkup_r5fss0_core0_memory_region>;
++};
++
++&mcu_r5fss0 {
++	status = "okay";
++};
++
++&mcu_r5fss0_core0 {
++	mboxes = <&mailbox0_cluster1 &mbox_mcu_r5_0>;
++	memory-region = <&mcu_r5fss0_core0_dma_memory_region>,
++			<&mcu_r5fss0_core0_memory_region>;
++};
++
+ &main_uart0 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&main_uart0_pins_default>;
+-- 
+2.47.2
+

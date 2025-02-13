@@ -1,0 +1,56 @@
+From 26000aa62b0b77a6fa770dd2c05dcb26fbf85f8d Mon Sep 17 00:00:00 2001
+From: Markus Schneider-Pargmann <msp@baylibre.com>
+Date: Tue, 11 Feb 2025 13:58:41 -0600
+Subject: [PATCH 39/68] FROMLIST: firmware: ti_sci: Support transfers without
+ response
+
+Check the header flags if an response is expected or not. If it is not
+expected skip the receive part of ti_sci_do_xfer(). This prepares the
+driver for one-way messages as prepare_sleep for Partial-IO.
+
+Signed-off-by: Markus Schneider-Pargmann <msp@baylibre.com>
+Link: https://lore.kernel.org/r/20241219-topic-am62-partialio-v6-12-b4-v4-1-1cb8eabd407e@baylibre.com
+Signed-off-by: Kendall Willis <k-willis@ti.com>
+---
+ drivers/firmware/ti_sci.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/firmware/ti_sci.c b/drivers/firmware/ti_sci.c
+index 555e41cc0808..9ef86ea27a3c 100644
+--- a/drivers/firmware/ti_sci.c
++++ b/drivers/firmware/ti_sci.c
+@@ -398,10 +398,13 @@ static void ti_sci_put_one_xfer(struct ti_sci_xfers_info *minfo,
+ static inline int ti_sci_do_xfer(struct ti_sci_info *info,
+ 				 struct ti_sci_xfer *xfer)
+ {
++	struct ti_sci_msg_hdr *hdr = (struct ti_sci_msg_hdr *)xfer->tx_message.buf;
+ 	int ret;
+ 	int timeout;
+ 	struct device *dev = info->dev;
+ 	bool done_state = true;
++	bool response_expected = !!(hdr->flags & (TI_SCI_FLAG_REQ_ACK_ON_PROCESSED |
++						  TI_SCI_FLAG_REQ_ACK_ON_RECEIVED));
+ 
+ 	ret = mbox_send_message(info->chan_tx, &xfer->tx_message);
+ 	if (ret < 0)
+@@ -409,6 +412,9 @@ static inline int ti_sci_do_xfer(struct ti_sci_info *info,
+ 
+ 	ret = 0;
+ 
++	if (!response_expected)
++		goto no_response;
++
+ 	if (system_state <= SYSTEM_RUNNING) {
+ 		/* And we wait for the response. */
+ 		timeout = msecs_to_jiffies(info->desc->max_rx_timeout_ms);
+@@ -429,6 +435,7 @@ static inline int ti_sci_do_xfer(struct ti_sci_info *info,
+ 		dev_err(dev, "Mbox timedout in resp(caller: %pS)\n",
+ 			(void *)_RET_IP_);
+ 
++no_response:
+ 	/*
+ 	 * NOTE: we might prefer not to need the mailbox ticker to manage the
+ 	 * transfer queueing since the protocol layer queues things by itself.
+-- 
+2.47.2
+

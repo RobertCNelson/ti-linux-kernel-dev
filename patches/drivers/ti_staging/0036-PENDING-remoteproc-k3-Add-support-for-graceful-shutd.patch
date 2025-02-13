@@ -1,0 +1,160 @@
+From acc468993d3a76380499a37975007f487b2bfd4d Mon Sep 17 00:00:00 2001
+From: Beleswar Padhi <b-padhi@ti.com>
+Date: Tue, 11 Feb 2025 11:08:55 +0530
+Subject: [PATCH 36/68] PENDING: remoteproc: k3: Add support for graceful
+ shutdown of remotecores
+
+Upon a stop request, remoteproc driver sends a RP_MBOX_SHUTDOWN mailbox
+message to the remote DSP/M4 core.
+
+The remote core is expected to:
+ - relinquish all the resources acquired through Device Manager (DM)
+ - disable its interrupts
+ - send back a mailbox acknowledgment RP_MBOX_SHUDOWN_ACK
+ - enter WFI state.
+
+Meanwhile, the K3 remote proc driver does:
+ - wait for the RP_MBOX_SHUTDOWN_ACK from the remote core
+ - wait for the remote proc to enter WFI state
+ - reset the remote core through device manager
+
+Signed-off-by: Beleswar Padhi <b-padhi@ti.com>
+---
+ drivers/remoteproc/ti_k3_common.c         | 49 +++++++++++++++++++++++
+ drivers/remoteproc/ti_k3_common.h         |  2 +
+ drivers/remoteproc/ti_k3_dsp_remoteproc.c |  2 +
+ drivers/remoteproc/ti_k3_m4_remoteproc.c  |  2 +
+ 4 files changed, 55 insertions(+)
+
+diff --git a/drivers/remoteproc/ti_k3_common.c b/drivers/remoteproc/ti_k3_common.c
+index ff5f1c37db11..eb75ad780a28 100644
+--- a/drivers/remoteproc/ti_k3_common.c
++++ b/drivers/remoteproc/ti_k3_common.c
+@@ -13,7 +13,9 @@
+  *	Hari Nagalla <hnagalla@ti.com>
+  */
+ 
++#include <linux/delay.h>
+ #include <linux/io.h>
++#include <linux/iopoll.h>
+ #include <linux/mailbox_client.h>
+ #include <linux/module.h>
+ #include <linux/of_address.h>
+@@ -30,6 +32,27 @@
+ #include "ti_sci_proc.h"
+ #include "ti_k3_common.h"
+ 
++/**
++ * is_core_in_wfi - local utility function to check core status
++ * @kproc: remote core pointer used for checking core status
++ *
++ * This utility function is invoked by the shutdown sequence to ensure
++ * the remote core is in wfi, before asserting a reset.
++ */
++static int is_core_in_wfi(struct k3_rproc *core)
++{
++	int ret;
++	u64 boot_vec;
++	u32 cfg, ctrl, stat;
++
++	ret = ti_sci_proc_get_status(core->tsp, &boot_vec, &cfg, &ctrl, &stat);
++
++	if (ret < 0)
++		return 0;
++
++	return (stat & PROC_BOOT_STATUS_FLAG_CPU_WFI);
++}
++
+ /**
+  * k3_rproc_mbox_callback() - inbound mailbox message handler
+  * @client: mailbox client pointer used for requesting the mailbox channel
+@@ -64,6 +87,10 @@ void k3_rproc_mbox_callback(struct mbox_client *client, void *data)
+ 	case RP_MBOX_ECHO_REPLY:
+ 		dev_info(dev, "received echo reply from %s\n", rproc->name);
+ 		break;
++	case RP_MBOX_SHUTDOWN_ACK:
++		dev_dbg(dev, "received shutdown_ack from %s\n", rproc->name);
++		complete(&kproc->shut_comp);
++		break;
+ 	default:
+ 		/* silently handle all other valid messages */
+ 		if (msg >= RP_MBOX_READY && msg < RP_MBOX_END_MSG)
+@@ -291,7 +318,29 @@ EXPORT_SYMBOL_GPL(k3_rproc_start);
+  */
+ int k3_rproc_stop(struct rproc *rproc)
+ {
++	unsigned long to = msecs_to_jiffies(3000);
+ 	struct k3_rproc *kproc = rproc->priv;
++	struct device *dev = kproc->dev;
++	u32 msg = omap_mbox_message(RP_MBOX_SHUTDOWN);
++	u32 stat = 0;
++	int ret;
++
++	reinit_completion(&kproc->shut_comp);
++	ret = mbox_send_message(kproc->mbox, (void *) (uintptr_t) msg);
++	if (ret < 0) {
++		dev_err(dev, "PM mbox_send_message failed: %d\n", ret);
++		return ret;
++	}
++
++	ret = wait_for_completion_timeout(&kproc->shut_comp, to);
++	if (ret == 0) {
++		dev_err(dev, "%s: timedout waiting for rproc completion event\n", __func__);
++		return -EBUSY;
++	};
++
++	ret = readx_poll_timeout(is_core_in_wfi, kproc, stat, stat, 200, 2000);
++	if (ret)
++		return ret;
+ 
+ 	return k3_rproc_reset(kproc);
+ }
+diff --git a/drivers/remoteproc/ti_k3_common.h b/drivers/remoteproc/ti_k3_common.h
+index a034eb818b64..db0d80938663 100644
+--- a/drivers/remoteproc/ti_k3_common.h
++++ b/drivers/remoteproc/ti_k3_common.h
+@@ -17,6 +17,7 @@
+ #define REMOTEPROC_TI_K3_COMMON_H
+ 
+ #define KEYSTONE_RPROC_LOCAL_ADDRESS_MASK	(SZ_16M - 1)
++#define PROC_BOOT_STATUS_FLAG_CPU_WFI		0x00000002
+ 
+ /**
+  * struct k3_rproc_mem - internal memory structure
+@@ -86,6 +87,7 @@ struct k3_rproc {
+ 	u32 ti_sci_id;
+ 	struct mbox_chan *mbox;
+ 	struct mbox_client client;
++	struct completion shut_comp;
+ };
+ 
+ void k3_rproc_mbox_callback(struct mbox_client *client, void *data);
+diff --git a/drivers/remoteproc/ti_k3_dsp_remoteproc.c b/drivers/remoteproc/ti_k3_dsp_remoteproc.c
+index 18909dc1821a..b6631b2ba6c0 100644
+--- a/drivers/remoteproc/ti_k3_dsp_remoteproc.c
++++ b/drivers/remoteproc/ti_k3_dsp_remoteproc.c
+@@ -164,6 +164,8 @@ static int k3_dsp_rproc_probe(struct platform_device *pdev)
+ 
+ 	platform_set_drvdata(pdev, kproc);
+ 
++	init_completion(&kproc->shut_comp);
++
+ 	return 0;
+ }
+ 
+diff --git a/drivers/remoteproc/ti_k3_m4_remoteproc.c b/drivers/remoteproc/ti_k3_m4_remoteproc.c
+index 82acf10e1e73..291560fa899b 100644
+--- a/drivers/remoteproc/ti_k3_m4_remoteproc.c
++++ b/drivers/remoteproc/ti_k3_m4_remoteproc.c
+@@ -82,6 +82,8 @@ static int k3_m4_rproc_probe(struct platform_device *pdev)
+ 		return dev_err_probe(dev, PTR_ERR(kproc->tsp),
+ 				     "failed to construct ti-sci proc control\n");
+ 
++	init_completion(&kproc->shut_comp);
++
+ 	ret = ti_sci_proc_request(kproc->tsp);
+ 	if (ret < 0)
+ 		return dev_err_probe(dev, ret, "ti_sci_proc_request failed\n");
+-- 
+2.47.2
+

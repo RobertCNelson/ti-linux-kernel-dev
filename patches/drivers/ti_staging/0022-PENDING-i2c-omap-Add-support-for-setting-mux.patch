@@ -1,0 +1,84 @@
+From a22567f7d9d46d1f63a9f6333ee0a6a12cd9600b Mon Sep 17 00:00:00 2001
+From: Jayesh Choudhary <j-choudhary@ti.com>
+Date: Fri, 7 Feb 2025 11:09:08 +0530
+Subject: [PATCH 22/68] PENDING: i2c: omap: Add support for setting mux
+
+Some SoCs (for instance J721S2) require muxes in the routing for SDA
+and SCL lines. Therefore, add support for setting the mux by reading
+the mux-states property from the dt-node.
+
+Signed-off-by: Jayesh Choudhary <j-choudhary@ti.com>
+---
+ drivers/i2c/busses/Kconfig    |  1 +
+ drivers/i2c/busses/i2c-omap.c | 22 ++++++++++++++++++++++
+ 2 files changed, 23 insertions(+)
+
+diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
+index 2254abda5c46..0e679cc50148 100644
+--- a/drivers/i2c/busses/Kconfig
++++ b/drivers/i2c/busses/Kconfig
+@@ -937,6 +937,7 @@ config I2C_OMAP
+ 	tristate "OMAP I2C adapter"
+ 	depends on ARCH_OMAP || ARCH_K3 || COMPILE_TEST
+ 	default MACH_OMAP_OSK
++	select MULTIPLEXER
+ 	help
+ 	  If you say yes to this option, support will be included for the
+ 	  I2C interface on the Texas Instruments OMAP1/2 family of processors.
+diff --git a/drivers/i2c/busses/i2c-omap.c b/drivers/i2c/busses/i2c-omap.c
+index 1d9ad25c89ae..40d5680850dd 100644
+--- a/drivers/i2c/busses/i2c-omap.c
++++ b/drivers/i2c/busses/i2c-omap.c
+@@ -24,6 +24,7 @@
+ #include <linux/platform_device.h>
+ #include <linux/clk.h>
+ #include <linux/io.h>
++#include <linux/mux/consumer.h>
+ #include <linux/of.h>
+ #include <linux/slab.h>
+ #include <linux/platform_data/i2c-omap.h>
+@@ -211,6 +212,7 @@ struct omap_i2c_dev {
+ 	u16			syscstate;
+ 	u16			westate;
+ 	u16			errata;
++	struct mux_state	*mux_state;
+ };
+ 
+ static const u8 reg_map_ip_v1[] = {
+@@ -1464,6 +1466,23 @@ omap_i2c_probe(struct platform_device *pdev)
+ 				       (1000 * omap->speed / 8);
+ 	}
+ 
++	if (of_property_read_bool(node, "mux-states")) {
++		struct mux_state *mux_state;
++
++		mux_state = devm_mux_state_get(&pdev->dev, NULL);
++		if (IS_ERR(mux_state)) {
++			r = PTR_ERR(mux_state);
++			dev_dbg(&pdev->dev, "failed to get I2C mux: %d\n", r);
++			goto err_disable_pm;
++		}
++		omap->mux_state = mux_state;
++		r = mux_state_select(omap->mux_state);
++		if (r) {
++			dev_err(&pdev->dev, "failed to select I2C mux: %d\n", r);
++			goto err_disable_pm;
++		}
++	}
++
+ 	/* reset ASAP, clearing any IRQs */
+ 	omap_i2c_init(omap);
+ 
+@@ -1523,6 +1542,9 @@ static void omap_i2c_remove(struct platform_device *pdev)
+ 
+ 	i2c_del_adapter(&omap->adapter);
+ 
++	if (omap->mux_state)
++		mux_state_deselect(omap->mux_state);
++
+ 	ret = pm_runtime_get_sync(&pdev->dev);
+ 	if (ret < 0)
+ 		dev_err(omap->dev, "Failed to resume hardware, skip disable\n");
+-- 
+2.47.2
+

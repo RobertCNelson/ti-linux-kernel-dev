@@ -1,0 +1,68 @@
+From be717ac58a73ae14404c5f56bb134ae2d0f118b1 Mon Sep 17 00:00:00 2001
+From: Tony Lindgren <tony@atomide.com>
+Date: Wed, 5 Feb 2025 14:27:55 -0600
+Subject: [PATCH 04/68] TI: HACK: arm64: dts: ti: Configure am62 pinctrl-single
+ for wake-up interrupts
+
+Configure am62 pinctrl-single for wake-up interrupts.
+
+Eventually we may want to set up a chained interrupt handler in the
+ti-msgmgr for pinctrl-single to use.
+
+Marked as HACK because physically none of the wakeup source events are
+connected to GIC.
+
+[d-gole@ti.com] change to use the GIC_SPI 98 instead of 34. The logic is
+such that in DT we specify x+32 for configuring intr source gicss0.spi.x
+In this case the input index is gicss0.spi.66 so interrupt source will be
+dmss0.intaggr_vintr.2
+
+[k-willis@ti.com] appended compatible with single-pinctrl to fix DT
+warning. Squashed relevant part of commit eb3b9e22be86 ("arm64: dts: ti:
+k3-am62*: Append pinctrl-single compatible").
+
+Co-developed-by: Dhruva Gole <d-gole@ti.com>
+Signed-off-by: Dhruva Gole <d-gole@ti.com>
+Signed-off-by: Tony Lindgren <tony@atomide.com>
+Signed-off-by: Dhruva Gole <d-gole@ti.com>
+Signed-off-by: Devarsh Thakkar <devarsht@ti.com>
+Reported-by: kernel test robot <lkp@intel.com>
+Reviewed-by: Dhruva Gole <d-gole@ti.com>
+Signed-off-by: Kendall Willis <k-willis@ti.com>
+---
+ arch/arm64/boot/dts/ti/k3-am62-main.dtsi | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/ti/k3-am62-main.dtsi b/arch/arm64/boot/dts/ti/k3-am62-main.dtsi
+index 46d88ca34f81..8098b4b3c8a2 100644
+--- a/arch/arm64/boot/dts/ti/k3-am62-main.dtsi
++++ b/arch/arm64/boot/dts/ti/k3-am62-main.dtsi
+@@ -229,11 +229,24 @@ secure_proxy_sa3: mailbox@43600000 {
+ 
+ 	main_pmx0: pinctrl@f4000 {
+ 		bootph-all;
+-		compatible = "pinctrl-single";
++		compatible = "ti,am654-padconf", "pinctrl-single";
+ 		reg = <0x00 0xf4000 0x00 0x2ac>;
+ 		#pinctrl-cells = <1>;
+ 		pinctrl-single,register-width = <32>;
+ 		pinctrl-single,function-mask = <0xffffffff>;
++		/*
++		 * pinctrl IP DOES NOT give any functional IRQs when a
++		 * system is in active state. This IRQ is only a dummy IRQ
++		 * that is being used to trick Linux into thinking that
++		 * GIC can potentially recieve an interrupt from this IP.
++		 * This helps us setup the IO daisychain wakeups for deep
++		 * sleep via chained wake IRQs.
++		 * Please feel free to assign a different number here as
++		 * long as it is unused if 98 conflicts with another use case.
++		 */
++		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-controller;
++		#interrupt-cells = <1>;
+ 	};
+ 
+ 	main_esm: esm@420000 {
+-- 
+2.47.2
+
