@@ -319,7 +319,8 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 #REMOTEPROC
 ./scripts/config --module CONFIG_RPMSG
 ./scripts/config --module CONFIG_RPMSG_NS
-./scripts/config --module CONFIG_RPMSG_VIRTIO
+./scripts/config --module CONFIG_RPMSG_PRU
+./scripts/config --enable CONFIG_RPMSG_VIRTIO
 ./scripts/config --module CONFIG_TI_K3_DSP_REMOTEPROC
 ./scripts/config --module CONFIG_TI_K3_M4_REMOTEPROC
 ./scripts/config --module CONFIG_TI_K3_R5_REMOTEPROC
@@ -334,7 +335,6 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 
 #TI: 10.00.04
 ./scripts/config --enable CONFIG_FB_SIMPLE
-./scripts/config --module CONFIG_RPMSG_PRU
 
 #TI: 10.00.06
 ./scripts/config --disable CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
