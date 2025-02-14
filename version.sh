@@ -56,7 +56,7 @@ KERNEL_TAG=${KERNEL_REL}.9
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.12/
 kernel_rt=".8-rt8"
 #Kernel Build
-BUILD=${build_prefix}20
+BUILD=${build_prefix}20.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -67,8 +67,8 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-sdk_git_old_release="8906665ace32eb0dc12810667ee8646bd660c374"
-sdk_git_new_release="c9e21a1ebd757f2b4487035382bbf65299cf8170"
-SDK="11.00.02"
+sdk_git_old_release="c9e21a1ebd757f2b4487035382bbf65299cf8170"
+sdk_git_new_release="6423e6bb6191982da1c09a21a46c68b494f5b1b5"
+SDK="11.00.03"
 
 #

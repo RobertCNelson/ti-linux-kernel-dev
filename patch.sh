@@ -126,7 +126,7 @@ external_git () {
 	#git pull --no-edit git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-6.12.y-cicd
 	#git format-patch -68 -o ../patches/drivers/ti_staging/
 
-	dir 'drivers/ti_staging'
+	#dir 'drivers/ti_staging'
 	#exit 2
 }
 
@@ -522,8 +522,8 @@ backports () {
 
 		cp -v ~/linux-rpi/drivers/input/touchscreen/edt-ft5x06.c ./drivers/input/touchscreen/
 
-		post_rpibackports
-	else
+	#	post_rpibackports
+	#else
 		patch_backports
 	fi
 }
