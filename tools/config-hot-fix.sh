@@ -420,6 +420,11 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_CRYPTO_ZSTD
 ./scripts/config --enable CONFIG_ZSTD_COMPRESS
 
+#TI: 11 (cicd)
+./scripts/config --module CONFIG_CRYPTO_CRC64_ISO3309
+./scripts/config --enable CONFIG_CRYPTO_USER_API_HASH
+./scripts/config --enable CONFIG_CRYPTO_DEV_TI_MCRC64
+
 #configure CONFIG_EXTRA_FIRMWARE
 ./scripts/config --set-str CONFIG_EXTRA_FIRMWARE "regulatory.db regulatory.db.p7s cadence/mhdp8546.bin"
 ./scripts/config --enable CONFIG_FW_LOADER_COMPRESS
