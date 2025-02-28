@@ -344,6 +344,10 @@ beagleboard_dtbs () {
 		device="BONE-I2C2" ; k3_dtbo_makefile_append
 		device="BONE-I2C3" ; k3_dtbo_makefile_append
 
+		#ls src/arm64/overlays/ | grep pocketbeagle2
+
+		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+
 		#ls src/arm64/overlays/ | grep beaglemod
 
 		device="k3-am625-beaglemod-audio" ; k3_dtbo_makefile_append
