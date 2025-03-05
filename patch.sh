@@ -441,6 +441,7 @@ beagleboard_dtbs () {
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_14" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_14-p9_16" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_16" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-pwm-epwm4-p9_25" ; k3_dtbo_makefile_append
 
 		device="k3-j721e-edgeai-apps" ; k3_dtbo_makefile_append
 		device="k3-j721e-vision-apps" ; k3_dtbo_makefile_append
@@ -530,6 +531,7 @@ linux_scripts () {
 			post_backports
 		else
 			patch_backports
+			#exit 2
 			${git} "${DIR}/patches/backports/${subsystem}/0002-fixup.patch"
 		fi
 	fi
@@ -602,6 +604,10 @@ drivers () {
 	dir 'external/android'
 	dir 'external/cadence'
 	dir 'external/gasket'
+
+	#git revert --no-edit -s 3edf588e7fe00e90d1dc7fb9e599861b2c2cf442
+	#Breaking Kingston eMMC on new BBB's..
+	dir 'drivers/fixes/mmc'
 }
 
 ###
