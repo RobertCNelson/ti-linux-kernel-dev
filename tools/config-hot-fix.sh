@@ -383,6 +383,12 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_NITRO_ENCLAVES
 ./scripts/config --module CONFIG_USB_MASS_STORAGE
 
+#debian 6.12.17-1
+./scripts/config --module CONFIG_VIRTIO_IOMMU
+
+#debian 6.13.5-1
+./scripts/config --enable CONFIG_UDMABUF
+
 #new in v6.14
 ./scripts/config --module CONFIG_NTSYNC
 ./scripts/config --module CONFIG_PPS_GENERATOR
@@ -424,6 +430,7 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_CRYPTO_CRC64_ISO3309
 ./scripts/config --enable CONFIG_CRYPTO_USER_API_HASH
 ./scripts/config --enable CONFIG_CRYPTO_DEV_TI_MCRC64
+./scripts/config --module CONFIG_TOUCHSCREEN_ILI210X
 
 #configure CONFIG_EXTRA_FIRMWARE
 ./scripts/config --set-str CONFIG_EXTRA_FIRMWARE "regulatory.db regulatory.db.p7s cadence/mhdp8546.bin"
@@ -434,6 +441,7 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 #BeagleBoard.org
 ./scripts/config --enable CONFIG_MSPM0_I2C
 ./scripts/config --module CONFIG_SEG_LED_GPIO
+./scripts/config --module CONFIG_SND_SOC_TLV320AIC3X_I2C
 
 #Rust
 ./scripts/config --disable CONFIG_MODVERSIONS
