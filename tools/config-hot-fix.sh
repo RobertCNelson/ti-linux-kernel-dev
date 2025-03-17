@@ -333,9 +333,6 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_DRM_PANIC
 ./scripts/config --enable CONFIG_DRM_PANIC_SCREEN_QR_CODE
 
-#TI: 10.00.04
-./scripts/config --enable CONFIG_FB_SIMPLE
-
 #TI: 10.00.06
 ./scripts/config --disable CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
 ./scripts/config --enable CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE
@@ -423,10 +420,11 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_CRYPTO_ZSTD
 ./scripts/config --enable CONFIG_ZSTD_COMPRESS
 
-#TI: 11 (cicd)
+#TI: 11.00.06
 ./scripts/config --module CONFIG_CRYPTO_CRC64_ISO3309
 ./scripts/config --enable CONFIG_CRYPTO_USER_API_HASH
 ./scripts/config --enable CONFIG_CRYPTO_DEV_TI_MCRC64
+./scripts/config --enable CONFIG_CRYPTO_DEV_TI_DTHEV2
 ./scripts/config --module CONFIG_TOUCHSCREEN_ILI210X
 
 #configure CONFIG_EXTRA_FIRMWARE

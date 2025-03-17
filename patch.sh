@@ -126,7 +126,7 @@ external_git () {
 	#git pull --no-edit git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-6.12.y-cicd
 	#git format-patch -7 -o ../patches/drivers/ti_staging/
 
-	dir 'drivers/ti_staging'
+	#dir 'drivers/ti_staging'
 	#exit 2
 }
 
