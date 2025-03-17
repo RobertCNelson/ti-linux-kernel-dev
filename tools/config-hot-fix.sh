@@ -377,11 +377,12 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_NITRO_ENCLAVES
 ./scripts/config --module CONFIG_USB_MASS_STORAGE
 
-#debian 6.12.17-1
-./scripts/config --module CONFIG_VIRTIO_IOMMU
-
 #debian 6.13.5-1
 ./scripts/config --enable CONFIG_UDMABUF
+
+#debian 6.13.7-1
+./scripts/config --module CONFIG_VIRTIO_IOMMU
+./scripts/config --enable CONFIG_CRYPTO_ECDSA
 
 #new in v6.14
 ./scripts/config --module CONFIG_NTSYNC
