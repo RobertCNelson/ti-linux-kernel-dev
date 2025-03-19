@@ -444,6 +444,12 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_SEG_LED_GPIO
 ./scripts/config --module CONFIG_SND_SOC_TLV320AIC3X_I2C
 
+#PCIE
+./scripts/config --enable CONFIG_PCI_ENDPOINT
+./scripts/config --enable CONFIG_PCI_ENDPOINT_CONFIGFS
+./scripts/config --enable CONFIG_PCIE_CADENCE_EP
+./scripts/config --enable CONFIG_PCI_J721E_EP
+
 #Rust
 ./scripts/config --disable CONFIG_MODVERSIONS
 ./scripts/config --enable CONFIG_RUST
