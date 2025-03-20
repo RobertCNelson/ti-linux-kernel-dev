@@ -449,6 +449,10 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_PCI_ENDPOINT_CONFIGFS
 ./scripts/config --enable CONFIG_PCIE_CADENCE_EP
 ./scripts/config --enable CONFIG_PCI_J721E_EP
+./scripts/config --module CONFIG_PCI_EPF_TEST
+./scripts/config --module CONFIG_PCI_EPF_NTB
+./scripts/config --module CONFIG_PCI_EPF_VNTB
+./scripts/config --module CONFIG_PCI_ENDPOINT_TEST
 
 #Rust
 ./scripts/config --disable CONFIG_MODVERSIONS
