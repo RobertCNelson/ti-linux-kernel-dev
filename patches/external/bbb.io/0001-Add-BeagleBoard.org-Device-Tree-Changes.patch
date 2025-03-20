@@ -1,11 +1,11 @@
-From 58c5a70c3f5a377a2728efb0047bb3b3fb1fe346 Mon Sep 17 00:00:00 2001
+From fa8a7f548a574ec2b43c8a41c8a27956389272e2 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 18 Mar 2025 12:50:11 -0500
+Date: Thu, 20 Mar 2025 15:35:31 -0500
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v6.12.x-Beagle
 
-https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/4ea3efeff9efd08daa8f09e13370491e6356c0bf
+https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/739a7ce1e8afbe5a749edab6db7eef504e147cc6
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  .../boot/dts/ti/omap/AM335X-PRU-UIO-00A0.dtso |   28 +
@@ -113,7 +113,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../dts/ti/k3-am67a-beagley-ai-spi0-2cs.dtso  |   53 +
  .../dts/ti/k3-am67a-beagley-ai-spidev0.dtso   |   55 +
  .../ti/k3-am67a-beagley-ai-uart-ttyama0.dtso  |   29 +
- .../arm64/boot/dts/ti/k3-am67a-beagley-ai.dts |   33 +
+ .../arm64/boot/dts/ti/k3-am67a-beagley-ai.dts |   96 +
  .../k3-j721e-beagleboneai64-BBORG_MOTOR.dtso  |   95 +
  .../ti/k3-j721e-beagleboneai64-pinmux.dtsi    |   97 +
  ...-beagleboneai64-pwm-epwm0-p8_13-p8_19.dtso |   39 +
@@ -138,7 +138,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/dt-bindings/board/am335x-bone-pins.h  |  253 ++
  include/dt-bindings/mailbox/miv-ihc.h         |   17 +
  include/dt-bindings/pinctrl/omap.h            |    8 +-
- 130 files changed, 14135 insertions(+), 185 deletions(-)
+ 130 files changed, 14198 insertions(+), 185 deletions(-)
  create mode 100644 arch/arm/boot/dts/ti/omap/AM335X-PRU-UIO-00A0.dtso
  create mode 100644 arch/arm/boot/dts/ti/omap/BB-ADC-00A0.dtso
  create mode 100644 arch/arm/boot/dts/ti/omap/BB-BBBW-WL1835-00A0.dtso
@@ -14209,21 +14209,45 @@ index 000000000000..bf41c0488af1
 +	status = "okay";
 +};
 diff --git a/arch/arm64/boot/dts/ti/k3-am67a-beagley-ai.dts b/arch/arm64/boot/dts/ti/k3-am67a-beagley-ai.dts
-index 9be6bba28c26..43ce09188432 100644
+index 9be6bba28c26..1e194bf24341 100644
 --- a/arch/arm64/boot/dts/ti/k3-am67a-beagley-ai.dts
 +++ b/arch/arm64/boot/dts/ti/k3-am67a-beagley-ai.dts
-@@ -11,6 +11,7 @@
+@@ -10,7 +10,12 @@
+ 
  #include <dt-bindings/leds/common.h>
  #include <dt-bindings/net/ti-dp83867.h>
++#include <dt-bindings/phy/phy.h>
  #include "k3-j722s.dtsi"
++#include "k3-serdes.h"
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pwm/pwm.h>
 +#include "k3-am67a-beagley-ai-pinmux.dtsi"
  
  / {
  	compatible = "beagle,am67a-beagley-ai", "ti,j722s";
-@@ -305,11 +306,42 @@ cpsw3g_phy0: ethernet-phy@0 {
+@@ -40,6 +45,14 @@ reserved_memory: reserved-memory {
+ 		#size-cells = <2>;
+ 		ranges;
+ 
++		/* global cma region */
++		linux,cma {
++			compatible = "shared-dma-pool";
++			reusable;
++			size = <0x00 0x38000000>;
++			linux,cma-default;
++		};
++
+ 		secure_tfa_ddr: tfa@9e780000 {
+ 			reg = <0x00 0x9e780000 0x00 0x80000>;
+ 			no-map;
+@@ -305,11 +318,46 @@ cpsw3g_phy0: ethernet-phy@0 {
  &cpsw_port1 {
  	phy-mode = "rgmii-rxid";
  	phy-handle = <&cpsw3g_phy0>;
++};
++
++&cpsw_port2 {
++	status = "disabled";
 +};
 +
 +&epwm2 {
@@ -14263,7 +14287,23 @@ index 9be6bba28c26..43ce09188432 100644
  };
  
  &main_uart0 {
-@@ -350,6 +382,7 @@ &wkup_uart0 {
+@@ -337,6 +385,15 @@ J722S_MCU_IOPAD(0x050, PIN_INPUT_PULLUP, 0)	/* (C6) WKUP_I2C1_SDA */
+ 		>;
+ 		bootph-all;
+ 	};
++
++	pcie_pins_default: pcie-default-pins {
++		pinctrl-single,pins = <
++			J722S_MCU_IOPAD(0x0018, PIN_OUTPUT, 7)	/* (B4) MCU_UART0_TXD.MCU_GPIO0_6 */
++			J722S_MCU_IOPAD(0x0014, PIN_INPUT, 7)	/* (B8) MCU_UART0_RXD.MCU_GPIO0_5 */ /* PCIE_DET_WAKE */
++			J722S_MCU_IOPAD(0x0020, PIN_OUTPUT, 7)	/* (C5) MCU_UART0_RTSn.MCU_GPIO0_8 */ /* PCIE_PWR_EN */
++		>;
++		bootph-all;
++	};
+ };
+ 
+ &wkup_uart0 {
+@@ -350,6 +407,7 @@ &wkup_uart0 {
  &wkup_i2c0 {
  	pinctrl-names = "default";
  	pinctrl-0 = <&wkup_i2c0_pins_default>;
@@ -14271,6 +14311,48 @@ index 9be6bba28c26..43ce09188432 100644
  	clock-frequency = <100000>;
  	bootph-all;
  	status = "okay";
+@@ -549,3 +607,41 @@ &c7x_1 {
+ 			<&c7x_1_memory_region>;
+ 	status = "okay";
+ };
++
++&serdes_ln_ctrl {
++	idle-states = <J722S_SERDES0_LANE0_USB>,
++		      <J722S_SERDES1_LANE0_PCIE0_LANE0>;
++};
++
++&serdes0 {
++	status = "okay";
++	serdes0_usb_link: phy@0 {
++		reg = <0>;
++		cdns,num-lanes = <1>;
++		#phy-cells = <0>;
++		cdns,phy-type = <PHY_TYPE_USB3>;
++		resets = <&serdes_wiz0 1>;
++	};
++};
++
++&serdes1 {
++	serdes1_pcie_link: phy@0 {
++		reg = <0>;
++		cdns,num-lanes = <1>;
++		#phy-cells = <0>;
++		cdns,phy-type = <PHY_TYPE_PCIE>;
++		resets = <&serdes_wiz1 1>;
++	};
++};
++
++&pcie0_rc {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&pcie_pins_default>;
++	phys = <&serdes1_pcie_link>;
++	phy-names = "pcie-phy";
++	num-lanes = <1>;
++	max-link-speed = <3>;
++	reset-gpios = <&mcu_gpio0 6 GPIO_ACTIVE_HIGH>;
++	enable-gpios = <&mcu_gpio0 8 GPIO_ACTIVE_HIGH>; /* Extra GPIO for pwr_en for BeagleY AI */
++};
 diff --git a/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-BBORG_MOTOR.dtso b/arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64-BBORG_MOTOR.dtso
 new file mode 100644
 index 000000000000..171f9c295d57
