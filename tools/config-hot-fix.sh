@@ -336,9 +336,6 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_DRM_PANIC
 ./scripts/config --enable CONFIG_DRM_PANIC_SCREEN_QR_CODE
 
-#TI: 10.00.04
-./scripts/config --enable CONFIG_FB_SIMPLE
-
 #TI: 10.00.06
 ./scripts/config --disable CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
 ./scripts/config --enable CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE
@@ -383,11 +380,12 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_NITRO_ENCLAVES
 ./scripts/config --module CONFIG_USB_MASS_STORAGE
 
-#debian 6.12.17-1
-./scripts/config --module CONFIG_VIRTIO_IOMMU
-
 #debian 6.13.5-1
 ./scripts/config --enable CONFIG_UDMABUF
+
+#debian 6.13.7-1
+./scripts/config --module CONFIG_VIRTIO_IOMMU
+./scripts/config --enable CONFIG_CRYPTO_ECDSA
 
 #new in v6.14
 ./scripts/config --module CONFIG_NTSYNC
@@ -426,11 +424,17 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_CRYPTO_ZSTD
 ./scripts/config --enable CONFIG_ZSTD_COMPRESS
 
-#TI: 11 (cicd)
+#TI: 11.00.06
 ./scripts/config --module CONFIG_CRYPTO_CRC64_ISO3309
 ./scripts/config --enable CONFIG_CRYPTO_USER_API_HASH
 ./scripts/config --enable CONFIG_CRYPTO_DEV_TI_MCRC64
+./scripts/config --enable CONFIG_CRYPTO_DEV_TI_DTHEV2
 ./scripts/config --module CONFIG_TOUCHSCREEN_ILI210X
+
+#TI: 11.00.07
+./scripts/config --module CONFIG_SERIAL_8250_PRUSS
+./scripts/config --module CONFIG_VIDEO_IMX728
+./scripts/config --module CONFIG_VIDEO_OV2312
 
 #configure CONFIG_EXTRA_FIRMWARE
 ./scripts/config --set-str CONFIG_EXTRA_FIRMWARE "regulatory.db regulatory.db.p7s cadence/mhdp8546.bin"
@@ -442,6 +446,16 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --enable CONFIG_MSPM0_I2C
 ./scripts/config --module CONFIG_SEG_LED_GPIO
 ./scripts/config --module CONFIG_SND_SOC_TLV320AIC3X_I2C
+
+#PCIE
+./scripts/config --enable CONFIG_PCI_ENDPOINT
+./scripts/config --enable CONFIG_PCI_ENDPOINT_CONFIGFS
+./scripts/config --enable CONFIG_PCIE_CADENCE_EP
+./scripts/config --enable CONFIG_PCI_J721E_EP
+./scripts/config --module CONFIG_PCI_EPF_TEST
+./scripts/config --module CONFIG_PCI_EPF_NTB
+./scripts/config --module CONFIG_PCI_EPF_VNTB
+./scripts/config --module CONFIG_PCI_ENDPOINT_TEST
 
 #Rust
 ./scripts/config --disable CONFIG_MODVERSIONS
