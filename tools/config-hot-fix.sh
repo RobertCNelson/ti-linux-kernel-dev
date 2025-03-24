@@ -377,6 +377,10 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_NITRO_ENCLAVES
 ./scripts/config --module CONFIG_USB_MASS_STORAGE
 
+#debian 6.12.20-1
+./scripts/config --module CONFIG_VIDEO_OV5675
+./scripts/config --enable CONFIG_RPCSEC_GSS_KRB5_ENCTYPES_AES_SHA2
+
 #debian 6.13.5-1
 ./scripts/config --enable CONFIG_UDMABUF
 
