@@ -289,6 +289,13 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 ./scripts/config --module CONFIG_NITRO_ENCLAVES
 ./scripts/config --module CONFIG_USB_MASS_STORAGE
 
+#debian 6.13.5-1
+./scripts/config --enable CONFIG_UDMABUF
+
+#debian 6.13.7-1
+./scripts/config --module CONFIG_VIRTIO_IOMMU
+./scripts/config --enable CONFIG_CRYPTO_ECDSA
+
 #new in v6.14
 ./scripts/config --module CONFIG_NTSYNC
 ./scripts/config --module CONFIG_PPS_GENERATOR
@@ -343,5 +350,6 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 #BeagleBoard.org
 ./scripts/config --enable CONFIG_MSPM0_I2C
 ./scripts/config --module CONFIG_SEG_LED_GPIO
+./scripts/config --module CONFIG_SND_SOC_TLV320AIC3X_I2C
 
 cd ${DIR}/

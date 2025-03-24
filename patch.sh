@@ -337,6 +337,10 @@ beagleboard_dtbs () {
 		device="BONE-I2C2" ; k3_dtbo_makefile_append
 		device="BONE-I2C3" ; k3_dtbo_makefile_append
 
+		#ls src/arm64/overlays/ | grep pocketbeagle2
+
+		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+
 		#ls src/arm64/overlays/ | grep beaglemod
 
 		device="k3-am625-beaglemod-audio" ; k3_dtbo_makefile_append
@@ -402,6 +406,15 @@ beagleboard_dtbs () {
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_14" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_14-p9_16" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_16" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-pwm-epwm4-p9_25" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi1-cs0" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi1-cs0-no-miso" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi2-cs0" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi3-cs0-no-miso" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi6-cs0-cs1" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi6-cs0" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi6-cs1-no-miso" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi7-cs0" ; k3_dtbo_makefile_append
 
 		device="k3-j721e-edgeai-apps" ; k3_dtbo_makefile_append
 		device="k3-j721e-vision-apps" ; k3_dtbo_makefile_append
