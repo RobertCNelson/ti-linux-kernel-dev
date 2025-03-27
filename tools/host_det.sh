@@ -156,6 +156,8 @@ debian_regs () {
 	check_dpkg
 	pkg="bindgen"
 	check_dpkg
+	pkg="rust-src"
+	check_dpkg
 	pkg="rustc"
 	check_dpkg
 	pkg="rustfmt"
