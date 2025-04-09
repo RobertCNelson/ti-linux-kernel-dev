@@ -331,7 +331,8 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 
 #DRM_PANIC
 ./scripts/config --enable CONFIG_DRM_PANIC
-./scripts/config --enable CONFIG_DRM_PANIC_SCREEN_QR_CODE
+#Broken in building with debian 13 with v6.12.x-ti
+./scripts/config --disable CONFIG_DRM_PANIC_SCREEN_QR_CODE
 
 #TI: 10.00.06
 ./scripts/config --disable CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
