@@ -473,6 +473,7 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 #BeagleBoard.org
 ./scripts/config --enable CONFIG_MSPM0_I2C
 ./scripts/config --module CONFIG_SEG_LED_GPIO
+./scripts/config --module CONFIG_INPUT_PWM_BEEPER
 ./scripts/config --module CONFIG_SND_SOC_TLV320AIC3X_I2C
 ./scripts/config --module CONFIG_WIZNET_W5100
 ./scripts/config --module CONFIG_WIZNET_W5100_SPI
