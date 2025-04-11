@@ -3,8 +3,8 @@
 #
 #https://packages.debian.org/source/trixie/linux
 #
-abi="6.12.20"
-kernel="6.12.20-1"
+abi="6.12.21"
+kernel="6.12.21-1"
 #
 #abi="6.13-rc7"
 #kernel="6.13~rc7-1~exp1"

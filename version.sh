@@ -13,8 +13,6 @@ bborg_branch="6.12-arm32"
 #arm
 KERNEL_ARCH=arm
 DEBARCH=armhf
-#toolchain="gcc_6_arm"
-#toolchain="gcc_7_arm"
 #toolchain="gcc_8_arm"
 #toolchain="gcc_9_arm"
 #toolchain="gcc_10_arm"
@@ -25,8 +23,6 @@ toolchain="gcc_14_arm"
 #arm64
 #KERNEL_ARCH=arm64
 #DEBARCH=arm64
-#toolchain="gcc_6_aarch64"
-#toolchain="gcc_7_aarch64"
 #toolchain="gcc_8_aarch64"
 #toolchain="gcc_9_aarch64"
 #toolchain="gcc_10_aarch64"
@@ -37,7 +33,6 @@ toolchain="gcc_14_arm"
 #riscv64
 #KERNEL_ARCH=riscv
 #DEBARCH=riscv64
-#toolchain="gcc_7_riscv64"
 #toolchain="gcc_8_riscv64"
 #toolchain="gcc_9_riscv64"
 #toolchain="gcc_10_riscv64"
@@ -56,7 +51,7 @@ KERNEL_TAG=${KERNEL_REL}.17
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.12/
 kernel_rt=".8-rt8"
 #Kernel Build
-BUILD=${build_prefix}7
+BUILD=${build_prefix}7.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -67,8 +62,8 @@ BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-sdk_git_old_release="5657fc069e8b33255b027a2416b51133a98df939"
-sdk_git_new_release="1ac80adecb8ebffa654be744e5e5f7343b0abf78"
-SDK="11.00.08"
+sdk_git_old_release="1ac80adecb8ebffa654be744e5e5f7343b0abf78"
+sdk_git_new_release="c85877d40f8e70e1e201eca2ae1648781f238a37"
+SDK="11.00.09"
 
 #
