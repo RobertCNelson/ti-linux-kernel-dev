@@ -289,12 +289,21 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 ./scripts/config --module CONFIG_NITRO_ENCLAVES
 ./scripts/config --module CONFIG_USB_MASS_STORAGE
 
+#debian 6.12.20-1
+./scripts/config --module CONFIG_VIDEO_OV5675
+./scripts/config --enable CONFIG_RPCSEC_GSS_KRB5_ENCTYPES_AES_SHA2
+
 #debian 6.13.5-1
 ./scripts/config --enable CONFIG_UDMABUF
 
 #debian 6.13.7-1
 ./scripts/config --module CONFIG_VIRTIO_IOMMU
 ./scripts/config --enable CONFIG_CRYPTO_ECDSA
+
+#debian 6.13.8-1
+./scripts/config --enable CONFIG_NVME_TARGET_PASSTHRU
+./scripts/config --module CONFIG_NVME_TARGET_LOOP
+./scripts/config --module CONFIG_NVME_TARGET_FCLOOP
 
 #new in v6.14
 ./scripts/config --module CONFIG_NTSYNC
@@ -331,6 +340,38 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 ./scripts/config --enable CONFIG_UBIFS_FS
 ./scripts/config --enable CONFIG_CRYPTO_ZSTD
 ./scripts/config --enable CONFIG_ZSTD_COMPRESS
+#TI: 11.00.06
+./scripts/config --module CONFIG_CRYPTO_CRC64_ISO3309
+./scripts/config --enable CONFIG_CRYPTO_USER_API_HASH
+./scripts/config --enable CONFIG_CRYPTO_DEV_TI_MCRC64
+./scripts/config --enable CONFIG_CRYPTO_DEV_TI_DTHEV2
+./scripts/config --module CONFIG_TOUCHSCREEN_ILI210X
+
+#TI: 11.00.07
+./scripts/config --module CONFIG_SERIAL_8250_PRUSS
+./scripts/config --module CONFIG_VIDEO_IMX728
+./scripts/config --module CONFIG_VIDEO_OV2312
+
+#TI: 11.00.08
+./scripts/config --module CONFIG_VIDEO_OX05B1S
+
+#new in v6.15
+./scripts/config --module CONFIG_FWCTL
+./scripts/config --module CONFIG_IWLMLD
+./scripts/config --module CONFIG_RTW88_8814AU
+./scripts/config --module CONFIG_RTW88_8814AE
+./scripts/config --module CONFIG_SPI_OFFLOAD_TRIGGER_PWM
+./scripts/config --module CONFIG_SENSORS_HTU31
+./scripts/config --module CONFIG_SENSORS_INA233
+./scripts/config --module CONFIG_HID_UNIVERSAL_PIDFF
+./scripts/config --module CONFIG_AD4030
+./scripts/config --module CONFIG_AD4851
+./scripts/config --module CONFIG_AD7191
+./scripts/config --module CONFIG_TI_ADS7138
+./scripts/config --module CONFIG_ADIS16550
+./scripts/config --module CONFIG_AL3000A
+./scripts/config --module CONFIG_APDS9160
+./scripts/config --module CONFIG_SI7210
 
 #debian Trixie has fubared lz4/lz4c, back to xz for stabilty...
 #  LZ4     arch/arm/boot/compressed/piggy_data
@@ -351,5 +392,7 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 ./scripts/config --enable CONFIG_MSPM0_I2C
 ./scripts/config --module CONFIG_SEG_LED_GPIO
 ./scripts/config --module CONFIG_SND_SOC_TLV320AIC3X_I2C
+./scripts/config --module CONFIG_WIZNET_W5100
+./scripts/config --module CONFIG_WIZNET_W5100_SPI
 
 cd ${DIR}/
