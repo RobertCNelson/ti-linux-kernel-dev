@@ -121,13 +121,6 @@ external_git () {
 		echo "${top_of_branch}"
 	fi
 	#exit 2
-
-	#cd ./KERNEL/
-	#git pull --no-edit git://git.ti.com/ti-linux-kernel/ti-linux-kernel.git ti-linux-6.12.y-cicd
-	#git format-patch -7 -o ../patches/drivers/ti_staging/
-
-	#dir 'drivers/ti_staging'
-	#exit 2
 }
 
 rt_cleanup () {
@@ -553,8 +546,6 @@ drivers () {
 	dir 'external/cadence'
 	dir 'external/gasket'
 
-	#git revert --no-edit -s 3edf588e7fe00e90d1dc7fb9e599861b2c2cf442
-	#Breaking Kingston eMMC on new BBB's..
 	dir 'drivers/fixes/mmc'
 }
 
