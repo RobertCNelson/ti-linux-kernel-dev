@@ -13,8 +13,6 @@ bborg_branch="6.6-rt-arm64"
 #arm
 #KERNEL_ARCH=arm
 #DEBARCH=armhf
-#toolchain="gcc_6_arm"
-#toolchain="gcc_7_arm"
 #toolchain="gcc_8_arm"
 #toolchain="gcc_9_arm"
 #toolchain="gcc_10_arm"
@@ -25,8 +23,6 @@ bborg_branch="6.6-rt-arm64"
 #arm64
 KERNEL_ARCH=arm64
 DEBARCH=arm64
-#toolchain="gcc_6_aarch64"
-#toolchain="gcc_7_aarch64"
 #toolchain="gcc_8_aarch64"
 #toolchain="gcc_9_aarch64"
 #toolchain="gcc_10_aarch64"
@@ -37,7 +33,6 @@ toolchain="gcc_13_aarch64"
 #riscv64
 #KERNEL_ARCH=riscv
 #DEBARCH=riscv64
-#toolchain="gcc_7_riscv64"
 #toolchain="gcc_8_riscv64"
 #toolchain="gcc_9_riscv64"
 #toolchain="gcc_10_riscv64"
@@ -56,7 +51,7 @@ KERNEL_TAG=${KERNEL_REL}.58
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.6/
 kernel_rt=".58-rt45"
 #Kernel Build
-BUILD=${build_prefix}24
+BUILD=${build_prefix}24.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
