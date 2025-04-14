@@ -394,6 +394,9 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_NVME_TARGET_LOOP
 ./scripts/config --module CONFIG_NVME_TARGET_FCLOOP
 
+#debian 6.13.11-1
+./scripts/config --enable CONFIG_KALLSYMS_ALL
+
 #new in v6.14
 ./scripts/config --module CONFIG_NTSYNC
 ./scripts/config --module CONFIG_PPS_GENERATOR
