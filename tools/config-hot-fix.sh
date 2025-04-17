@@ -400,4 +400,7 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 ./scripts/config --module CONFIG_WIZNET_W5100
 ./scripts/config --module CONFIG_WIZNET_W5100_SPI
 
+#Regressions:
+./scripts/config --enable CONFIG_MMC_BLOCK
+
 cd ${DIR}/
