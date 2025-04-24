@@ -359,16 +359,19 @@ beagleboard_dtbs () {
 		device="PB-MIKROBUS-1" ; arm_dtbo_makefile_append
 
 		device="am335x-boneblack-uboot.dtb" ; arm_dtb_makefile_append
+		device="am335x-boneblack-revd.dtb" ; arm_dtb_makefile_append
 
 		#device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
 		#device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
 		#device="am335x-sancloud-bbe-extended-wifi-uboot.dtb" ; arm_dtb_makefile_append
 
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
+		#device="k3-am625-pocketbeagle2.dtb" ; k3_dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
 		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
 		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
+		device="k3-j722s-beagley-ai-evt.dtb" ; k3_dtb_makefile_append
 
 		device="BONE-I2C1" ; k3_dtbo_makefile_append
 		device="BONE-I2C2" ; k3_dtbo_makefile_append
@@ -439,6 +442,7 @@ beagleboard_dtbs () {
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_14" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_14-p9_16" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_16" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-pwm-epwm4-p9_25" ; k3_dtbo_makefile_append
 
 		device="k3-j721e-edgeai-apps" ; k3_dtbo_makefile_append
 		device="k3-j721e-vision-apps" ; k3_dtbo_makefile_append
@@ -605,6 +609,9 @@ drivers () {
 	dir 'drivers/ti/tsc'
 	dir 'drivers/fb_ssd1306'
 	dir 'drivers/hackaday'
+
+	dir 'drivers/it66121'
+	dir 'drivers/ite-it66121-hpd'
 
 	dir 'external/android'
 	dir 'external/ti-amx3-cm3-pm-firmware'
