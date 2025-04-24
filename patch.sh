@@ -359,6 +359,7 @@ beagleboard_dtbs () {
 		device="PB-MIKROBUS-1" ; arm_dtbo_makefile_append
 
 		device="am335x-boneblack-uboot.dtb" ; arm_dtb_makefile_append
+		device="am335x-boneblack-revd.dtb" ; arm_dtb_makefile_append
 
 		#device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
 		#device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
