@@ -627,8 +627,7 @@ drivers () {
 	dir 'drivers/fb_ssd1306'
 	dir 'drivers/hackaday'
 
-	dir 'drivers/it66121'
-	dir 'drivers/ite-it66121-hpd'
+	dir 'drivers/ite-it66121'
 
 	dir 'external/android'
 	dir 'external/ti-amx3-cm3-pm-firmware'
