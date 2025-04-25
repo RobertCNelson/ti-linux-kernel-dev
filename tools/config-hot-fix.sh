@@ -481,6 +481,9 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_WIZNET_W5100
 ./scripts/config --module CONFIG_WIZNET_W5100_SPI
 
+#Regressions:
+./scripts/config --enable CONFIG_MMC_BLOCK
+
 #PCIE
 ./scripts/config --enable CONFIG_PCI_ENDPOINT
 ./scripts/config --enable CONFIG_PCI_ENDPOINT_CONFIGFS
