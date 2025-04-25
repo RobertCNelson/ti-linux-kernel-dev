@@ -227,9 +227,22 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 #removed in 6.7-rc1
 ./scripts/config --disable CONFIG_DEV_APPLETALK
 
-#09.02.00.005
+#TI delta 09.01.00.004:
+./scripts/config --enable CONFIG_APERTURE_HELPERS
+./scripts/config --enable CONFIG_FB_CFB_FILLRECT
+./scripts/config --enable CONFIG_FB_CFB_COPYAREA
+./scripts/config --enable CONFIG_FB_CFB_IMAGEBLIT
+./scripts/config --enable CONFIG_FB_SIMPLE
+./scripts/config --module CONFIG_TI_EQEP
+
 ./scripts/config --module CONFIG_VIDEO_TI_VIP
 ./scripts/config --module CONFIG_VIDEO_OV1063X
+./scripts/config --module CONFIG_VIDEO_OV2312
+./scripts/config --module CONFIG_VIDEO_OV5640
+./scripts/config --module CONFIG_VIDEO_OV5645
+./scripts/config --module CONFIG_VIDEO_IMX219
+./scripts/config --module CONFIG_VIDEO_IMX390
+./scripts/config --module CONFIG_VIDEO_OX05B1S
 
 #enable SPI/W1
 ./scripts/config --enable CONFIG_SPI_OMAP24XX
@@ -252,7 +265,14 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 ./scripts/config --module CONFIG_PWM_GPIO
 
 #10.00.05
+#REMOTEPROC
+./scripts/config --module CONFIG_RPMSG
+./scripts/config --module CONFIG_RPMSG_NS
 ./scripts/config --module CONFIG_RPMSG_PRU
+./scripts/config --enable CONFIG_RPMSG_VIRTIO
+
+#TI: 10.01.01
+./scripts/config --module CONFIG_OMAP2PLUS_MBOX
 
 #new in v6.12.x
 ./scripts/config --enable CONFIG_RPMB
@@ -304,6 +324,9 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 ./scripts/config --enable CONFIG_NVME_TARGET_PASSTHRU
 ./scripts/config --module CONFIG_NVME_TARGET_LOOP
 ./scripts/config --module CONFIG_NVME_TARGET_FCLOOP
+
+#debian 6.13.11-1
+./scripts/config --enable CONFIG_KALLSYMS_ALL
 
 #new in v6.14
 ./scripts/config --module CONFIG_NTSYNC
@@ -396,5 +419,8 @@ config="CONFIG_USB_TI_CPPI41_DMA" ; config_disable
 ./scripts/config --module CONFIG_SND_SOC_TLV320AIC3X_I2C
 ./scripts/config --module CONFIG_WIZNET_W5100
 ./scripts/config --module CONFIG_WIZNET_W5100_SPI
+
+#Regressions:
+./scripts/config --enable CONFIG_MMC_BLOCK
 
 cd ${DIR}/

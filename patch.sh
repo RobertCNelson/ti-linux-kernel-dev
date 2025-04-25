@@ -127,6 +127,7 @@ mainline_patches () {
 	#exit 2
 #	dir 'mainline/greybus'
 	dir 'rfc/mainline'
+	dir 'mainline/pocketbeagle2'
 	#exit 2
 }
 
@@ -299,6 +300,7 @@ k3_makefile_patch_cleanup_overlays () {
 	echo "# Enable support for device-tree overlays" >> arch/arm64/boot/dts/ti/Makefile
 	cat arch/arm64/boot/dts/ti/Makefile.dtc >> arch/arm64/boot/dts/ti/Makefile
 	rm arch/arm64/boot/dts/ti/Makefile.dtc
+	echo "DTC_FLAGS_k3-am62-pocketbeagle2 += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-am6232-pocketbeagle2 += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-am67a-beagley-ai += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-j721e-beagleboneai64 += -@" >> arch/arm64/boot/dts/ti/Makefile
@@ -368,6 +370,7 @@ beagleboard_dtbs () {
 		device="PB-MIKROBUS-1" ; arm_dtbo_makefile_append
 
 		device="am335x-boneblack-uboot.dtb" ; arm_dtb_makefile_append
+		device="am335x-boneblack-revd.dtb" ; arm_dtb_makefile_append
 
 		#device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
 		#device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
