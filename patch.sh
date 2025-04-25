@@ -611,8 +611,9 @@ drivers () {
 	dir 'drivers/mikrobus'
 	dir 'drivers/fixes'
 	dir 'drivers/cc33xx'
-	dir 'drivers/it66121'
-	dir 'drivers/ite-it66121-hpd'
+
+	dir 'drivers/ite-it66121'
+
 	dir 'drivers/pcie'
 	dir 'drivers/davinci-mcasp'
 	dir 'drivers/tidss'
