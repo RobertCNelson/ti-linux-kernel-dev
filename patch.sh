@@ -123,6 +123,14 @@ external_git () {
 	#exit 2
 }
 
+mainline_patches () {
+	#exit 2
+#	dir 'mainline/greybus'
+#	dir 'rfc/mainline'
+	dir 'mainline/pocketbeagle2'
+	#exit 2
+}
+
 wpanusb () {
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -290,6 +298,7 @@ k3_makefile_patch_cleanup_overlays () {
 	echo "# Enable support for device-tree overlays" >> arch/arm64/boot/dts/ti/Makefile
 	cat arch/arm64/boot/dts/ti/Makefile.dtc >> arch/arm64/boot/dts/ti/Makefile
 	rm arch/arm64/boot/dts/ti/Makefile.dtc
+	echo "DTC_FLAGS_k3-am62-pocketbeagle2 += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-am625-beaglemod += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-am67a-beagley-ai += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-j721e-beagleboneai64 += -@" >> arch/arm64/boot/dts/ti/Makefile
@@ -359,6 +368,7 @@ beagleboard_dtbs () {
 		device="PB-MIKROBUS-1" ; arm_dtbo_makefile_append
 
 		device="am335x-boneblack-uboot.dtb" ; arm_dtb_makefile_append
+		device="am335x-boneblack-revd.dtb" ; arm_dtb_makefile_append
 
 		#device="am335x-sancloud-bbe-uboot.dtb" ; arm_dtb_makefile_append
 		#device="am335x-sancloud-bbe-lite-uboot.dtb" ; arm_dtb_makefile_append
@@ -367,7 +377,7 @@ beagleboard_dtbs () {
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
-		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
+		device="k3-am625-beaglemod.dtb" ; k3_dtb_makefile_append
 		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
 
 		device="BONE-I2C1" ; k3_dtbo_makefile_append
@@ -439,6 +449,15 @@ beagleboard_dtbs () {
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_14" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_14-p9_16" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_16" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-pwm-epwm4-p9_25" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi1-cs0" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi1-cs0-no-miso" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi2-cs0" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi3-cs0-no-miso" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi6-cs0-cs1" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi6-cs0" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi6-cs1-no-miso" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-spi-mcspi7-cs0" ; k3_dtbo_makefile_append
 
 		device="k3-j721e-edgeai-apps" ; k3_dtbo_makefile_append
 		device="k3-j721e-vision-apps" ; k3_dtbo_makefile_append
@@ -528,12 +547,14 @@ linux_scripts () {
 			post_backports
 		else
 			patch_backports
+			#exit 2
 			${git} "${DIR}/patches/backports/${subsystem}/0002-fixup.patch"
 		fi
 	fi
 }
 
 linux_scripts
+mainline_patches
 wpanusb
 wireless_regdb
 beagleboard_dtbs
@@ -609,8 +630,6 @@ drivers () {
 	dir 'external/android'
 	dir 'external/ti-amx3-cm3-pm-firmware'
 
-	#git revert --no-edit -s 3edf588e7fe00e90d1dc7fb9e599861b2c2cf442
-	#Breaking Kingston eMMC on new BBB's..
 	dir 'drivers/fixes/mmc'
 }
 
