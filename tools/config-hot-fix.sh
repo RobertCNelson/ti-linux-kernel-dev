@@ -397,6 +397,9 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_NVME_TARGET_LOOP
 ./scripts/config --module CONFIG_NVME_TARGET_FCLOOP
 
+#debian 6.13.11-1
+./scripts/config --enable CONFIG_KALLSYMS_ALL
+
 #new in v6.14
 ./scripts/config --module CONFIG_NTSYNC
 ./scripts/config --module CONFIG_PPS_GENERATOR
@@ -480,6 +483,9 @@ config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
 ./scripts/config --module CONFIG_SND_SOC_TLV320AIC3X_I2C
 ./scripts/config --module CONFIG_WIZNET_W5100
 ./scripts/config --module CONFIG_WIZNET_W5100_SPI
+
+#Regressions:
+./scripts/config --enable CONFIG_MMC_BLOCK
 
 #PCIE
 ./scripts/config --enable CONFIG_PCI_ENDPOINT
