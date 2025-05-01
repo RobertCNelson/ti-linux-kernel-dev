@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# Copyright (c) 2009-2023 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2025 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ git_bin=$(which git)
 git="${git_bin} am"
 git_patchset="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
 if [ "${USE_LOCAL_GIT_MIRROR}" ] ; then
-	git_patchset="https://git.gfnd.rcn-ee.org/TexasInstruments/ti-linux-kernel.git"
+	git_patchset="http://forgejo.gfnd.rcn-ee.org:3000/TexasInstruments/ti-linux-kernel.git"
 fi
 #git_opts
 
