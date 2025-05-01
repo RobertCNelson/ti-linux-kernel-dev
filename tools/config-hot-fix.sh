@@ -2,98 +2,36 @@
 
 DIR=$PWD
 
-config_enable () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "xy" ] ; then
-		echo "Setting: ${config}=y"
-		./scripts/config --enable ${config}
-	fi
-}
-
-config_disable () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "xn" ] ; then
-		echo "Setting: ${config}=n"
-		./scripts/config --disable ${config}
-	fi
-}
-
-config_enable_special () {
-	test_module=$(cat .config | grep ${config} || true)
-	if [ "x${test_module}" = "x# ${config} is not set" ] ; then
-		echo "Setting: ${config}=y"
-		sed -i -e 's:# '$config' is not set:'$config'=y:g' .config
-	fi
-	if [ "x${test_module}" = "x${config}=m" ] ; then
-		echo "Setting: ${config}=y"
-		sed -i -e 's:'$config'=m:'$config'=y:g' .config
-	fi
-}
-
-config_module_special () {
-	test_module=$(cat .config | grep ${config} || true)
-	if [ "x${test_module}" = "x# ${config} is not set" ] ; then
-		echo "Setting: ${config}=m"
-		sed -i -e 's:# '$config' is not set:'$config'=m:g' .config
-	else
-		echo "$config=m" >> .config
-	fi
-}
-
-config_module () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "xm" ] ; then
-		echo "Setting: ${config}=m"
-		./scripts/config --module ${config}
-	fi
-}
-
-config_string () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "x${option}" ] ; then
-		echo "Setting: ${config}=\"${option}\""
-		./scripts/config --set-str ${config} "${option}"
-	fi
-}
-
-config_value () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "x${option}" ] ; then
-		echo "Setting: ${config}=${option}"
-		./scripts/config --set-val ${config} ${option}
-	fi
-}
-
 cd ${DIR}/KERNEL/
 
 #Nuke DSA SubSystem: 2020.02.20
-config="CONFIG_HAVE_NET_DSA" ; config_disable
-config="CONFIG_NET_DSA" ; config_disable
+./scripts/config --disable CONFIG_HAVE_NET_DSA
+./scripts/config --disable CONFIG_NET_DSA
 
 #SC16IS7XX breaks SERIAL_DEV_CTRL_TTYPORT, which breaks Bluetooth on wl18xx
-config="CONFIG_SERIAL_SC16IS7XX_CORE" ; config_disable
-config="CONFIG_SERIAL_SC16IS7XX" ; config_disable
-config="CONFIG_SERIAL_SC16IS7XX_I2C" ; config_disable
-config="CONFIG_SERIAL_SC16IS7XX_SPI" ; config_disable
-config="CONFIG_SERIAL_DEV_CTRL_TTYPORT" ; config_enable
+./scripts/config --disable CONFIG_SERIAL_SC16IS7XX_CORE
+./scripts/config --disable CONFIG_SERIAL_SC16IS7XX
+./scripts/config --disable CONFIG_SERIAL_SC16IS7XX_I2C
+./scripts/config --disable CONFIG_SERIAL_SC16IS7XX_SPI
+./scripts/config --enable CONFIG_SERIAL_DEV_CTRL_TTYPORT
 
 #WIMAX going to be removed soon...
-config="CONFIG_WIMAX" ; config_disable
-config="CONFIG_WIMAX_I2400M" ; config_disable
-config="CONFIG_WIMAX_I2400M_USB" ; config_disable
+./scripts/config --disable CONFIG_WIMAX
+./scripts/config --disable CONFIG_WIMAX_I2400M
+./scripts/config --disable CONFIG_WIMAX_I2400M_USB
 
 #Docker.io:
-config="CONFIG_CGROUP_HUGETLB" ; config_enable
-config="CONFIG_RT_GROUP_SCHED" ; config_enable
+./scripts/config --enable CONFIG_CGROUP_HUGETLB
+./scripts/config --enable CONFIG_RT_GROUP_SCHED
 
 #PHY: CONFIG_DP83867_PHY
-config="CONFIG_DP83867_PHY" ; config_enable
+./scripts/config --enable CONFIG_DP83867_PHY
 
 #2022.03.01 fix W1, needs to be a module now...
-config="CONFIG_W1" ; config_module
-config="CONFIG_W1_MASTER_GPIO" ; config_module
-config="CONFIG_W1_SLAVE_DS2430" ; config_module
-config="CONFIG_W1_SLAVE_DS2433_CRC" ; config_enable
+./scripts/config --enable CONFIG_W1
+./scripts/config --module CONFIG_W1_MASTER_GPIO
+./scripts/config --module CONFIG_W1_SLAVE_DS2430
+./scripts/config --enable CONFIG_W1_SLAVE_DS2433_CRC
 
 ./scripts/config --disable CONFIG_MODULE_COMPRESS_ZSTD
 ./scripts/config --enable CONFIG_MODULE_COMPRESS_XZ
