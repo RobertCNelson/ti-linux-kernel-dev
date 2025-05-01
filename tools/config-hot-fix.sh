@@ -2,68 +2,6 @@
 
 DIR=$PWD
 
-config_enable () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "xy" ] ; then
-		echo "Setting: ${config}=y"
-		./scripts/config --enable ${config}
-	fi
-}
-
-config_disable () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "xn" ] ; then
-		echo "Setting: ${config}=n"
-		./scripts/config --disable ${config}
-	fi
-}
-
-config_enable_special () {
-	test_module=$(cat .config | grep ${config} || true)
-	if [ "x${test_module}" = "x# ${config} is not set" ] ; then
-		echo "Setting: ${config}=y"
-		sed -i -e 's:# '$config' is not set:'$config'=y:g' .config
-	fi
-	if [ "x${test_module}" = "x${config}=m" ] ; then
-		echo "Setting: ${config}=y"
-		sed -i -e 's:'$config'=m:'$config'=y:g' .config
-	fi
-}
-
-config_module_special () {
-	test_module=$(cat .config | grep ${config} || true)
-	if [ "x${test_module}" = "x# ${config} is not set" ] ; then
-		echo "Setting: ${config}=m"
-		sed -i -e 's:# '$config' is not set:'$config'=m:g' .config
-	else
-		echo "$config=m" >> .config
-	fi
-}
-
-config_module () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "xm" ] ; then
-		echo "Setting: ${config}=m"
-		./scripts/config --module ${config}
-	fi
-}
-
-config_string () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "x${option}" ] ; then
-		echo "Setting: ${config}=\"${option}\""
-		./scripts/config --set-str ${config} "${option}"
-	fi
-}
-
-config_value () {
-	ret=$(./scripts/config --state ${config})
-	if [ ! "x${ret}" = "x${option}" ] ; then
-		echo "Setting: ${config}=${option}"
-		./scripts/config --set-val ${config} ${option}
-	fi
-}
-
 cd ${DIR}/KERNEL/
 
 #Docker.io
@@ -91,66 +29,66 @@ cd ${DIR}/KERNEL/
 
 #abi="5.13.0-trunk"
 #kernel="5.13.9-1~exp2"
-config="CONFIG_BPF_UNPRIV_DEFAULT_OFF" ; config_enable
-config="CONFIG_CGROUP_MISC" ; config_enable
-config="CONFIG_RESET_ATTACK_MITIGATION" ; config_enable
+./scripts/config --enable CONFIG_BPF_UNPRIV_DEFAULT_OFF
+./scripts/config --enable CONFIG_CGROUP_MISC
+./scripts/config --enable CONFIG_RESET_ATTACK_MITIGATION
 
 #LIBCOMPOSITE built-in finally works... ;)
-config="CONFIG_USB_LIBCOMPOSITE" ; config_enable
-config="CONFIG_USB_F_ACM" ; config_enable
-config="CONFIG_USB_F_SS_LB" ; config_enable
-config="CONFIG_USB_U_SERIAL" ; config_enable
-config="CONFIG_USB_U_ETHER" ; config_enable
-config="CONFIG_USB_U_AUDIO" ; config_enable
-config="CONFIG_USB_F_SERIAL" ; config_enable
-config="CONFIG_USB_F_OBEX" ; config_enable
-config="CONFIG_USB_F_NCM" ; config_enable
-config="CONFIG_USB_F_ECM" ; config_enable
-config="CONFIG_USB_F_PHONET" ; config_module
-config="CONFIG_USB_F_EEM" ; config_enable
-config="CONFIG_USB_F_SUBSET" ; config_enable
-config="CONFIG_USB_F_RNDIS" ; config_enable
-config="CONFIG_USB_F_MASS_STORAGE" ; config_enable
-config="CONFIG_USB_F_FS" ; config_enable
-config="CONFIG_USB_F_UAC1" ; config_enable
-config="CONFIG_USB_F_UAC2" ; config_enable
-config="CONFIG_USB_F_UVC" ; config_module
-config="CONFIG_USB_F_MIDI" ; config_enable
-config="CONFIG_USB_F_HID" ; config_enable
-config="CONFIG_USB_F_PRINTER" ; config_enable
-config="CONFIG_USB_F_TCM" ; config_module
-config="CONFIG_USB_CONFIGFS" ; config_enable
-config="CONFIG_USB_CONFIGFS_SERIAL" ; config_enable
-config="CONFIG_USB_CONFIGFS_ACM" ; config_enable
-config="CONFIG_USB_CONFIGFS_OBEX" ; config_enable
-config="CONFIG_USB_CONFIGFS_NCM" ; config_enable
-config="CONFIG_USB_CONFIGFS_ECM" ; config_enable
-config="CONFIG_USB_CONFIGFS_ECM_SUBSET" ; config_enable
-config="CONFIG_USB_CONFIGFS_RNDIS" ; config_enable
-config="CONFIG_USB_CONFIGFS_EEM" ; config_enable
-config="CONFIG_USB_CONFIGFS_PHONET" ; config_enable
-config="CONFIG_USB_CONFIGFS_MASS_STORAGE" ; config_enable
-config="CONFIG_USB_CONFIGFS_F_LB_SS" ; config_enable
-config="CONFIG_USB_CONFIGFS_F_FS" ; config_enable
-config="CONFIG_USB_CONFIGFS_F_UAC1" ; config_enable
-config="CONFIG_USB_CONFIGFS_F_UAC2" ; config_enable
-config="CONFIG_USB_CONFIGFS_F_MIDI" ; config_enable
-config="CONFIG_USB_CONFIGFS_F_HID" ; config_enable
-config="CONFIG_USB_CONFIGFS_F_UVC" ; config_enable
-config="CONFIG_USB_CONFIGFS_F_PRINTER" ; config_enable
+./scripts/config --enable CONFIG_USB_LIBCOMPOSITE
+./scripts/config --enable CONFIG_USB_F_ACM
+./scripts/config --enable CONFIG_USB_F_SS_LB
+./scripts/config --enable CONFIG_USB_U_SERIAL
+./scripts/config --enable CONFIG_USB_U_ETHER
+./scripts/config --enable CONFIG_USB_U_AUDIO
+./scripts/config --enable CONFIG_USB_F_SERIAL
+./scripts/config --enable CONFIG_USB_F_OBEX
+./scripts/config --enable CONFIG_USB_F_NCM
+./scripts/config --enable CONFIG_USB_F_ECM
+./scripts/config --module CONFIG_USB_F_PHONET
+./scripts/config --enable CONFIG_USB_F_EEM
+./scripts/config --enable CONFIG_USB_F_SUBSET
+./scripts/config --enable CONFIG_USB_F_RNDIS
+./scripts/config --enable CONFIG_USB_F_MASS_STORAGE
+./scripts/config --enable CONFIG_USB_F_FS
+./scripts/config --enable CONFIG_USB_F_UAC1
+./scripts/config --enable CONFIG_USB_F_UAC2
+./scripts/config --module CONFIG_USB_F_UVC
+./scripts/config --enable CONFIG_USB_F_MIDI
+./scripts/config --enable CONFIG_USB_F_HID
+./scripts/config --enable CONFIG_USB_F_PRINTER
+./scripts/config --module CONFIG_USB_F_TCM
+./scripts/config --enable CONFIG_USB_CONFIGFS
+./scripts/config --enable CONFIG_USB_CONFIGFS_SERIAL
+./scripts/config --enable CONFIG_USB_CONFIGFS_ACM
+./scripts/config --enable CONFIG_USB_CONFIGFS_OBEX
+./scripts/config --enable CONFIG_USB_CONFIGFS_NCM
+./scripts/config --enable CONFIG_USB_CONFIGFS_ECM
+./scripts/config --enable CONFIG_USB_CONFIGFS_ECM_SUBSET
+./scripts/config --enable CONFIG_USB_CONFIGFS_RNDIS
+./scripts/config --enable CONFIG_USB_CONFIGFS_EEM
+./scripts/config --enable CONFIG_USB_CONFIGFS_PHONET
+./scripts/config --enable CONFIG_USB_CONFIGFS_MASS_STORAGE
+./scripts/config --enable CONFIG_USB_CONFIGFS_F_LB_SS
+./scripts/config --enable CONFIG_USB_CONFIGFS_F_FS
+./scripts/config --enable CONFIG_USB_CONFIGFS_F_UAC1
+./scripts/config --enable CONFIG_USB_CONFIGFS_F_UAC2
+./scripts/config --enable CONFIG_USB_CONFIGFS_F_MIDI
+./scripts/config --enable CONFIG_USB_CONFIGFS_F_HID
+./scripts/config --enable CONFIG_USB_CONFIGFS_F_UVC
+./scripts/config --enable CONFIG_USB_CONFIGFS_F_PRINTER
 
 # Extras
-config="CONFIG_VIDEO_OV5647" ; config_module
-config="CONFIG_LED_TRIGGER_PHY" ; config_enable
-config="CONFIG_USB_LEDS_TRIGGER_USBPORT" ; config_module
-config="CONFIG_LEDS_TRIGGER_TRANSIENT" ; config_module
-config="CONFIG_LEDS_TRIGGER_CAMERA" ; config_module
-config="CONFIG_LEDS_TRIGGER_NETDEV" ; config_module
-config="CONFIG_LEDS_TRIGGER_PATTERN" ; config_module
-config="CONFIG_LEDS_TRIGGER_AUDIO" ; config_module
+./scripts/config --module CONFIG_VIDEO_OV5647
+./scripts/config --enable CONFIG_LED_TRIGGER_PHY
+./scripts/config --module CONFIG_USB_LEDS_TRIGGER_USBPORT
+./scripts/config --module CONFIG_LEDS_TRIGGER_TRANSIENT
+./scripts/config --module CONFIG_LEDS_TRIGGER_CAMERA
+./scripts/config --module CONFIG_LEDS_TRIGGER_NETDEV
+./scripts/config --module CONFIG_LEDS_TRIGGER_PATTERN
+./scripts/config --module CONFIG_LEDS_TRIGGER_AUDIO
 
 #PRU
-config="CONFIG_UIO_PDRV_GENIRQ" ; config_module
+./scripts/config --module CONFIG_UIO_PDRV_GENIRQ
 
 # We recommend to turn off Real-Time group scheduling in the
 # kernel when using systemd. RT group scheduling effectively
