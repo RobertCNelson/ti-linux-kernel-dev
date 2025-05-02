@@ -1,6 +1,6 @@
 #!/bin/sh -e
 #
-# Copyright (c) 2009-2018 Robert Nelson <robertcnelson@gmail.com>
+# Copyright (c) 2009-2024 Robert Nelson <robertcnelson@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -41,12 +41,6 @@ patch_kernel () {
 	cd "${DIR}/" || exit
 }
 
-flash_kernel_db () {
-	cat ./KERNEL/arch/${KERNEL_ARCH}/boot/dts/*.dts | grep 'model =' | grep -v ',model' | grep -v 'audio' | grep -v 'sgtl5000' | grep -v 'n-board' | awk -F'"' '{print $2}' | sort -u > /tmp/pre.db
-	sed -i -e 's/^/Machine: /' /tmp/pre.db
-	awk '{print $0 "\nMethod: generic\n"}' /tmp/pre.db > patches/all.db
-}
-
 copy_defconfig () {
 	cd "${DIR}/KERNEL" || exit
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" distclean
@@ -57,11 +51,13 @@ copy_defconfig () {
 	else
 		make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" rcn-ee_defconfig
 	fi
+	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" olddefconfig
 	cd "${DIR}/" || exit
 }
 
 make_menuconfig () {
 	cd "${DIR}/KERNEL" || exit
+	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" oldconfig
 	make ARCH=${KERNEL_ARCH} CROSS_COMPILE="${CC}" menuconfig
 	if [ ! -f "${DIR}/.yakbuild" ] ; then
 		cp -v .config "${DIR}/patches/defconfig"
@@ -190,27 +186,6 @@ if [ ! -f "${DIR}/system.sh" ] ; then
 	cp -v "${DIR}/system.sh.sample" "${DIR}/system.sh"
 fi
 
-if [ -f "${DIR}/branches.list" ] ; then
-	echo "-----------------------------"
-	echo "Please checkout one of the active branches:"
-	echo "-----------------------------"
-	cat "${DIR}/branches.list" | grep -v INACTIVE
-	echo "-----------------------------"
-	exit
-fi
-
-if [ -f "${DIR}/branch.expired" ] ; then
-	echo "-----------------------------"
-	echo "Support for this branch has expired."
-	unset response
-	echo -n "Do you wish to bypass this warning and support your self: (y/n)? "
-	read response
-	if [ "x${response}" != "xy" ] ; then
-		exit
-	fi
-	echo "-----------------------------"
-fi
-
 unset CC
 unset LINUX_GIT
 . "${DIR}/system.sh"
@@ -242,7 +217,6 @@ if [ "${FULL_REBUILD}" ] ; then
 	fi
 
 	patch_kernel
-	flash_kernel_db
 	copy_defconfig
 fi
 if [ ! "${AUTO_BUILD}" ] ; then
@@ -252,12 +226,14 @@ if [  -f "${DIR}/.yakbuild" ] ; then
 	BUILD=$(echo ${kernel_tag} | sed 's/[^-]*//'|| true)
 fi
 make_kernel
-make_modules_pkg
-if [ -f "${DIR}/KERNEL/scripts/Makefile.fwinst" ] ; then
-	#Finally nuked in v4.14.0-rc0 merge...
-	make_firmware_pkg
+if [ ! "${AUTO_BUILD_DONT_PKG}" ] ; then
+	make_modules_pkg
+	if [ -f "${DIR}/KERNEL/scripts/Makefile.fwinst" ] ; then
+		#Finally nuked in v4.14.0-rc0 merge...
+		make_firmware_pkg
+	fi
+	make_dtbs_pkg
 fi
-make_dtbs_pkg
 echo "-----------------------------"
 echo "Script Complete"
 echo "${KERNEL_UTS}" > kernel_version

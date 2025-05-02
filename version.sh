@@ -16,7 +16,8 @@ KERNEL_ARCH=arm
 #toolchain="gcc_linaro_eabi_5"
 #toolchain="gcc_linaro_eabi_6"
 #toolchain="gcc_linaro_eabi_7"
-#toolchain="gcc_linaro_gnueabi_4_6"
+#toolchain="gcc_arm_eabi_8"
+#toolchain="gcc_arm_eabi_9"
 #toolchain="gcc_linaro_gnueabihf_4_7"
 #toolchain="gcc_linaro_gnueabihf_4_8"
 #toolchain="gcc_linaro_gnueabihf_4_9"
@@ -24,19 +25,25 @@ KERNEL_ARCH=arm
 toolchain="gcc_linaro_gnueabihf_6"
 #toolchain="gcc_linaro_gnueabihf_7"
 #toolchain="gcc_arm_gnueabihf_8"
+#toolchain="gcc_arm_gnueabihf_9"
 #arm64
 #KERNEL_ARCH=arm64
 #toolchain="gcc_linaro_aarch64_gnu_5"
 #toolchain="gcc_linaro_aarch64_gnu_6"
 #toolchain="gcc_linaro_aarch64_gnu_7"
 #toolchain="gcc_arm_aarch64_gnu_8"
+#toolchain="gcc_arm_aarch64_gnu_9"
 
 #Kernel
+linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git"
+#linux_stable_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git"
+linux_stable_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
+#
 KERNEL_REL=4.9
 KERNEL_TAG=${KERNEL_REL}.147
 kernel_rt=".146-rt125"
 #Kernel Build
-BUILD=${build_prefix}121
+BUILD=${build_prefix}121.1
 
 #v5.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
