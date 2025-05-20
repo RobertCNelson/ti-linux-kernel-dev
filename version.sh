@@ -9,7 +9,10 @@ branch_prefix="ti-linux-arm32-"
 branch_postfix=".y"
 bborg_branch="6.12-arm32"
 
+#Changes
 #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.12-rc1
+#
+#Cross Compilers
 #arm
 KERNEL_ARCH=arm
 DEBARCH=armhf
@@ -20,6 +23,7 @@ DEBARCH=armhf
 #toolchain="gcc_12_arm"
 #toolchain="gcc_13_arm"
 toolchain="gcc_14_arm"
+#toolchain="gcc_15_arm"
 #arm64
 #KERNEL_ARCH=arm64
 #DEBARCH=arm64
@@ -30,6 +34,7 @@ toolchain="gcc_14_arm"
 #toolchain="gcc_12_aarch64"
 #toolchain="gcc_13_aarch64"
 #toolchain="gcc_14_aarch64"
+#toolchain="gcc_15_aarch64"
 #riscv64
 #KERNEL_ARCH=riscv
 #DEBARCH=riscv64
@@ -40,6 +45,7 @@ toolchain="gcc_14_arm"
 #toolchain="gcc_12_riscv64"
 #toolchain="gcc_13_riscv64"
 #toolchain="gcc_14_riscv64"
+#toolchain="gcc_15_riscv64"
 
 #Kernel
 linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git"
