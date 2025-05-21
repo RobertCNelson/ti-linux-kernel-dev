@@ -467,4 +467,6 @@ cd ${DIR}/KERNEL/
 ./scripts/config --enable CONFIG_MEMCG_V1
 ./scripts/config --enable CONFIG_CGROUP_DMEM
 
+./scripts/config --module CONFIG_DRM_POWERVR
+
 cd ${DIR}/
