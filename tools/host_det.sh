@@ -156,6 +156,8 @@ debian_regs () {
 	check_dpkg
 	pkg="zstd"
 	check_dpkg
+	pkg="libdw-dev"
+	check_dpkg
 	pkg="bindgen"
 	check_dpkg
 	pkg="rust-src"
