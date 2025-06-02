@@ -308,7 +308,7 @@ k3_makefile_patch_cleanup_overlays () {
 
 beagleboard_dtbs () {
 	branch="v6.6.x-Beagle"
-	https_repo="https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees.git"
+	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -379,16 +379,16 @@ beagleboard_dtbs () {
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
-		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
-		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
-
 		device="BONE-I2C1" ; k3_dtbo_makefile_append
 		device="BONE-I2C2" ; k3_dtbo_makefile_append
 		device="BONE-I2C3" ; k3_dtbo_makefile_append
 
+		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
+
 		#ls src/arm64/overlays/ | grep pocketbeagle2
 
 		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
 		device="k3-am62-pocketbeagle2-leds-off" ; k3_dtbo_makefile_append
 
 		#ls src/arm64/overlays/ | grep beaglemod
@@ -407,6 +407,8 @@ beagleboard_dtbs () {
 		device="k3-am625-beaglemod-rs485-2" ; k3_dtbo_makefile_append
 		device="k3-am625-beaglemod-rtc" ; k3_dtbo_makefile_append
 		device="k3-am625-beaglemod-wl1835" ; k3_dtbo_makefile_append
+
+		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
 
 		#ls src/arm64/overlays/ | grep beagley
 
