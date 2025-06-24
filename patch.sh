@@ -306,7 +306,7 @@ k3_makefile_patch_cleanup_overlays () {
 
 beagleboard_dtbs () {
 	branch="v6.1.x-Beagle"
-	https_repo="https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees.git"
+	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -378,11 +378,16 @@ beagleboard_dtbs () {
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
 		device="k3-am625-beaglemod.dtb" ; k3_dtb_makefile_append
-		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
 
 		device="BONE-I2C1" ; k3_dtbo_makefile_append
 		device="BONE-I2C2" ; k3_dtbo_makefile_append
 		device="BONE-I2C3" ; k3_dtbo_makefile_append
+
+		#ls src/arm64/overlays/ | grep pocketbeagle2
+
+		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-leds-off" ; k3_dtbo_makefile_append
 
 		#ls src/arm64/overlays/ | grep beaglemod
 
@@ -401,6 +406,8 @@ beagleboard_dtbs () {
 		device="k3-am625-beaglemod-rtc" ; k3_dtbo_makefile_append
 		device="k3-am625-beaglemod-wl1835" ; k3_dtbo_makefile_append
 
+		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
+
 		#ls src/arm64/overlays/ | grep beagley
 
 		device="k3-am67a-beagley-ai-csi0-imx219" ; k3_dtbo_makefile_append
@@ -410,10 +417,12 @@ beagleboard_dtbs () {
 		device="k3-am67a-beagley-ai-hdmi-dss0-dpi1" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-i2c1-400000" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-i2c1-ads1115" ; k3_dtbo_makefile_append
+		device="k3-am67a-beagley-ai-i2c1-rtc-rv3028" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-i2c1-ssd1306" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-lincolntech-185lcd-panel" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-mikroe-eth" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-mikroe-microsd" ; k3_dtbo_makefile_append
+		device="k3-am67a-beagley-ai-pps-gpio18" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-pwm-ecap0-gpio12" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-pwm-ecap1-gpio16" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-pwm-ecap1-gpio21" ; k3_dtbo_makefile_append
