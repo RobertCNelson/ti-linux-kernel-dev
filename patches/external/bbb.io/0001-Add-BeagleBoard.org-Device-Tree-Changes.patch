@@ -1,11 +1,11 @@
-From 0742d5d0a19f0f68584416371231c0d16edd17dd Mon Sep 17 00:00:00 2001
+From 389dd64f1b53e3e9686b2e56d463a8fb76923a41 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 24 Jun 2025 14:35:46 -0500
+Date: Tue, 24 Jun 2025 15:49:22 -0500
 Subject: [PATCH] Add BeagleBoard.org Device Tree Changes
 
 https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/v6.12.x-Beagle
 
-https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/2fd3b1299cd7305a00a40fdd9719387b5c45d88a
+https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/1c79bed50a7ca2bb30887feddcdf104754f2ea02
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
  .../boot/dts/ti/omap/AM335X-PRU-UIO-00A0.dtso |   28 +
@@ -123,7 +123,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  .../dts/ti/k3-am67a-beagley-ai-spi0-2cs.dtso  |   53 +
  .../dts/ti/k3-am67a-beagley-ai-spidev0.dtso   |   55 +
  .../ti/k3-am67a-beagley-ai-uart-ttyama0.dtso  |   29 +
- .../arm64/boot/dts/ti/k3-am67a-beagley-ai.dts |  167 ++
+ .../arm64/boot/dts/ti/k3-am67a-beagley-ai.dts |  229 ++
  .../k3-j721e-beagleboneai64-BBORG_MOTOR.dtso  |   95 +
  .../ti/k3-j721e-beagleboneai64-pinmux.dtsi    |  133 +
  ...-beagleboneai64-pwm-epwm0-p8_13-p8_19.dtso |   39 +
@@ -149,7 +149,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/dt-bindings/board/am335x-bone-pins.h  |  253 ++
  include/dt-bindings/mailbox/miv-ihc.h         |   17 +
  include/dt-bindings/pinctrl/omap.h            |    8 +-
- 141 files changed, 15144 insertions(+), 214 deletions(-)
+ 141 files changed, 15206 insertions(+), 214 deletions(-)
  create mode 100644 arch/arm/boot/dts/ti/omap/AM335X-PRU-UIO-00A0.dtso
  create mode 100644 arch/arm/boot/dts/ti/omap/BB-ADC-00A0.dtso
  create mode 100644 arch/arm/boot/dts/ti/omap/BB-BBBW-WL1835-00A0.dtso
@@ -15206,7 +15206,7 @@ index 000000000000..bf41c0488af1
 +	status = "okay";
 +};
 diff --git a/arch/arm64/boot/dts/ti/k3-am67a-beagley-ai.dts b/arch/arm64/boot/dts/ti/k3-am67a-beagley-ai.dts
-index 9be6bba28c26..0b6e023fd1ef 100644
+index 9be6bba28c26..cf6e2752dfb2 100644
 --- a/arch/arm64/boot/dts/ti/k3-am67a-beagley-ai.dts
 +++ b/arch/arm64/boot/dts/ti/k3-am67a-beagley-ai.dts
 @@ -10,7 +10,12 @@
@@ -15268,7 +15268,30 @@ index 9be6bba28c26..0b6e023fd1ef 100644
  	leds {
  		compatible = "gpio-leds";
  		pinctrl-names = "default";
-@@ -281,6 +310,39 @@ vdd_3v3_sd_pins_default: vdd-3v3-sd-default-pins {
+@@ -200,6 +229,22 @@ led-1 {
+ 			default-state = "on";
+ 		};
+ 	};
++
++	fan: cooling_fan {
++		compatible = "pwm-fan";
++		pinctrl-names = "default";
++		pinctrl-0 = <&pwm_fan_pins>;
++		fan-supply = <&vsys_5v0>;
++		#cooling-cells = <2>;
++		cooling-min-state = <0>;
++		cooling-max-state = <3>;
++		cooling-levels = <0 75 125 175 250>;
++		pwms = <&epwm2 0 40000 0>;
++		pulses-per-revolution = <2>;
++		interrupt-parent = <&main_gpio1>;
++		interrupts = <22 IRQ_TYPE_EDGE_FALLING>;
++		status = "okay";
++	};
+ };
+ 
+ &main_pmx0 {
+@@ -281,6 +326,46 @@ vdd_3v3_sd_pins_default: vdd-3v3-sd-default-pins {
  			J722S_IOPAD(0x0254, PIN_OUTPUT, 7) /* (E25) USB0_DRVVBUS.GPIO1_50 */
  		>;
  	};
@@ -15297,6 +15320,13 @@ index 9be6bba28c26..0b6e023fd1ef 100644
 +		>;
 +	};
 +
++	pwm_fan_pins: pwm-fan-pins {
++		pinctrl-single,pins = <
++			J722S_IOPAD(0x0124, PIN_OUTPUT, 4) /* (F26) MMC2_SDCD.EHRPWM2_A FAN_PWM */
++			J722S_IOPAD(0x01d0, PIN_INPUT, 7) /* (E22) UART0_CTSn.GPIO1_22 FAN_TACH */
++		>;
++	};
++
 +	main_uart6_pins_default: main-uart6-default-pins {
 +		pinctrl-single,pins = <
 +			J722S_IOPAD(0x0028, PIN_INPUT, 3)	/* (M27) OSPI0_D7.UART6_CTSn */
@@ -15308,7 +15338,7 @@ index 9be6bba28c26..0b6e023fd1ef 100644
  };
  
  &cpsw3g {
-@@ -308,7 +370,16 @@ &cpsw_port1 {
+@@ -308,7 +393,16 @@ &cpsw_port1 {
  	status = "okay";
  };
  
@@ -15325,7 +15355,7 @@ index 9be6bba28c26..0b6e023fd1ef 100644
  	status = "okay";
  };
  
-@@ -319,7 +390,23 @@ &main_uart0 {
+@@ -319,7 +413,62 @@ &main_uart0 {
  	status = "okay";
  };
  
@@ -15343,13 +15373,52 @@ index 9be6bba28c26..0b6e023fd1ef 100644
 +	};
 +};
 +
++&main0_thermal {
++	trips {
++		main0_active0: trip-active0 {
++			temperature = <40000>;
++			hysteresis = <5000>;
++			type = "active";
++		};
++
++		main0_active1: trip-active1 {
++			temperature = <48000>;
++			hysteresis = <3000>;
++			type = "active";
++		};
++
++		main0_active2: trip-active2 {
++			temperature = <60000>;
++			hysteresis = <10000>;
++			type = "active";
++		};
++	};
++
++	cooling-maps {
++		map1 {
++			trip = <&main0_active0>;
++			cooling-device = <&fan 1 1>;
++		};
++
++		map2 {
++			trip = <&main0_active1>;
++			cooling-device = <&fan 2 2>;
++		};
++
++		map3 {
++			trip = <&main0_active2>;
++			cooling-device = <&fan 3 3>;
++		};
++	};
++};
++
  &mcu_pmx0 {
 +	bootph-all;
 +
  	wkup_uart0_pins_default: wkup-uart0-default-pins {
  		pinctrl-single,pins = <
  			J722S_MCU_IOPAD(0x02c, PIN_INPUT, 0)	/* (C7) WKUP_UART0_CTSn */
-@@ -337,6 +424,21 @@ J722S_MCU_IOPAD(0x050, PIN_INPUT_PULLUP, 0)	/* (C6) WKUP_I2C1_SDA */
+@@ -337,6 +486,21 @@ J722S_MCU_IOPAD(0x050, PIN_INPUT_PULLUP, 0)	/* (C6) WKUP_I2C1_SDA */
  		>;
  		bootph-all;
  	};
@@ -15371,7 +15440,7 @@ index 9be6bba28c26..0b6e023fd1ef 100644
  };
  
  &wkup_uart0 {
-@@ -452,6 +554,33 @@ &sdhci1 {
+@@ -452,6 +616,33 @@ &sdhci1 {
  	status = "okay";
  };
  
@@ -15405,7 +15474,7 @@ index 9be6bba28c26..0b6e023fd1ef 100644
  &mailbox0_cluster0 {
  	status = "okay";
  
-@@ -549,3 +678,41 @@ &c7x_1 {
+@@ -549,3 +740,41 @@ &c7x_1 {
  			<&c7x_1_memory_region>;
  	status = "okay";
  };
