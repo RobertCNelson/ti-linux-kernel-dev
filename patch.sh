@@ -126,6 +126,7 @@ external_git () {
 mainline_patches () {
 	#exit 2
 	dir 'mainline/pocketbeagle2'
+	dir 'mainline/greenecho'
 	#exit 2
 }
 
@@ -346,9 +347,14 @@ beagleboard_dtbs () {
 
 		#ls src/arm64/overlays/ | grep pocketbeagle2
 
-		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
-		device="k3-am62-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-ardupilot-cape" ; k3_dtbo_makefile_append
 		device="k3-am62-pocketbeagle2-leds-off" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+
+		#ls src/arm64/overlays/ | grep beagleplay
+
+		device="k3-am625-beagleplay-bcfserial-no-firmware" ; k3_dtbo_makefile_append
 
 		#ls src/arm64/overlays/ | grep beaglemod
 
@@ -438,9 +444,9 @@ beagleboard_dtbs () {
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f arch/arm64/boot/dts/
 		${git_bin} add -f include/dt-bindings/
-		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${branch}" -m "https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" -s
+		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${branch}" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/${git_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/external/bbb.io/
-		echo "BBDTBS: https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" > ../patches/external/git/BBDTBS
+		echo "BBDTBS: https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/${git_hash}" > ../patches/external/git/BBDTBS
 
 		rm -rf ../${work_dir}/ || true
 
@@ -533,7 +539,7 @@ post_rpibackports () {
 }
 
 backports () {
-	backport_tag="v6.12.24"
+	backport_tag="v6.16-rc5"
 
 	subsystem="tps65219"
 	#regenerate="enable"
@@ -578,6 +584,8 @@ drivers () {
 	dir 'external/android'
 	dir 'external/cadence'
 	dir 'external/gasket'
+
+	dir 'drivers/tps65219'
 }
 
 ###
