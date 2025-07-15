@@ -126,7 +126,7 @@ external_git () {
 mainline_patches () {
 	#exit 2
 	dir 'mainline/pocketbeagle2'
-	dir 'mainline/greenecho'
+	#dir 'mainline/greenecho'
 	#exit 2
 }
 
@@ -296,7 +296,6 @@ beagleboard_dtbs () {
 		cp -v ../${work_dir}/src/arm64/ti/*.h arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
-		device="AM335X-PRU-UIO-00A0" ; arm_dtbo_makefile_append
 		device="BB-ADC-00A0" ; arm_dtbo_makefile_append
 		device="BB-BBBW-WL1835-00A0" ; arm_dtbo_makefile_append
 		device="BB-BBGG-WL1835-00A0" ; arm_dtbo_makefile_append
@@ -539,7 +538,7 @@ post_rpibackports () {
 }
 
 backports () {
-	backport_tag="v6.16-rc5"
+	backport_tag="v6.16-rc6"
 
 	subsystem="tps65219"
 	#regenerate="enable"
