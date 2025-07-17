@@ -126,6 +126,7 @@ external_git () {
 mainline_patches () {
 	#exit 2
 	dir 'mainline/pocketbeagle2'
+	#dir 'mainline/greenecho'
 	#exit 2
 }
 
@@ -267,7 +268,7 @@ k3_makefile_patch_cleanup_overlays () {
 
 beagleboard_dtbs () {
 	branch="v6.12.x-Beagle"
-	https_repo="https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees.git"
+	https_repo="https://github.com/beagleboard/BeagleBoard-DeviceTrees.git"
 	work_dir="BeagleBoard-DeviceTrees"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
@@ -295,7 +296,6 @@ beagleboard_dtbs () {
 		cp -v ../${work_dir}/src/arm64/ti/*.h arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
-		device="AM335X-PRU-UIO-00A0" ; arm_dtbo_makefile_append
 		device="BB-ADC-00A0" ; arm_dtbo_makefile_append
 		device="BB-BBBW-WL1835-00A0" ; arm_dtbo_makefile_append
 		device="BB-BBGG-WL1835-00A0" ; arm_dtbo_makefile_append
@@ -338,17 +338,22 @@ beagleboard_dtbs () {
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
-		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
-		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
-
 		device="BONE-I2C1" ; k3_dtbo_makefile_append
 		device="BONE-I2C2" ; k3_dtbo_makefile_append
 		device="BONE-I2C3" ; k3_dtbo_makefile_append
 
+		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
+
 		#ls src/arm64/overlays/ | grep pocketbeagle2
 
-		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-ardupilot-cape" ; k3_dtbo_makefile_append
 		device="k3-am62-pocketbeagle2-leds-off" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+
+		#ls src/arm64/overlays/ | grep beagleplay
+
+		device="k3-am625-beagleplay-bcfserial-no-firmware" ; k3_dtbo_makefile_append
 
 		#ls src/arm64/overlays/ | grep beaglemod
 
@@ -367,6 +372,8 @@ beagleboard_dtbs () {
 		device="k3-am625-beaglemod-rtc" ; k3_dtbo_makefile_append
 		device="k3-am625-beaglemod-wl1835" ; k3_dtbo_makefile_append
 
+		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
+
 		#ls src/arm64/overlays/ | grep beagley
 
 		device="k3-am67a-beagley-ai-csi0-imx219" ; k3_dtbo_makefile_append
@@ -376,10 +383,12 @@ beagleboard_dtbs () {
 		device="k3-am67a-beagley-ai-hdmi-dss0-dpi1" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-i2c1-400000" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-i2c1-ads1115" ; k3_dtbo_makefile_append
+		device="k3-am67a-beagley-ai-i2c1-rtc-rv3028" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-i2c1-ssd1306" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-lincolntech-185lcd-panel" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-mikroe-eth" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-mikroe-microsd" ; k3_dtbo_makefile_append
+		device="k3-am67a-beagley-ai-pps-gpio18" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-pwm-ecap0-gpio12" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-pwm-ecap1-gpio16" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-pwm-ecap1-gpio21" ; k3_dtbo_makefile_append
@@ -434,9 +443,9 @@ beagleboard_dtbs () {
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f arch/arm64/boot/dts/
 		${git_bin} add -f include/dt-bindings/
-		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/tree/${branch}" -m "https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" -s
+		${git_bin} commit -a -m "Add BeagleBoard.org Device Tree Changes" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/tree/${branch}" -m "https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/${git_hash}" -s
 		${git_bin} format-patch -1 -o ../patches/external/bbb.io/
-		echo "BBDTBS: https://openbeagle.org/beagleboard/BeagleBoard-DeviceTrees/-/commit/${git_hash}" > ../patches/external/git/BBDTBS
+		echo "BBDTBS: https://github.com/beagleboard/BeagleBoard-DeviceTrees/commit/${git_hash}" > ../patches/external/git/BBDTBS
 
 		rm -rf ../${work_dir}/ || true
 
@@ -529,6 +538,25 @@ post_rpibackports () {
 }
 
 backports () {
+	backport_tag="v6.16-rc6"
+
+	subsystem="tps65219"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -v ~/linux-src/drivers/input/misc/tps65219-pwrbutton.c ./drivers/input/misc/
+		cp -v ~/linux-src/drivers/mfd/tps65219.c ./drivers/mfd/
+		cp -v ~/linux-src/drivers/gpio/gpio-tps65219.c ./drivers/gpio/
+		cp -v ~/linux-src/drivers/regulator/tps65219-regulator.c ./drivers/regulator/
+		cp -v ~/linux-src/Documentation/devicetree/bindings/regulator/ti,tps65219.yaml ./Documentation/devicetree/bindings/regulator/
+		cp -v ~/linux-src/include/linux/mfd/tps65219.h ./include/linux/mfd/
+
+		post_backports
+	else
+		patch_backports
+	fi
+
 	backport_tag="v6.2"
 
 	subsystem="it66121"
@@ -617,6 +645,8 @@ drivers () {
 	dir 'drivers/it66122'
 
 	dir 'external/ti-amx3-cm3-pm-firmware'
+
+	dir 'drivers/tps65219'
 }
 
 ###
