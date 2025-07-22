@@ -238,8 +238,9 @@ cd ${DIR}/KERNEL/
 ./scripts/config --disable CONFIG_BT_HCIBTSDIO
 ./scripts/config --disable CONFIG_BT_TI
 
+./scripts/config --module CONFIG_UIO
+./scripts/config --module CONFIG_UIO_DMEM_GENIRQ
 #Gone on Mainline, supporting 32bit only...
-./scripts/config --disable CONFIG_UIO
 ./scripts/config --disable CONFIG_UIO_PRUSS
 
 ./scripts/config --module CONFIG_CC33XX
