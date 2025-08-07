@@ -226,7 +226,7 @@ cd ${DIR}/KERNEL/
 
 #debian Trixie has fubared lz4/lz4c, back to xz for stabilty...
 #  LZ4     arch/arm/boot/compressed/piggy_data
-#Error : stdout won't be used ! Do you want multiple input files (-m) ? 
+#Error : stdout won't be used ! Do you want multiple input files (-m) ?
 #make[3]: *** [arch/arm/boot/compressed/Makefile:156: arch/arm/boot/compressed/piggy_data] Error 1
 
 ./scripts/config --disable CONFIG_KERNEL_LZO
