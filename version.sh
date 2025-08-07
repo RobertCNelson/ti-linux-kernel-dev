@@ -57,7 +57,7 @@ KERNEL_TAG=${KERNEL_REL}.168
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/5.10/
 kernel_rt=".168-rt83"
 #Kernel Build
-BUILD=${build_prefix}118
+BUILD=${build_prefix}118.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -80,7 +80,4 @@ SDK="08.06.00.007"
 #
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.06.00.005
 #https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=73f2f2bba715b5cada420f2fb34bb43d185248f2
-#
-#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=tag;h=refs/tags/08.06.00.004
-#https://git.ti.com/gitweb?p=ti-linux-kernel/ti-linux-kernel.git;a=commit;h=2927372e2c7cc3782c07b1896757962bc346d4c5
 #
