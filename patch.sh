@@ -540,6 +540,7 @@ post_rpibackports () {
 backports () {
 	backport_tag="v6.12.35"
 
+	###FIXME: testing with: https://git.kernel.org/pub/scm/network/wireless/iwd.git
 	subsystem="crypto"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
