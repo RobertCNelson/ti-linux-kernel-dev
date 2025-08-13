@@ -1,0 +1,4041 @@
+From 793653e861ac428cd498d27d379e273e02276eea Mon Sep 17 00:00:00 2001
+From: Robert Nelson <robertcnelson@gmail.com>
+Date: Wed, 13 Aug 2025 12:06:53 -0500
+Subject: [PATCH] backports: crypto: from: linux.git
+
+Reference: v6.12.35
+Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
+---
+ drivers/crypto/Kconfig            |    1 -
+ drivers/crypto/Makefile           |    2 -
+ drivers/crypto/sa2ul.c            | 1128 +++++++----------------------
+ drivers/crypto/sa2ul.h            |   60 +-
+ drivers/crypto/ti/Kconfig         |   24 -
+ drivers/crypto/ti/Makefile        |    4 -
+ drivers/crypto/ti/dthev2-aes.c    |  428 -----------
+ drivers/crypto/ti/dthev2-common.c |  218 ------
+ drivers/crypto/ti/dthev2-common.h |  155 ----
+ drivers/crypto/ti/dthev2-hash.c   |  764 -------------------
+ drivers/crypto/ti/mcrc64.c        |  435 -----------
+ 11 files changed, 321 insertions(+), 2898 deletions(-)
+ delete mode 100644 drivers/crypto/ti/Kconfig
+ delete mode 100644 drivers/crypto/ti/Makefile
+ delete mode 100644 drivers/crypto/ti/dthev2-aes.c
+ delete mode 100644 drivers/crypto/ti/dthev2-common.c
+ delete mode 100644 drivers/crypto/ti/dthev2-common.h
+ delete mode 100644 drivers/crypto/ti/dthev2-hash.c
+ delete mode 100644 drivers/crypto/ti/mcrc64.c
+
+diff --git a/drivers/crypto/Kconfig b/drivers/crypto/Kconfig
+index e80d5c441116..08b1238bcd7b 100644
+--- a/drivers/crypto/Kconfig
++++ b/drivers/crypto/Kconfig
+@@ -851,6 +851,5 @@ config CRYPTO_DEV_SA2UL
+ 
+ source "drivers/crypto/aspeed/Kconfig"
+ source "drivers/crypto/starfive/Kconfig"
+-source "drivers/crypto/ti/Kconfig"
+ 
+ endif # CRYPTO_HW
+diff --git a/drivers/crypto/Makefile b/drivers/crypto/Makefile
+index 439b118fb1f8..ad4ccef67d12 100644
+--- a/drivers/crypto/Makefile
++++ b/drivers/crypto/Makefile
+@@ -42,7 +42,6 @@ obj-$(CONFIG_CRYPTO_DEV_SL3516) += gemini/
+ obj-y += stm32/
+ obj-$(CONFIG_CRYPTO_DEV_TALITOS) += talitos.o
+ obj-$(CONFIG_CRYPTO_DEV_TEGRA) += tegra/
+-obj-$(CONFIG_CRYPTO_DEV_TI_MCRC64) += ti/
+ obj-$(CONFIG_CRYPTO_DEV_VIRTIO) += virtio/
+ #obj-$(CONFIG_CRYPTO_DEV_VMX) += vmx/
+ obj-$(CONFIG_CRYPTO_DEV_BCM_SPU) += bcm/
+@@ -53,4 +52,3 @@ obj-y += hisilicon/
+ obj-$(CONFIG_CRYPTO_DEV_AMLOGIC_GXL) += amlogic/
+ obj-y += intel/
+ obj-y += starfive/
+-obj-$(CONFIG_ARCH_K3) += ti/
+diff --git a/drivers/crypto/sa2ul.c b/drivers/crypto/sa2ul.c
+index e12f0fce71c5..461eca40e878 100644
+--- a/drivers/crypto/sa2ul.c
++++ b/drivers/crypto/sa2ul.c
+@@ -13,9 +13,7 @@
+ #include <linux/dma-mapping.h>
+ #include <linux/dmaengine.h>
+ #include <linux/dmapool.h>
+-#include <linux/fips.h>
+ #include <linux/kernel.h>
+-#include <linux/mempool.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/of_platform.h>
+@@ -25,47 +23,31 @@
+ #include <crypto/aes.h>
+ #include <crypto/authenc.h>
+ #include <crypto/des.h>
+-#include <crypto/hmac.h>
+ #include <crypto/internal/aead.h>
+ #include <crypto/internal/hash.h>
+ #include <crypto/internal/skcipher.h>
+ #include <crypto/scatterwalk.h>
+ #include <crypto/sha1.h>
+ #include <crypto/sha2.h>
+-#include <crypto/gcm.h>
+ 
+ #include "sa2ul.h"
+ 
+-#define SC_ENC_MODESEL_OFFSET (0)
+-#define SC_ENC_MODESEL_SIZE (1)
++/* Byte offset for key in encryption security context */
++#define SC_ENC_KEY_OFFSET (1 + 27 + 4)
++/* Byte offset for Aux-1 in encryption security context */
++#define SC_ENC_AUX1_OFFSET (1 + 27 + 4 + 32)
+ 
+-#define SC_ENC_MCI_OFFSET (SC_ENC_MODESEL_SIZE)
+-#define SC_ENC_MCI_SIZE (27)
++#define SA_CMDL_UPD_ENC         0x0001
++#define SA_CMDL_UPD_AUTH        0x0002
++#define SA_CMDL_UPD_ENC_IV      0x0004
++#define SA_CMDL_UPD_AUTH_IV     0x0008
++#define SA_CMDL_UPD_AUX_KEY     0x0010
+ 
+-#define SC_ENC_KEY_OFFSET (SC_ENC_MCI_OFFSET + SC_ENC_MCI_SIZE + 4)
+-#define SC_ENC_KEY_SIZE 32
+-
+-#define SC_ENC_AUX1_OFFSET (SC_ENC_KEY_OFFSET + SC_ENC_KEY_SIZE)
+-#define SC_ENC_AUX1_SIZE 32
+-
+-#define SC_ENC_AUX2_OFFSET (SC_ENC_AUX1_OFFSET + SC_ENC_AUX1_SIZE)
+-#define SC_ENC_AUX2_SIZE 16
+-
+-#define SC_ENC_AUX3_OFFSET (SC_ENC_AUX2_OFFSET + SC_ENC_AUX2_SIZE)
+-#define SC_ENC_AUX3_SIZE 16
+-
+-#define SA_CMDL_UPD_ENC         BIT(1)
+-#define SA_CMDL_UPD_AUTH        BIT(2)
+-#define SA_CMDL_UPD_ENC_IV      BIT(3)
+-#define SA_CMDL_UPD_IS_GCM      BIT(4)
+-
+-#define SA_CMDL_PAYLOAD_LENGTH_MASK	0x0000FFFF
+-#define SA_CMDL_LENGTH_MASK		0x00FF0000
++#define SA_AUTH_SUBKEY_LEN	16
++#define SA_CMDL_PAYLOAD_LENGTH_MASK	0xFFFF
+ #define SA_CMDL_SOP_BYPASS_LEN_MASK	0xFF000000
+-#define SA_CMDL_OPTION_CTRL1_MASK	0x00FF0000
+-#define SA_CMDL_OPTION_CTRL2_MASK	0x0000FF00
+-#define SA_CMDL_OPTION_CTRL3_MASK	0x000000FF
+ 
++#define MODE_CONTROL_BYTES	27
+ #define SA_HASH_PROCESSING	0
+ #define SA_CRYPTO_PROCESSING	0
+ #define SA_UPLOAD_HASH_TO_TLR	BIT(6)
+@@ -86,15 +68,12 @@
+ /* size of SCCTL structure in bytes */
+ #define SA_SCCTL_SZ 16
+ 
+-#define SA_GCM_IV_SIZE 16
+-
+ /* Max Authentication tag size */
+ #define SA_MAX_AUTH_TAG_SZ 64
+ 
+ enum sa_algo_id {
+ 	SA_ALG_CBC_AES = 0,
+ 	SA_ALG_EBC_AES,
+-	SA_ALG_GCM_AES,
+ 	SA_ALG_CBC_DES3,
+ 	SA_ALG_ECB_DES3,
+ 	SA_ALG_SHA1,
+@@ -102,9 +81,6 @@ enum sa_algo_id {
+ 	SA_ALG_SHA512,
+ 	SA_ALG_AUTHENC_SHA1_AES,
+ 	SA_ALG_AUTHENC_SHA256_AES,
+-	SA_ALG_HMAC_SHA1,
+-	SA_ALG_HMAC_SHA256,
+-	SA_ALG_HMAC_SHA512,
+ };
+ 
+ struct sa_match_data {
+@@ -117,17 +93,22 @@ static struct device *sa_k3_dev;
+ 
+ /**
+  * struct sa_cmdl_cfg - Command label configuration descriptor
++ * @aalg: authentication algorithm ID
+  * @enc_eng_id: Encryption Engine ID supported by the SA hardware
+  * @auth_eng_id: Authentication Engine ID
+  * @iv_size: Initialization Vector size
++ * @akey: Authentication key
++ * @akey_len: Authentication key length
+  * @enc: True, if this is an encode request
+  */
+ struct sa_cmdl_cfg {
++	int aalg;
+ 	u8 enc_eng_id;
+ 	u8 auth_eng_id;
+ 	u8 iv_size;
++	const u8 *akey;
++	u16 akey_len;
+ 	bool enc;
+-	bool is_gcm;
+ };
+ 
+ /**
+@@ -161,9 +142,8 @@ struct algo_data {
+ 	bool inv_key;
+ 	struct sa_tfm_ctx *ctx;
+ 	bool keyed_mac;
+-	int (*prep_iopad)(struct algo_data *algo, const u8 *key,
+-			   u16 key_sz, __be32 *lower_ipad, __be32 *lower_opad,
+-			   __be32 *upper_ipad, __be32 *upper_opad);
++	void (*prep_iopad)(struct algo_data *algo, const u8 *key,
++			   u16 key_sz, __be32 *ipad, __be32 *opad);
+ };
+ 
+ /**
+@@ -248,8 +228,6 @@ struct sa_req {
+ 	u8 *auth_iv;
+ 	u32 type;
+ 	u32 *cmdl;
+-	u8 aad_length;
+-	u8 aad[SA_MAX_ASSOC_SZ];
+ 	struct crypto_async_request *base;
+ 	struct sa_tfm_ctx *ctx;
+ 	bool enc;
+@@ -263,7 +241,7 @@ struct sa_req {
+  * Mode Control Instructions for various Key lengths 128, 192, 256
+  * For CBC (Cipher Block Chaining) mode for encryption
+  */
+-static u8 mci_cbc_enc_array[3][SC_ENC_MCI_SIZE] = {
++static u8 mci_cbc_enc_array[3][MODE_CONTROL_BYTES] = {
+ 	{	0x61, 0x00, 0x00, 0x18, 0x88, 0x0a, 0xaa, 0x4b, 0x7e, 0x00,
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	},
+@@ -279,7 +257,7 @@ static u8 mci_cbc_enc_array[3][SC_ENC_MCI_SIZE] = {
+  * Mode Control Instructions for various Key lengths 128, 192, 256
+  * For CBC (Cipher Block Chaining) mode for decryption
+  */
+-static u8 mci_cbc_dec_array[3][SC_ENC_MCI_SIZE] = {
++static u8 mci_cbc_dec_array[3][MODE_CONTROL_BYTES] = {
+ 	{	0x71, 0x00, 0x00, 0x80, 0x8a, 0xca, 0x98, 0xf4, 0x40, 0xc0,
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	},
+@@ -295,7 +273,7 @@ static u8 mci_cbc_dec_array[3][SC_ENC_MCI_SIZE] = {
+  * Mode Control Instructions for various Key lengths 128, 192, 256
+  * For CBC (Cipher Block Chaining) mode for encryption
+  */
+-static u8 mci_cbc_enc_no_iv_array[3][SC_ENC_MCI_SIZE] = {
++static u8 mci_cbc_enc_no_iv_array[3][MODE_CONTROL_BYTES] = {
+ 	{	0x21, 0x00, 0x00, 0x18, 0x88, 0x0a, 0xaa, 0x4b, 0x7e, 0x00,
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	},
+@@ -311,7 +289,7 @@ static u8 mci_cbc_enc_no_iv_array[3][SC_ENC_MCI_SIZE] = {
+  * Mode Control Instructions for various Key lengths 128, 192, 256
+  * For CBC (Cipher Block Chaining) mode for decryption
+  */
+-static u8 mci_cbc_dec_no_iv_array[3][SC_ENC_MCI_SIZE] = {
++static u8 mci_cbc_dec_no_iv_array[3][MODE_CONTROL_BYTES] = {
+ 	{	0x31, 0x00, 0x00, 0x80, 0x8a, 0xca, 0x98, 0xf4, 0x40, 0xc0,
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	},
+@@ -355,60 +333,30 @@ static u8 mci_ecb_dec_array[3][27] = {
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	},
+ };
+ 
+-/**
+- * Mode control engine instructions for AES-GCM encryption
+- */
+-static u8 mci_gcm_aes_enc_array[3][SC_ENC_MCI_SIZE] = {
+-	{	0x61, 0x00, 0x44, 0x80, 0xa9, 0xfe, 0x83, 0x99, 0x7e, 0x58,
+-		0x2e, 0x0a, 0x90, 0x71, 0x41, 0x83, 0x9d, 0x63, 0xaa, 0x0b,
+-		0x7e, 0x9a, 0x78, 0x3a, 0xa3, 0x8b, 0x1e	},
+-	{	0x61, 0x00, 0x44, 0x84, 0xa9, 0xfe, 0x83, 0x99, 0x7e, 0x58,
+-		0x2e, 0x4a, 0x90, 0x71, 0x41, 0x83, 0x9d, 0x63, 0xaa, 0x0b,
+-		0x7e, 0x9a, 0x78, 0x3a, 0xa3, 0x8b, 0x1e	},
+-	{	0x61, 0x00, 0x44, 0x88, 0xa9, 0xfe, 0x83, 0x99, 0x7e, 0x58,
+-		0x2e, 0x8a, 0x90, 0x71, 0x41, 0x83, 0x9d, 0x63, 0xaa, 0x0b,
+-		0x7e, 0x9a, 0x78, 0x3a, 0xa3, 0x8b, 0x1e	},
+-};
+-
+-/**
+- * Mode control engine instructions for AES-GCM decryption
+- */
+-static u8 mci_gcm_aes_dec_array[3][SC_ENC_MCI_SIZE] = {
+-	{	0x61, 0x00, 0x44, 0x80, 0xa9, 0xfe, 0x83, 0x99, 0x7e, 0x58,
+-		0x2e, 0x0a, 0x14, 0x19, 0x07, 0x83, 0x9d, 0x63, 0xaa, 0x0b,
+-		0x7e, 0x9a, 0x78, 0x3a, 0xa3, 0x8b, 0x1e	},
+-	{	0x61, 0x00, 0x44, 0x84, 0xa9, 0xfe, 0x83, 0x99, 0x7e, 0x58,
+-		0x2e, 0x4a, 0x14, 0x19, 0x07, 0x83, 0x9d, 0x63, 0xaa, 0x0b,
+-		0x7e, 0x9a, 0x78, 0x3a, 0xa3, 0x8b, 0x1e	},
+-	{	0x61, 0x00, 0x44, 0x88, 0xa9, 0xfe, 0x83, 0x99, 0x7e, 0x58,
+-		0x2e, 0x8a, 0x14, 0x19, 0x07, 0x83, 0x9d, 0x63, 0xaa, 0x0b,
+-		0x7e, 0x9a, 0x78, 0x3a, 0xa3, 0x8b, 0x1e	}
+-};
+-
+ /*
+  * Mode Control Instructions for DES algorithm
+  * For CBC (Cipher Block Chaining) mode and ECB mode
+  * encryption and for decryption respectively
+  */
+-static u8 mci_cbc_3des_enc_array[SC_ENC_MCI_SIZE] = {
++static u8 mci_cbc_3des_enc_array[MODE_CONTROL_BYTES] = {
+ 	0x60, 0x00, 0x00, 0x18, 0x88, 0x52, 0xaa, 0x4b, 0x7e, 0x00, 0x00, 0x00,
+ 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 	0x00, 0x00, 0x00,
+ };
+ 
+-static u8 mci_cbc_3des_dec_array[SC_ENC_MCI_SIZE] = {
++static u8 mci_cbc_3des_dec_array[MODE_CONTROL_BYTES] = {
+ 	0x70, 0x00, 0x00, 0x85, 0x0a, 0xca, 0x98, 0xf4, 0x40, 0xc0, 0x00, 0x00,
+ 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 	0x00, 0x00, 0x00,
+ };
+ 
+-static u8 mci_ecb_3des_enc_array[SC_ENC_MCI_SIZE] = {
++static u8 mci_ecb_3des_enc_array[MODE_CONTROL_BYTES] = {
+ 	0x20, 0x00, 0x00, 0x85, 0x0a, 0x04, 0xb7, 0x90, 0x00, 0x00, 0x00, 0x00,
+ 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 	0x00, 0x00, 0x00,
+ };
+ 
+-static u8 mci_ecb_3des_dec_array[SC_ENC_MCI_SIZE] = {
++static u8 mci_ecb_3des_dec_array[MODE_CONTROL_BYTES] = {
+ 	0x30, 0x00, 0x00, 0x85, 0x0a, 0x04, 0xb7, 0x90, 0x00, 0x00, 0x00, 0x00,
+ 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 	0x00, 0x00, 0x00,
+@@ -432,134 +380,86 @@ static void sa_swiz_128(u8 *in, u16 len)
+ 	}
+ }
+ 
+-static int sa_export_shash(struct shash_desc *hash, int digest_size,
+-		void *lower_out, void *upper_out)
++/* Prepare the ipad and opad from key as per SHA algorithm step 1*/
++static void prepare_kipad(u8 *k_ipad, const u8 *key, u16 key_sz)
+ {
+-	u32 *result;
+-	u64 *result64;
+-	int ret = 0;
++	int i;
+ 
+-	union {
+-		struct sha1_state sha1;
+-		struct sha256_state sha256;
+-		struct sha512_state sha512;
+-	} sha;
++	for (i = 0; i < key_sz; i++)
++		k_ipad[i] = key[i] ^ 0x36;
+ 
+-	/* Export the intermediate digest to program into SA2UL */
+-	ret = crypto_shash_export(hash, &sha);
+-	if (ret) {
+-		dev_err(sa_k3_dev, "%s: crypto_shash_export failed\n",
+-			__func__);
+-		return ret;
+-	}
++	/* Instead of XOR with 0 */
++	for (; i < SHA1_BLOCK_SIZE; i++)
++		k_ipad[i] = 0x36;
++}
++
++static void prepare_kopad(u8 *k_opad, const u8 *key, u16 key_sz)
++{
++	int i;
++
++	for (i = 0; i < key_sz; i++)
++		k_opad[i] = key[i] ^ 0x5c;
++
++	/* Instead of XOR with 0 */
++	for (; i < SHA1_BLOCK_SIZE; i++)
++		k_opad[i] = 0x5c;
++}
++
++static void sa_export_shash(void *state, struct shash_desc *hash,
++			    int digest_size, __be32 *out)
++{
++	struct sha1_state *sha1;
++	struct sha256_state *sha256;
++	u32 *result;
+ 
+ 	switch (digest_size) {
+ 	case SHA1_DIGEST_SIZE:
+-		result = sha.sha1.state;
+-		cpu_to_be32_array(lower_out, result, digest_size / 4);
++		sha1 = state;
++		result = sha1->state;
+ 		break;
+ 	case SHA256_DIGEST_SIZE:
+-		result = sha.sha256.state;
+-		cpu_to_be32_array(lower_out, result, digest_size / 4);
+-		break;
+-	case SHA512_DIGEST_SIZE:
+-		result64 = sha.sha512.state;
+-		cpu_to_be64_array(upper_out, result64, digest_size / 8 / 2);
+-		cpu_to_be64_array(lower_out, result64 + digest_size / 8 / 2, digest_size / 8 / 2);
++		sha256 = state;
++		result = sha256->state;
+ 		break;
+ 	default:
+ 		dev_err(sa_k3_dev, "%s: bad digest_size=%d\n", __func__,
+ 			digest_size);
+-		return -EINVAL;
++		return;
+ 	}
+ 
++	crypto_shash_export(hash, state);
+ 
+-	return ret;
++	cpu_to_be32_array(out, result, digest_size / 4);
+ }
+ 
+-static int sa_prepare_iopads(struct algo_data *data, const u8 *key,
+-			     u16 key_sz, __be32 *lower_ipad, __be32 *lower_opad,
+-			     __be32 *upper_ipad, __be32 *upper_opad)
++static void sa_prepare_iopads(struct algo_data *data, const u8 *key,
++			      u16 key_sz, __be32 *ipad, __be32 *opad)
+ {
+ 	SHASH_DESC_ON_STACK(shash, data->ctx->shash);
+ 	int block_size = crypto_shash_blocksize(data->ctx->shash);
+ 	int digest_size = crypto_shash_digestsize(data->ctx->shash);
+-	int ret = 0;
+-	int i = 0;
+-	u8 k_ipad[SHA512_BLOCK_SIZE];
+-	u8 k_opad[SHA512_BLOCK_SIZE];
+-
+-	if (fips_enabled && (key_sz < 112 / 8))
+-		return -EINVAL;
++	union {
++		struct sha1_state sha1;
++		struct sha256_state sha256;
++		u8 k_pad[SHA1_BLOCK_SIZE];
++	} sha;
+ 
+ 	shash->tfm = data->ctx->shash;
+ 
+-	if (key_sz > block_size) {
+-		int err;
+-
+-		err = crypto_shash_digest(shash, key, key_sz, k_ipad);
+-		if (err)
+-			return err;
++	prepare_kipad(sha.k_pad, key, key_sz);
+ 
+-		key_sz = digest_size;
+-	} else
+-		memcpy(k_ipad, key, key_sz);
++	crypto_shash_init(shash);
++	crypto_shash_update(shash, sha.k_pad, block_size);
++	sa_export_shash(&sha, shash, digest_size, ipad);
+ 
+-	memset(k_ipad + key_sz, 0, block_size - key_sz);
+-	memcpy(k_opad, k_ipad, block_size);
++	prepare_kopad(sha.k_pad, key, key_sz);
+ 
+-	for (i = 0; i < block_size; i++) {
+-		k_ipad[i] ^= HMAC_IPAD_VALUE;
+-		k_opad[i] ^= HMAC_OPAD_VALUE;
+-	}
++	crypto_shash_init(shash);
++	crypto_shash_update(shash, sha.k_pad, block_size);
+ 
+-	memset(lower_ipad, 0, digest_size / 2);
+-	memset(lower_opad, 0, digest_size / 2);
+-	memset(upper_ipad, 0, digest_size / 2);
+-	memset(upper_opad, 0, digest_size / 2);
++	sa_export_shash(&sha, shash, digest_size, opad);
+ 
+-	ret = crypto_shash_init(shash);
+-	if (ret) {
+-		dev_err(sa_k3_dev, "%s: %d: crypto_shash_init for ipad failed, ret=%d\n",
+-			__func__, __LINE__, ret);
+-		return ret;
+-	}
+-	ret = crypto_shash_update(shash, k_ipad, block_size);
+-	if (ret) {
+-		dev_err(sa_k3_dev, "%s: %d: crypto_shash_update for ipad failed, ret=%d\n",
+-			__func__, __LINE__, ret);
+-		return ret;
+-	}
+-	ret = sa_export_shash(shash, digest_size, lower_ipad, upper_ipad);
+-	if (ret) {
+-		dev_err(sa_k3_dev, "%s: %d: sa_export_shash for ipad failed, ret=%d\n",
+-			__func__, __LINE__, ret);
+-		return ret;
+-	}
+-
+-	ret = crypto_shash_init(shash);
+-	if (ret) {
+-		dev_err(sa_k3_dev, "%s: %d: crypto_shash_init for opad failed, ret=%d\n",
+-			__func__, __LINE__, ret);
+-		return ret;
+-	}
+-	ret = crypto_shash_update(shash, k_opad, block_size);
+-	if (ret) {
+-		dev_err(sa_k3_dev, "%s: %d: crypto_shash_update for opad failed, ret=%d\n",
+-			__func__, __LINE__, ret);
+-		return ret;
+-	}
+-	ret = sa_export_shash(shash, digest_size, lower_opad, upper_opad);
+-	if (ret) {
+-		dev_err(sa_k3_dev, "%s: %d: sa_export_shash for opad failed, ret=%d\n",
+-			__func__, __LINE__, ret);
+-		return ret;
+-	}
+-
+-	memzero_explicit(k_ipad, sizeof(SHA1_BLOCK_SIZE));
+-	memzero_explicit(k_opad, sizeof(SHA1_BLOCK_SIZE));
+-
+-	return ret;
++	memzero_explicit(&sha, sizeof(sha));
+ }
+ 
+ /* Derive the inverse key used in AES-CBC decryption operation */
+@@ -603,13 +503,10 @@ static inline int sa_aes_inv_key(u8 *inv_key, const u8 *key, u16 key_sz)
+ static int sa_set_sc_enc(struct algo_data *ad, const u8 *key, u16 key_sz,
+ 			 u8 enc, u8 *sc_buf)
+ {
+-	SYNC_SKCIPHER_REQUEST_ON_STACK(req, ad->ctx->skcipher);
+ 	const u8 *mci = NULL;
+-	int ret = 0;
+-	struct scatterlist sg;
+ 
+ 	/* Set Encryption mode selector to crypto processing */
+-	sc_buf[SC_ENC_MODESEL_OFFSET] = SA_CRYPTO_PROCESSING;
++	sc_buf[0] = SA_CRYPTO_PROCESSING;
+ 
+ 	if (enc)
+ 		mci = ad->mci_enc;
+@@ -617,7 +514,7 @@ static int sa_set_sc_enc(struct algo_data *ad, const u8 *key, u16 key_sz,
+ 		mci = ad->mci_dec;
+ 	/* Set the mode control instructions in security context */
+ 	if (mci)
+-		memcpy(&sc_buf[SC_ENC_MCI_OFFSET], mci, SC_ENC_MCI_SIZE);
++		memcpy(&sc_buf[1], mci, MODE_CONTROL_BYTES);
+ 
+ 	/* For AES-CBC decryption get the inverse key */
+ 	if (ad->inv_key && !enc) {
+@@ -628,45 +525,15 @@ static int sa_set_sc_enc(struct algo_data *ad, const u8 *key, u16 key_sz,
+ 		memcpy(&sc_buf[SC_ENC_KEY_OFFSET], key, key_sz);
+ 	}
+ 
+-	if (ad->ealg_id == SA_EALG_ID_AES_GCM) {
+-		/*
+-		 * Program AES_ECB(key, 0) = Hash KEY for GCM
+-		 *
+-		 * Update the bits 128:255 on sc_buf[SC_ENC_AUX1_OFFSET],
+-		 * since the buffer is little endian 255:128 would lie in
+-		 * the starting of AUX1 itself
+-		 */
+-		sg_init_one(&sg, &sc_buf[SC_ENC_AUX1_OFFSET], AES_BLOCK_SIZE);
+-
+-		ret = crypto_sync_skcipher_setkey(ad->ctx->skcipher, key, key_sz);
+-		if (ret) {
+-			dev_err(sa_k3_dev, "%s: %d: crypto_skcipher_setkey failed, ret=%d\n",
+-				__func__, __LINE__, ret);
+-			return ret;
+-		}
+-		skcipher_request_set_sync_tfm(req, ad->ctx->skcipher);
+-		skcipher_request_set_crypt(req, &sg, &sg, AES_BLOCK_SIZE, NULL);
+-
+-		ret = crypto_skcipher_encrypt(req);
+-		if (ret) {
+-			dev_err(sa_k3_dev, "%s: %d: crypto_skcipher_encrypt failed, ret=%d\n",
+-				__func__, __LINE__, ret);
+-			return ret;
+-		}
+-	}
+-
+ 	return 0;
+ }
+ 
+ /* Set Security context for the authentication engine */
+-static int sa_set_sc_auth(struct algo_data *ad, const u8 *key, u16 key_sz,
++static void sa_set_sc_auth(struct algo_data *ad, const u8 *key, u16 key_sz,
+ 			   u8 *sc_buf)
+ {
+-	__be32 *lower_ipad = (void *)(sc_buf + 32);
+-	__be32 *lower_opad = (void *)(sc_buf + 64);
+-	__be32 *upper_ipad = (void *)(sc_buf + 96);
+-	__be32 *upper_opad = (void *)(sc_buf + 128);
+-	int ret = 0;
++	__be32 *ipad = (void *)(sc_buf + 32);
++	__be32 *opad = (void *)(sc_buf + 64);
+ 
+ 	/* Set Authentication mode selector to hash processing */
+ 	sc_buf[0] = SA_HASH_PROCESSING;
+@@ -675,30 +542,21 @@ static int sa_set_sc_auth(struct algo_data *ad, const u8 *key, u16 key_sz,
+ 	sc_buf[1] |= ad->auth_ctrl;
+ 
+ 	/* Copy the keys or ipad/opad */
+-	if (ad->keyed_mac) {
+-		ret = ad->prep_iopad(ad, key, key_sz, lower_ipad,
+-				lower_opad, upper_ipad, upper_opad);
+-		if (ret) {
+-			dev_err(sa_k3_dev, "%s: %d: sa_prepare_iopads failed, ret=%d\n",
+-				__func__, __LINE__, ret);
+-			return ret;
+-		}
+-	}
++	if (ad->keyed_mac)
++		ad->prep_iopad(ad, key, key_sz, ipad, opad);
+ 	else {
+ 		/* basic hash */
+ 		sc_buf[1] |= SA_BASIC_HASH;
+ 	}
+-
+-	return 0;
+ }
+ 
+-static inline void sa_copy_to_cmdl(__be32 *out, const u32 *iv, u32 size)
++static inline void sa_copy_iv(__be32 *out, const u8 *iv, bool size16)
+ {
+-	int i;
++	int j;
+ 
+-	for (i = 0; i < size; i += 4) {
+-		*out = cpu_to_be32(*iv);
+-		iv++;
++	for (j = 0; j < ((size16) ? 4 : 2); j++) {
++		*out = cpu_to_be32(*((u32 *)iv));
++		iv += 4;
+ 		out++;
+ 	}
+ }
+@@ -739,39 +597,8 @@ static int sa_format_cmdl_gen(struct sa_cmdl_cfg *cfg, u8 *cmdl,
+ 		/* Encryption command label */
+ 		cmdl[enc_offset + SA_CMDL_OFFSET_NESC] = enc_next_eng;
+ 
+-		if (cfg->is_gcm) {
+-			/*
+-			 * GCM requires the following things so we need to
+-			 * send them through option bytes as they keep
+-			 * changing per request.
+-			 *
+-			 * IV(12B), CTR(4B) : Goes in AUX3 (16B)
+-			 * AAD(16B) : Goes in AUX2 (16B)
+-			 * AAD Length(8B), Payload Length (8B): Goes in AUX1[0:127]
+-			 */
+-
+-			/* Program IV in AUX3 */
+-			upd_info->flags |= SA_CMDL_UPD_ENC_IV;
+-
+-			/*
+-			 * Calculate the 32 bit based index in cmdl where
+-			 * IV is supposed t be populated
+-			 */
+-			upd_info->enc_iv.index = (SA_CMDL_HEADER_SIZE_BYTES) >> 2;
+-			upd_info->enc_iv.size = cfg->iv_size;
+-
+-			/* Set the max length of cmdl */
+-			cmdl[enc_offset + SA_CMDL_OFFSET_LABEL_LEN] =
+-				SA_CMDL_HEADER_SIZE_BYTES + cfg->iv_size;
+-
+-			/* The length and offset are specified in unit of 8B*/
+-			cmdl[enc_offset + SA_CMDL_OFFSET_OPTION_CTRL1] =
+-				(SC_ENC_AUX3_OFFSET | ((cfg->iv_size) >> 3));
+-
+-			upd_info->flags |= SA_CMDL_UPD_IS_GCM;
+-			total = SA_CMDL_HEADER_SIZE_BYTES + cfg->iv_size;
+-
+-		} else if (cfg->iv_size) {
++		/* Encryption modes requiring IV */
++		if (cfg->iv_size) {
+ 			upd_info->flags |= SA_CMDL_UPD_ENC_IV;
+ 			upd_info->enc_iv.index =
+ 				(enc_offset + SA_CMDL_HEADER_SIZE_BYTES) >> 2;
+@@ -781,7 +608,7 @@ static int sa_format_cmdl_gen(struct sa_cmdl_cfg *cfg, u8 *cmdl,
+ 				SA_CMDL_HEADER_SIZE_BYTES + cfg->iv_size;
+ 
+ 			cmdl[enc_offset + SA_CMDL_OFFSET_OPTION_CTRL1] =
+-				(SC_ENC_AUX2_OFFSET | (cfg->iv_size >> 3));
++				(SA_CTX_ENC_AUX2_OFFSET | (cfg->iv_size >> 3));
+ 			total += SA_CMDL_HEADER_SIZE_BYTES + cfg->iv_size;
+ 		} else {
+ 			cmdl[enc_offset + SA_CMDL_OFFSET_LABEL_LEN] =
+@@ -809,9 +636,11 @@ static int sa_format_cmdl_gen(struct sa_cmdl_cfg *cfg, u8 *cmdl,
+ }
+ 
+ /* Update Command label */
+-static inline int sa_update_cmdl(struct sa_req *req, u32 *cmdl,
+-				 struct sa_cmdl_upd_info *upd_info, u32 total)
++static inline void sa_update_cmdl(struct sa_req *req, u32 *cmdl,
++				  struct sa_cmdl_upd_info *upd_info)
+ {
++	int i = 0, j;
++
+ 	if (likely(upd_info->flags & SA_CMDL_UPD_ENC)) {
+ 		cmdl[upd_info->enc_size.index] &= ~SA_CMDL_PAYLOAD_LENGTH_MASK;
+ 		cmdl[upd_info->enc_size.index] |= req->enc_size;
+@@ -820,70 +649,16 @@ static inline int sa_update_cmdl(struct sa_req *req, u32 *cmdl,
+ 		cmdl[upd_info->enc_offset.index] |=
+ 			FIELD_PREP(SA_CMDL_SOP_BYPASS_LEN_MASK,
+ 				   req->enc_offset);
+-	}
+ 
+-	if (likely(upd_info->flags & SA_CMDL_UPD_ENC_IV))
+-		sa_copy_to_cmdl((__be32 *)&cmdl[upd_info->enc_iv.index],
+-				(u32 *)req->enc_iv, upd_info->enc_iv.size);
+-
+-	if (upd_info->flags & SA_CMDL_UPD_IS_GCM) {
+-		WARN_ON(req->aad_length > 16);
+-
+-		/* We have 4 fields to update (IV, AAD, Payload length,
+-		 * AAD Length)
+-		 *
+-		 * To accommodate it in 3 option bytes, we need to
+-		 * update the encryption size and the aad length as part of
+-		 * single option byte field only which helps with them
+-		 * sharing the same field AUX1.
+-		 */
+-		cmdl[1] &= ~SA_CMDL_OPTION_CTRL2_MASK;
+-		cmdl[1] |= FIELD_PREP(SA_CMDL_OPTION_CTRL2_MASK,
+-				((SC_ENC_AUX1_OFFSET + 16) | 16 >> 3));
+-
+-		/* Update the AAD length (bits) in AUX1[65:127]
+-		 *
+-		 * The max AAD length can be just 16 bytes = 48 bits as
+-		 * AUX2 field has limited capacity
+-		 *
+-		 * The upper 32 bits are not being written.
+-		 */
+-		cmdl[(roundup(total, 8) >> 2) + 1] = (req->aad_length << 3);
+-
+-		/* 8B of AAD length */
+-		total += 8;
+-
+-		/* Update the encryption size (bits) in AUX1[64:0]
+-		 *
+-		 * Since the upper 32 bits won't be used as the max payload
+-		 * that SA2UL can process without fragmentation is 65536 bytes,
+-		 *
+-		 * The upper 32 bits are not being written.
+-		 */
+-		cmdl[(roundup(total, 8) >> 2) + 1] = (req->enc_size << 3) & 0xFFFF;
+-
+-		/* 8B of payload length */
+-		total += 8;
+-
+-		if (req->aad_length > 0) {
+-			upd_info->aad.index = roundup(total, 8) >> 2;
+-			upd_info->aad.size = req->aad_length;
+-
+-			/* Update AAD */
+-			cmdl[1] &= ~SA_CMDL_OPTION_CTRL3_MASK;
+-			cmdl[1] |= FIELD_PREP(SA_CMDL_OPTION_CTRL3_MASK,
+-					(SC_ENC_AUX2_OFFSET |
+-					 roundup(upd_info->aad.size, 8) >> 3));
+-
+-			sa_copy_to_cmdl((__be32 *)&cmdl[upd_info->aad.index],
+-					(u32 *)req->aad, upd_info->aad.size);
+-
+-			/* The option bytes have 8B granularity */
+-			total += roundup(upd_info->aad.size, 8);
+-		}
++		if (likely(upd_info->flags & SA_CMDL_UPD_ENC_IV)) {
++			__be32 *data = (__be32 *)&cmdl[upd_info->enc_iv.index];
++			u32 *enc_iv = (u32 *)req->enc_iv;
+ 
+-		cmdl[0] &= ~SA_CMDL_LENGTH_MASK;
+-		cmdl[0] |= FIELD_PREP(SA_CMDL_LENGTH_MASK, total);
++			for (j = 0; i < upd_info->enc_iv.size; i += 4, j++) {
++				data[j] = cpu_to_be32(*enc_iv);
++				enc_iv++;
++			}
++		}
+ 	}
+ 
+ 	if (likely(upd_info->flags & SA_CMDL_UPD_AUTH)) {
+@@ -894,9 +669,18 @@ static inline int sa_update_cmdl(struct sa_req *req, u32 *cmdl,
+ 		cmdl[upd_info->auth_offset.index] |=
+ 			FIELD_PREP(SA_CMDL_SOP_BYPASS_LEN_MASK,
+ 				   req->auth_offset);
+-	}
++		if (upd_info->flags & SA_CMDL_UPD_AUTH_IV) {
++			sa_copy_iv((void *)&cmdl[upd_info->auth_iv.index],
++				   req->auth_iv,
++				   (upd_info->auth_iv.size > 8));
++		}
++		if (upd_info->flags & SA_CMDL_UPD_AUX_KEY) {
++			int offset = (req->auth_size & 0xF) ? 4 : 0;
+ 
+-	return roundup(total, 8);
++			memcpy(&cmdl[upd_info->aux_key_info.index],
++			       &upd_info->aux_key[offset], 16);
++		}
++	}
+ }
+ 
+ /* Format SWINFO words to be sent to SA */
+@@ -934,34 +718,31 @@ int sa_init_sc(struct sa_ctx_info *ctx, const struct sa_match_data *match_data,
+ 	       const u8 *auth_key, u16 auth_key_sz,
+ 	       struct algo_data *ad, u8 enc, u32 *swinfo)
+ {
+-	struct sa_crypto_data *data = dev_get_drvdata(sa_k3_dev);
+-	struct device *dev = &data->pdev->dev;
+-
+ 	int enc_sc_offset = 0;
+ 	int auth_sc_offset = 0;
+ 	u8 *sc_buf = ctx->sc;
+ 	u16 sc_id = ctx->sc_id;
+ 	u8 first_engine = 0;
+-	int ret = 0;
+ 
+ 	memzero_explicit(sc_buf, SA_CTX_MAX_SZ);
+ 
+-	sc_buf[1] = SA_SCCTL_FE_AUTH_ENC;
+-	enc_sc_offset = SA_CTX_PHP_PE_CTX_SZ;
+-	auth_sc_offset = enc_sc_offset + ad->enc_eng.sc_size;
+-
+ 	if (ad->auth_eng.eng_id) {
+ 		if (enc)
+ 			first_engine = ad->enc_eng.eng_id;
+ 		else
+ 			first_engine = ad->auth_eng.eng_id;
+ 
++		enc_sc_offset = SA_CTX_PHP_PE_CTX_SZ;
++		auth_sc_offset = enc_sc_offset + ad->enc_eng.sc_size;
++		sc_buf[1] = SA_SCCTL_FE_AUTH_ENC;
+ 		if (!ad->hash_size)
+ 			return -EINVAL;
+ 		ad->hash_size = roundup(ad->hash_size, 8);
+ 
+-	} else if (ad->enc_eng.eng_id) {
++	} else if (ad->enc_eng.eng_id && !ad->auth_eng.eng_id) {
++		enc_sc_offset = SA_CTX_PHP_PE_CTX_SZ;
+ 		first_engine = ad->enc_eng.eng_id;
++		sc_buf[1] = SA_SCCTL_FE_ENC;
+ 		ad->hash_size = ad->iv_out_size;
+ 	}
+ 
+@@ -981,15 +762,9 @@ int sa_init_sc(struct sa_ctx_info *ctx, const struct sa_match_data *match_data,
+ 	}
+ 
+ 	/* Prepare context for authentication engine */
+-	if (ad->auth_eng.sc_size) {
+-		ret = sa_set_sc_auth(ad, auth_key, auth_key_sz,
++	if (ad->auth_eng.sc_size)
++		sa_set_sc_auth(ad, auth_key, auth_key_sz,
+ 			       &sc_buf[auth_sc_offset]);
+-		if (ret) {
+-			dev_err(sa_k3_dev, "%s: Error in setting authentication context\n",
+-					__func__);
+-			return ret;
+-		}
+-	}
+ 
+ 	/* Set the ownership of context to CP_ACE */
+ 	sc_buf[SA_CTX_SCCTL_OWNER_OFFSET] = 0x80;
+@@ -997,12 +772,6 @@ int sa_init_sc(struct sa_ctx_info *ctx, const struct sa_match_data *match_data,
+ 	/* swizzle the security context */
+ 	sa_swiz_128(sc_buf, SA_CTX_MAX_SZ);
+ 
+-	ctx->sc_phys = dma_map_single(dev, ctx->sc, SA_CTX_MAX_SZ, DMA_BIDIRECTIONAL);
+-	if (dma_mapping_error(dev, ctx->sc_phys)) {
+-		mempool_free(ctx->sc, data->sc_pool);
+-		return -ENOMEM;
+-	}
+-
+ 	sa_set_swinfo(first_engine, ctx->sc_id, ctx->sc_phys, 1, 0,
+ 		      SA_SW_INFO_FLAG_EVICT, ad->hash_size, swinfo);
+ 
+@@ -1015,7 +784,6 @@ int sa_init_sc(struct sa_ctx_info *ctx, const struct sa_match_data *match_data,
+ static void sa_free_ctx_info(struct sa_ctx_info *ctx,
+ 			     struct sa_crypto_data *data)
+ {
+-	struct device *dev = &data->pdev->dev;
+ 	unsigned long bn;
+ 
+ 	bn = ctx->sc_id - data->sc_id_start;
+@@ -1025,9 +793,7 @@ static void sa_free_ctx_info(struct sa_ctx_info *ctx,
+ 	spin_unlock(&data->scid_lock);
+ 
+ 	if (ctx->sc) {
+-		memzero_explicit(ctx->sc, SA_CTX_MAX_SZ);
+-		dma_unmap_single(dev, ctx->sc_phys, SA_CTX_MAX_SZ, DMA_BIDIRECTIONAL);
+-		mempool_free(ctx->sc, data->sc_pool);
++		dma_pool_free(data->sc_pool, ctx->sc, ctx->sc_phys);
+ 		ctx->sc = NULL;
+ 	}
+ }
+@@ -1046,7 +812,7 @@ static int sa_init_ctx_info(struct sa_ctx_info *ctx,
+ 
+ 	ctx->sc_id = (u16)(data->sc_id_start + bn);
+ 
+-	ctx->sc = mempool_alloc(data->sc_pool, GFP_KERNEL);
++	ctx->sc = dma_pool_alloc(data->sc_pool, GFP_KERNEL, &ctx->sc_phys);
+ 	if (!ctx->sc) {
+ 		dev_err(&data->pdev->dev, "Failed to allocate SC memory\n");
+ 		err = -ENOMEM;
+@@ -1094,14 +860,16 @@ static int sa_cipher_cra_init(struct crypto_skcipher *tfm)
+ 	if (ret)
+ 		return ret;
+ 	ret = sa_init_ctx_info(&ctx->dec, data);
+-	if (ret)
+-		goto ctx_dec_err;
++	if (ret) {
++		sa_free_ctx_info(&ctx->enc, data);
++		return ret;
++	}
+ 
+ 	child = crypto_alloc_skcipher(name, 0, CRYPTO_ALG_NEED_FALLBACK);
++
+ 	if (IS_ERR(child)) {
+ 		dev_err(sa_k3_dev, "Error allocating fallback algo %s\n", name);
+-		ret = PTR_ERR(child);
+-		goto alloc_err;
++		return PTR_ERR(child);
+ 	}
+ 
+ 	ctx->fallback.skcipher = child;
+@@ -1112,11 +880,6 @@ static int sa_cipher_cra_init(struct crypto_skcipher *tfm)
+ 		__func__, tfm, ctx->enc.sc_id, &ctx->enc.sc_phys,
+ 		ctx->dec.sc_id, &ctx->dec.sc_phys);
+ 	return 0;
+-alloc_err:
+-	sa_free_ctx_info(&ctx->dec, data);
+-ctx_dec_err:
+-	sa_free_ctx_info(&ctx->enc, data);
+-	return ret;
+ }
+ 
+ static int sa_cipher_setkey(struct crypto_skcipher *tfm, const u8 *key,
+@@ -1133,7 +896,7 @@ static int sa_cipher_setkey(struct crypto_skcipher *tfm, const u8 *key,
+ 		return -EINVAL;
+ 
+ 	ad->enc_eng.eng_id = SA_ENG_ID_EM1;
+-	ad->enc_eng.sc_size = SA_CTX_ENC_TYPE_SZ;
++	ad->enc_eng.sc_size = SA_CTX_ENC_TYPE1_SZ;
+ 
+ 	memzero_explicit(&cfg, sizeof(cfg));
+ 	cfg.enc_eng_id = ad->enc_eng.eng_id;
+@@ -1219,87 +982,6 @@ static int sa_aes_ecb_setkey(struct crypto_skcipher *tfm, const u8 *key,
+ 	return sa_cipher_setkey(tfm, key, keylen, &ad);
+ }
+ 
+-/* AEAD algorithm configuration interface function */
+-static int sa_gcm_setkey(struct crypto_aead *authenc,
+-			 const u8 *key, unsigned int keylen)
+-{
+-	struct sa_tfm_ctx *ctx = crypto_aead_ctx(authenc);
+-	struct algo_data ad;
+-	struct sa_cmdl_cfg cfg;
+-	int cmdl_len;
+-	int ret;
+-
+-	ret = aes_check_keylen(keylen);
+-	if (ret)
+-		return ret;
+-
+-	/* Convert the key size (16/24/32) to the key size index (0/1/2) */
+-	int key_idx = (keylen >> 3) - 2;
+-
+-	if (key_idx >= 3) {
+-		pr_err("%s: Invalid key length\n", __func__);
+-		return -EINVAL;
+-	}
+-
+-	ad.ctx = ctx;
+-	ad.enc_eng.eng_id = SA_ENG_ID_EM1;
+-	ad.enc_eng.sc_size = SA_CTX_ENC_TYPE_SZ;
+-	ad.mci_enc = mci_gcm_aes_enc_array[key_idx];
+-	ad.mci_dec = mci_gcm_aes_dec_array[key_idx];
+-	ad.ealg_id = SA_EALG_ID_AES_GCM;
+-	ad.iv_out_size = 16;
+-
+-	memset(&cfg, 0, sizeof(cfg));
+-	cfg.enc = true;
+-	cfg.enc_eng_id = ad.enc_eng.eng_id;
+-	cfg.iv_size = SA_GCM_IV_SIZE;
+-	cfg.is_gcm = true;
+-
+-	/* Setup Encryption Security Context & Command label template */
+-	if (sa_init_sc(&ctx->enc, ctx->dev_data->match_data, key,
+-		       keylen, NULL, 0,
+-		       &ad, 1, &ctx->enc.epib[1])) {
+-		pr_err("%s: sa_init_sc for enc failed\n", __func__);
+-		return -EINVAL;
+-	}
+-
+-	cmdl_len = sa_format_cmdl_gen(&cfg,
+-				      (u8 *)ctx->enc.cmdl,
+-				      &ctx->enc.cmdl_upd_info);
+-	if (cmdl_len <= 0 || (cmdl_len > SA_MAX_CMDL_WORDS * sizeof(u32))) {
+-		pr_err("%s: sa_format_cmdl_gen for enc failed\n", __func__);
+-		return -EINVAL;
+-	}
+-
+-	ctx->enc.cmdl_size = cmdl_len;
+-
+-	/* Setup Decryption Security Context & Command label template */
+-	if (sa_init_sc(&ctx->dec, ctx->dev_data->match_data, key,
+-		       keylen, NULL, 0,
+-		       &ad, 0, &ctx->dec.epib[1])) {
+-		pr_err("%s: sa_init_sc for dec failed\n", __func__);
+-		return -EINVAL;
+-	}
+-
+-	cfg.enc = false;
+-	cmdl_len = sa_format_cmdl_gen(&cfg, (u8 *)ctx->dec.cmdl,
+-				      &ctx->dec.cmdl_upd_info);
+-
+-	if (cmdl_len <= 0 || (cmdl_len > SA_MAX_CMDL_WORDS * sizeof(u32))) {
+-		pr_err("%s: sa_format_cmdl_gen for dec failed\n", __func__);
+-		return -EINVAL;
+-	}
+-
+-	ctx->dec.cmdl_size = cmdl_len;
+-
+-	crypto_aead_clear_flags(ctx->fallback.aead, CRYPTO_TFM_REQ_MASK);
+-	crypto_aead_set_flags(ctx->fallback.aead,
+-			      crypto_aead_get_flags(authenc) &
+-			      CRYPTO_TFM_REQ_MASK);
+-
+-	return crypto_aead_setkey(ctx->fallback.aead, key, keylen);
+-}
+-
+ static int sa_3des_cbc_setkey(struct crypto_skcipher *tfm, const u8 *key,
+ 			      unsigned int keylen)
+ {
+@@ -1308,7 +990,7 @@ static int sa_3des_cbc_setkey(struct crypto_skcipher *tfm, const u8 *key,
+ 	ad.mci_enc = mci_cbc_3des_enc_array;
+ 	ad.mci_dec = mci_cbc_3des_dec_array;
+ 	ad.ealg_id = SA_EALG_ID_3DES_CBC;
+-	ad.iv_idx = 4;
++	ad.iv_idx = 6;
+ 	ad.iv_out_size = 8;
+ 
+ 	return sa_cipher_setkey(tfm, key, keylen, &ad);
+@@ -1380,7 +1062,7 @@ static void sa_aes_dma_in_callback(void *data)
+ 	skcipher_request_complete(req, 0);
+ }
+ 
+-static int
++static void
+ sa_prepare_tx_desc(u32 *mdptr, u32 pslen, u32 *psdata, u32 epiblen, u32 *epib)
+ {
+ 	u32 *out, *in;
+@@ -1393,8 +1075,6 @@ sa_prepare_tx_desc(u32 *mdptr, u32 pslen, u32 *psdata, u32 epiblen, u32 *epib)
+ 	for (out = &mdptr[5], in = psdata, i = 0;
+ 	     i < pslen / sizeof(u32); i++)
+ 		*out++ = *in++;
+-
+-	return epiblen + sizeof(u32) + pslen;
+ }
+ 
+ static int sa_run(struct sa_req *req)
+@@ -1449,9 +1129,18 @@ static int sa_run(struct sa_req *req)
+ 
+ 	memcpy(cmdl, sa_ctx->cmdl, sa_ctx->cmdl_size);
+ 
+-	sa_ctx->cmdl_size = sa_update_cmdl(req, cmdl,
+-					   &sa_ctx->cmdl_upd_info,
+-					   sa_ctx->cmdl_size);
++	sa_update_cmdl(req, cmdl, &sa_ctx->cmdl_upd_info);
++
++	if (req->type != CRYPTO_ALG_TYPE_AHASH) {
++		if (req->enc)
++			req->type |=
++				(SA_REQ_SUBTYPE_ENC << SA_REQ_SUBTYPE_SHIFT);
++		else
++			req->type |=
++				(SA_REQ_SUBTYPE_DEC << SA_REQ_SUBTYPE_SHIFT);
++	}
++
++	cmdl[sa_ctx->cmdl_size / sizeof(u32)] = req->type;
+ 
+ 	/*
+ 	 * Map the packets, first we check if the data fits into a single
+@@ -1584,10 +1273,11 @@ static int sa_run(struct sa_req *req)
+ 	 */
+ 	mdptr = (u32 *)dmaengine_desc_get_metadata_ptr(tx_out, &pl, &ml);
+ 
+-	req->mdata_size = sa_prepare_tx_desc(mdptr, sa_ctx->cmdl_size,
+-					     cmdl, sizeof(sa_ctx->epib),
+-					     sa_ctx->epib);
++	sa_prepare_tx_desc(mdptr, (sa_ctx->cmdl_size + (SA_PSDATA_CTX_WORDS *
++				   sizeof(u32))), cmdl, sizeof(sa_ctx->epib),
++			   sa_ctx->epib);
+ 
++	ml = sa_ctx->cmdl_size + (SA_PSDATA_CTX_WORDS * sizeof(u32));
+ 	dmaengine_desc_set_metadata_len(tx_out, req->mdata_size);
+ 
+ 	dmaengine_submit(tx_out);
+@@ -1643,6 +1333,7 @@ static int sa_cipher_run(struct skcipher_request *req, u8 *iv, int enc)
+ 	sa_req.type = CRYPTO_ALG_TYPE_SKCIPHER;
+ 	sa_req.enc = enc;
+ 	sa_req.callback = sa_aes_dma_in_callback;
++	sa_req.mdata_size = 44;
+ 	sa_req.base = &req->base;
+ 	sa_req.ctx = ctx;
+ 
+@@ -1686,7 +1377,29 @@ static void sa_sha_dma_in_callback(void *data)
+ 	ahash_request_complete(req, 0);
+ }
+ 
+-static int sa_sha_digest(struct ahash_request *req)
++static int zero_message_process(struct ahash_request *req)
++{
++	struct crypto_ahash *tfm = crypto_ahash_reqtfm(req);
++	int sa_digest_size = crypto_ahash_digestsize(tfm);
++
++	switch (sa_digest_size) {
++	case SHA1_DIGEST_SIZE:
++		memcpy(req->result, sha1_zero_message_hash, sa_digest_size);
++		break;
++	case SHA256_DIGEST_SIZE:
++		memcpy(req->result, sha256_zero_message_hash, sa_digest_size);
++		break;
++	case SHA512_DIGEST_SIZE:
++		memcpy(req->result, sha512_zero_message_hash, sa_digest_size);
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int sa_sha_run(struct ahash_request *req)
+ {
+ 	struct sa_tfm_ctx *ctx = crypto_ahash_ctx(crypto_ahash_reqtfm(req));
+ 	struct sa_sha_req_ctx *rctx = ahash_request_ctx(req);
+@@ -1695,7 +1408,10 @@ static int sa_sha_digest(struct ahash_request *req)
+ 
+ 	auth_len = req->nbytes;
+ 
+-	if (!auth_len || auth_len > SA_MAX_DATA_SZ ||
++	if (!auth_len)
++		return zero_message_process(req);
++
++	if (auth_len > SA_MAX_DATA_SZ ||
+ 	    (auth_len >= SA_UNSAFE_DATA_SZ_MIN &&
+ 	     auth_len <= SA_UNSAFE_DATA_SZ_MAX)) {
+ 		struct ahash_request *subreq = &rctx->fallback_req;
+@@ -1726,47 +1442,36 @@ static int sa_sha_digest(struct ahash_request *req)
+ 	sa_req.enc = true;
+ 	sa_req.type = CRYPTO_ALG_TYPE_AHASH;
+ 	sa_req.callback = sa_sha_dma_in_callback;
++	sa_req.mdata_size = 28;
+ 	sa_req.ctx = ctx;
+ 	sa_req.base = &req->base;
+ 
+ 	return sa_run(&sa_req);
+ }
+ 
+-static int sa_sha_setup(struct sa_tfm_ctx *ctx, struct algo_data *ad,
+-		const u8 *key, u8 key_sz)
++static int sa_sha_setup(struct sa_tfm_ctx *ctx, struct  algo_data *ad)
+ {
++	int bs = crypto_shash_blocksize(ctx->shash);
+ 	int cmdl_len;
+ 	struct sa_cmdl_cfg cfg;
+-	int ret;
+ 
+-	ad->ctx = ctx;
+-	ad->enc_eng.sc_size = SA_CTX_ENC_TYPE_SZ;
++	ad->enc_eng.sc_size = SA_CTX_ENC_TYPE1_SZ;
+ 	ad->auth_eng.eng_id = SA_ENG_ID_AM1;
+-	ad->auth_eng.sc_size = SA_CTX_AUTH_TYPE_SZ;
+-
+-	if (key_sz) {
+-		/* Initialize fallback setkey */
+-		ret = crypto_ahash_setkey(ad->ctx->fallback.ahash,
+-				key, key_sz);
+-		if (ret) {
+-			dev_err(sa_k3_dev, "%s: Failed to set fallback.ahash setkey=%d",
+-					__func__, ret);
+-			return ret;
+-		}
+-
+-		ad->keyed_mac = true;
+-		ad->prep_iopad = sa_prepare_iopads;
+-	}
++	ad->auth_eng.sc_size = SA_CTX_AUTH_TYPE2_SZ;
+ 
++	memset(ctx->authkey, 0, bs);
+ 	memset(&cfg, 0, sizeof(cfg));
++	cfg.aalg = ad->aalg_id;
+ 	cfg.enc_eng_id = ad->enc_eng.eng_id;
+ 	cfg.auth_eng_id = ad->auth_eng.eng_id;
+ 	cfg.iv_size = 0;
++	cfg.akey = NULL;
++	cfg.akey_len = 0;
+ 
+ 	ctx->dev_data = dev_get_drvdata(sa_k3_dev);
+ 	/* Setup Encryption Security Context & Command label template */
+-	if (sa_init_sc(&ctx->enc, ctx->dev_data->match_data, NULL, 0, key,
+-			key_sz, ad, 0, &ctx->enc.epib[1]))
++	if (sa_init_sc(&ctx->enc, ctx->dev_data->match_data, NULL, 0, NULL, 0,
++		       ad, 0, &ctx->enc.epib[1]))
+ 		goto badkey;
+ 
+ 	cmdl_len = sa_format_cmdl_gen(&cfg,
+@@ -1784,7 +1489,7 @@ static int sa_sha_setup(struct sa_tfm_ctx *ctx, struct algo_data *ad,
+ 	return -EINVAL;
+ }
+ 
+-static int sa_sha_cra_init_alg(struct crypto_tfm *tfm, const char *hash, const char *alg_base)
++static int sa_sha_cra_init_alg(struct crypto_tfm *tfm, const char *alg_base)
+ {
+ 	struct sa_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+ 	struct sa_crypto_data *data = dev_get_drvdata(sa_k3_dev);
+@@ -1796,31 +1501,23 @@ static int sa_sha_cra_init_alg(struct crypto_tfm *tfm, const char *hash, const c
+ 	if (ret)
+ 		return ret;
+ 
+-	if (!alg_base)
+-		dev_err(sa_k3_dev, "alg_base is NULL\n");
+-
+-	if (hash) {
+-		/* Allocating fallback for intermediate setkey calculations */
+-		ctx->shash = crypto_alloc_shash(hash, 0,
++	if (alg_base) {
++		ctx->shash = crypto_alloc_shash(alg_base, 0,
+ 						CRYPTO_ALG_NEED_FALLBACK);
+ 		if (IS_ERR(ctx->shash)) {
+ 			dev_err(sa_k3_dev, "base driver %s couldn't be loaded\n",
+ 				alg_base);
+ 			return PTR_ERR(ctx->shash);
+ 		}
+-	} else {
+-		dev_dbg(sa_k3_dev, "%s: hash is NULL so not allocating ctx->shash\n",
+-				__func__);
+-	}
+-
+-	/* for fallback */
+-	ctx->fallback.ahash =
+-		crypto_alloc_ahash(alg_base, 0,
+-				   CRYPTO_ALG_NEED_FALLBACK);
+-	if (IS_ERR(ctx->fallback.ahash)) {
+-		dev_err(ctx->dev_data->dev,
+-			"Could not load fallback driver\n");
+-		return PTR_ERR(ctx->fallback.ahash);
++		/* for fallback */
++		ctx->fallback.ahash =
++			crypto_alloc_ahash(alg_base, 0,
++					   CRYPTO_ALG_NEED_FALLBACK);
++		if (IS_ERR(ctx->fallback.ahash)) {
++			dev_err(ctx->dev_data->dev,
++				"Could not load fallback driver\n");
++			return PTR_ERR(ctx->fallback.ahash);
++		}
+ 	}
+ 
+ 	dev_dbg(sa_k3_dev, "%s(0x%p) sc-ids(0x%x(0x%pad), 0x%x(0x%pad))\n",
+@@ -1834,6 +1531,11 @@ static int sa_sha_cra_init_alg(struct crypto_tfm *tfm, const char *hash, const c
+ 	return 0;
+ }
+ 
++static int sa_sha_digest(struct ahash_request *req)
++{
++	return sa_sha_run(req);
++}
++
+ static int sa_sha_init(struct ahash_request *req)
+ {
+ 	struct crypto_ahash *tfm = crypto_ahash_reqtfm(req);
+@@ -1927,13 +1629,13 @@ static int sa_sha1_cra_init(struct crypto_tfm *tfm)
+ 	struct algo_data ad = { 0 };
+ 	struct sa_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+ 
+-	sa_sha_cra_init_alg(tfm, NULL, "sha1");
++	sa_sha_cra_init_alg(tfm, "sha1");
+ 
+ 	ad.aalg_id = SA_AALG_ID_SHA1;
+ 	ad.hash_size = SHA1_DIGEST_SIZE;
+ 	ad.auth_ctrl = SA_AUTH_SW_CTRL_SHA1;
+ 
+-	sa_sha_setup(ctx, &ad, NULL, 0);
++	sa_sha_setup(ctx, &ad);
+ 
+ 	return 0;
+ }
+@@ -1943,13 +1645,13 @@ static int sa_sha256_cra_init(struct crypto_tfm *tfm)
+ 	struct algo_data ad = { 0 };
+ 	struct sa_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+ 
+-	sa_sha_cra_init_alg(tfm, NULL, "sha256");
++	sa_sha_cra_init_alg(tfm, "sha256");
+ 
+ 	ad.aalg_id = SA_AALG_ID_SHA2_256;
+ 	ad.hash_size = SHA256_DIGEST_SIZE;
+ 	ad.auth_ctrl = SA_AUTH_SW_CTRL_SHA256;
+ 
+-	sa_sha_setup(ctx, &ad, NULL, 0);
++	sa_sha_setup(ctx, &ad);
+ 
+ 	return 0;
+ }
+@@ -1959,63 +1661,17 @@ static int sa_sha512_cra_init(struct crypto_tfm *tfm)
+ 	struct algo_data ad = { 0 };
+ 	struct sa_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+ 
+-	sa_sha_cra_init_alg(tfm, NULL, "sha512");
++	sa_sha_cra_init_alg(tfm, "sha512");
+ 
+ 	ad.aalg_id = SA_AALG_ID_SHA2_512;
+ 	ad.hash_size = SHA512_DIGEST_SIZE;
+ 	ad.auth_ctrl = SA_AUTH_SW_CTRL_SHA512;
+ 
+-	sa_sha_setup(ctx, &ad, NULL, 0);
++	sa_sha_setup(ctx, &ad);
+ 
+ 	return 0;
+ }
+ 
+-static int sa_hmac_cra_init(struct crypto_tfm *tfm)
+-{
+-	const char *alg_name = crypto_tfm_alg_name(tfm);
+-	int ret = -EINVAL;
+-
+-	if (!strcmp(alg_name, "hmac(sha1)"))
+-		ret = sa_sha_cra_init_alg(tfm, "sha1", alg_name);
+-	else if (!strcmp(alg_name, "hmac(sha256)"))
+-		ret = sa_sha_cra_init_alg(tfm, "sha256", alg_name);
+-	else if (!strcmp(alg_name, "hmac(sha512)"))
+-		ret = sa_sha_cra_init_alg(tfm, "sha512", alg_name);
+-	else
+-		dev_err(sa_k3_dev, "%s: unsupported algo %s\n", __func__, alg_name);
+-
+-	return ret;
+-}
+-
+-
+-static int sa_hmac_sha_setkey(struct crypto_ahash *ahash, const u8 *key,
+-			     unsigned int keylen)
+-{
+-	struct crypto_tfm *tfm = crypto_ahash_tfm(ahash);
+-	const char *alg_name = crypto_tfm_alg_name(tfm);
+-	struct sa_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+-	struct algo_data ad = { 0 };
+-
+-	if (!strcmp(alg_name, "hmac(sha1)")) {
+-		ad.aalg_id = SA_AALG_ID_SHA1;
+-		ad.hash_size = SHA1_DIGEST_SIZE;
+-		ad.auth_ctrl = SA_AUTH_SW_CTRL_SHA1;
+-	} else if (!strcmp(alg_name, "hmac(sha256)")) {
+-		ad.aalg_id = SA_AALG_ID_SHA2_256;
+-		ad.hash_size = SHA256_DIGEST_SIZE;
+-		ad.auth_ctrl = SA_AUTH_SW_CTRL_SHA256;
+-	} else if (!strcmp(alg_name, "hmac(sha512)")) {
+-		ad.aalg_id = SA_AALG_ID_SHA2_512;
+-		ad.hash_size = SHA512_DIGEST_SIZE;
+-		ad.auth_ctrl = SA_AUTH_SW_CTRL_SHA512;
+-	} else {
+-		dev_err(sa_k3_dev, "%s: unsupported algo %s\n", __func__, alg_name);
+-		return -EINVAL;
+-	}
+-
+-	return sa_sha_setup(ctx, &ad, key, keylen);
+-}
+-
+ static void sa_sha_cra_exit(struct crypto_tfm *tfm)
+ {
+ 	struct sa_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+@@ -2052,7 +1708,7 @@ static void sa_aead_dma_in_callback(void *data)
+ 	authsize = crypto_aead_authsize(tfm);
+ 
+ 	mdptr = (u32 *)dmaengine_desc_get_metadata_ptr(rxd->tx_in, &pl, &ml);
+-	for (i = 0; i < (crypto_aead_maxauthsize(tfm) / 4); i++)
++	for (i = 0; i < (authsize / 4); i++)
+ 		mdptr[i + 4] = swab32(mdptr[i + 4]);
+ 
+ 	if (rxd->enc) {
+@@ -2116,55 +1772,6 @@ static int sa_cra_init_aead(struct crypto_aead *tfm, const char *hash,
+ 	return ret;
+ }
+ 
+-static int sa_cra_init_gcm(struct crypto_aead *tfm)
+-{
+-	const char *helper_name = "ecb(aes)";
+-	const char *fallback = crypto_tfm_alg_name(crypto_aead_tfm(tfm));
+-	struct sa_tfm_ctx *ctx = crypto_aead_ctx(tfm);
+-	struct sa_crypto_data *data = dev_get_drvdata(sa_k3_dev);
+-	int ret;
+-
+-	memzero_explicit(ctx, sizeof(*ctx));
+-	ctx->dev_data = data;
+-
+-	ctx->skcipher = crypto_alloc_sync_skcipher(helper_name, 0, CRYPTO_ALG_NEED_FALLBACK);
+-	if (IS_ERR(ctx->skcipher)) {
+-		dev_err(sa_k3_dev, "base driver %s couldn't be loaded\n", helper_name);
+-		return PTR_ERR(ctx->skcipher);
+-	}
+-
+-	ctx->fallback.aead = crypto_alloc_aead(fallback, 0,
+-					       CRYPTO_ALG_NEED_FALLBACK);
+-
+-	if (IS_ERR(ctx->fallback.aead)) {
+-		dev_err(sa_k3_dev, "fallback driver %s couldn't be loaded\n",
+-			fallback);
+-		return PTR_ERR(ctx->fallback.aead);
+-	}
+-
+-	crypto_aead_set_reqsize(tfm, sizeof(struct aead_request) +
+-				crypto_aead_reqsize(ctx->fallback.aead));
+-
+-	ret = sa_init_ctx_info(&ctx->enc, data);
+-	if (ret) {
+-		pr_err("%s: %d: sa_init_ctx_info failed with ret = %d\n", __func__, __LINE__, ret);
+-		return ret;
+-	}
+-
+-	ret = sa_init_ctx_info(&ctx->dec, data);
+-	if (ret) {
+-		pr_err("%s: %d: sa_init_ctx_info failed with ret = %d\n", __func__, __LINE__, ret);
+-		sa_free_ctx_info(&ctx->enc, data);
+-		return ret;
+-	}
+-
+-	dev_dbg(sa_k3_dev, "%s(0x%p) sc-ids(0x%x(0x%pad), 0x%x(0x%pad))\n",
+-		__func__, tfm, ctx->enc.sc_id, &ctx->enc.sc_phys,
+-		ctx->dec.sc_id, &ctx->dec.sc_phys);
+-
+-	return ret;
+-}
+-
+ static int sa_cra_init_aead_sha1(struct crypto_aead *tfm)
+ {
+ 	return sa_cra_init_aead(tfm, "sha1",
+@@ -2210,9 +1817,9 @@ static int sa_aead_setkey(struct crypto_aead *authenc,
+ 
+ 	ad->ctx = ctx;
+ 	ad->enc_eng.eng_id = SA_ENG_ID_EM1;
+-	ad->enc_eng.sc_size = SA_CTX_ENC_TYPE_SZ;
++	ad->enc_eng.sc_size = SA_CTX_ENC_TYPE1_SZ;
+ 	ad->auth_eng.eng_id = SA_ENG_ID_AM1;
+-	ad->auth_eng.sc_size = SA_CTX_AUTH_TYPE_SZ;
++	ad->auth_eng.sc_size = SA_CTX_AUTH_TYPE2_SZ;
+ 	ad->mci_enc = mci_cbc_enc_no_iv_array[key_idx];
+ 	ad->mci_dec = mci_cbc_dec_no_iv_array[key_idx];
+ 	ad->inv_key = true;
+@@ -2222,9 +1829,12 @@ static int sa_aead_setkey(struct crypto_aead *authenc,
+ 
+ 	memset(&cfg, 0, sizeof(cfg));
+ 	cfg.enc = true;
++	cfg.aalg = ad->aalg_id;
+ 	cfg.enc_eng_id = ad->enc_eng.eng_id;
+ 	cfg.auth_eng_id = ad->auth_eng.eng_id;
+ 	cfg.iv_size = crypto_aead_ivsize(authenc);
++	cfg.akey = keys.authkey;
++	cfg.akey_len = keys.authkeylen;
+ 
+ 	/* Setup Encryption Security Context & Command label template */
+ 	if (sa_init_sc(&ctx->enc, ctx->dev_data->match_data, keys.enckey,
+@@ -2337,6 +1947,7 @@ static int sa_aead_run(struct aead_request *req, u8 *iv, int enc)
+ 	sa_req.type = CRYPTO_ALG_TYPE_AEAD;
+ 	sa_req.enc = enc;
+ 	sa_req.callback = sa_aead_dma_in_callback;
++	sa_req.mdata_size = 52;
+ 	sa_req.base = &req->base;
+ 	sa_req.ctx = ctx;
+ 	sa_req.src = req->src;
+@@ -2357,92 +1968,6 @@ static int sa_aead_decrypt(struct aead_request *req)
+ 	return sa_aead_run(req, req->iv, 0);
+ }
+ 
+-static int sa_gcm_run(struct aead_request *req, int enc)
+-{
+-	struct crypto_aead *tfm = crypto_aead_reqtfm(req);
+-	struct sa_tfm_ctx *ctx = crypto_aead_ctx(tfm);
+-	struct sa_req sa_req = { 0 };
+-	size_t auth_size, enc_size;
+-	u8 final_iv[SA_GCM_IV_SIZE];
+-
+-	enc_size = req->cryptlen;
+-	auth_size = req->assoclen + req->cryptlen;
+-
+-	if (!enc) {
+-		enc_size -= crypto_aead_authsize(tfm);
+-		auth_size -= crypto_aead_authsize(tfm);
+-	}
+-
+-	if (req->assoclen > SA_MAX_ASSOC_SZ || !enc_size ||
+-	    (auth_size > SA_MAX_DATA_SZ ||
+-	    (auth_size >= SA_UNSAFE_DATA_SZ_MIN &&
+-	     auth_size <= SA_UNSAFE_DATA_SZ_MAX))) {
+-		struct aead_request *subreq = aead_request_ctx(req);
+-		int ret;
+-
+-		aead_request_set_tfm(subreq, ctx->fallback.aead);
+-		aead_request_set_callback(subreq, req->base.flags,
+-					  req->base.complete, req->base.data);
+-		aead_request_set_crypt(subreq, req->src, req->dst,
+-				       req->cryptlen, req->iv);
+-		aead_request_set_ad(subreq, req->assoclen);
+-
+-		ret = enc ? crypto_aead_encrypt(subreq) :
+-			crypto_aead_decrypt(subreq);
+-		return ret;
+-	}
+-
+-	/*
+-	 * SA2UL requires the IV field to be 16 bytes long ( IV, Counter )
+-	 * and the last byte of the counter should be initialized to 01
+-	 */
+-	memset(final_iv, 0, sizeof(final_iv));
+-	memcpy(final_iv, req->iv, GCM_AES_IV_SIZE);
+-
+-	/* Set the counter as 0x01 */
+-	final_iv[15] = 0x01;
+-
+-	sg_copy_to_buffer(req->src, sg_nents_for_len(req->src, req->assoclen),
+-			  sa_req.aad, req->assoclen);
+-
+-	sa_req.enc_offset = req->assoclen;
+-	sa_req.enc_size = enc_size;
+-	sa_req.size = auth_size;
+-	sa_req.enc_iv = final_iv;
+-	sa_req.type = CRYPTO_ALG_TYPE_AEAD;
+-	sa_req.enc = enc;
+-	sa_req.callback = sa_aead_dma_in_callback;
+-	sa_req.base = &req->base;
+-	sa_req.ctx = ctx;
+-	sa_req.src = req->src;
+-	sa_req.dst = req->dst;
+-	sa_req.aad_length = req->assoclen;
+-
+-	return sa_run(&sa_req);
+-}
+-
+-static int sa_gcm_encrypt(struct aead_request *req)
+-{
+-	return sa_gcm_run(req, 1);
+-}
+-
+-static int sa_gcm_decrypt(struct aead_request *req)
+-{
+-	return sa_gcm_run(req, 0);
+-}
+-
+-static void sa_exit_tfm_gcm(struct crypto_aead *tfm)
+-{
+-	struct sa_tfm_ctx *ctx = crypto_aead_ctx(tfm);
+-	struct sa_crypto_data *data = dev_get_drvdata(sa_k3_dev);
+-
+-	crypto_free_sync_skcipher(ctx->skcipher);
+-	crypto_free_aead(ctx->fallback.aead);
+-
+-	sa_free_ctx_info(&ctx->enc, data);
+-	sa_free_ctx_info(&ctx->dec, data);
+-}
+-
+ static struct sa_alg_tmpl sa_algs[] = {
+ 	[SA_ALG_CBC_AES] = {
+ 		.type = CRYPTO_ALG_TYPE_SKCIPHER,
+@@ -2676,120 +2201,6 @@ static struct sa_alg_tmpl sa_algs[] = {
+ 			.decrypt = sa_aead_decrypt,
+ 		},
+ 	},
+-	[SA_ALG_HMAC_SHA256] = {
+-		.type = CRYPTO_ALG_TYPE_AHASH,
+-		.alg.ahash = {
+-		       .halg.base = {
+-			       .cra_name       = "hmac(sha256)",
+-			       .cra_driver_name        = "hmac(sha256-sa2ul)",
+-			       .cra_priority   = 1000,
+-			       .cra_flags      = CRYPTO_ALG_TYPE_AHASH |
+-						 CRYPTO_ALG_ASYNC |
+-						 CRYPTO_ALG_KERN_DRIVER_ONLY |
+-						 CRYPTO_ALG_NEED_FALLBACK,
+-			       .cra_blocksize  = SHA256_BLOCK_SIZE,
+-			       .cra_ctxsize    = sizeof(struct sa_tfm_ctx),
+-			       .cra_module     = THIS_MODULE,
+-			       .cra_init       = sa_hmac_cra_init,
+-			       .cra_exit       = sa_sha_cra_exit,
+-		       },
+-		       .halg.digestsize        = SHA256_DIGEST_SIZE,
+-		       .halg.statesize	       = sizeof(struct sa_sha_req_ctx) +
+-						 sizeof(struct sha256_state),
+-		       .init		       = sa_sha_init,
+-		       .update		       = sa_sha_update,
+-		       .final		       = sa_sha_final,
+-		       .finup		       = sa_sha_finup,
+-		       .setkey		       = sa_hmac_sha_setkey,
+-		       .digest		       = sa_sha_digest,
+-		       .export		       = sa_sha_export,
+-		       .import		       = sa_sha_import,
+-	       },
+-	},
+-	[SA_ALG_HMAC_SHA1] = {
+-		.type = CRYPTO_ALG_TYPE_AHASH,
+-		.alg.ahash = {
+-			.halg.base = {
+-				.cra_name	= "hmac(sha1)",
+-				.cra_driver_name	= "hmac(sha1-sa2ul)",
+-				.cra_priority	= 400,
+-				.cra_flags	= CRYPTO_ALG_TYPE_AHASH |
+-						  CRYPTO_ALG_ASYNC |
+-						  CRYPTO_ALG_KERN_DRIVER_ONLY |
+-						  CRYPTO_ALG_NEED_FALLBACK,
+-				.cra_blocksize	= SHA1_BLOCK_SIZE,
+-				.cra_ctxsize	= sizeof(struct sa_tfm_ctx),
+-				.cra_module	= THIS_MODULE,
+-				.cra_init	= sa_hmac_cra_init,
+-				.cra_exit	= sa_sha_cra_exit,
+-			},
+-			.halg.digestsize	= SHA1_DIGEST_SIZE,
+-			.halg.statesize		= sizeof(struct sa_sha_req_ctx) +
+-						  sizeof(struct sha1_state),
+-			.init			= sa_sha_init,
+-			.update			= sa_sha_update,
+-			.final			= sa_sha_final,
+-			.finup			= sa_sha_finup,
+-			.setkey		        = sa_hmac_sha_setkey,
+-			.digest			= sa_sha_digest,
+-			.export			= sa_sha_export,
+-			.import			= sa_sha_import,
+-		},
+-	},
+-	[SA_ALG_HMAC_SHA512] = {
+-		.type = CRYPTO_ALG_TYPE_AHASH,
+-		.alg.ahash = {
+-			.halg.base = {
+-				.cra_name	= "hmac(sha512)",
+-				.cra_driver_name	= "hmac(sha512-sa2ul)",
+-				.cra_priority	= 400,
+-				.cra_flags	= CRYPTO_ALG_TYPE_AHASH |
+-						  CRYPTO_ALG_ASYNC |
+-						  CRYPTO_ALG_KERN_DRIVER_ONLY |
+-						  CRYPTO_ALG_NEED_FALLBACK,
+-				.cra_blocksize	= SHA512_BLOCK_SIZE,
+-				.cra_ctxsize	= sizeof(struct sa_tfm_ctx),
+-				.cra_module	= THIS_MODULE,
+-				.cra_init	= sa_hmac_cra_init,
+-				.cra_exit	= sa_sha_cra_exit,
+-			},
+-			.halg.digestsize	= SHA512_DIGEST_SIZE,
+-			.halg.statesize		= sizeof(struct sa_sha_req_ctx) +
+-						  sizeof(struct sha512_state),
+-			.init			= sa_sha_init,
+-			.update			= sa_sha_update,
+-			.final			= sa_sha_final,
+-			.finup			= sa_sha_finup,
+-			.setkey		        = sa_hmac_sha_setkey,
+-			.digest			= sa_sha_digest,
+-			.export			= sa_sha_export,
+-			.import			= sa_sha_import,
+-		},
+-	},
+-	[SA_ALG_GCM_AES] = {
+-		.type = CRYPTO_ALG_TYPE_AEAD,
+-		.alg.aead = {
+-			.base.cra_name		= "gcm(aes)",
+-			.base.cra_driver_name	= "gcm-aes-sa2ul",
+-			.base.cra_priority	= 30000,
+-			.base.cra_flags		= CRYPTO_ALG_TYPE_AEAD |
+-						  CRYPTO_ALG_KERN_DRIVER_ONLY |
+-						  CRYPTO_ALG_ASYNC |
+-						  CRYPTO_ALG_NEED_FALLBACK,
+-			.base.cra_blocksize	= 1,
+-			.base.cra_ctxsize	= sizeof(struct sa_tfm_ctx),
+-			.base.cra_module	= THIS_MODULE,
+-			.ivsize			= GCM_AES_IV_SIZE,
+-			.maxauthsize		= AES_BLOCK_SIZE,
+-			.init			= sa_cra_init_gcm,
+-			.exit			= sa_exit_tfm_gcm,
+-			.setauthsize		= sa_aead_setauthsize,
+-			.setkey			= sa_gcm_setkey,
+-			.encrypt		= sa_gcm_encrypt,
+-			.decrypt		= sa_gcm_decrypt,
+-		}
+-	},
+-
+ };
+ 
+ /* Register the algorithms in crypto framework */
+@@ -2851,42 +2262,48 @@ static void sa_unregister_algos(const struct device *dev)
+ 	}
+ }
+ 
+-static int sa_dma_init(struct sa_crypto_data *dev_data)
++static int sa_init_mem(struct sa_crypto_data *dev_data)
+ {
+-	int ret;
+-	struct dma_slave_config cfg;
+ 	struct device *dev = &dev_data->pdev->dev;
+-
+ 	/* Setup dma pool for security context buffers */
+-	dev_data->sc_pool = mempool_create_kmalloc_pool(64, SA_CTX_MAX_SZ);
++	dev_data->sc_pool = dma_pool_create("keystone-sc", dev,
++					    SA_CTX_MAX_SZ, 64, 0);
+ 	if (!dev_data->sc_pool) {
+ 		dev_err(dev, "Failed to create dma pool");
+ 		return -ENOMEM;
+ 	}
+ 
+-	dev_data->dma_rx1 = NULL;
+-	dev_data->dma_tx = NULL;
+-	dev_data->dma_rx2 = NULL;
++	return 0;
++}
++
++static int sa_dma_init(struct sa_crypto_data *dd)
++{
++	int ret;
++	struct dma_slave_config cfg;
++
++	dd->dma_rx1 = NULL;
++	dd->dma_tx = NULL;
++	dd->dma_rx2 = NULL;
+ 
+-	ret = dma_coerce_mask_and_coherent(dev_data->dev, DMA_BIT_MASK(48));
++	ret = dma_coerce_mask_and_coherent(dd->dev, DMA_BIT_MASK(48));
+ 	if (ret)
+-		goto err_dma_coerce;
++		return ret;
+ 
+-	dev_data->dma_rx1 = dma_request_chan(dev_data->dev, "rx1");
+-	if (IS_ERR(dev_data->dma_rx1))
+-		return dev_err_probe(dev_data->dev, PTR_ERR(dev_data->dma_rx1),
++	dd->dma_rx1 = dma_request_chan(dd->dev, "rx1");
++	if (IS_ERR(dd->dma_rx1))
++		return dev_err_probe(dd->dev, PTR_ERR(dd->dma_rx1),
+ 				     "Unable to request rx1 DMA channel\n");
+ 
+-	dev_data->dma_rx2 = dma_request_chan(dev_data->dev, "rx2");
+-	if (IS_ERR(dev_data->dma_rx2)) {
+-		ret = dev_err_probe(dev_data->dev, PTR_ERR(dev_data->dma_rx2),
++	dd->dma_rx2 = dma_request_chan(dd->dev, "rx2");
++	if (IS_ERR(dd->dma_rx2)) {
++		ret = dev_err_probe(dd->dev, PTR_ERR(dd->dma_rx2),
+ 				    "Unable to request rx2 DMA channel\n");
+ 		goto err_dma_rx2;
+ 	}
+ 
+-	dev_data->dma_tx = dma_request_chan(dev_data->dev, "tx");
+-	if (IS_ERR(dev_data->dma_tx)) {
+-		ret = dev_err_probe(dev_data->dev, PTR_ERR(dev_data->dma_tx),
++	dd->dma_tx = dma_request_chan(dd->dev, "tx");
++	if (IS_ERR(dd->dma_tx)) {
++		ret = dev_err_probe(dd->dev, PTR_ERR(dd->dma_tx),
+ 				    "Unable to request tx DMA channel\n");
+ 		goto err_dma_tx;
+ 	}
+@@ -2898,23 +2315,23 @@ static int sa_dma_init(struct sa_crypto_data *dev_data)
+ 	cfg.src_maxburst = 4;
+ 	cfg.dst_maxburst = 4;
+ 
+-	ret = dmaengine_slave_config(dev_data->dma_rx1, &cfg);
++	ret = dmaengine_slave_config(dd->dma_rx1, &cfg);
+ 	if (ret) {
+-		dev_err(dev_data->dev, "can't configure IN dmaengine slave: %d\n",
++		dev_err(dd->dev, "can't configure IN dmaengine slave: %d\n",
+ 			ret);
+ 		goto err_dma_config;
+ 	}
+ 
+-	ret = dmaengine_slave_config(dev_data->dma_rx2, &cfg);
++	ret = dmaengine_slave_config(dd->dma_rx2, &cfg);
+ 	if (ret) {
+-		dev_err(dev_data->dev, "can't configure IN dmaengine slave: %d\n",
++		dev_err(dd->dev, "can't configure IN dmaengine slave: %d\n",
+ 			ret);
+ 		goto err_dma_config;
+ 	}
+ 
+-	ret = dmaengine_slave_config(dev_data->dma_tx, &cfg);
++	ret = dmaengine_slave_config(dd->dma_tx, &cfg);
+ 	if (ret) {
+-		dev_err(dev_data->dev, "can't configure OUT dmaengine slave: %d\n",
++		dev_err(dd->dev, "can't configure OUT dmaengine slave: %d\n",
+ 			ret);
+ 		goto err_dma_config;
+ 	}
+@@ -2922,25 +2339,15 @@ static int sa_dma_init(struct sa_crypto_data *dev_data)
+ 	return 0;
+ 
+ err_dma_config:
+-	dma_release_channel(dev_data->dma_tx);
++	dma_release_channel(dd->dma_tx);
+ err_dma_tx:
+-	dma_release_channel(dev_data->dma_rx2);
++	dma_release_channel(dd->dma_rx2);
+ err_dma_rx2:
+-	dma_release_channel(dev_data->dma_rx1);
+-err_dma_coerce:
+-	mempool_destroy(dev_data->sc_pool);
++	dma_release_channel(dd->dma_rx1);
+ 
+ 	return ret;
+ }
+ 
+-static void sa_dma_cleanup(struct sa_crypto_data *dev_data)
+-{
+-	dma_release_channel(dev_data->dma_rx2);
+-	dma_release_channel(dev_data->dma_rx1);
+-	dma_release_channel(dev_data->dma_tx);
+-	mempool_destroy(dev_data->sc_pool);
+-}
+-
+ static int sa_link_child(struct device *dev, void *data)
+ {
+ 	struct device *parent = data;
+@@ -2961,11 +2368,7 @@ static struct sa_match_data am654_match_data = {
+ 			   BIT(SA_ALG_SHA256) |
+ 			   BIT(SA_ALG_SHA512) |
+ 			   BIT(SA_ALG_AUTHENC_SHA1_AES) |
+-			   BIT(SA_ALG_AUTHENC_SHA256_AES) |
+-			   BIT(SA_ALG_HMAC_SHA1) |
+-			   BIT(SA_ALG_HMAC_SHA256)  |
+-			   BIT(SA_ALG_HMAC_SHA512) |
+-			   BIT(SA_ALG_GCM_AES)
++			   BIT(SA_ALG_AUTHENC_SHA256_AES),
+ };
+ 
+ static struct sa_match_data am64_match_data = {
+@@ -3023,9 +2426,10 @@ static int sa_ul_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
++	sa_init_mem(dev_data);
+ 	ret = sa_dma_init(dev_data);
+ 	if (ret)
+-		goto disable_pm_runtime;
++		goto destroy_dma_pool;
+ 
+ 	spin_lock_init(&dev_data->scid_lock);
+ 
+@@ -3049,9 +2453,14 @@ static int sa_ul_probe(struct platform_device *pdev)
+ 
+ release_dma:
+ 	sa_unregister_algos(dev);
+-	sa_dma_cleanup(dev_data);
+ 
+-disable_pm_runtime:
++	dma_release_channel(dev_data->dma_rx2);
++	dma_release_channel(dev_data->dma_rx1);
++	dma_release_channel(dev_data->dma_tx);
++
++destroy_dma_pool:
++	dma_pool_destroy(dev_data->sc_pool);
++
+ 	pm_runtime_put_sync(dev);
+ 	pm_runtime_disable(dev);
+ 
+@@ -3065,7 +2474,12 @@ static void sa_ul_remove(struct platform_device *pdev)
+ 	of_platform_depopulate(&pdev->dev);
+ 
+ 	sa_unregister_algos(&pdev->dev);
+-	sa_dma_cleanup(dev_data);
++
++	dma_release_channel(dev_data->dma_rx2);
++	dma_release_channel(dev_data->dma_rx1);
++	dma_release_channel(dev_data->dma_tx);
++
++	dma_pool_destroy(dev_data->sc_pool);
+ 
+ 	platform_set_drvdata(pdev, NULL);
+ 
+diff --git a/drivers/crypto/sa2ul.h b/drivers/crypto/sa2ul.h
+index c573327a2d31..12c17a68d350 100644
+--- a/drivers/crypto/sa2ul.h
++++ b/drivers/crypto/sa2ul.h
+@@ -31,9 +31,24 @@ struct sa_tfm_ctx;
+ #define SA_EEC_CPPI_PORT_IN_EN		0x00000200
+ #define SA_EEC_CPPI_PORT_OUT_EN		0x00000800
+ 
++/*
++ * Encoding used to identify the typo of crypto operation
++ * performed on the packet when the packet is returned
++ * by SA
++ */
++#define SA_REQ_SUBTYPE_ENC	0x0001
++#define SA_REQ_SUBTYPE_DEC	0x0002
++#define SA_REQ_SUBTYPE_SHIFT	16
++#define SA_REQ_SUBTYPE_MASK	0xffff
++
+ /* Number of 32 bit words in EPIB  */
+ #define SA_DMA_NUM_EPIB_WORDS   4
+ 
++/* Number of 32 bit words in PS data  */
++#define SA_DMA_NUM_PS_WORDS     16
++#define NKEY_SZ			3
++#define MCI_SZ			27
++
+ /*
+  * Maximum number of simultaeneous security contexts
+  * supported by the driver
+@@ -46,6 +61,12 @@ struct sa_tfm_ctx;
+ #define SA_CTX_SIZE_TO_DMA_SIZE(ctx_sz) \
+ 		((ctx_sz) ? ((ctx_sz) / 32 - 1) : 0)
+ 
++#define SA_CTX_ENC_KEY_OFFSET   32
++#define SA_CTX_ENC_AUX1_OFFSET  64
++#define SA_CTX_ENC_AUX2_OFFSET  96
++#define SA_CTX_ENC_AUX3_OFFSET  112
++#define SA_CTX_ENC_AUX4_OFFSET  128
++
+ /* Next Engine Select code in CP_ACE */
+ #define SA_ENG_ID_EM1   2       /* Enc/Dec engine with AES/DEC core */
+ #define SA_ENG_ID_EM2   3       /* Encryption/Decryption enginefor pass 2 */
+@@ -89,12 +110,15 @@ struct sa_tfm_ctx;
+ #define SA_CTX_PE_PKT_TYPE_IPSEC_ESP   3
+ /* Indicates that it is in data mode, It may not be used by PHP */
+ #define SA_CTX_PE_PKT_TYPE_NONE        4
+-#define SA_CTX_ENC_TYPE_SZ     128      /* Encryption SC with Key and Aux1 */
+-#define SA_CTX_AUTH_TYPE_SZ    160      /* Auth SC with Key and Aux1 and Aux2 */
++#define SA_CTX_ENC_TYPE1_SZ     64      /* Encryption SC with Key only */
++#define SA_CTX_ENC_TYPE2_SZ     96      /* Encryption SC with Key and Aux1 */
++
++#define SA_CTX_AUTH_TYPE1_SZ    64      /* Auth SC with Key only */
++#define SA_CTX_AUTH_TYPE2_SZ    96      /* Auth SC with Key and Aux1 */
+ /* Size of security context for PHP engine */
+ #define SA_CTX_PHP_PE_CTX_SZ    64
+ 
+-#define SA_CTX_MAX_SZ (64 + SA_CTX_ENC_TYPE_SZ + SA_CTX_AUTH_TYPE_SZ)
++#define SA_CTX_MAX_SZ (64 + SA_CTX_ENC_TYPE2_SZ + SA_CTX_AUTH_TYPE2_SZ)
+ 
+ /*
+  * Encoding of F/E control in SCCTL
+@@ -119,7 +143,14 @@ struct sa_tfm_ctx;
+  */
+ #define SA_CTX_SCCTL_OWNER_OFFSET 0
+ 
+-#define SA_SCCTL_FE_AUTH_ENC	0x6D
++#define SA_CTX_ENC_KEY_OFFSET   32
++#define SA_CTX_ENC_AUX1_OFFSET  64
++#define SA_CTX_ENC_AUX2_OFFSET  96
++#define SA_CTX_ENC_AUX3_OFFSET  112
++#define SA_CTX_ENC_AUX4_OFFSET  128
++
++#define SA_SCCTL_FE_AUTH_ENC	0x65
++#define SA_SCCTL_FE_ENC		0x8D
+ 
+ #define SA_ALIGN_MASK		(sizeof(u32) - 1)
+ #define SA_ALIGNED		__aligned(32)
+@@ -133,8 +164,6 @@ struct sa_tfm_ctx;
+ 
+ /* SA2UL can only handle maximum data size of 64KB */
+ #define SA_MAX_DATA_SZ		U16_MAX
+-/* SA2UL can only handle maximum data size of 64KB */
+-#define SA_MAX_ASSOC_SZ		16
+ 
+ /*
+  * SA2UL can provide unpredictable results with packet sizes that fall
+@@ -166,7 +195,7 @@ struct sa_crypto_data {
+ 	void __iomem *base;
+ 	const struct sa_match_data *match_data;
+ 	struct platform_device	*pdev;
+-	mempool_t		*sc_pool;
++	struct dma_pool		*sc_pool;
+ 	struct device *dev;
+ 	spinlock_t	scid_lock; /* lock for SC-ID allocation */
+ 	/* Security context data */
+@@ -232,8 +261,16 @@ struct sa_cmdl_upd_info {
+ 	u32				aux_key[SA_MAX_AUX_DATA_WORDS];
+ };
+ 
++/*
++ * Number of 32bit words appended after the command label
++ * in PSDATA to identify the crypto request context.
++ * word-0: Request type
++ * word-1: pointer to request
++ */
++#define SA_PSDATA_CTX_WORDS 4
++
+ /* Maximum size of Command label in 32 words */
+-#define SA_MAX_CMDL_WORDS 24
++#define SA_MAX_CMDL_WORDS (SA_DMA_NUM_PS_WORDS - SA_PSDATA_CTX_WORDS)
+ 
+ /**
+  * struct sa_ctx_info: SA context information
+@@ -271,9 +308,11 @@ struct sa_tfm_ctx {
+ 	struct sa_ctx_info enc;
+ 	struct sa_ctx_info dec;
+ 	struct sa_ctx_info auth;
++	int keylen;
+ 	int iv_idx;
++	u32 key[AES_KEYSIZE_256 / sizeof(u32)];
++	u8 authkey[SHA512_BLOCK_SIZE];
+ 	struct crypto_shash	*shash;
+-	struct crypto_sync_skcipher	*skcipher;
+ 	/* for fallback */
+ 	union {
+ 		struct crypto_skcipher		*skcipher;
+@@ -290,6 +329,7 @@ struct sa_tfm_ctx {
+  */
+ struct sa_sha_req_ctx {
+ 	struct sa_crypto_data	*dev_data;
++	u32			cmdl[SA_MAX_CMDL_WORDS + SA_PSDATA_CTX_WORDS];
+ 	struct ahash_request	fallback_req;
+ };
+ 
+@@ -310,7 +350,7 @@ enum sa_ealg_id {
+ 	SA_EALG_ID_DES_CBC,         /* DES CBC mode */
+ 	SA_EALG_ID_3DES_CBC,        /* 3DES CBC mode */
+ 	SA_EALG_ID_CCM,             /* Counter with CBC-MAC mode */
+-	SA_EALG_ID_AES_GCM,             /* Galois Counter mode */
++	SA_EALG_ID_GCM,             /* Galois Counter mode */
+ 	SA_EALG_ID_AES_ECB,
+ 	SA_EALG_ID_LAST
+ };
+diff --git a/drivers/crypto/ti/Kconfig b/drivers/crypto/ti/Kconfig
+deleted file mode 100644
+index 911dc8c98066..000000000000
+--- a/drivers/crypto/ti/Kconfig
++++ /dev/null
+@@ -1,24 +0,0 @@
+-# SPDX-License-Identifier: GPL-2.0-only
+-config CRYPTO_DEV_TI_MCRC64
+-	tristate "Texas Instruments MCRC64 engine support"
+-	depends on ARCH_K3 || COMPILE_TEST
+-	select CRYPTO_HASH
+-	select CRYPTO_CRC64_ISO3309
+-	help
+-	  This enables support for the MCRC64 engine
+-	  which can be found on all AM62* and J722S devices.
+-	  MCRC64 engine calculates 64-bit cyclic redundancy checks (CRC)
+-	  according to the ISO 3309 standard.
+-
+-config CRYPTO_DEV_TI_DTHEV2
+-	tristate "Support for TI DTHE V2 crypto accelerators"
+-	depends on CRYPTO && CRYPTO_HW && ARCH_K3
+-	select CRYPTO_SKCIPHER
+-	select CRYPTO_SHA256
+-	select CRYPTO_SHA512
+-	select CRYPTO_MD5
+-	help
+-	  This enables support for the TI DTHE V2 hw crypto accelerator
+-	  which can be found on TI K3 SOCs. Selecting this enables use
+-	  of hardware acceleration for cryptographic algorithms on
+-	  these devices.
+diff --git a/drivers/crypto/ti/Makefile b/drivers/crypto/ti/Makefile
+deleted file mode 100644
+index 0b5df3ee8647..000000000000
+--- a/drivers/crypto/ti/Makefile
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# SPDX-License-Identifier: GPL-2.0-only
+-obj-$(CONFIG_CRYPTO_DEV_TI_MCRC64) += mcrc64.o
+-obj-$(CONFIG_CRYPTO_DEV_TI_DTHEV2) += dthev2.o
+-dthev2-objs := dthev2-common.o dthev2-aes.o dthev2-hash.o
+diff --git a/drivers/crypto/ti/dthev2-aes.c b/drivers/crypto/ti/dthev2-aes.c
+deleted file mode 100644
+index 96a32450c2a1..000000000000
+--- a/drivers/crypto/ti/dthev2-aes.c
++++ /dev/null
+@@ -1,428 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0-only
+-/*
+- * K3 DTHE V2 crypto accelerator driver
+- *
+- * Copyright (C) Texas Instruments 2025 - https://www.ti.com
+- * Author: T Pratham <t-pratham@ti.com>
+- */
+-
+-#include <crypto/aead.h>
+-#include <crypto/aes.h>
+-#include <crypto/algapi.h>
+-#include <crypto/internal/aead.h>
+-#include <crypto/internal/skcipher.h>
+-
+-#include "dthev2-common.h"
+-
+-#include <linux/delay.h>
+-#include <linux/dmaengine.h>
+-#include <linux/dma-mapping.h>
+-#include <linux/io.h>
+-#include <linux/scatterlist.h>
+-
+-/* Registers */
+-
+-// AES Engine
+-#define DTHE_P_AES_BASE		0x7000
+-#define DTHE_P_AES_KEY1_0	0x0038
+-#define DTHE_P_AES_KEY1_1	0x003C
+-#define DTHE_P_AES_KEY1_2	0x0030
+-#define DTHE_P_AES_KEY1_3	0x0034
+-#define DTHE_P_AES_KEY1_4	0x0028
+-#define DTHE_P_AES_KEY1_5	0x002C
+-#define DTHE_P_AES_KEY1_6	0x0020
+-#define DTHE_P_AES_KEY1_7	0x0024
+-#define DTHE_P_AES_IV_IN_0	0x0040
+-#define DTHE_P_AES_IV_IN_1	0x0044
+-#define DTHE_P_AES_IV_IN_2	0x0048
+-#define DTHE_P_AES_IV_IN_3	0x004C
+-#define DTHE_P_AES_CTRL		0x0050
+-#define DTHE_P_AES_C_LENGTH_0	0x0054
+-#define DTHE_P_AES_C_LENGTH_1	0x0058
+-#define DTHE_P_AES_AUTH_LENGTH	0x005C
+-#define DTHE_P_AES_DATA_IN_OUT	0x0060
+-
+-#define DTHE_P_AES_SYSCONFIG	0x0084
+-#define DTHE_P_AES_IRQSTATUS	0x008C
+-#define DTHE_P_AES_IRQENABLE	0x0090
+-
+-/* Register write values and macros */
+-
+-enum aes_ctrl_mode_masks {
+-	AES_CTRL_ECB_MASK = 0x00,
+-	AES_CTRL_CBC_MASK = BIT(5),
+-};
+-
+-#define DTHE_AES_CTRL_MODE_CLEAR_MASK		~GENMASK(28, 5)
+-
+-#define DTHE_AES_CTRL_DIR_ENC			BIT(2)
+-
+-#define DTHE_AES_CTRL_KEYSIZE_16B		BIT(3)
+-#define DTHE_AES_CTRL_KEYSIZE_24B		BIT(4)
+-#define DTHE_AES_CTRL_KEYSIZE_32B		(BIT(3) | BIT(4))
+-
+-#define DTHE_AES_CTRL_SAVE_CTX_SET		BIT(29)
+-
+-#define DTHE_AES_CTRL_OUTPUT_READY		BIT_MASK(0)
+-#define DTHE_AES_CTRL_INPUT_READY		BIT_MASK(1)
+-#define DTHE_AES_CTRL_SAVED_CTX_READY		BIT_MASK(30)
+-#define DTHE_AES_CTRL_CTX_READY			BIT_MASK(31)
+-
+-#define DTHE_AES_SYSCONFIG_DMA_DATA_IN_OUT_EN	GENMASK(6, 5)
+-#define DTHE_AES_IRQENABLE_EN_ALL		GENMASK(3, 0)
+-
+-/* Misc */
+-#define AES_IV_SIZE				AES_BLOCK_SIZE
+-#define AES_BLOCK_WORDS				(AES_BLOCK_SIZE / sizeof(u32))
+-#define AES_IV_WORDS				AES_BLOCK_WORDS
+-
+-static int cnt;
+-
+-static int dthe_cipher_cra_init(struct crypto_skcipher *tfm)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_skcipher_ctx(tfm);
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-
+-	void __iomem *aes_base_reg = dev_data->regs + DTHE_P_AES_BASE;
+-	u32 aes_irqenable_val = readl_relaxed(aes_base_reg + DTHE_P_AES_IRQENABLE);
+-	u32 aes_sysconfig_val = readl_relaxed(aes_base_reg + DTHE_P_AES_SYSCONFIG);
+-
+-	memzero_explicit(ctx, sizeof(*ctx));
+-	ctx->dev_data = dev_data;
+-	ctx->ctx_info.aes_ctx = kzalloc(sizeof(*ctx->ctx_info.aes_ctx), GFP_KERNEL);
+-	if (!ctx->ctx_info.aes_ctx)
+-		return -ENOMEM;
+-
+-	aes_sysconfig_val |= DTHE_AES_SYSCONFIG_DMA_DATA_IN_OUT_EN;
+-	writel_relaxed(aes_sysconfig_val, aes_base_reg + DTHE_P_AES_SYSCONFIG);
+-
+-	aes_irqenable_val |= DTHE_AES_IRQENABLE_EN_ALL;
+-	writel_relaxed(aes_irqenable_val, aes_base_reg + DTHE_P_AES_IRQENABLE);
+-
+-	return 0;
+-}
+-
+-static void dthe_cipher_cra_exit(struct crypto_skcipher *tfm)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_skcipher_ctx(tfm);
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-
+-	void __iomem *aes_base_reg = dev_data->regs + DTHE_P_AES_BASE;
+-
+-	kfree(ctx->ctx_info.aes_ctx);
+-	writel_relaxed(0, aes_base_reg + DTHE_P_AES_IRQENABLE);
+-}
+-
+-static int dthe_ecb_aes_setkey(struct crypto_skcipher *tfm, const u8 *key, unsigned int keylen)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_skcipher_ctx(tfm);
+-
+-	if (keylen != AES_KEYSIZE_128 && keylen != AES_KEYSIZE_192 && keylen != AES_KEYSIZE_256)
+-		return -EINVAL;
+-
+-	ctx->ctx_info.aes_ctx->mode = DTHE_AES_ECB;
+-	ctx->ctx_info.aes_ctx->keylen = keylen;
+-	memcpy(ctx->ctx_info.aes_ctx->key, key, keylen);
+-
+-	return 0;
+-}
+-
+-static int dthe_cbc_aes_setkey(struct crypto_skcipher *tfm, const u8 *key, unsigned int keylen)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_skcipher_ctx(tfm);
+-
+-	if (keylen != AES_KEYSIZE_128 && keylen != AES_KEYSIZE_192 && keylen != AES_KEYSIZE_256)
+-		return -EINVAL;
+-
+-	ctx->ctx_info.aes_ctx->mode = DTHE_AES_CBC;
+-	ctx->ctx_info.aes_ctx->keylen = keylen;
+-	memcpy(ctx->ctx_info.aes_ctx->key, key, keylen);
+-
+-	return 0;
+-}
+-
+-static void dthe_aes_set_ctrl_key(struct dthe_tfm_ctx *ctx, u32 *iv_in)
+-{
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-	struct dthe_aes_ctx *actx = ctx->ctx_info.aes_ctx;
+-	void __iomem *aes_base_reg = dev_data->regs + DTHE_P_AES_BASE;
+-	u32 ctrl_val = 0;
+-
+-	writel_relaxed(actx->key[0], aes_base_reg + DTHE_P_AES_KEY1_0);
+-	writel_relaxed(actx->key[1], aes_base_reg + DTHE_P_AES_KEY1_1);
+-	writel_relaxed(actx->key[2], aes_base_reg + DTHE_P_AES_KEY1_2);
+-	writel_relaxed(actx->key[3], aes_base_reg + DTHE_P_AES_KEY1_3);
+-
+-	if (actx->keylen > AES_KEYSIZE_128) {
+-		writel_relaxed(actx->key[4], aes_base_reg + DTHE_P_AES_KEY1_4);
+-		writel_relaxed(actx->key[5], aes_base_reg + DTHE_P_AES_KEY1_5);
+-	}
+-	if (actx->keylen == AES_KEYSIZE_256) {
+-		writel_relaxed(actx->key[6], aes_base_reg + DTHE_P_AES_KEY1_6);
+-		writel_relaxed(actx->key[7], aes_base_reg + DTHE_P_AES_KEY1_7);
+-	}
+-
+-	if (actx->enc)
+-		ctrl_val |= DTHE_AES_CTRL_DIR_ENC;
+-
+-	if (actx->keylen == AES_KEYSIZE_128)
+-		ctrl_val |= DTHE_AES_CTRL_KEYSIZE_16B;
+-	else if (actx->keylen == AES_KEYSIZE_192)
+-		ctrl_val |= DTHE_AES_CTRL_KEYSIZE_24B;
+-	else
+-		ctrl_val |= DTHE_AES_CTRL_KEYSIZE_32B;
+-
+-	// Write AES mode
+-	ctrl_val &= DTHE_AES_CTRL_MODE_CLEAR_MASK;
+-	switch (ctx->ctx_info.aes_ctx->mode) {
+-	case DTHE_AES_ECB:
+-		ctrl_val |= AES_CTRL_ECB_MASK;
+-		break;
+-	case DTHE_AES_CBC:
+-		ctrl_val |= AES_CTRL_CBC_MASK;
+-		break;
+-	}
+-
+-	if (iv_in) {
+-		ctrl_val |= DTHE_AES_CTRL_SAVE_CTX_SET;
+-		for (int i = 0; i < AES_IV_WORDS; ++i)
+-			writel_relaxed(iv_in[i],
+-				       aes_base_reg + DTHE_P_AES_IV_IN_0 + (DTHE_REG_SIZE * i));
+-	}
+-
+-	writel_relaxed(ctrl_val, aes_base_reg + DTHE_P_AES_CTRL);
+-}
+-
+-static void dthe_aes_dma_in_callback(void *data)
+-{
+-	struct skcipher_request *req = (struct skcipher_request *)data;
+-	struct dthe_tfm_ctx *ctx = crypto_skcipher_ctx(crypto_skcipher_reqtfm(req));
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-
+-	// For modes other than ECB, read IV_OUT
+-	if (ctx->ctx_info.aes_ctx->mode != DTHE_AES_ECB) {
+-		void __iomem *aes_base_reg = dev_data->regs + DTHE_P_AES_BASE;
+-		u32 *iv_out = (u32 *)req->iv;
+-
+-		for (int i = 0; i < AES_IV_WORDS; ++i)
+-			iv_out[i] = readl_relaxed(aes_base_reg +
+-						  DTHE_P_AES_IV_IN_0 +
+-						  (DTHE_REG_SIZE * i));
+-	}
+-
+-	complete(&ctx->ctx_info.aes_ctx->aes_compl);
+-}
+-
+-static int dthe_aes_run(struct skcipher_request *req)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_skcipher_ctx(crypto_skcipher_reqtfm(req));
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-	struct dthe_aes_ctx *actx = ctx->ctx_info.aes_ctx;
+-
+-	unsigned int len = req->cryptlen;
+-	struct scatterlist *src = req->src;
+-	struct scatterlist *dst = req->dst;
+-
+-	int src_nents = sg_nents_for_len(src, len);
+-	int dst_nents;
+-
+-	int src_mapped_nents;
+-	int dst_mapped_nents;
+-
+-	bool diff_dst;
+-	enum dma_data_direction src_dir, dst_dir;
+-
+-	struct device *tx_dev, *rx_dev;
+-	struct dma_async_tx_descriptor *desc_in, *desc_out;
+-
+-	int ret;
+-
+-	void __iomem *aes_base_reg = dev_data->regs + DTHE_P_AES_BASE;
+-
+-	if (src == dst) {
+-		diff_dst = false;
+-		src_dir = DMA_BIDIRECTIONAL;
+-		dst_dir = DMA_BIDIRECTIONAL;
+-	} else {
+-		diff_dst = true;
+-		src_dir = DMA_TO_DEVICE;
+-		dst_dir  = DMA_FROM_DEVICE;
+-	}
+-
+-	tx_dev = dmaengine_get_dma_device(dev_data->dma_aes_tx);
+-	rx_dev = dmaengine_get_dma_device(dev_data->dma_aes_rx);
+-
+-	src_mapped_nents = dma_map_sg(tx_dev, src, src_nents, src_dir);
+-	if (src_mapped_nents == 0) {
+-		ret = -EINVAL;
+-		goto aes_err;
+-	}
+-
+-	if (!diff_dst) {
+-		dst_nents = src_nents;
+-		dst_mapped_nents = src_mapped_nents;
+-	} else {
+-		dst_nents = sg_nents_for_len(dst, len);
+-		dst_mapped_nents = dma_map_sg(rx_dev, dst, dst_nents, dst_dir);
+-		if (dst_mapped_nents == 0) {
+-			dma_unmap_sg(tx_dev, src, src_nents, src_dir);
+-			ret = -EINVAL;
+-			goto aes_err;
+-		}
+-	}
+-
+-	// HACK: Delay to workaround DMA driver issue
+-	cnt++;
+-	if (cnt % 50 == 0) {
+-		unsigned long delay = jiffies + usecs_to_jiffies(100);
+-
+-		while (time_before(jiffies, delay))
+-			cond_resched();
+-		cnt = 0;
+-	}
+-
+-	desc_in = dmaengine_prep_slave_sg(dev_data->dma_aes_rx, dst, dst_mapped_nents,
+-					  DMA_DEV_TO_MEM, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+-	if (!desc_in) {
+-		dev_err(dev_data->dev, "IN prep_slave_sg() failed\n");
+-		ret = -EINVAL;
+-		goto aes_prep_err;
+-	}
+-
+-	desc_out = dmaengine_prep_slave_sg(dev_data->dma_aes_tx, src, src_mapped_nents,
+-					   DMA_MEM_TO_DEV, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+-	if (!desc_out) {
+-		dev_err(dev_data->dev, "OUT prep_slave_sg() failed\n");
+-		ret = -EINVAL;
+-		goto aes_prep_err;
+-	}
+-
+-	desc_in->callback = dthe_aes_dma_in_callback;
+-	desc_in->callback_param = req;
+-
+-	init_completion(&actx->aes_compl);
+-
+-	mutex_lock(&dev_data->aes_mutex);
+-
+-	if (actx->mode == DTHE_AES_ECB)
+-		dthe_aes_set_ctrl_key(ctx, NULL);
+-	else
+-		dthe_aes_set_ctrl_key(ctx, (u32 *)req->iv);
+-
+-	writel_relaxed(req->cryptlen, aes_base_reg + DTHE_P_AES_C_LENGTH_0);
+-
+-	dmaengine_submit(desc_in);
+-	dmaengine_submit(desc_out);
+-
+-	dma_async_issue_pending(dev_data->dma_aes_rx);
+-	dma_async_issue_pending(dev_data->dma_aes_tx);
+-
+-	// Need to do a timeout to ensure mutex gets unlocked if DMA callback fails for any reason
+-	ret = wait_for_completion_timeout(&actx->aes_compl, msecs_to_jiffies(DTHE_DMA_TIMEOUT_MS));
+-	if (!ret) {
+-		ret = -ETIMEDOUT;
+-
+-		for (int i = 0; i < AES_BLOCK_WORDS; ++i)
+-			readl_relaxed(aes_base_reg + DTHE_P_AES_DATA_IN_OUT + (DTHE_REG_SIZE * i));
+-		for (int i = 0; i < AES_IV_WORDS; ++i)
+-			readl_relaxed(aes_base_reg + DTHE_P_AES_IV_IN_0 + (DTHE_REG_SIZE * i));
+-	} else {
+-		ret = 0;
+-	}
+-
+-	mutex_unlock(&dev_data->aes_mutex);
+-
+-aes_prep_err:
+-	dma_unmap_sg(tx_dev, src, src_nents, src_dir);
+-	if (dst_dir != DMA_BIDIRECTIONAL)
+-		dma_unmap_sg(rx_dev, dst, dst_nents, dst_dir);
+-
+-aes_err:
+-	skcipher_request_complete(req, ret);
+-	return ret;
+-}
+-
+-static int dthe_aes_crypt(struct skcipher_request *req, int enc)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_skcipher_ctx(crypto_skcipher_reqtfm(req));
+-
+-	/*
+-	 * If data is not a multiple of AES_BLOCK_SIZE, need to return -EINVAL
+-	 * If data length input is zero, no need to do any operation.
+-	 */
+-	if (req->cryptlen % AES_BLOCK_SIZE) {
+-		skcipher_request_complete(req, -EINVAL);
+-		return -EINVAL;
+-	}
+-	if (req->cryptlen == 0) {
+-		skcipher_request_complete(req, 0);
+-		return 0;
+-	}
+-
+-	ctx->ctx_info.aes_ctx->enc = enc;
+-	return dthe_aes_run(req);
+-}
+-
+-static int dthe_aes_encrypt(struct skcipher_request *req)
+-{
+-	return dthe_aes_crypt(req, 1);
+-}
+-
+-static int dthe_aes_decrypt(struct skcipher_request *req)
+-{
+-	return dthe_aes_crypt(req, 0);
+-}
+-
+-static struct skcipher_alg cipher_algs[] = {
+-	{
+-		.setkey	= dthe_ecb_aes_setkey,
+-		.encrypt	= dthe_aes_encrypt,
+-		.decrypt	= dthe_aes_decrypt,
+-		.min_keysize	= AES_MIN_KEY_SIZE,
+-		.max_keysize	= AES_MAX_KEY_SIZE,
+-		.base	= {
+-			.cra_name	= "ecb(aes)",
+-			.cra_driver_name	= "ecb-aes-dthev2",
+-			.cra_priority	= 30000,
+-			.cra_flags	= CRYPTO_ALG_TYPE_SKCIPHER |
+-					  CRYPTO_ALG_KERN_DRIVER_ONLY,
+-			.cra_alignmask	= AES_BLOCK_SIZE - 1,
+-			.cra_blocksize	= AES_BLOCK_SIZE,
+-			.cra_ctxsize	= sizeof(struct dthe_tfm_ctx),
+-			.cra_module	= THIS_MODULE,
+-		},
+-		.init	= dthe_cipher_cra_init,
+-		.exit	= dthe_cipher_cra_exit
+-	}, /* ECB AES*/
+-	{
+-		.setkey = dthe_cbc_aes_setkey,
+-		.encrypt	= dthe_aes_encrypt,
+-		.decrypt	= dthe_aes_decrypt,
+-		.min_keysize	= AES_MIN_KEY_SIZE,
+-		.max_keysize	= AES_MAX_KEY_SIZE,
+-		.ivsize		= AES_BLOCK_SIZE,
+-		.base	= {
+-			.cra_name	= "cbc(aes)",
+-			.cra_driver_name	 = "cbc-aes-dthev2",
+-			.cra_priority	= 30000,
+-			.cra_flags	= CRYPTO_ALG_TYPE_SKCIPHER |
+-					  CRYPTO_ALG_KERN_DRIVER_ONLY,
+-			.cra_alignmask	= AES_BLOCK_SIZE - 1,
+-			.cra_blocksize	= AES_BLOCK_SIZE,
+-			.cra_ctxsize	= sizeof(struct dthe_tfm_ctx),
+-			.cra_module	= THIS_MODULE,
+-		},
+-		.init	= dthe_cipher_cra_init,
+-		.exit	= dthe_cipher_cra_exit
+-	}, /* CBC AES */
+-};
+-
+-int dthe_register_aes_algs(void)
+-{
+-	return crypto_register_skciphers(cipher_algs, ARRAY_SIZE(cipher_algs));
+-}
+-
+-void dthe_unregister_aes_algs(void)
+-{
+-	crypto_unregister_skciphers(cipher_algs, ARRAY_SIZE(cipher_algs));
+-}
+diff --git a/drivers/crypto/ti/dthev2-common.c b/drivers/crypto/ti/dthev2-common.c
+deleted file mode 100644
+index da836906e776..000000000000
+--- a/drivers/crypto/ti/dthev2-common.c
++++ /dev/null
+@@ -1,218 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0-only
+-/*
+- * K3 DTHE V2 crypto accelerator driver
+- *
+- * Copyright (C) Texas Instruments 2025 - https://www.ti.com
+- * Author: T Pratham <t-pratham@ti.com>
+- */
+-
+-#include <crypto/aes.h>
+-#include <crypto/algapi.h>
+-#include <crypto/internal/aead.h>
+-#include <crypto/internal/skcipher.h>
+-
+-#include "dthev2-common.h"
+-
+-#include <linux/delay.h>
+-#include <linux/dmaengine.h>
+-#include <linux/dmapool.h>
+-#include <linux/dma-mapping.h>
+-#include <linux/io.h>
+-#include <linux/kernel.h>
+-#include <linux/module.h>
+-#include <linux/mod_devicetable.h>
+-#include <linux/platform_device.h>
+-#include <linux/scatterlist.h>
+-
+-#define DRIVER_NAME	"dthev2"
+-
+-static struct dthe_list dthe_dev_list = {
+-	.dev_list = LIST_HEAD_INIT(dthe_dev_list.dev_list),
+-	.lock = __SPIN_LOCK_UNLOCKED(dthe_dev_list.lock),
+-};
+-
+-struct dthe_data *dthe_get_dev(struct dthe_tfm_ctx *ctx)
+-{
+-	struct dthe_data *dev_data;
+-
+-	if (ctx->dev_data)
+-		return ctx->dev_data;
+-
+-	spin_lock_bh(&dthe_dev_list.lock);
+-	dev_data = list_first_entry(&dthe_dev_list.dev_list, struct dthe_data, list);
+-	if (dev_data)
+-		list_move_tail(&dev_data->list, &dthe_dev_list.dev_list);
+-	spin_unlock_bh(&dthe_dev_list.lock);
+-
+-	return dev_data;
+-}
+-
+-static int dthe_dma_init(struct dthe_data *dev_data)
+-{
+-	int ret;
+-	struct dma_slave_config cfg;
+-
+-	dev_data->dma_aes_rx = NULL;
+-	dev_data->dma_aes_tx = NULL;
+-	dev_data->dma_sha_tx = NULL;
+-
+-	dev_data->dma_aes_rx = dma_request_chan(dev_data->dev, "rx");
+-	if (IS_ERR(dev_data->dma_aes_rx)) {
+-		return dev_err_probe(dev_data->dev, PTR_ERR(dev_data->dma_aes_rx),
+-				     "Unable to request rx DMA channel\n");
+-	}
+-
+-	dev_data->dma_aes_tx = dma_request_chan(dev_data->dev, "tx1");
+-	if (IS_ERR(dev_data->dma_aes_tx)) {
+-		ret = dev_err_probe(dev_data->dev, PTR_ERR(dev_data->dma_aes_tx),
+-				    "Unable to request tx1 DMA channel\n");
+-		goto err_dma_aes_tx;
+-	}
+-
+-	dev_data->dma_sha_tx = dma_request_chan(dev_data->dev, "tx2");
+-	if (IS_ERR(dev_data->dma_sha_tx)) {
+-		ret = dev_err_probe(dev_data->dev, PTR_ERR(dev_data->dma_sha_tx),
+-				    "Unable to request tx2 DMA channel\n");
+-		goto err_dma_sha_tx;
+-	}
+-
+-	// Do AES Rx and Tx channel config here because it is invariant of AES mode
+-	// SHA Tx channel config is done before DMA transfer depending on hashing algorithm
+-
+-	memzero_explicit(&cfg, sizeof(cfg));
+-
+-	cfg.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+-	cfg.src_maxburst = 4;
+-
+-	ret = dmaengine_slave_config(dev_data->dma_aes_rx, &cfg);
+-	if (ret) {
+-		dev_err(dev_data->dev, "Can't configure IN dmaengine slave: %d\n", ret);
+-		goto err_dma_config;
+-	}
+-
+-	cfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+-	cfg.dst_maxburst = 4;
+-
+-	ret = dmaengine_slave_config(dev_data->dma_aes_tx, &cfg);
+-	if (ret) {
+-		dev_err(dev_data->dev, "Can't configure OUT dmaengine slave: %d\n", ret);
+-		goto err_dma_config;
+-	}
+-
+-	return 0;
+-
+-err_dma_config:
+-	dma_release_channel(dev_data->dma_sha_tx);
+-err_dma_sha_tx:
+-	dma_release_channel(dev_data->dma_aes_tx);
+-err_dma_aes_tx:
+-	dma_release_channel(dev_data->dma_aes_rx);
+-
+-	return ret;
+-}
+-
+-static int dthe_register_algs(void)
+-{
+-	int ret = 0;
+-
+-	ret |= dthe_register_hash_algs();
+-	ret |= dthe_register_aes_algs();
+-
+-	return ret;
+-}
+-
+-static void dthe_unregister_algs(void)
+-{
+-	dthe_unregister_hash_algs();
+-	dthe_unregister_aes_algs();
+-}
+-
+-static int dthe_probe(struct platform_device *pdev)
+-{
+-	struct device *dev = &pdev->dev;
+-	struct dthe_data *dev_data;
+-	int ret;
+-
+-	dev_data = devm_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
+-	if (!dev_data)
+-		return -ENOMEM;
+-
+-	dev_data->dev = dev;
+-	dev_data->regs = devm_platform_ioremap_resource(pdev, 0);
+-	if (IS_ERR(dev_data->regs))
+-		return PTR_ERR(dev_data->regs);
+-
+-	platform_set_drvdata(pdev, dev_data);
+-
+-	spin_lock(&dthe_dev_list.lock);
+-	list_add(&dev_data->list, &dthe_dev_list.dev_list);
+-	spin_unlock(&dthe_dev_list.lock);
+-
+-	mutex_init(&dev_data->aes_mutex);
+-	mutex_init(&dev_data->hash_mutex);
+-
+-	ret = dthe_dma_init(dev_data);
+-	if (ret)
+-		goto probe_dma_err;
+-
+-	ret = dthe_register_algs();
+-	if (ret) {
+-		dev_err(dev, "Failed to register algs\n");
+-		goto probe_reg_err;
+-	}
+-
+-	return 0;
+-
+-probe_reg_err:
+-	dma_release_channel(dev_data->dma_aes_rx);
+-	dma_release_channel(dev_data->dma_aes_tx);
+-	dma_release_channel(dev_data->dma_sha_tx);
+-probe_dma_err:
+-	spin_lock(&dthe_dev_list.lock);
+-	list_del(&dev_data->list);
+-	spin_unlock(&dthe_dev_list.lock);
+-
+-	mutex_destroy(&dev_data->aes_mutex);
+-	mutex_destroy(&dev_data->hash_mutex);
+-
+-	return ret;
+-}
+-
+-static void dthe_remove(struct platform_device *pdev)
+-{
+-	struct dthe_data *dev_data = platform_get_drvdata(pdev);
+-
+-	spin_lock(&dthe_dev_list.lock);
+-	list_del(&dev_data->list);
+-	spin_unlock(&dthe_dev_list.lock);
+-
+-	mutex_destroy(&dev_data->aes_mutex);
+-	mutex_destroy(&dev_data->hash_mutex);
+-
+-	dthe_unregister_algs();
+-
+-	dma_release_channel(dev_data->dma_aes_rx);
+-	dma_release_channel(dev_data->dma_aes_tx);
+-	dma_release_channel(dev_data->dma_sha_tx);
+-}
+-
+-static const struct of_device_id dthe_of_match[] = {
+-	{ .compatible = "ti,am62l-dthev2", },
+-	{},
+-};
+-MODULE_DEVICE_TABLE(of, dthe_of_match);
+-
+-static struct platform_driver dthe_driver = {
+-	.probe	= dthe_probe,
+-	.remove	= dthe_remove,
+-	.driver = {
+-		.name		= DRIVER_NAME,
+-		.of_match_table	= dthe_of_match,
+-	},
+-};
+-
+-module_platform_driver(dthe_driver);
+-
+-MODULE_AUTHOR("T Pratham <t-pratham@ti.com>");
+-MODULE_DESCRIPTION("Texas Instruments DTHE V2 driver");
+-MODULE_LICENSE("GPL");
+diff --git a/drivers/crypto/ti/dthev2-common.h b/drivers/crypto/ti/dthev2-common.h
+deleted file mode 100644
+index ded8f60334db..000000000000
+--- a/drivers/crypto/ti/dthev2-common.h
++++ /dev/null
+@@ -1,155 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0-only */
+-/*
+- * K3 DTHE V2 crypto accelerator driver
+- *
+- * Copyright (C) Texas Instruments 2025 - https://www.ti.com
+- * Author: T Pratham <t-pratham@ti.com>
+- */
+-
+-#ifndef __TI_DTHEV2_H__
+-#define __TI_DTHE2V_H__
+-
+-#include <crypto/aead.h>
+-#include <crypto/aes.h>
+-#include <crypto/algapi.h>
+-#include <crypto/hash.h>
+-#include <crypto/internal/aead.h>
+-#include <crypto/internal/hash.h>
+-#include <crypto/internal/skcipher.h>
+-#include <crypto/md5.h>
+-#include <crypto/sha2.h>
+-
+-#include <linux/delay.h>
+-#include <linux/dmaengine.h>
+-#include <linux/dmapool.h>
+-#include <linux/dma-mapping.h>
+-#include <linux/io.h>
+-#include <linux/scatterlist.h>
+-
+-#define DTHE_REG_SIZE		4
+-#define DTHE_DMA_TIMEOUT_MS	2000
+-
+-enum dthe_hash_alg_sel {
+-	DTHE_HASH_MD5		= 0,
+-	DTHE_HASH_SHA1		= BIT(1),
+-	DTHE_HASH_SHA224	= BIT(2),
+-	DTHE_HASH_SHA256	= BIT(1) | BIT(2),
+-	DTHE_HASH_SHA384	= BIT(0),
+-	DTHE_HASH_SHA512	= BIT(0) | BIT(1)
+-};
+-
+-enum dthe_aes_mode {
+-	DTHE_AES_ECB = 0,
+-	DTHE_AES_CBC,
+-};
+-
+-/* Driver specific struct definitions */
+-
+-struct dthe_tfm_ctx;
+-
+-/**
+- * struct dthe_data - DTHE_V2 driver instance data
+- * @dev: Device pointer
+- * @regs: Base address of the register space
+- * @list: list node for dev
+- * @dma_aes_rx: AES Rx DMA Channel
+- * @dma_aes_tx: AES Tx DMA Channel
+- * @dma_sha_tx: SHA Tx DMA Channel
+- * @aes_mutex: Mutex protecting access to AES engine
+- * @hash_mutex: Mutex protecting access to HASH engine
+- * @ctx: Transform context struct
+- */
+-struct dthe_data {
+-	struct device *dev;
+-	void __iomem *regs;
+-	struct list_head list;
+-
+-	struct dma_chan *dma_aes_rx;
+-	struct dma_chan *dma_aes_tx;
+-
+-	struct dma_chan *dma_sha_tx;
+-
+-	struct mutex aes_mutex;
+-	struct mutex hash_mutex;
+-
+-	struct dthe_tfm_ctx *ctx;
+-};
+-
+-/**
+- * struct dthe_list - device data list head
+- * @dev_list: linked list head
+- * @lock: Spinlock protecting accesses to the list
+- */
+-struct dthe_list {
+-	struct list_head dev_list;
+-	spinlock_t lock;
+-};
+-
+-/**
+- * struct dthe_hash_ctx - Hashing engine ctx struct
+- * @mode: Hashing Engine mode
+- * @block_size: block size of hash algorithm selected
+- * @digest_size: digest size of hash algorithm selected
+- * @phash_available: flag indicating if a partial hash from a previous operation is available
+- * @phash: buffer to store a partial hash from a previous operation
+- * @phash_size: partial hash size of the hash algorithm selected
+- * @digestcnt: stores the digest count from a previous operation
+- * @data_buf: buffer to store part of input data to be carried over to next operation
+- * @buflen: length of input data stored in data_buf
+- * @flags: flags for internal use
+- * @hash_compl: Completion variable for use in manual completion in case of DMA callback failure
+- */
+-struct dthe_hash_ctx {
+-	enum dthe_hash_alg_sel mode;
+-	u16 block_size;
+-	u8 digest_size;
+-	u8 phash_available;
+-	u32 phash[SHA512_DIGEST_SIZE / sizeof(u32)];
+-	u32 phash_size;
+-	u32 digestcnt;
+-	u8 data_buf[SHA512_BLOCK_SIZE];
+-	u8 buflen;
+-	u8 flags;
+-	struct completion hash_compl;
+-};
+-
+-/**
+- * struct dthe_aes_ctx - AES engine ctx struct
+- * @mode: AES mode
+- * @keylen: AES key length
+- * @key: AES key
+- * @enc: flag indicating encryption or decryption operation
+- * @aes_compl: Completion variable for use in manual completion in case of DMA callback failure
+- */
+-struct dthe_aes_ctx {
+-	enum dthe_aes_mode mode;
+-	unsigned int keylen;
+-	u32 key[AES_KEYSIZE_256 / sizeof(u32)];
+-	int enc;
+-	struct completion aes_compl;
+-};
+-
+-/**
+- * struct dthe_tfm_ctx - Transform ctx struct containing ctx for all sub-components of DTHE V2
+- * @dev_data: Device data struct pointer
+- * @ctx_info: Union of ctx structs of various sub-components of DTHE_V2
+- */
+-struct dthe_tfm_ctx {
+-	struct dthe_data *dev_data;
+-	union {
+-		struct dthe_aes_ctx *aes_ctx;
+-		struct dthe_hash_ctx *hash_ctx;
+-	} ctx_info;
+-};
+-
+-/* Struct definitions end */
+-
+-struct dthe_data *dthe_get_dev(struct dthe_tfm_ctx *ctx);
+-
+-int dthe_register_aes_algs(void);
+-void dthe_unregister_aes_algs(void);
+-
+-int dthe_register_hash_algs(void);
+-void dthe_unregister_hash_algs(void);
+-
+-#endif
+diff --git a/drivers/crypto/ti/dthev2-hash.c b/drivers/crypto/ti/dthev2-hash.c
+deleted file mode 100644
+index 6d6af29ebc15..000000000000
+--- a/drivers/crypto/ti/dthev2-hash.c
++++ /dev/null
+@@ -1,764 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0-only
+-/*
+- * K3 DTHE V2 crypto accelerator driver
+- *
+- * Copyright (C) Texas Instruments 2025 - https://www.ti.com
+- * Author: T Pratham <t-pratham@ti.com>
+- */
+-
+-#include <crypto/algapi.h>
+-#include <crypto/hash.h>
+-#include <crypto/internal/hash.h>
+-#include <crypto/md5.h>
+-#include <crypto/sha2.h>
+-
+-#include "dthev2-common.h"
+-
+-#include <linux/delay.h>
+-#include <linux/dmaengine.h>
+-#include <linux/dma-mapping.h>
+-#include <linux/io.h>
+-#include <linux/scatterlist.h>
+-
+-/* Registers */
+-
+-// Hashing Engine
+-#define DTHE_P_HASH_BASE		0x5000
+-#define DTHE_P_HASH512_IDIGEST_A	0x0240
+-#define DTHE_P_HASH512_DIGEST_COUNT	0x0280
+-#define DTHE_P_HASH512_MODE		0x0284
+-#define DTHE_P_HASH512_LENGTH		0x0288
+-#define DTHE_P_HASH512_DATA_IN_START	0x0080
+-#define DTHE_P_HASH512_DATA_IN_END	0x00FC
+-
+-#define DTHE_P_HASH_SYSCONFIG		0x0110
+-#define DTHE_P_HASH_IRQSTATUS		0x0118
+-#define DTHE_P_HASH_IRQENABLE		0x011C
+-
+-/* Register write values and macros */
+-#define DTHE_HASH_SYSCONFIG_INT_EN		BIT(2)
+-#define DTHE_HASH_SYSCONFIG_DMA_EN		BIT(3)
+-#define DTHE_HASH_IRQENABLE_EN_ALL		GENMASK(3, 0)
+-#define DTHE_HASH_IRQSTATUS_OP_READY		BIT(0)
+-#define DTHE_HASH_IRQSTATUS_IP_READY		BIT(1)
+-#define DTHE_HASH_IRQSTATUS_PH_READY		BIT(2)
+-#define DTHE_HASH_IRQSTATUS_CTX_READY		BIT(3)
+-
+-#define DTHE_HASH_MODE_USE_ALG_CONST		BIT(3)
+-#define DTHE_HASH_MODE_CLOSE_HASH		BIT(4)
+-
+-/* Misc */
+-#define MD5_BLOCK_SIZE				(MD5_BLOCK_WORDS * 4)
+-
+-enum dthe_hash_dma_callback_src {
+-	DMA_CALLBACK_FROM_UPDATE = 0,
+-	DMA_CALLBACK_FROM_FINAL,
+-	DMA_CALLBACK_FROM_FINUP,
+-};
+-
+-static int cnt;
+-
+-static struct scatterlist *dthe_set_src_sg(struct scatterlist *src, struct scatterlist *sg,
+-					   int nents, int buflen)
+-{
+-	struct scatterlist *from_sg, *to_sg;
+-	int sglen;
+-
+-	sg_init_table(src, nents);
+-
+-	for (to_sg = src, from_sg = sg; buflen && from_sg; buflen -= sglen) {
+-		sglen = from_sg->length;
+-		if (sglen > buflen)
+-			sglen = buflen;
+-		sg_set_buf(to_sg, sg_virt(from_sg), sglen);
+-		from_sg = sg_next(from_sg);
+-		to_sg = sg_next(to_sg);
+-	}
+-
+-	return to_sg;
+-}
+-
+-static void dthe_hash_write_zero_message(enum dthe_hash_alg_sel mode, void *dst)
+-{
+-	switch (mode) {
+-	case DTHE_HASH_SHA512:
+-		memcpy(dst, sha512_zero_message_hash, SHA512_DIGEST_SIZE);
+-		break;
+-	case DTHE_HASH_SHA384:
+-		memcpy(dst, sha384_zero_message_hash, SHA384_DIGEST_SIZE);
+-		break;
+-	case DTHE_HASH_SHA256:
+-		memcpy(dst, sha256_zero_message_hash, SHA256_DIGEST_SIZE);
+-		break;
+-	case DTHE_HASH_SHA224:
+-		memcpy(dst, sha224_zero_message_hash, SHA224_DIGEST_SIZE);
+-		break;
+-	case DTHE_HASH_MD5:
+-		memcpy(dst, md5_zero_message_hash, MD5_DIGEST_SIZE);
+-		break;
+-	default:
+-		break;
+-	}
+-}
+-
+-static int dthe_sha512_cra_init(struct crypto_tfm *tfm)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-
+-	if (!dev_data)
+-		return -ENODEV;
+-
+-	ctx->ctx_info.hash_ctx = kzalloc(sizeof(*ctx->ctx_info.hash_ctx), GFP_KERNEL);
+-	if (!ctx->ctx_info.hash_ctx)
+-		return -ENOMEM;
+-
+-	ctx->ctx_info.hash_ctx->mode = DTHE_HASH_SHA512;
+-	ctx->ctx_info.hash_ctx->block_size = SHA512_BLOCK_SIZE;
+-	ctx->ctx_info.hash_ctx->digest_size = SHA512_DIGEST_SIZE;
+-	ctx->ctx_info.hash_ctx->phash_size = SHA512_DIGEST_SIZE;
+-	return 0;
+-}
+-
+-static int dthe_sha384_cra_init(struct crypto_tfm *tfm)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-
+-	if (!dev_data)
+-		return -ENODEV;
+-
+-	ctx->ctx_info.hash_ctx = kzalloc(sizeof(*ctx->ctx_info.hash_ctx), GFP_KERNEL);
+-	if (!ctx->ctx_info.hash_ctx)
+-		return -ENOMEM;
+-
+-	ctx->ctx_info.hash_ctx->mode = DTHE_HASH_SHA384;
+-	ctx->ctx_info.hash_ctx->block_size = SHA384_BLOCK_SIZE;
+-	ctx->ctx_info.hash_ctx->digest_size = SHA384_DIGEST_SIZE;
+-	ctx->ctx_info.hash_ctx->phash_size = SHA512_DIGEST_SIZE;
+-	return 0;
+-}
+-
+-static int dthe_sha256_cra_init(struct crypto_tfm *tfm)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-
+-	if (!dev_data)
+-		return -ENODEV;
+-
+-	ctx->ctx_info.hash_ctx = kzalloc(sizeof(*ctx->ctx_info.hash_ctx), GFP_KERNEL);
+-	if (!ctx->ctx_info.hash_ctx)
+-		return -ENOMEM;
+-
+-	ctx->ctx_info.hash_ctx->mode = DTHE_HASH_SHA256;
+-	ctx->ctx_info.hash_ctx->block_size = SHA256_BLOCK_SIZE;
+-	ctx->ctx_info.hash_ctx->digest_size = SHA256_DIGEST_SIZE;
+-	ctx->ctx_info.hash_ctx->phash_size = SHA256_DIGEST_SIZE;
+-	return 0;
+-}
+-
+-static int dthe_sha224_cra_init(struct crypto_tfm *tfm)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-
+-	if (!dev_data)
+-		return -ENODEV;
+-
+-	ctx->ctx_info.hash_ctx = kzalloc(sizeof(*ctx->ctx_info.hash_ctx), GFP_KERNEL);
+-	if (!ctx->ctx_info.hash_ctx)
+-		return -ENOMEM;
+-
+-	ctx->ctx_info.hash_ctx->mode = DTHE_HASH_SHA224;
+-	ctx->ctx_info.hash_ctx->block_size = SHA224_BLOCK_SIZE;
+-	ctx->ctx_info.hash_ctx->digest_size = SHA224_DIGEST_SIZE;
+-	ctx->ctx_info.hash_ctx->phash_size = SHA256_DIGEST_SIZE;
+-	return 0;
+-}
+-
+-static int dthe_md5_cra_init(struct crypto_tfm *tfm)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-
+-	if (!dev_data)
+-		return -ENODEV;
+-
+-	ctx->ctx_info.hash_ctx = kzalloc(sizeof(*ctx->ctx_info.hash_ctx), GFP_KERNEL);
+-	if (!ctx->ctx_info.hash_ctx)
+-		return -ENOMEM;
+-
+-	ctx->ctx_info.hash_ctx->mode = DTHE_HASH_MD5;
+-	ctx->ctx_info.hash_ctx->block_size = MD5_BLOCK_SIZE;
+-	ctx->ctx_info.hash_ctx->digest_size = MD5_DIGEST_SIZE;
+-	ctx->ctx_info.hash_ctx->phash_size = MD5_DIGEST_SIZE;
+-	return 0;
+-}
+-
+-static void dthe_hash_cra_exit(struct crypto_tfm *tfm)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_tfm_ctx(tfm);
+-
+-	kfree(ctx->ctx_info.hash_ctx);
+-}
+-
+-static void dthe_hash_dma_in_callback(void *data)
+-{
+-	struct ahash_request *req = (struct ahash_request *)data;
+-
+-	struct dthe_tfm_ctx *ctx = crypto_ahash_ctx(crypto_ahash_reqtfm(req));
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-	struct dthe_hash_ctx *sctx = ctx->ctx_info.hash_ctx;
+-	u32 *data_out;
+-	u32 out_len;
+-
+-	void __iomem *sha_base_reg = dev_data->regs + DTHE_P_HASH_BASE;
+-
+-	if (sctx->flags == DMA_CALLBACK_FROM_UPDATE) {
+-		// If coming from update, we need to read the phash and store it for future
+-		data_out = sctx->phash;
+-		out_len = sctx->phash_size / sizeof(u32);
+-	} else {
+-		// If coming from finup or final, we need to read the final digest
+-		data_out = (u32 *)req->result;
+-		out_len = sctx->digest_size / sizeof(u32);
+-	}
+-
+-	for (int i = 0; i < out_len; ++i)
+-		data_out[i] = readl_relaxed(sha_base_reg +
+-					    DTHE_P_HASH512_IDIGEST_A +
+-					    (DTHE_REG_SIZE * i));
+-
+-	sctx->digestcnt = readl_relaxed(sha_base_reg + DTHE_P_HASH512_DIGEST_COUNT);
+-	sctx->phash_available = 1;
+-
+-	complete(&sctx->hash_compl);
+-}
+-
+-static int dthe_hash_dma_start(struct ahash_request *req, struct scatterlist *src, size_t len)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_ahash_ctx(crypto_ahash_reqtfm(req));
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-	struct dthe_hash_ctx *sctx = ctx->ctx_info.hash_ctx;
+-	struct dma_slave_config cfg;
+-	struct device *tx_dev;
+-	struct dma_async_tx_descriptor *desc_out;
+-	int src_nents;
+-	int mapped_nents;
+-	enum dma_data_direction src_dir = DMA_TO_DEVICE;
+-	int ret = 0;
+-	void __iomem *sha_base_reg = dev_data->regs + DTHE_P_HASH_BASE;
+-
+-	// Config SHA DMA channel as per SHA mode
+-	memzero_explicit(&cfg, sizeof(cfg));
+-
+-	cfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+-	cfg.dst_maxburst = sctx->block_size / 4;
+-
+-	// HACK: Delay to workaround DMA driver issue
+-	cnt++;
+-	if (cnt % 50 == 0) {
+-		unsigned long delay = jiffies + usecs_to_jiffies(100);
+-
+-		while (time_before(jiffies, delay))
+-			cond_resched();
+-		cnt = 0;
+-	}
+-
+-	ret = dmaengine_slave_config(dev_data->dma_sha_tx, &cfg);
+-	if (ret) {
+-		dev_err(dev_data->dev, "Can't configure OUT2 dmaengine slave: %d\n", ret);
+-		goto hash_err;
+-	}
+-
+-	tx_dev = dmaengine_get_dma_device(dev_data->dma_sha_tx);
+-	if (!tx_dev) {
+-		ret = -ENODEV;
+-		goto hash_err;
+-	}
+-
+-	src_nents = sg_nents_for_len(src, len);
+-	mapped_nents = dma_map_sg(tx_dev, src, src_nents, src_dir);
+-	if (mapped_nents == 0) {
+-		ret = -EINVAL;
+-		goto hash_err;
+-	}
+-
+-	desc_out = dmaengine_prep_slave_sg(dev_data->dma_sha_tx, src, mapped_nents,
+-					   DMA_MEM_TO_DEV, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+-	if (!desc_out) {
+-		dev_err(dev_data->dev, "OUT prep_slave_sg() failed\n");
+-		ret = -EINVAL;
+-		goto hash_prep_err;
+-	}
+-
+-	desc_out->callback = dthe_hash_dma_in_callback;
+-	desc_out->callback_param = req;
+-
+-	init_completion(&sctx->hash_compl);
+-
+-	dmaengine_submit(desc_out);
+-
+-	dma_async_issue_pending(dev_data->dma_sha_tx);
+-
+-	ret = wait_for_completion_timeout(&sctx->hash_compl,
+-					  msecs_to_jiffies(DTHE_DMA_TIMEOUT_MS));
+-	if (!ret) {
+-		u32 *data_out;
+-		u32 out_len;
+-
+-		ret = -ETIMEDOUT;
+-
+-		if (sctx->flags == DMA_CALLBACK_FROM_UPDATE) {
+-			data_out = sctx->phash;
+-			out_len = sctx->phash_size / sizeof(u32);
+-		} else {
+-			data_out = (u32 *)req->result;
+-			out_len = sctx->digest_size / sizeof(u32);
+-		}
+-
+-		for (int i = 0; i < out_len; ++i)
+-			data_out[i] = readl_relaxed(sha_base_reg +
+-						    DTHE_P_HASH512_IDIGEST_A +
+-						    (DTHE_REG_SIZE * i));
+-
+-		sctx->digestcnt = readl_relaxed(sha_base_reg + DTHE_P_HASH512_DIGEST_COUNT);
+-		sctx->phash_available = 1;
+-	} else {
+-		ret = 0;
+-	}
+-
+-hash_prep_err:
+-	dma_unmap_sg(tx_dev, src, src_nents, src_dir);
+-hash_err:
+-	mutex_unlock(&dev_data->hash_mutex);
+-	ahash_request_complete(req, ret);
+-
+-	if (sctx->flags == DMA_CALLBACK_FROM_FINUP)
+-		if ((req->nbytes + sctx->buflen) % sctx->block_size)
+-			kfree(sg_virt(&src[src_nents - 1]));
+-	kfree(src);
+-	return ret;
+-}
+-
+-static int dthe_hash_init(struct ahash_request *req)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_ahash_ctx(crypto_ahash_reqtfm(req));
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-
+-	void __iomem *sha_base_reg = dev_data->regs + DTHE_P_HASH_BASE;
+-	u32 sha_sysconfig_val = DTHE_HASH_SYSCONFIG_INT_EN | DTHE_HASH_SYSCONFIG_DMA_EN;
+-
+-	ctx->ctx_info.hash_ctx->phash_available = 0;
+-	ctx->ctx_info.hash_ctx->buflen = 0;
+-	ctx->ctx_info.hash_ctx->digestcnt = 0;
+-
+-	writel_relaxed(sha_sysconfig_val, sha_base_reg + DTHE_P_HASH_SYSCONFIG);
+-	writel_relaxed(DTHE_HASH_IRQENABLE_EN_ALL, sha_base_reg + DTHE_P_HASH_IRQENABLE);
+-
+-	return 0;
+-}
+-
+-static int dthe_hash_update(struct ahash_request *req)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_ahash_ctx(crypto_ahash_reqtfm(req));
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-	struct dthe_hash_ctx *sctx = ctx->ctx_info.hash_ctx;
+-
+-	struct scatterlist *src;
+-	struct scatterlist *tmp;
+-	int src_nents = 0;
+-	int in_nents = sg_nents_for_len(req->src, req->nbytes);
+-	unsigned int tot_len, cur_len;
+-	unsigned int len_to_send, len_to_push;
+-	u32 hash_mode_val;
+-	int ret;
+-
+-	void __iomem *sha_base_reg = dev_data->regs + DTHE_P_HASH_BASE;
+-
+-	if (req->nbytes == 0) {
+-		if (!sctx->phash_available && !sctx->buflen)
+-			dthe_hash_write_zero_message(sctx->mode, sctx->phash);
+-
+-		return 0;
+-	}
+-
+-	tot_len = sctx->buflen + req->nbytes;
+-	len_to_send = tot_len - (tot_len % sctx->block_size);
+-	len_to_push = ((len_to_send == 0) ? req->nbytes : (tot_len % sctx->block_size));
+-	cur_len = 0;
+-
+-	if (tot_len % sctx->block_size == 0) {
+-		len_to_send -= sctx->block_size;
+-		if (tot_len == sctx->block_size)
+-			len_to_push = req->nbytes;
+-		else
+-			len_to_push = sctx->block_size;
+-	}
+-
+-	if (len_to_send == 0) {
+-		sg_copy_to_buffer(req->src, in_nents, sctx->data_buf + sctx->buflen, len_to_push);
+-		sctx->buflen += len_to_push;
+-		return 0;
+-	}
+-
+-	if (len_to_push < req->nbytes)
+-		src_nents = sg_nents_for_len(req->src, req->nbytes - len_to_push);
+-	if (sctx->buflen > 0)
+-		src_nents++;
+-
+-	src = kcalloc(src_nents, sizeof(struct scatterlist), GFP_KERNEL);
+-	if (!src)
+-		return -ENOMEM;
+-
+-	tmp = src;
+-
+-	if (sctx->buflen > 0) {
+-		sg_set_buf(tmp, sctx->data_buf, sctx->buflen);
+-		tmp = sg_next(tmp);
+-		cur_len += sctx->buflen;
+-		src_nents--;
+-	}
+-	if (src_nents > 0)
+-		dthe_set_src_sg(tmp, req->src, src_nents, len_to_send - cur_len);
+-
+-	mutex_lock(&dev_data->hash_mutex);
+-
+-	hash_mode_val = sctx->mode;
+-	if (sctx->phash_available) {
+-		for (int i = 0; i < sctx->phash_size / sizeof(u32); ++i)
+-			writel_relaxed(sctx->phash[i],
+-				       sha_base_reg +
+-				       DTHE_P_HASH512_IDIGEST_A +
+-				       (DTHE_REG_SIZE * i));
+-
+-		writel_relaxed(sctx->digestcnt, sha_base_reg + DTHE_P_HASH512_DIGEST_COUNT);
+-	} else {
+-		hash_mode_val |= DTHE_HASH_MODE_USE_ALG_CONST;
+-	}
+-
+-	writel_relaxed(hash_mode_val, sha_base_reg + DTHE_P_HASH512_MODE);
+-	writel_relaxed(len_to_send, sha_base_reg + DTHE_P_HASH512_LENGTH);
+-
+-	sctx->flags = DMA_CALLBACK_FROM_UPDATE;
+-	ret = dthe_hash_dma_start(req, src, len_to_send);
+-
+-	sg_pcopy_to_buffer(req->src, in_nents, sctx->data_buf,
+-			   len_to_push, req->nbytes - len_to_push);
+-	sctx->buflen = len_to_push;
+-
+-	return ret;
+-}
+-
+-static int dthe_hash_final(struct ahash_request *req)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_ahash_ctx(crypto_ahash_reqtfm(req));
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-	struct dthe_hash_ctx *sctx = ctx->ctx_info.hash_ctx;
+-	struct scatterlist *src;
+-
+-	void __iomem *sha_base_reg = dev_data->regs + DTHE_P_HASH_BASE;
+-	u32 sha_mode_val = sctx->mode | DTHE_HASH_MODE_CLOSE_HASH;
+-
+-	if (sctx->buflen > 0) {
+-		src = kzalloc(sizeof(struct scatterlist), GFP_KERNEL);
+-		if (!src)
+-			return -ENOMEM;
+-
+-		/* Certain DMA restrictions forced us to send data in multiples of BLOCK_SIZE
+-		 * bytes. So, add a padding 0s at the end of src scatterlist if data is not a
+-		 * multiple of block_size bytes. The extra data is ignored by the DTHE hardware.
+-		 */
+-		for (int i = sctx->buflen; i < sctx->block_size; ++i)
+-			sctx->data_buf[i] = 0;
+-
+-		sg_set_buf(src, sctx->data_buf, sctx->block_size);
+-
+-		mutex_lock(&dev_data->hash_mutex);
+-		if (sctx->phash_available) {
+-			for (int i = 0; i < sctx->phash_size / sizeof(u32); ++i)
+-				writel_relaxed(sctx->phash[i],
+-					       sha_base_reg +
+-					       DTHE_P_HASH512_IDIGEST_A +
+-					       (DTHE_REG_SIZE * i));
+-
+-			writel_relaxed(sctx->digestcnt,
+-				       sha_base_reg + DTHE_P_HASH512_DIGEST_COUNT);
+-		} else {
+-			sha_mode_val |= DTHE_HASH_MODE_USE_ALG_CONST;
+-		}
+-
+-		writel_relaxed(sha_mode_val, sha_base_reg + DTHE_P_HASH512_MODE);
+-		writel_relaxed(sctx->buflen, sha_base_reg + DTHE_P_HASH512_LENGTH);
+-
+-		sctx->flags = DMA_CALLBACK_FROM_FINAL;
+-		return dthe_hash_dma_start(req, src, sctx->block_size);
+-	} else if (!sctx->phash_available) {
+-		dthe_hash_write_zero_message(sctx->mode, req->result);
+-	}
+-
+-	memcpy(req->result, sctx->phash, sctx->digest_size);
+-
+-	ahash_request_complete(req, 0);
+-	return 0;
+-}
+-
+-static int dthe_hash_finup(struct ahash_request *req)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_ahash_ctx(crypto_ahash_reqtfm(req));
+-	struct dthe_data *dev_data = dthe_get_dev(ctx);
+-	struct dthe_hash_ctx *sctx = ctx->ctx_info.hash_ctx;
+-
+-	unsigned int tot_len = sctx->buflen + req->nbytes;
+-	unsigned int cur_len = 0;
+-	unsigned int pad_len = 0;
+-	struct scatterlist *src;
+-	struct scatterlist *tmp_sg;
+-	int src_nents = 0;
+-	u32 hash_mode_val;
+-	u8 *pad_buf;
+-
+-	void __iomem *sha_base_reg = dev_data->regs + DTHE_P_HASH_BASE;
+-
+-	if (tot_len == 0) {
+-		if (sctx->phash_available)
+-			memcpy(req->result, sctx->phash, sctx->digest_size);
+-		else
+-			dthe_hash_write_zero_message(sctx->mode, req->result);
+-
+-		return 0;
+-	}
+-
+-	if (tot_len % sctx->block_size)
+-		pad_len = sctx->block_size - (tot_len % sctx->block_size);
+-
+-	if (req->nbytes > 0)
+-		src_nents = sg_nents_for_len(req->src, req->nbytes);
+-	if (sctx->buflen > 0)
+-		src_nents++;
+-	if (pad_len > 0)
+-		src_nents++;
+-
+-	src = kcalloc(src_nents, sizeof(struct scatterlist), GFP_KERNEL);
+-	if (!src)
+-		return -ENOMEM;
+-
+-	tmp_sg = src;
+-
+-	if (sctx->buflen > 0) {
+-		sg_set_buf(tmp_sg, sctx->data_buf, sctx->buflen);
+-		tmp_sg = sg_next(tmp_sg);
+-		cur_len += sctx->buflen;
+-		src_nents--;
+-	}
+-	if (tot_len - cur_len > 0)
+-		tmp_sg = dthe_set_src_sg(tmp_sg, req->src, src_nents, tot_len - cur_len);
+-
+-	/* Padding 0s in an additional nent at the end. See comment in dthe_hash_final function */
+-	if (pad_len > 0) {
+-		pad_buf = kcalloc(pad_len, sizeof(u8), GFP_KERNEL);
+-		if (!pad_buf) {
+-			kfree(src);
+-			return -ENOMEM;
+-		}
+-		sg_set_buf(tmp_sg, pad_buf, pad_len);
+-	}
+-
+-	mutex_lock(&dev_data->hash_mutex);
+-
+-	hash_mode_val = sctx->mode | DTHE_HASH_MODE_CLOSE_HASH;
+-	if (!sctx->phash_available) {
+-		hash_mode_val |= DTHE_HASH_MODE_USE_ALG_CONST;
+-	} else {
+-		for (int i = 0; i < sctx->phash_size / sizeof(u32); ++i)
+-			writel_relaxed(sctx->phash[i],
+-				       sha_base_reg +
+-				       DTHE_P_HASH512_IDIGEST_A +
+-				       (DTHE_REG_SIZE * i));
+-
+-		writel_relaxed(sctx->digestcnt,
+-			       sha_base_reg + DTHE_P_HASH512_DIGEST_COUNT);
+-	}
+-
+-	writel_relaxed(hash_mode_val, sha_base_reg + DTHE_P_HASH512_MODE);
+-	writel_relaxed(tot_len, sha_base_reg + DTHE_P_HASH512_LENGTH);
+-
+-	sctx->flags = DMA_CALLBACK_FROM_FINUP;
+-	return dthe_hash_dma_start(req, src, tot_len + pad_len);
+-}
+-
+-static int dthe_hash_digest(struct ahash_request *req)
+-{
+-	dthe_hash_init(req);
+-	return dthe_hash_finup(req);
+-}
+-
+-static int dthe_hash_export(struct ahash_request *req, void *out)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_ahash_ctx(crypto_ahash_reqtfm(req));
+-
+-	memcpy(out, ctx->ctx_info.hash_ctx, sizeof(struct dthe_hash_ctx));
+-	return 0;
+-}
+-
+-static int dthe_hash_import(struct ahash_request *req, const void *in)
+-{
+-	struct dthe_tfm_ctx *ctx = crypto_ahash_ctx(crypto_ahash_reqtfm(req));
+-
+-	memcpy(ctx->ctx_info.hash_ctx, in, sizeof(struct dthe_hash_ctx));
+-	return 0;
+-}
+-
+-static struct ahash_alg hash_algs[] = {
+-	{
+-		.init	= dthe_hash_init,
+-		.update	= dthe_hash_update,
+-		.final	= dthe_hash_final,
+-		.finup	= dthe_hash_finup,
+-		.digest	= dthe_hash_digest,
+-		.export = dthe_hash_export,
+-		.import = dthe_hash_import,
+-		.halg	= {
+-			.digestsize = SHA512_DIGEST_SIZE,
+-			.statesize = sizeof(struct dthe_hash_ctx),
+-			.base = {
+-				.cra_name	 = "sha512",
+-				.cra_driver_name = "sha512-dthev2",
+-				.cra_priority	 = 400,
+-				.cra_flags	 = CRYPTO_ALG_TYPE_AHASH |
+-						   CRYPTO_ALG_ASYNC |
+-						   CRYPTO_ALG_OPTIONAL_KEY |
+-						   CRYPTO_ALG_KERN_DRIVER_ONLY |
+-						   CRYPTO_ALG_ALLOCATES_MEMORY,
+-				.cra_blocksize	 = SHA512_BLOCK_SIZE,
+-				.cra_ctxsize	 = sizeof(struct dthe_tfm_ctx),
+-				.cra_module	 = THIS_MODULE,
+-				.cra_init	 = dthe_sha512_cra_init,
+-				.cra_exit	 = dthe_hash_cra_exit,
+-			}
+-		}
+-	},
+-	{
+-		.init	= dthe_hash_init,
+-		.update	= dthe_hash_update,
+-		.final	= dthe_hash_final,
+-		.finup	= dthe_hash_finup,
+-		.digest	= dthe_hash_digest,
+-		.export = dthe_hash_export,
+-		.import = dthe_hash_import,
+-		.halg	= {
+-			.digestsize = SHA384_DIGEST_SIZE,
+-			.statesize = sizeof(struct dthe_hash_ctx),
+-			.base = {
+-				.cra_name	 = "sha384",
+-				.cra_driver_name = "sha384-dthev2",
+-				.cra_priority	 = 400,
+-				.cra_flags	 = CRYPTO_ALG_TYPE_AHASH |
+-						   CRYPTO_ALG_ASYNC |
+-						   CRYPTO_ALG_OPTIONAL_KEY |
+-						   CRYPTO_ALG_KERN_DRIVER_ONLY |
+-						   CRYPTO_ALG_ALLOCATES_MEMORY,
+-				.cra_blocksize	 = SHA384_BLOCK_SIZE,
+-				.cra_ctxsize	 = sizeof(struct dthe_tfm_ctx),
+-				.cra_module	 = THIS_MODULE,
+-				.cra_init	 = dthe_sha384_cra_init,
+-				.cra_exit	 = dthe_hash_cra_exit,
+-			}
+-		}
+-	},
+-	{
+-		.init	= dthe_hash_init,
+-		.update	= dthe_hash_update,
+-		.final	= dthe_hash_final,
+-		.finup	= dthe_hash_finup,
+-		.digest	= dthe_hash_digest,
+-		.export = dthe_hash_export,
+-		.import = dthe_hash_import,
+-		.halg	= {
+-			.digestsize = SHA256_DIGEST_SIZE,
+-			.statesize = sizeof(struct dthe_hash_ctx),
+-			.base = {
+-				.cra_name	 = "sha256",
+-				.cra_driver_name = "sha256-dthev2",
+-				.cra_priority	 = 400,
+-				.cra_flags	 = CRYPTO_ALG_TYPE_AHASH |
+-						   CRYPTO_ALG_ASYNC |
+-						   CRYPTO_ALG_OPTIONAL_KEY |
+-						   CRYPTO_ALG_KERN_DRIVER_ONLY |
+-						   CRYPTO_ALG_ALLOCATES_MEMORY,
+-				.cra_blocksize	 = SHA256_BLOCK_SIZE,
+-				.cra_ctxsize	 = sizeof(struct dthe_tfm_ctx),
+-				.cra_module	 = THIS_MODULE,
+-				.cra_init	 = dthe_sha256_cra_init,
+-				.cra_exit	 = dthe_hash_cra_exit,
+-			}
+-		}
+-	},
+-	{
+-		.init	= dthe_hash_init,
+-		.update	= dthe_hash_update,
+-		.final	= dthe_hash_final,
+-		.finup	= dthe_hash_finup,
+-		.digest	= dthe_hash_digest,
+-		.export = dthe_hash_export,
+-		.import = dthe_hash_import,
+-		.halg	= {
+-			.digestsize = SHA224_DIGEST_SIZE,
+-			.statesize = sizeof(struct dthe_hash_ctx),
+-			.base = {
+-				.cra_name	 = "sha224",
+-				.cra_driver_name = "sha224-dthev2",
+-				.cra_priority	 = 400,
+-				.cra_flags	 = CRYPTO_ALG_TYPE_AHASH |
+-						   CRYPTO_ALG_ASYNC |
+-						   CRYPTO_ALG_OPTIONAL_KEY |
+-						   CRYPTO_ALG_KERN_DRIVER_ONLY |
+-						   CRYPTO_ALG_ALLOCATES_MEMORY,
+-				.cra_blocksize	 = SHA224_BLOCK_SIZE,
+-				.cra_ctxsize	 = sizeof(struct dthe_tfm_ctx),
+-				.cra_module	 = THIS_MODULE,
+-				.cra_init	 = dthe_sha224_cra_init,
+-				.cra_exit	 = dthe_hash_cra_exit,
+-			}
+-		}
+-	},
+-	{
+-		.init	= dthe_hash_init,
+-		.update	= dthe_hash_update,
+-		.final	= dthe_hash_final,
+-		.finup	= dthe_hash_finup,
+-		.digest	= dthe_hash_digest,
+-		.export = dthe_hash_export,
+-		.import = dthe_hash_import,
+-		.halg	= {
+-			.digestsize = MD5_DIGEST_SIZE,
+-			.statesize = sizeof(struct dthe_hash_ctx),
+-			.base = {
+-				.cra_name	 = "md5",
+-				.cra_driver_name = "md5-dthev2",
+-				.cra_priority	 = 400,
+-				.cra_flags	 = CRYPTO_ALG_TYPE_AHASH |
+-						   CRYPTO_ALG_ASYNC |
+-						   CRYPTO_ALG_OPTIONAL_KEY |
+-						   CRYPTO_ALG_KERN_DRIVER_ONLY |
+-						   CRYPTO_ALG_ALLOCATES_MEMORY,
+-				.cra_blocksize	 = MD5_BLOCK_SIZE,
+-				.cra_ctxsize	 = sizeof(struct dthe_tfm_ctx),
+-				.cra_module	 = THIS_MODULE,
+-				.cra_init	 = dthe_md5_cra_init,
+-				.cra_exit	 = dthe_hash_cra_exit,
+-			}
+-		}
+-	},
+-};
+-
+-int dthe_register_hash_algs(void)
+-{
+-	return crypto_register_ahashes(hash_algs, ARRAY_SIZE(hash_algs));
+-}
+-
+-void dthe_unregister_hash_algs(void)
+-{
+-	crypto_unregister_ahashes(hash_algs, ARRAY_SIZE(hash_algs));
+-}
+diff --git a/drivers/crypto/ti/mcrc64.c b/drivers/crypto/ti/mcrc64.c
+deleted file mode 100644
+index cc30bea94264..000000000000
+--- a/drivers/crypto/ti/mcrc64.c
++++ /dev/null
+@@ -1,435 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0-only
+-/*
+- * Copyright (C) Texas Instruments 2023 - http://www.ti.com
+- * Author: Kamlesh Gurudasani <kamlesh@ti.com>
+- */
+-
+-#include <linux/crc64.h>
+-#include <linux/io.h>
+-#include <linux/kernel.h>
+-#include <linux/module.h>
+-#include <linux/mod_devicetable.h>
+-#include <linux/platform_device.h>
+-#include <linux/pm_runtime.h>
+-
+-#include <crypto/internal/hash.h>
+-
+-#define DRIVER_NAME		"mcrc64"
+-#define CHKSUM_DIGEST_SIZE	8
+-#define CHKSUM_BLOCK_SIZE	1
+-
+-/* Registers */
+-#define CRC_CTRL0 0x0000 /* CRC Global Control Register 0 */
+-#define CH_PSA_SWRE(ch) BIT(((ch) - 1) << 3) /* PSA Software Reset  */
+-
+-#define CRC_CTRL1 0x0008 /* CRC Global Control Register 1 */
+-#define PWDN BIT(0) /* Power Down  */
+-
+-#define CRC_CTRL2 0x0010 /* CRC Global Control Register 2 */
+-#define CH_MODE(ch, m) ((m) << (((ch) - 1) << 3))
+-
+-#define PSA_SIGREGL(ch) ((0x6 + (4 * ((ch) - 1))) << 4) /* Signature register */
+-
+-#define MCRC64_ALG_MASK 0x8000000000000000
+-#define MCRC64_CRC64_POLY 0x000000000000001b
+-
+-#define MCRC64_AUTOSUSPEND_DELAY 50
+-
+-enum mcrc64_mode {
+-	MCRC64_MODE_DATA_CAPTURE = 0,
+-	MCRC64_MODE_AUTO,
+-	MCRC64_MODE_SEMI_CPU,
+-	MCRC64_MODE_FULL_CPU,
+-	MCRC64_MODE_INVALID,
+-};
+-
+-enum mcrc64_channel {
+-	MCRC64_CHANNEL_1 = 1,
+-	MCRC64_CHANNEL_2,
+-	MCRC64_CHANNEL_3,
+-	MCRC64_CHANNEL_4,
+-	MCRC64_CHANNEL_INVALID,
+-};
+-
+-struct mcrc64_data {
+-	struct list_head list;
+-	struct device *dev;
+-	void __iomem *regs;
+-};
+-
+-struct mcrc64_list {
+-	struct list_head dev_list;
+-	spinlock_t lock; /* protect dev_list */
+-};
+-
+-static struct mcrc64_list mcrc64_dev_list = {
+-	.dev_list = LIST_HEAD_INIT(mcrc64_dev_list.dev_list),
+-	.lock = __SPIN_LOCK_UNLOCKED(mcrc64_dev_list.lock),
+-};
+-
+-struct mcrc64_tfm_ctx {
+-	struct mcrc64_data *dev_data;
+-	u64 key;
+-};
+-
+-struct mcrc64_desc_ctx {
+-	u64 signature;
+-};
+-
+-static struct mcrc64_data *mcrc64_get_dev(struct mcrc64_tfm_ctx *tctx)
+-{
+-	struct mcrc64_data *dev_data;
+-
+-	if (tctx->dev_data)
+-		return tctx->dev_data;
+-
+-	spin_lock_bh(&mcrc64_dev_list.lock);
+-	dev_data = list_first_entry(&mcrc64_dev_list.dev_list, struct mcrc64_data, list);
+-	if (dev_data)
+-		list_move_tail(&dev_data->list, &mcrc64_dev_list.dev_list);
+-	spin_unlock_bh(&mcrc64_dev_list.lock);
+-
+-	return dev_data;
+-}
+-
+-static int mcrc64_set_mode(void __iomem *regs, u32 channel, u32 mode)
+-{
+-	u32 mode_set_val;
+-	u32 crc_ctrl2_reg = 0;
+-
+-	if (mode < 0 || mode >= MCRC64_MODE_INVALID)
+-		return -EINVAL;
+-
+-	if (channel <= 0 || channel >= MCRC64_CHANNEL_INVALID)
+-		return -EINVAL;
+-
+-	mode_set_val = crc_ctrl2_reg | CH_MODE(channel, mode);
+-
+-	/* Write CRC_CTRL2, set mode */
+-	writel_relaxed(mode_set_val, regs + CRC_CTRL2);
+-
+-	return 0;
+-}
+-
+-static int mcrc64_reset_signature(void __iomem *regs, u32 channel)
+-{
+-	u32 crc_ctrl0_reg, reset_val, reset_undo_val;
+-
+-	if (channel <= 0 || channel >= MCRC64_CHANNEL_INVALID)
+-		return -EINVAL;
+-
+-	/* reset PSA */
+-	crc_ctrl0_reg = readl_relaxed(regs + CRC_CTRL0);
+-
+-	reset_val = crc_ctrl0_reg | CH_PSA_SWRE(channel);
+-	reset_undo_val = crc_ctrl0_reg & ~CH_PSA_SWRE(channel);
+-
+-	/* Write CRC_CTRL0 register, reset PSA register */
+-	writel_relaxed(reset_val, regs + CRC_CTRL0);
+-	writel_relaxed(reset_undo_val, regs + CRC_CTRL0);
+-
+-	return 0;
+-}
+-
+-/* This helper implements crc64 calculation using CPU */
+-static u64 mcrc64_calculate_sw_crc(u64 crc, u8 byte)
+-{
+-	u64 bit = 0;
+-	u8 j;
+-
+-	for (j = 0; j < 8; j++) {
+-		bit = crc & MCRC64_ALG_MASK;
+-		crc <<= 1;
+-		if (byte & (0x80 >> j))
+-			bit ^= MCRC64_ALG_MASK;
+-		if (bit)
+-			crc ^= MCRC64_CRC64_POLY;
+-	}
+-
+-	return crc;
+-}
+-
+-static int mcrc64_calculate_crc(void __iomem *regs, u32 channel,
+-				const u8 *d8, size_t length, u64 *crc64)
+-{
+-	void __iomem *psa_reg;
+-	u64 signature = 0;
+-
+-	if (channel <= 0 || channel >= MCRC64_CHANNEL_INVALID)
+-		return -EINVAL;
+-
+-	psa_reg = regs + PSA_SIGREGL(channel);
+-
+-	for (; length >= sizeof(u64); d8 += sizeof(u64), length -= sizeof(u64))
+-		writeq_relaxed(cpu_to_be64p((u64 *)d8), psa_reg);
+-
+-	signature = readq_relaxed(psa_reg);
+-
+-	if (length) {
+-		while (length--)
+-			signature = mcrc64_calculate_sw_crc(signature, *d8++);
+-
+-		/* set capture mode */
+-		int ret = mcrc64_set_mode(regs, MCRC64_CHANNEL_1,
+-					MCRC64_MODE_DATA_CAPTURE);
+-		if (ret)
+-			return ret;
+-
+-		ret = mcrc64_reset_signature(regs, MCRC64_CHANNEL_1);
+-		if (ret)
+-			return ret;
+-
+-		writeq_relaxed(signature, psa_reg);
+-
+-		ret = mcrc64_set_mode(regs, MCRC64_CHANNEL_1,
+-				      MCRC64_MODE_FULL_CPU);
+-		if (ret)
+-			return ret;
+-	}
+-
+-	*crc64 = signature;
+-
+-	return 0;
+-}
+-
+-static int mcrc64_cra_init(struct crypto_tfm *tfm)
+-{
+-	struct mcrc64_tfm_ctx *tctx = crypto_tfm_ctx(tfm);
+-	struct mcrc64_data *dev_data;
+-
+-	dev_data = mcrc64_get_dev(tctx);
+-	if (!dev_data)
+-		return -ENODEV;
+-
+-	pm_runtime_get_sync(dev_data->dev);
+-
+-	tctx->key = 0;
+-
+-	return 0;
+-}
+-
+-static void mcrc64_cra_exit(struct crypto_tfm *tfm)
+-{
+-	struct mcrc64_tfm_ctx *tctx = crypto_tfm_ctx(tfm);
+-	struct mcrc64_data *dev_data;
+-
+-	dev_data = mcrc64_get_dev(tctx);
+-
+-	pm_runtime_mark_last_busy(dev_data->dev);
+-	pm_runtime_put_autosuspend(dev_data->dev);
+-}
+-
+-static int mcrc64_setkey(struct crypto_shash *tfm, const u8 *key,
+-			 unsigned int keylen)
+-{
+-	struct mcrc64_tfm_ctx *tctx = crypto_shash_ctx(tfm);
+-
+-	if (keylen != sizeof(u64))
+-		return -EINVAL;
+-
+-	tctx->key = get_unaligned_le64(key);
+-
+-	return 0;
+-}
+-
+-static int mcrc64_init(struct shash_desc *desc)
+-{
+-	struct mcrc64_desc_ctx *ctx = shash_desc_ctx(desc);
+-	struct mcrc64_tfm_ctx *tctx = crypto_shash_ctx(desc->tfm);
+-	struct mcrc64_data *dev_data;
+-	void __iomem *psa_reg;
+-
+-	dev_data = mcrc64_get_dev(tctx);
+-	if (!dev_data)
+-		return -ENODEV;
+-
+-	pm_runtime_get_sync(dev_data->dev);
+-
+-	/* set capture mode */
+-	int ret = mcrc64_set_mode(dev_data->regs, MCRC64_CHANNEL_1,
+-				  MCRC64_MODE_DATA_CAPTURE);
+-	if (ret)
+-		return ret;
+-
+-	/* reset PSA */
+-	psa_reg = dev_data->regs + PSA_SIGREGL(MCRC64_CHANNEL_1);
+-	ret =  mcrc64_reset_signature(dev_data->regs, MCRC64_CHANNEL_1);
+-	if (ret)
+-		return ret;
+-
+-	/* write key  */
+-	writeq_relaxed(tctx->key, psa_reg);
+-
+-	/* set full cpu mode */
+-	ret = mcrc64_set_mode(dev_data->regs, MCRC64_CHANNEL_1,
+-			      MCRC64_MODE_FULL_CPU);
+-	if (ret)
+-		return ret;
+-
+-	ctx->signature = readq_relaxed(psa_reg);
+-
+-	return 0;
+-}
+-
+-static int mcrc64_update(struct shash_desc *desc, const u8 *d8,
+-			 unsigned int length)
+-{
+-	struct mcrc64_desc_ctx *ctx = shash_desc_ctx(desc);
+-	struct mcrc64_tfm_ctx *tctx = crypto_shash_ctx(desc->tfm);
+-	struct mcrc64_data *dev_data;
+-
+-	dev_data = mcrc64_get_dev(tctx);
+-	if (!dev_data)
+-		return -ENODEV;
+-
+-	return mcrc64_calculate_crc(dev_data->regs, MCRC64_CHANNEL_1,
+-				    d8, length, &ctx->signature);
+-}
+-
+-static int mcrc64_final(struct shash_desc *desc, u8 *out)
+-{
+-	struct mcrc64_desc_ctx *ctx = shash_desc_ctx(desc);
+-
+-	/* Send computed CRC */
+-	put_unaligned_le64(ctx->signature, out);
+-	return 0;
+-}
+-
+-static int mcrc64_finup(struct shash_desc *desc, const u8 *data,
+-			unsigned int length, u8 *out)
+-{
+-	return mcrc64_update(desc, data, length) ?:
+-		mcrc64_final(desc, out);
+-}
+-
+-static int mcrc64_digest(struct shash_desc *desc, const u8 *data,
+-			 unsigned int length, u8 *out)
+-{
+-	return mcrc64_init(desc) ?: mcrc64_finup(desc, data, length, out);
+-}
+-
+-static unsigned int refcnt;
+-static DEFINE_MUTEX(refcnt_lock);
+-static struct shash_alg algs[] = {
+-	/* CRC-64 */
+-	{
+-		.setkey		= mcrc64_setkey,
+-		.init		= mcrc64_init,
+-		.update		= mcrc64_update,
+-		.final		= mcrc64_final,
+-		.finup		= mcrc64_finup,
+-		.digest		= mcrc64_digest,
+-		.descsize	= sizeof(struct mcrc64_desc_ctx),
+-		.digestsize	= CHKSUM_DIGEST_SIZE,
+-		.base		= {
+-			.cra_name		= CRC64_ISO3309_STRING,
+-			.cra_driver_name	= "mcrc64",
+-			.cra_priority		= 300,
+-			.cra_flags		= CRYPTO_ALG_OPTIONAL_KEY,
+-			.cra_blocksize		= CHKSUM_BLOCK_SIZE,
+-			.cra_ctxsize		= sizeof(struct mcrc64_tfm_ctx),
+-			.cra_module		= THIS_MODULE,
+-			.cra_init		= mcrc64_cra_init,
+-			.cra_exit		= mcrc64_cra_exit,
+-		}
+-	}
+-};
+-
+-static int mcrc64_probe(struct platform_device *pdev)
+-{
+-	struct device *dev = &pdev->dev;
+-	struct mcrc64_data *dev_data;
+-	int ret;
+-
+-	dev_data = devm_kzalloc(dev, sizeof(*dev_data), GFP_KERNEL);
+-	if (!dev_data)
+-		return -ENOMEM;
+-
+-	dev_data->dev = dev;
+-	dev_data->regs = devm_platform_ioremap_resource(pdev, 0);
+-
+-	platform_set_drvdata(pdev, dev_data);
+-
+-	spin_lock(&mcrc64_dev_list.lock);
+-	list_add(&dev_data->list, &mcrc64_dev_list.dev_list);
+-	spin_unlock(&mcrc64_dev_list.lock);
+-
+-	mutex_lock(&refcnt_lock);
+-	if (!refcnt) {
+-		ret = crypto_register_shashes(algs, ARRAY_SIZE(algs));
+-		if (ret) {
+-			mutex_unlock(&refcnt_lock);
+-			dev_err(dev, "Failed to register\n");
+-			return ret;
+-		}
+-	}
+-	refcnt++;
+-	mutex_unlock(&refcnt_lock);
+-
+-	pm_runtime_set_autosuspend_delay(dev, MCRC64_AUTOSUSPEND_DELAY);
+-	pm_runtime_use_autosuspend(dev);
+-
+-	pm_runtime_get_noresume(dev);
+-	pm_runtime_set_active(dev);
+-	pm_runtime_enable(dev);
+-
+-	pm_runtime_put_sync(dev);
+-
+-	return 0;
+-}
+-
+-static void mcrc64_remove(struct platform_device *pdev)
+-{
+-	struct mcrc64_data *dev_data = platform_get_drvdata(pdev);
+-
+-	pm_runtime_resume_and_get(dev_data->dev);
+-
+-	spin_lock(&mcrc64_dev_list.lock);
+-	list_del(&dev_data->list);
+-	spin_unlock(&mcrc64_dev_list.lock);
+-
+-	mutex_lock(&refcnt_lock);
+-	if (!--refcnt)
+-		crypto_unregister_shashes(algs, ARRAY_SIZE(algs));
+-	mutex_unlock(&refcnt_lock);
+-
+-	pm_runtime_disable(dev_data->dev);
+-	pm_runtime_put_noidle(dev_data->dev);
+-}
+-
+-static int __maybe_unused mcrc64_suspend(struct device *dev)
+-{
+-	return	pm_runtime_force_suspend(dev);
+-}
+-
+-static int __maybe_unused mcrc64_resume(struct device *dev)
+-{
+-	return pm_runtime_force_resume(dev);
+-}
+-
+-static const struct dev_pm_ops mcrc64_pm_ops = {
+-	SET_SYSTEM_SLEEP_PM_OPS(mcrc64_suspend,
+-				mcrc64_resume)
+-};
+-
+-static const struct of_device_id of_match[] = {
+-	{ .compatible = "ti,am62-mcrc64", },
+-	{},
+-};
+-MODULE_DEVICE_TABLE(of, of_match);
+-
+-static struct platform_driver mcrc64_driver = {
+-	.probe	= mcrc64_probe,
+-	.remove = mcrc64_remove,
+-	.driver = {
+-		.name		= DRIVER_NAME,
+-		.pm		= &mcrc64_pm_ops,
+-		.of_match_table = of_match,
+-	},
+-};
+-
+-module_platform_driver(mcrc64_driver);
+-
+-MODULE_AUTHOR("Kamlesh Gurudasani <kamlesh@ti.com>");
+-MODULE_DESCRIPTION("Texas Instruments MCRC64 driver");
+-MODULE_LICENSE("GPL");
+-- 
+2.47.2
+

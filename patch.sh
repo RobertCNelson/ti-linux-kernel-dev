@@ -538,6 +538,21 @@ post_rpibackports () {
 }
 
 backports () {
+	backport_tag="v6.12.35"
+
+	subsystem="crypto"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/drivers/crypto/* ./drivers/crypto/
+		rm -rf ./drivers/crypto/ti/
+
+		post_backports
+	else
+		patch_backports
+	fi
+
 	backport_tag="v6.16"
 
 	subsystem="tps65219"
