@@ -554,7 +554,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v6.16"
+	backport_tag="v6.16.3"
 
 	subsystem="tps65219"
 	#regenerate="enable"
