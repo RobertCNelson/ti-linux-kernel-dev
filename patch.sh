@@ -305,6 +305,7 @@ beagleboard_dtbs () {
 		device="BB-BONE-NH7C-01-A0" ; arm_dtbo_makefile_append
 		device="BB-BONE-eMMC1-01-00A0" ; arm_dtbo_makefile_append
 		device="BB-CAPE-DISP-CT4-00A0" ; arm_dtbo_makefile_append
+		device="BB-HDMI-IT66121-00A0" ; arm_dtbo_makefile_append
 		device="BB-HDMI-TDA998x-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C1-MCP7940X-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C1-RTC-DS3231" ; arm_dtbo_makefile_append
@@ -312,6 +313,7 @@ beagleboard_dtbs () {
 		device="BB-I2C2-BME680" ; arm_dtbo_makefile_append
 		device="BB-I2C2-MPU6050" ; arm_dtbo_makefile_append
 		device="BB-LCD-ADAFRUIT-24-SPI1-00A0" ; arm_dtbo_makefile_append
+		device="BB-NHDMI-IT66121-00A0" ; arm_dtbo_makefile_append
 		device="BB-NHDMI-TDA998x-00A0" ; arm_dtbo_makefile_append
 		device="BB-SPIDEV0-00A0" ; arm_dtbo_makefile_append
 		device="BB-SPIDEV1-00A0" ; arm_dtbo_makefile_append
@@ -538,7 +540,7 @@ post_rpibackports () {
 }
 
 backports () {
-	backport_tag="v6.12.42"
+	backport_tag="v6.12.43"
 
 	###FIXME: testing with: https://git.kernel.org/pub/scm/network/wireless/iwd.git
 	subsystem="crypto"
@@ -554,7 +556,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v6.16.3"
+	backport_tag="v6.16.4"
 
 	subsystem="tps65219"
 	#regenerate="enable"
