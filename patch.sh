@@ -315,15 +315,15 @@ beagleboard_dtbs () {
 		device="BB-LCD-ADAFRUIT-24-SPI1-00A0" ; arm_dtbo_makefile_append
 		device="BB-NHDMI-IT66121-00A0" ; arm_dtbo_makefile_append
 		device="BB-NHDMI-TDA998x-00A0" ; arm_dtbo_makefile_append
+		device="BBORG_COMMS-00A2" ; arm_dtbo_makefile_append
+		device="BBORG_FAN-A000" ; arm_dtbo_makefile_append
+		device="BBORG_RELAY-00A2" ; arm_dtbo_makefile_append
 		device="BB-SPIDEV0-00A0" ; arm_dtbo_makefile_append
 		device="BB-SPIDEV1-00A0" ; arm_dtbo_makefile_append
 		device="BB-UART1-00A0" ; arm_dtbo_makefile_append
 		device="BB-UART2-00A0" ; arm_dtbo_makefile_append
 		device="BB-UART4-00A0" ; arm_dtbo_makefile_append
 		device="BB-W1-P9.12-00A0" ; arm_dtbo_makefile_append
-		device="BBORG_COMMS-00A2" ; arm_dtbo_makefile_append
-		device="BBORG_FAN-A000" ; arm_dtbo_makefile_append
-		device="BBORG_RELAY-00A2" ; arm_dtbo_makefile_append
 		device="BONE-ADC" ; arm_dtbo_makefile_append
 		device="M-BB-BBG-00A0" ; arm_dtbo_makefile_append
 		device="M-BB-BBGG-00A0" ; arm_dtbo_makefile_append
@@ -340,18 +340,15 @@ beagleboard_dtbs () {
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
-		device="BONE-I2C1" ; k3_dtbo_makefile_append
-		device="BONE-I2C2" ; k3_dtbo_makefile_append
-		device="BONE-I2C3" ; k3_dtbo_makefile_append
-
 		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
 
 		#ls src/arm64/overlays/ | grep pocketbeagle2
 
+		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
 		device="k3-am62-pocketbeagle2-ardupilot-cape" ; k3_dtbo_makefile_append
 		device="k3-am62-pocketbeagle2-leds-off" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-mspm0swd" ; k3_dtbo_makefile_append
 		device="k3-am62-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
-		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
 
 		#ls src/arm64/overlays/ | grep beagleplay
 
@@ -556,7 +553,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v6.16.4"
+	backport_tag="v6.16.5"
 
 	subsystem="tps65219"
 	#regenerate="enable"
