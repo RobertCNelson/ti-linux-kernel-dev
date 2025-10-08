@@ -594,6 +594,7 @@ drivers () {
 #	dir 'drivers/ite-it66121-hpd'
 #	dir 'drivers/tidss'
 	dir 'drivers/mspm0'
+	dir 'drivers/imx708'
 
 	dir 'external/android'
 	dir 'external/cadence'
