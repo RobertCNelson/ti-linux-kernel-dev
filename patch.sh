@@ -626,6 +626,7 @@ drivers () {
 
 	dir 'drivers/davinci-mcasp'
 	dir 'drivers/ite-it66121-hpd'
+	dir 'drivers/imx708'
 	dir 'drivers/pcie'
 	dir 'drivers/tidss'
 
