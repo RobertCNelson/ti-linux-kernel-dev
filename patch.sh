@@ -304,6 +304,7 @@ k3_makefile_patch_cleanup_overlays () {
 	echo "DTC_FLAGS_k3-am6232-pocketbeagle2 += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-am67a-beagley-ai += -@" >> arch/arm64/boot/dts/ti/Makefile
 	echo "DTC_FLAGS_k3-j721e-beagleboneai64 += -@" >> arch/arm64/boot/dts/ti/Makefile
+	echo "DTC_FLAGS_k3-am625-osd625-brk += -@" >> arch/arm64/boot/dts/ti/Makefile
 }
 
 beagleboard_dtbs () {
@@ -411,7 +412,7 @@ beagleboard_dtbs () {
 		device="k3-am625-beaglemod-rtc" ; k3_dtbo_makefile_append
 		device="k3-am625-beaglemod-wl1835" ; k3_dtbo_makefile_append
 
-		device="k3-am625-osd625-brk" ; k3_dtbo_makefile_append
+		device="k3-am625-osd625-brk.dtb" ; k3_dtb_makefile_append
 
 		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
 
