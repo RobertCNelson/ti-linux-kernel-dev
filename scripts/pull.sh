@@ -1,0 +1,5 @@
+#!/bin/bash
+
+git pull --no-edit https://github.com/RobertCNelson/ti-linux-kernel-dev.git ti-linux-arm64-6.12.y
+git pull --no-edit https://gitlab.com/RobertCNelson/ti-linux-kernel-dev.git ti-linux-arm64-6.12.y
+
