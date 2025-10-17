@@ -561,7 +561,7 @@ backports () {
 		rm -rf ./drivers/crypto/ti/
 
 		post_backports
-	else
+	#else
 		patch_backports
 	fi
 
