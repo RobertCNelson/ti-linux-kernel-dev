@@ -481,7 +481,7 @@ local_patch () {
 }
 
 external_git
-mainline_patches
+#mainline_patches
 rt
 wireless_regdb
 beagleboard_dtbs
@@ -551,7 +551,7 @@ post_rpibackports () {
 }
 
 backports () {
-	backport_tag="v6.12.43"
+	backport_tag="v6.12.49"
 
 	###FIXME: testing with: https://git.kernel.org/pub/scm/network/wireless/iwd.git
 	subsystem="crypto"
@@ -567,7 +567,7 @@ backports () {
 		patch_backports
 	fi
 
-	backport_tag="v6.16.5"
+	backport_tag="v6.16.12"
 
 	subsystem="tps65219"
 	#regenerate="enable"
