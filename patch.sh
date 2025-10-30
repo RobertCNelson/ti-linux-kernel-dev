@@ -481,7 +481,7 @@ local_patch () {
 }
 
 external_git
-#mainline_patches
+mainline_patches
 rt
 wireless_regdb
 beagleboard_dtbs
