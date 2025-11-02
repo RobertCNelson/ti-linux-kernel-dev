@@ -566,7 +566,7 @@ backports () {
 		cp -v ~/linux-src/include/linux/mfd/tps65219.h ./include/linux/mfd/
 
 		post_backports
-	#else
+	else
 		patch_backports
 	fi
 
@@ -598,7 +598,7 @@ drivers () {
 	dir 'external/cadence'
 	dir 'external/gasket'
 
-	#dir 'drivers/tps65219'
+	dir 'drivers/tps65219'
 	dir 'drivers/configfs'
 }
 
