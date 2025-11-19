@@ -504,6 +504,12 @@ debian_regs () {
 		freia)
 			deb_distro="forky"
 			;;
+		gryphon)
+			deb_distro="duke"
+			;;
+		ceres)
+			deb_distro="sid"
+			;;
 		esac
 
 		#Future Debian Code names:

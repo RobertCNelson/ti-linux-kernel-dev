@@ -48,6 +48,7 @@ toolchain="gcc_14_aarch64"
 #toolchain="gcc_15_riscv64"
 
 #Wireless:
+#https://mirrors.edge.kernel.org/pub/software/network/wireless-regdb/
 WIRELESS_REGDB="2025.10.07"
 
 #Kernel
