@@ -540,7 +540,7 @@ post_rpibackports () {
 }
 
 backports () {
-	backport_tag="v6.12.49"
+	backport_tag="v6.12.57"
 
 	###FIXME: testing with: https://git.kernel.org/pub/scm/network/wireless/iwd.git
 	subsystem="crypto"
