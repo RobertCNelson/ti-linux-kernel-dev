@@ -1,6 +1,6 @@
-From 32289b7db22c11e121b7333c048a93835d3a6bf2 Mon Sep 17 00:00:00 2001
+From 2ecbd5cd56e7b2ce57cc48d1734cd1abfd952892 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 25 Nov 2025 10:56:12 -0600
+Date: Mon, 26 Jan 2026 13:00:23 -0600
 Subject: [PATCH] backports: crypto: from: linux.git
 
 Reference: v6.12.57
@@ -12,12 +12,12 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  drivers/crypto/sa2ul.h            |   91 +-
  drivers/crypto/ti/Kconfig         |   33 -
  drivers/crypto/ti/Makefile        |    4 -
- drivers/crypto/ti/dthev2-aes.c    | 1363 -----------------------
+ drivers/crypto/ti/dthev2-aes.c    | 1369 -----------------------
  drivers/crypto/ti/dthev2-common.c |  248 -----
- drivers/crypto/ti/dthev2-common.h |  183 ----
+ drivers/crypto/ti/dthev2-common.h |  188 ----
  drivers/crypto/ti/dthev2-hash.c   | 1372 -----------------------
  drivers/crypto/ti/mcrc64.c        |  435 --------
- 11 files changed, 332 insertions(+), 5076 deletions(-)
+ 11 files changed, 332 insertions(+), 5087 deletions(-)
  delete mode 100644 drivers/crypto/ti/Kconfig
  delete mode 100644 drivers/crypto/ti/Makefile
  delete mode 100644 drivers/crypto/ti/dthev2-aes.c
@@ -2742,10 +2742,10 @@ index 0b5df3ee8647..000000000000
 -dthev2-objs := dthev2-common.o dthev2-aes.o dthev2-hash.o
 diff --git a/drivers/crypto/ti/dthev2-aes.c b/drivers/crypto/ti/dthev2-aes.c
 deleted file mode 100644
-index 52f6783dc1da..000000000000
+index 45140b7f36be..000000000000
 --- a/drivers/crypto/ti/dthev2-aes.c
 +++ /dev/null
-@@ -1,1363 +0,0 @@
+@@ -1,1369 +0,0 @@
 -// SPDX-License-Identifier: GPL-2.0-only
 -/*
 - * K3 DTHE V2 crypto accelerator driver
@@ -3075,7 +3075,7 @@ index 52f6783dc1da..000000000000
 -	int src_mapped_nents;
 -	int dst_mapped_nents;
 -
--	u8 pad_buf[AES_BLOCK_SIZE] = {0};
+-	u8 *pad_buf = rctx->padding;
 -	int pad_len = 0;
 -
 -	bool diff_dst;
@@ -3103,6 +3103,8 @@ index 52f6783dc1da..000000000000
 -			/* Need to create a new SG list with padding */
 -			pad_len = ALIGN(req->cryptlen, AES_BLOCK_SIZE) - req->cryptlen;
 -			struct scatterlist *sg;
+-
+-			memset(pad_buf, 0, pad_len);
 -
 -			sg_init_table(src_padded, 2);
 -			sg = sg_last(req->src, src_nents);
@@ -3691,9 +3693,9 @@ index 52f6783dc1da..000000000000
 -	int dst_nents;
 -	int src_mapped_nents, dst_mapped_nents;
 -
--	u8 src_assoc_padbuf[AES_BLOCK_SIZE] = {0};
--	u8 src_crypt_padbuf[AES_BLOCK_SIZE] = {0};
--	u8 dst_crypt_padbuf[AES_BLOCK_SIZE] = {0};
+-	u8 *src_assoc_padbuf = rctx->padding;
+-	u8 *src_crypt_padbuf = rctx->padding + AES_BLOCK_SIZE;
+-	u8 *dst_crypt_padbuf = rctx->padding + (2 * AES_BLOCK_SIZE);
 -
 -	enum dma_data_direction src_dir, dst_dir;
 -
@@ -3715,6 +3717,10 @@ index 52f6783dc1da..000000000000
 -	unpadded_cryptlen = cryptlen;
 -
 -	// Prep src and dst scatterlists
+-	memset(src_assoc_padbuf, 0, AES_BLOCK_SIZE);
+-	memset(src_crypt_padbuf, 0, AES_BLOCK_SIZE);
+-	memset(dst_crypt_padbuf, 0, AES_BLOCK_SIZE);
+-
 -	src = dthe_aead_prep_src(req->src, req->assoclen, cryptlen,
 -				 src_assoc_padbuf, src_crypt_padbuf);
 -	if (IS_ERR(src)) {
@@ -4006,7 +4012,7 @@ index 52f6783dc1da..000000000000
 -		.base.base = {
 -			.cra_name		= "ctr(aes)",
 -			.cra_driver_name	= "ctr-aes-dthev2",
--			.cra_priority		= 299,
+-			.cra_priority		= 30000,
 -			.cra_flags		= CRYPTO_ALG_TYPE_SKCIPHER |
 -						  CRYPTO_ALG_ASYNC |
 -						  CRYPTO_ALG_KERN_DRIVER_ONLY |
@@ -4029,7 +4035,7 @@ index 52f6783dc1da..000000000000
 -		.base.base = {
 -			.cra_name		= "xts(aes)",
 -			.cra_driver_name	= "xts-aes-dthev2",
--			.cra_priority		= 299,
+-			.cra_priority		= 30000,
 -			.cra_flags		= CRYPTO_ALG_TYPE_SKCIPHER |
 -						  CRYPTO_ALG_ASYNC |
 -						  CRYPTO_ALG_KERN_DRIVER_ONLY |
@@ -4365,10 +4371,10 @@ index 9f6b17fb0092..000000000000
 -MODULE_LICENSE("GPL");
 diff --git a/drivers/crypto/ti/dthev2-common.h b/drivers/crypto/ti/dthev2-common.h
 deleted file mode 100644
-index 3b1b12b2bc19..000000000000
+index d5ed2d6e14ad..000000000000
 --- a/drivers/crypto/ti/dthev2-common.h
 +++ /dev/null
-@@ -1,183 +0,0 @@
+@@ -1,188 +0,0 @@
 -/* SPDX-License-Identifier: GPL-2.0-only */
 -/*
 - * K3 DTHE V2 crypto accelerator driver
@@ -4406,6 +4412,7 @@ index 3b1b12b2bc19..000000000000
 - * This is currently the keysize of HMAC-SHA512
 - */
 -#define DTHE_MAX_KEYSIZE	(SHA512_BLOCK_SIZE)
+-#define DTHE_MAX_PADSIZE	(AES_BLOCK_SIZE * 3)
 -
 -enum dthe_hash_alg_sel {
 -	DTHE_HASH_MD5		= 0,
@@ -4498,10 +4505,12 @@ index 3b1b12b2bc19..000000000000
 -/**
 - * struct dthe_aes_req_ctx - AES engine req ctx struct
 - * @enc: flag indicating encryption or decryption operation
+- * @padding: padding buffer for handling unaligned data
 - * @aes_compl: Completion variable for use in manual completion in case of DMA callback failure
 - */
 -struct dthe_aes_req_ctx {
 -	int enc;
+-	u8 padding[DTHE_MAX_PADSIZE];
 -	struct completion aes_compl;
 -};
 -
@@ -4510,6 +4519,7 @@ index 3b1b12b2bc19..000000000000
 - * @phash: buffer to store a partial hash/inner digest from a previous operation
 - * @odigest: buffer to store the outer digest from a previous operation
 - * @data_buf: buffer to store part of input data to be carried over to next operation
+- * @padding: padding buffer for handling unaligned data
 - * @digestcnt: stores the digest count from a previous operation
 - * @phash_available: flag indicating if a partial hash from a previous operation is available
 - * @buflen: length of input data stored in data_buf
@@ -4520,6 +4530,7 @@ index 3b1b12b2bc19..000000000000
 -	u32 phash[SHA512_DIGEST_SIZE / sizeof(u32)];
 -	u32 odigest[SHA512_DIGEST_SIZE / sizeof(u32)];
 -	u8 data_buf[SHA512_BLOCK_SIZE];
+-	u8 padding[SHA512_BLOCK_SIZE];
 -	u32 digestcnt;
 -	u8 phash_available;
 -	u8 buflen;
@@ -4554,7 +4565,7 @@ index 3b1b12b2bc19..000000000000
 -#endif
 diff --git a/drivers/crypto/ti/dthev2-hash.c b/drivers/crypto/ti/dthev2-hash.c
 deleted file mode 100644
-index 1d3d9fcb61e3..000000000000
+index b72a6d74665b..000000000000
 --- a/drivers/crypto/ti/dthev2-hash.c
 +++ /dev/null
 @@ -1,1372 +0,0 @@
@@ -5216,7 +5227,7 @@ index 1d3d9fcb61e3..000000000000
 -	unsigned int pad_len = 0;
 -	struct scatterlist *src, *sg;
 -	int src_nents = 0;
--	u8 pad_buf[SHA512_BLOCK_SIZE];
+-	u8 *pad_buf = rctx->padding;
 -	int ret = 0;
 -
 -	if (tot_len == 0) {
