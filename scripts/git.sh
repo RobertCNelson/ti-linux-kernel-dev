@@ -29,11 +29,19 @@ git_kernel_stable () {
 	fi
 }
 
+git_kernel_org_stable_tag_backup () {
+	#We want to hit git.kernel.org last for least bandwidth hit...
+	backup_stable_repo="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+	echo "-----------------------------"
+	echo "scripts/git: fetching v${KERNEL_TAG} from: ${backup_stable_repo}"
+	${git_bin} fetch "${backup_stable_repo}" tag v${KERNEL_TAG} --no-tags
+}
+
 git_kernel_stable_tag_backup () {
 	backup_stable_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git"
 	echo "-----------------------------"
 	echo "scripts/git: fetching v${KERNEL_TAG} from: ${backup_stable_repo}"
-	${git_bin} fetch "${backup_stable_repo}" tag v${KERNEL_TAG} --no-tags
+	${git_bin} fetch "${backup_stable_repo}" tag v${KERNEL_TAG} --no-tags || git_kernel_org_stable_tag_backup
 }
 
 git_kernel_stable_tag () {
@@ -47,7 +55,7 @@ git_kernel_torvalds () {
 	echo "scripts/git: pulling from: ${linux_repo}"
 	echo "log: [${git_bin} pull --no-rebase --no-edit "${linux_repo}" master --tags]"
 	${git_bin} pull --no-rebase --no-edit "${linux_repo}" master --tags
-	${git_bin} tag | grep v"${KERNEL_TAG}" >/dev/null 2>&1 || git_kernel_stable_tag
+	${git_bin} fetch "${linux_repo}" tag v${KERNEL_TAG} --no-tags || git_kernel_stable_tag
 }
 
 check_and_or_clone () {
