@@ -239,6 +239,9 @@ cd ${DIR}/KERNEL/
 ./scripts/config --enable CONFIG_GPIO_AGGREGATOR
 ./scripts/config --module CONFIG_PWM_GPIO
 
+./scripts/config --enable CONFIG_MODULE_COMPRESS
+./scripts/config --enable CONFIG_MODULE_COMPRESS_ALL
+
 #cc33xx ble
 ./scripts/config --disable CONFIG_BT_BNEP
 ./scripts/config --disable CONFIG_BT_HCIBTSDIO

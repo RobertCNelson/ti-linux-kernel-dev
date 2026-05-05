@@ -629,7 +629,8 @@ post_rpibackports () {
 }
 
 backports () {
-	backport_tag="v6.6.137"
+	#backport_tag="v6.6.137"
+	backport_tag="v6.6.92"
 
 	###FIXME: https://www.cve.org/CVERecord?id=CVE-2026-31431
 	subsystem="crypto"
@@ -640,13 +641,11 @@ backports () {
 		cp -rv ~/linux-src/crypto/* ./crypto/
 		cp -rv ~/linux-src/drivers/crypto/* ./drivers/crypto/
 		cp -rv ~/linux-src/include/crypto/* ./include/crypto/
-		#rm -rf ./drivers/crypto/ti/
 
 		post_backports
 	else
 		patch_backports
 	fi
-
 
 	backport_tag="rpi-6.6.y"
 
@@ -677,6 +676,7 @@ drivers () {
 	dir 'external/gasket'
 
 	dir 'drivers/fixes/mmc'
+	dir 'drivers/fixes/e5010'
 }
 
 ###
