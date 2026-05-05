@@ -1,5 +1,9 @@
 #!/bin/sh -e
 
+# SPDX-FileCopyrightText: Robert Nelson <robertcnelson@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 #yeah, i'm getting lazy..
 
 wfile=$(mktemp /tmp/builder.XXXXXXXXX)
@@ -29,7 +33,7 @@ cat_files () {
 
 DIR=$PWD
 git_bin=$(which git)
-repo="https://github.com/RobertCNelson/ti-linux-kernel/compare"
+repo="https://github.com/TexasInstruments/ti-linux-kernel/compare"
 
 if [ -e ${DIR}/version.sh ]; then
 	unset BRANCH
