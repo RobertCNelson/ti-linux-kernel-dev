@@ -544,15 +544,17 @@ post_rpibackports () {
 }
 
 backports () {
-	backport_tag="v6.12.57"
+	backport_tag="v6.12.85"
 
 	###FIXME: testing with: https://git.kernel.org/pub/scm/network/wireless/iwd.git
+	### https://www.cve.org/CVERecord?id=CVE-2026-31431
 	subsystem="crypto"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
 		cp -rv ~/linux-src/drivers/crypto/* ./drivers/crypto/
+		cp -rv ~/linux-src/include/crypto/* ./include/crypto/
 		rm -rf ./drivers/crypto/ti/
 
 		post_backports
