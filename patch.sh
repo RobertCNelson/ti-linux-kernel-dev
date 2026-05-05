@@ -322,6 +322,10 @@ beagleboard_dtbs () {
 		cp -v ../${work_dir}/src/arm64/ti/*.h arch/arm64/boot/dts/ti/
 		cp -vr ../${work_dir}/include/dt-bindings/* ./include/dt-bindings/
 
+		#ls ../${work_dir}/src/arm/overlays/ | grep dtso
+		#exit 2
+
+		device="AM3359-PWM012" ; arm_dtbo_makefile_append
 		device="AM335X-PRU-UIO-00A0" ; arm_dtbo_makefile_append
 		device="BB-ADC-00A0" ; arm_dtbo_makefile_append
 		device="BB-BBBW-WL1835-00A0" ; arm_dtbo_makefile_append
@@ -331,25 +335,49 @@ beagleboard_dtbs () {
 		device="BB-BONE-LCD4-01-00A1" ; arm_dtbo_makefile_append
 		device="BB-BONE-NH7C-01-A0" ; arm_dtbo_makefile_append
 		device="BB-BONE-eMMC1-01-00A0" ; arm_dtbo_makefile_append
+		device="BB-CAN0-00A0" ; arm_dtbo_makefile_append
+		device="BB-CAN1-00A0" ; arm_dtbo_makefile_append
 		device="BB-CAPE-DISP-CT4-00A0" ; arm_dtbo_makefile_append
+		device="BB-EHRPWM0-P9_29-P9_31" ; arm_dtbo_makefile_append
+		device="BB-EHRPWM1-P9_14-P9_16" ; arm_dtbo_makefile_append
+		device="BB-EHRPWM2-P8_13-P8_19" ; arm_dtbo_makefile_append
+		device="BB-EQEP0" ; arm_dtbo_makefile_append
+		device="BB-EQEP1" ; arm_dtbo_makefile_append
+		device="BB-EQEP2B" ; arm_dtbo_makefile_append
+		device="BB-EQEP2" ; arm_dtbo_makefile_append
+		device="BB-GREEN-HDMI-00A0" ; arm_dtbo_makefile_append
+		device="BB-HDMI-IT66121-00A0" ; arm_dtbo_makefile_append
+		device="BB-HDMI-IT66122-00A0" ; arm_dtbo_makefile_append
 		device="BB-HDMI-TDA998x-00A0" ; arm_dtbo_makefile_append
+		device="BB-I2C1-00A0" ; arm_dtbo_makefile_append
+		device="BB-I2C1-FAST-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C1-MCP7940X-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C1-RTC-DS3231" ; arm_dtbo_makefile_append
 		device="BB-I2C1-RTC-PCF8563" ; arm_dtbo_makefile_append
+		device="BB-I2C2-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C2-BME680" ; arm_dtbo_makefile_append
+		device="BB-I2C2-FAST-00A0" ; arm_dtbo_makefile_append
+		device="BB-I2C2-MCP7940X-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C2-MPU6050" ; arm_dtbo_makefile_append
+		device="BB-I2C2-RTC-DS3231" ; arm_dtbo_makefile_append
 		device="BB-LCD-ADAFRUIT-24-SPI1-00A0" ; arm_dtbo_makefile_append
+		device="BB-NHDMI-IT66121-00A0" ; arm_dtbo_makefile_append
+		device="BB-NHDMI-IT66122-00A0" ; arm_dtbo_makefile_append
 		device="BB-NHDMI-TDA998x-00A0" ; arm_dtbo_makefile_append
+		device="BBORG_COMMS-00A2" ; arm_dtbo_makefile_append
+		device="BBORG_FAN-A000" ; arm_dtbo_makefile_append
+		device="BBORG_RELAY-00A2" ; arm_dtbo_makefile_append
 		device="BB-SPIDEV0-00A0" ; arm_dtbo_makefile_append
 		device="BB-SPIDEV1-00A0" ; arm_dtbo_makefile_append
 		device="BB-UART1-00A0" ; arm_dtbo_makefile_append
 		device="BB-UART2-00A0" ; arm_dtbo_makefile_append
 		device="BB-UART4-00A0" ; arm_dtbo_makefile_append
+		device="BB-UART5-00A0" ; arm_dtbo_makefile_append
 		device="BB-W1-P9.12-00A0" ; arm_dtbo_makefile_append
-		device="BBORG_COMMS-00A2" ; arm_dtbo_makefile_append
-		device="BBORG_FAN-A000" ; arm_dtbo_makefile_append
-		device="BBORG_RELAY-00A2" ; arm_dtbo_makefile_append
 		device="BONE-ADC" ; arm_dtbo_makefile_append
+		device="BONE-LED-P8-37" ; arm_dtbo_makefile_append
+		device="BONE-LED-P9-19" ; arm_dtbo_makefile_append
+		device="BONE-LED-P9-42" ; arm_dtbo_makefile_append
 		device="M-BB-BBG-00A0" ; arm_dtbo_makefile_append
 		device="M-BB-BBGG-00A0" ; arm_dtbo_makefile_append
 		device="PB-MIKROBUS-0" ; arm_dtbo_makefile_append
@@ -365,18 +393,17 @@ beagleboard_dtbs () {
 		#device="k3-am625-beagleplay-cc33xx.dtb" ; k3_dtb_makefile_append
 		#device="k3-j721e-beagleboneai64-no-shared-mem.dtb" ; k3_dtb_makefile_append
 
-		device="BONE-I2C1" ; k3_dtbo_makefile_append
-		device="BONE-I2C2" ; k3_dtbo_makefile_append
-		device="BONE-I2C3" ; k3_dtbo_makefile_append
-
 		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
 
 		#ls src/arm64/overlays/ | grep pocketbeagle2
 
-		device="k3-am62-pocketbeagle2-ardupilot-cape" ; k3_dtbo_makefile_append
-		device="k3-am62-pocketbeagle2-leds-off" ; k3_dtbo_makefile_append
-		device="k3-am62-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
 		device="k3-am6232-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-ardupilot-cape" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-led-all" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-leds-off" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-mspm0swd" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-pru0-out" ; k3_dtbo_makefile_append
+		device="k3-am62-pocketbeagle2-techlab-cape" ; k3_dtbo_makefile_append
 
 		#ls src/arm64/overlays/ | grep beagleplay
 
@@ -442,9 +469,16 @@ beagleboard_dtbs () {
 		device="k3-am67a-beagley-ai-spidev0" ; k3_dtbo_makefile_append
 		device="k3-am67a-beagley-ai-uart-ttyama0" ; k3_dtbo_makefile_append
 
-		#ls src/arm64/overlays/ | grep beaglebone
+		#ls ../${work_dir}/src/arm64/overlays/ | grep beagleboneai64
+		#exit 2
 
 		device="k3-j721e-beagleboneai64-BBORG_MOTOR" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-ecap0" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-ecap1" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-ecap2" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-eqep0" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-eqep1" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-io-pins" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm0-p8_13" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm0-p8_13-p8_19" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm0-p8_19" ; k3_dtbo_makefile_append
@@ -452,6 +486,7 @@ beagleboard_dtbs () {
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_14-p9_16" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm2-p9_16" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-pwm-epwm4-p9_25" ; k3_dtbo_makefile_append
+		device="k3-j721e-beagleboneai64-rs485-uart8" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-spi-mcspi1-cs0" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-spi-mcspi1-cs0-no-miso" ; k3_dtbo_makefile_append
 		device="k3-j721e-beagleboneai64-spi-mcspi2-cs0" ; k3_dtbo_makefile_append
@@ -591,6 +626,24 @@ post_rpibackports () {
 }
 
 backports () {
+	backport_tag="v6.6.137"
+
+	###FIXME: https://www.cve.org/CVERecord?id=CVE-2026-31431
+	subsystem="crypto"
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		pre_backports
+
+		cp -rv ~/linux-src/crypto/* ./crypto/
+		cp -rv ~/linux-src/drivers/crypto/* ./drivers/crypto/
+		cp -rv ~/linux-src/include/crypto/* ./include/crypto/
+		#rm -rf ./drivers/crypto/ti/
+
+		post_backports
+	else
+		patch_backports
+	fi
+
 	subsystem="uio"
 	#regenerate="enable"
 	if [ "x${regenerate}" = "xenable" ] ; then
