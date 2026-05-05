@@ -1,11 +1,28 @@
-From 778da34b070af4b8268df890eafa2fcec7ccb775 Mon Sep 17 00:00:00 2001
+From 59a73a0f4e8ad77894cb5ad5c653db98d2b78dc0 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 5 May 2026 15:07:49 -0500
+Date: Tue, 5 May 2026 15:19:17 -0500
 Subject: [PATCH] backports: crypto: from: linux.git
 
 Reference: v6.12.85
 Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
 ---
+ crypto/Kconfig                                |   13 -
+ crypto/Makefile                               |    1 -
+ crypto/aead.c                                 |   19 -
+ crypto/af_alg.c                               |   62 +-
+ crypto/algif_aead.c                           |  205 +-
+ crypto/algif_hash.c                           |    3 +-
+ crypto/algif_rng.c                            |    3 +-
+ crypto/algif_skcipher.c                       |   11 +-
+ crypto/asymmetric_keys/asymmetric_type.c      |   14 +-
+ crypto/asymmetric_keys/x509_cert_parser.c     |    8 +-
+ crypto/authenc.c                              |  107 +-
+ crypto/authencesn.c                           |   88 +-
+ crypto/scatterwalk.c                          |   94 +
+ crypto/seqiv.c                                |    8 +-
+ crypto/tcrypt.c                               |    6 -
+ crypto/testmgr.c                              |    7 -
+ crypto/testmgr.h                              |  460 -----
  drivers/crypto/Kconfig                        |    1 -
  drivers/crypto/Makefile                       |    2 -
  .../allwinner/sun8i-ce/sun8i-ce-cipher.c      |    1 -
@@ -60,7 +77,7 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/crypto/aead.h                         |   87 -
  include/crypto/if_alg.h                       |    5 +-
  include/crypto/scatterwalk.h                  |   31 +
- 54 files changed, 913 insertions(+), 5388 deletions(-)
+ 71 files changed, 1184 insertions(+), 6226 deletions(-)
  delete mode 100644 drivers/crypto/ti/Kconfig
  delete mode 100644 drivers/crypto/ti/Makefile
  delete mode 100644 drivers/crypto/ti/dthev2-aes.c
@@ -69,6 +86,1808 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  delete mode 100644 drivers/crypto/ti/dthev2-hash.c
  delete mode 100644 drivers/crypto/ti/mcrc64.c
 
+diff --git a/crypto/Kconfig b/crypto/Kconfig
+index 5be940fd12a1..a997e97937e0 100644
+--- a/crypto/Kconfig
++++ b/crypto/Kconfig
+@@ -222,7 +222,6 @@ config CRYPTO_AUTHENC
+ 	select CRYPTO_SKCIPHER
+ 	select CRYPTO_MANAGER
+ 	select CRYPTO_HASH
+-	select CRYPTO_NULL
+ 	help
+ 	  Authenc: Combined mode wrapper for IPsec.
+ 
+@@ -1109,17 +1108,6 @@ config CRYPTO_CRCT10DIF
+ 
+ 	  CRC algorithm used by the SCSI Block Commands standard.
+ 
+-config CRYPTO_CRC64_ISO3309
+-	tristate "CRC64 based on ISO 3309 Model algorithm"
+-	depends on CRC64
+-	select CRYPTO_HASH
+-	help
+-	  CRC64 CRC algorithm based on the ISO 3309 Model CRC Algorithm
+-
+-	  Generator polynomial: x^64 + x^4 + x^3 + x + 1
+-	  Polynomial value: 0x000000000000001b
+-	  See https://en.wikipedia.org/wiki/Cyclic_redundancy_check
+-
+ config CRYPTO_CRC64_ROCKSOFT
+ 	tristate "CRC64 based on Rocksoft Model algorithm"
+ 	depends on CRC64
+@@ -1435,7 +1423,6 @@ config CRYPTO_USER_API_AEAD
+ 	depends on NET
+ 	select CRYPTO_AEAD
+ 	select CRYPTO_SKCIPHER
+-	select CRYPTO_NULL
+ 	select CRYPTO_USER_API
+ 	help
+ 	  Enable the userspace interface for AEAD cipher algorithms.
+diff --git a/crypto/Makefile b/crypto/Makefile
+index 7d891006d297..4c99e5d376f6 100644
+--- a/crypto/Makefile
++++ b/crypto/Makefile
+@@ -153,7 +153,6 @@ obj-$(CONFIG_CRYPTO_MICHAEL_MIC) += michael_mic.o
+ obj-$(CONFIG_CRYPTO_CRC32C) += crc32c_generic.o
+ obj-$(CONFIG_CRYPTO_CRC32) += crc32_generic.o
+ obj-$(CONFIG_CRYPTO_CRCT10DIF) += crct10dif_common.o crct10dif_generic.o
+-obj-$(CONFIG_CRYPTO_CRC64_ISO3309) += crc64_iso3309_generic.o
+ obj-$(CONFIG_CRYPTO_CRC64_ROCKSOFT) += crc64_rocksoft_generic.o
+ obj-$(CONFIG_CRYPTO_AUTHENC) += authenc.o authencesn.o
+ obj-$(CONFIG_CRYPTO_LZO) += lzo.o lzo-rle.o
+diff --git a/crypto/aead.c b/crypto/aead.c
+index 662985a08e39..cade532413bf 100644
+--- a/crypto/aead.c
++++ b/crypto/aead.c
+@@ -202,25 +202,6 @@ struct crypto_aead *crypto_alloc_aead(const char *alg_name, u32 type, u32 mask)
+ }
+ EXPORT_SYMBOL_GPL(crypto_alloc_aead);
+ 
+-struct crypto_sync_aead *crypto_alloc_sync_aead(const char *alg_name, u32 type, u32 mask)
+-{
+-	struct crypto_aead *tfm;
+-
+-	/* Only sync algorithms are allowed. */
+-	mask |= CRYPTO_ALG_ASYNC;
+-	type &= ~(CRYPTO_ALG_ASYNC);
+-
+-	tfm = crypto_alloc_tfm(alg_name, &crypto_aead_type, type, mask);
+-
+-	if (!IS_ERR(tfm) && WARN_ON(crypto_aead_reqsize(tfm) > MAX_SYNC_AEAD_REQSIZE)) {
+-		crypto_free_aead(tfm);
+-		return ERR_PTR(-EINVAL);
+-	}
+-
+-	return (struct crypto_sync_aead *)tfm;
+-}
+-EXPORT_SYMBOL_GPL(crypto_alloc_sync_aead);
+-
+ int crypto_has_aead(const char *alg_name, u32 type, u32 mask)
+ {
+ 	return crypto_type_has_alg(alg_name, &crypto_aead_type, type, mask);
+diff --git a/crypto/af_alg.c b/crypto/af_alg.c
+index ca6fdcc6c54a..b61c3ba126ed 100644
+--- a/crypto/af_alg.c
++++ b/crypto/af_alg.c
+@@ -623,8 +623,10 @@ static int af_alg_alloc_tsgl(struct sock *sk)
+ 		sg_init_table(sgl->sg, MAX_SGL_ENTS + 1);
+ 		sgl->cur = 0;
+ 
+-		if (sg)
++		if (sg) {
++			sg_unmark_end(sg + MAX_SGL_ENTS - 1);
+ 			sg_chain(sg, MAX_SGL_ENTS + 1, sgl->sg);
++		}
+ 
+ 		list_add_tail(&sgl->list, &ctx->tsgl_list);
+ 	}
+@@ -635,15 +637,13 @@ static int af_alg_alloc_tsgl(struct sock *sk)
+ /**
+  * af_alg_count_tsgl - Count number of TX SG entries
+  *
+- * The counting starts from the beginning of the SGL to @bytes. If
+- * an @offset is provided, the counting of the SG entries starts at the @offset.
++ * The counting starts from the beginning of the SGL to @bytes.
+  *
+  * @sk: socket of connection to user space
+  * @bytes: Count the number of SG entries holding given number of bytes.
+- * @offset: Start the counting of SG entries from the given offset.
+  * Return: Number of TX SG entries found given the constraints
+  */
+-unsigned int af_alg_count_tsgl(struct sock *sk, size_t bytes, size_t offset)
++unsigned int af_alg_count_tsgl(struct sock *sk, size_t bytes)
+ {
+ 	const struct alg_sock *ask = alg_sk(sk);
+ 	const struct af_alg_ctx *ctx = ask->private;
+@@ -658,25 +658,11 @@ unsigned int af_alg_count_tsgl(struct sock *sk, size_t bytes, size_t offset)
+ 		const struct scatterlist *sg = sgl->sg;
+ 
+ 		for (i = 0; i < sgl->cur; i++) {
+-			size_t bytes_count;
+-
+-			/* Skip offset */
+-			if (offset >= sg[i].length) {
+-				offset -= sg[i].length;
+-				bytes -= sg[i].length;
+-				continue;
+-			}
+-
+-			bytes_count = sg[i].length - offset;
+-
+-			offset = 0;
+ 			sgl_count++;
+-
+-			/* If we have seen requested number of bytes, stop */
+-			if (bytes_count >= bytes)
++			if (sg[i].length >= bytes)
+ 				return sgl_count;
+ 
+-			bytes -= bytes_count;
++			bytes -= sg[i].length;
+ 		}
+ 	}
+ 
+@@ -688,19 +674,14 @@ EXPORT_SYMBOL_GPL(af_alg_count_tsgl);
+  * af_alg_pull_tsgl - Release the specified buffers from TX SGL
+  *
+  * If @dst is non-null, reassign the pages to @dst. The caller must release
+- * the pages. If @dst_offset is given only reassign the pages to @dst starting
+- * at the @dst_offset (byte). The caller must ensure that @dst is large
+- * enough (e.g. by using af_alg_count_tsgl with the same offset).
++ * the pages.
+  *
+  * @sk: socket of connection to user space
+  * @used: Number of bytes to pull from TX SGL
+  * @dst: If non-NULL, buffer is reassigned to dst SGL instead of releasing. The
+  *	 caller must release the buffers in dst.
+- * @dst_offset: Reassign the TX SGL from given offset. All buffers before
+- *	        reaching the offset is released.
+  */
+-void af_alg_pull_tsgl(struct sock *sk, size_t used, struct scatterlist *dst,
+-		      size_t dst_offset)
++void af_alg_pull_tsgl(struct sock *sk, size_t used, struct scatterlist *dst)
+ {
+ 	struct alg_sock *ask = alg_sk(sk);
+ 	struct af_alg_ctx *ctx = ask->private;
+@@ -724,19 +705,11 @@ void af_alg_pull_tsgl(struct sock *sk, size_t used, struct scatterlist *dst,
+ 			 * Assumption: caller created af_alg_count_tsgl(len)
+ 			 * SG entries in dst.
+ 			 */
+-			if (dst) {
+-				if (dst_offset >= plen) {
+-					/* discard page before offset */
+-					dst_offset -= plen;
+-				} else {
+-					/* reassign page to dst after offset */
+-					get_page(page);
+-					sg_set_page(dst + j, page,
+-						    plen - dst_offset,
+-						    sg[i].offset + dst_offset);
+-					dst_offset = 0;
+-					j++;
+-				}
++			if (dst && plen) {
++				/* reassign page to dst */
++				get_page(page);
++				sg_set_page(dst + j, page, plen, sg[i].offset);
++				j++;
+ 			}
+ 
+ 			sg[i].length -= plen;
+@@ -1212,15 +1185,14 @@ struct af_alg_async_req *af_alg_alloc_areq(struct sock *sk,
+ 	if (unlikely(!areq))
+ 		return ERR_PTR(-ENOMEM);
+ 
++	memset(areq, 0, areqlen);
++
+ 	ctx->inflight = true;
+ 
+ 	areq->areqlen = areqlen;
+ 	areq->sk = sk;
+ 	areq->first_rsgl.sgl.sgt.sgl = areq->first_rsgl.sgl.sgl;
+-	areq->last_rsgl = NULL;
+ 	INIT_LIST_HEAD(&areq->rsgl_list);
+-	areq->tsgl = NULL;
+-	areq->tsgl_entries = 0;
+ 
+ 	return areq;
+ }
+@@ -1257,6 +1229,8 @@ int af_alg_get_rsgl(struct sock *sk, struct msghdr *msg, int flags,
+ 
+ 		seglen = min_t(size_t, (maxsize - len),
+ 			       msg_data_left(msg));
++		/* Never pin more pages than the remaining RX accounting budget. */
++		seglen = min_t(size_t, seglen, af_alg_rcvbuf(sk));
+ 
+ 		if (list_empty(&areq->rsgl_list)) {
+ 			rsgl = &areq->first_rsgl;
+diff --git a/crypto/algif_aead.c b/crypto/algif_aead.c
+index 7d58cbbce4af..cb651ab58d62 100644
+--- a/crypto/algif_aead.c
++++ b/crypto/algif_aead.c
+@@ -26,8 +26,6 @@
+ #include <crypto/internal/aead.h>
+ #include <crypto/scatterwalk.h>
+ #include <crypto/if_alg.h>
+-#include <crypto/skcipher.h>
+-#include <crypto/null.h>
+ #include <linux/init.h>
+ #include <linux/list.h>
+ #include <linux/kernel.h>
+@@ -36,19 +34,13 @@
+ #include <linux/net.h>
+ #include <net/sock.h>
+ 
+-struct aead_tfm {
+-	struct crypto_aead *aead;
+-	struct crypto_sync_skcipher *null_tfm;
+-};
+-
+ static inline bool aead_sufficient_data(struct sock *sk)
+ {
+ 	struct alg_sock *ask = alg_sk(sk);
+ 	struct sock *psk = ask->parent;
+ 	struct alg_sock *pask = alg_sk(psk);
+ 	struct af_alg_ctx *ctx = ask->private;
+-	struct aead_tfm *aeadc = pask->private;
+-	struct crypto_aead *tfm = aeadc->aead;
++	struct crypto_aead *tfm = pask->private;
+ 	unsigned int as = crypto_aead_authsize(tfm);
+ 
+ 	/*
+@@ -64,27 +56,12 @@ static int aead_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
+ 	struct alg_sock *ask = alg_sk(sk);
+ 	struct sock *psk = ask->parent;
+ 	struct alg_sock *pask = alg_sk(psk);
+-	struct aead_tfm *aeadc = pask->private;
+-	struct crypto_aead *tfm = aeadc->aead;
++	struct crypto_aead *tfm = pask->private;
+ 	unsigned int ivsize = crypto_aead_ivsize(tfm);
+ 
+ 	return af_alg_sendmsg(sock, msg, size, ivsize);
+ }
+ 
+-static int crypto_aead_copy_sgl(struct crypto_sync_skcipher *null_tfm,
+-				struct scatterlist *src,
+-				struct scatterlist *dst, unsigned int len)
+-{
+-	SYNC_SKCIPHER_REQUEST_ON_STACK(skreq, null_tfm);
+-
+-	skcipher_request_set_sync_tfm(skreq, null_tfm);
+-	skcipher_request_set_callback(skreq, CRYPTO_TFM_REQ_MAY_SLEEP,
+-				      NULL, NULL);
+-	skcipher_request_set_crypt(skreq, src, dst, len, NULL);
+-
+-	return crypto_skcipher_encrypt(skreq);
+-}
+-
+ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
+ 			 size_t ignored, int flags)
+ {
+@@ -93,13 +70,12 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
+ 	struct sock *psk = ask->parent;
+ 	struct alg_sock *pask = alg_sk(psk);
+ 	struct af_alg_ctx *ctx = ask->private;
+-	struct aead_tfm *aeadc = pask->private;
+-	struct crypto_aead *tfm = aeadc->aead;
+-	struct crypto_sync_skcipher *null_tfm = aeadc->null_tfm;
+-	unsigned int i, as = crypto_aead_authsize(tfm);
++	struct crypto_aead *tfm = pask->private;
++	unsigned int as = crypto_aead_authsize(tfm);
++	unsigned int ivsize = crypto_aead_ivsize(tfm);
+ 	struct af_alg_async_req *areq;
+-	struct af_alg_tsgl *tsgl, *tmp;
+ 	struct scatterlist *rsgl_src, *tsgl_src = NULL;
++	void *iv;
+ 	int err = 0;
+ 	size_t used = 0;		/* [in]  TX bufs to be en/decrypted */
+ 	size_t outlen = 0;		/* [out] RX bufs produced by kernel */
+@@ -151,10 +127,14 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
+ 
+ 	/* Allocate cipher request for current operation. */
+ 	areq = af_alg_alloc_areq(sk, sizeof(struct af_alg_async_req) +
+-				     crypto_aead_reqsize(tfm));
++				     crypto_aead_reqsize(tfm) + ivsize);
+ 	if (IS_ERR(areq))
+ 		return PTR_ERR(areq);
+ 
++	iv = (u8 *)aead_request_ctx(&areq->cra_u.aead_req) +
++	     crypto_aead_reqsize(tfm);
++	memcpy(iv, ctx->iv, ivsize);
++
+ 	/* convert iovecs of output buffers into RX SGL */
+ 	err = af_alg_get_rsgl(sk, msg, flags, areq, outlen, &usedpages);
+ 	if (err)
+@@ -170,7 +150,7 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
+ 	if (usedpages < outlen) {
+ 		size_t less = outlen - usedpages;
+ 
+-		if (used < less) {
++		if (used < less + (ctx->enc ? 0 : as)) {
+ 			err = -EINVAL;
+ 			goto free;
+ 		}
+@@ -178,23 +158,24 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
+ 		outlen -= less;
+ 	}
+ 
++	/*
++	 * Create a per request TX SGL for this request which tracks the
++	 * SG entries from the global TX SGL.
++	 */
+ 	processed = used + ctx->aead_assoclen;
+-	list_for_each_entry_safe(tsgl, tmp, &ctx->tsgl_list, list) {
+-		for (i = 0; i < tsgl->cur; i++) {
+-			struct scatterlist *process_sg = tsgl->sg + i;
+-
+-			if (!(process_sg->length) || !sg_page(process_sg))
+-				continue;
+-			tsgl_src = process_sg;
+-			break;
+-		}
+-		if (tsgl_src)
+-			break;
+-	}
+-	if (processed && !tsgl_src) {
+-		err = -EFAULT;
++	areq->tsgl_entries = af_alg_count_tsgl(sk, processed);
++	if (!areq->tsgl_entries)
++		areq->tsgl_entries = 1;
++	areq->tsgl = sock_kmalloc(sk, array_size(sizeof(*areq->tsgl),
++					         areq->tsgl_entries),
++				  GFP_KERNEL);
++	if (!areq->tsgl) {
++		err = -ENOMEM;
+ 		goto free;
+ 	}
++	sg_init_table(areq->tsgl, areq->tsgl_entries);
++	af_alg_pull_tsgl(sk, processed, areq->tsgl);
++	tsgl_src = areq->tsgl;
+ 
+ 	/*
+ 	 * Copy of AAD from source to destination
+@@ -203,84 +184,16 @@ static int _aead_recvmsg(struct socket *sock, struct msghdr *msg,
+ 	 * when user space uses an in-place cipher operation, the kernel
+ 	 * will copy the data as it does not see whether such in-place operation
+ 	 * is initiated.
+-	 *
+-	 * To ensure efficiency, the following implementation ensure that the
+-	 * ciphers are invoked to perform a crypto operation in-place. This
+-	 * is achieved by memory management specified as follows.
+ 	 */
+ 
+ 	/* Use the RX SGL as source (and destination) for crypto op. */
+ 	rsgl_src = areq->first_rsgl.sgl.sgt.sgl;
+ 
+-	if (ctx->enc) {
+-		/*
+-		 * Encryption operation - The in-place cipher operation is
+-		 * achieved by the following operation:
+-		 *
+-		 * TX SGL: AAD || PT
+-		 *	    |	   |
+-		 *	    | copy |
+-		 *	    v	   v
+-		 * RX SGL: AAD || PT || Tag
+-		 */
+-		err = crypto_aead_copy_sgl(null_tfm, tsgl_src,
+-					   areq->first_rsgl.sgl.sgt.sgl,
+-					   processed);
+-		if (err)
+-			goto free;
+-		af_alg_pull_tsgl(sk, processed, NULL, 0);
+-	} else {
+-		/*
+-		 * Decryption operation - To achieve an in-place cipher
+-		 * operation, the following  SGL structure is used:
+-		 *
+-		 * TX SGL: AAD || CT || Tag
+-		 *	    |	   |	 ^
+-		 *	    | copy |	 | Create SGL link.
+-		 *	    v	   v	 |
+-		 * RX SGL: AAD || CT ----+
+-		 */
+-
+-		 /* Copy AAD || CT to RX SGL buffer for in-place operation. */
+-		err = crypto_aead_copy_sgl(null_tfm, tsgl_src,
+-					   areq->first_rsgl.sgl.sgt.sgl,
+-					   outlen);
+-		if (err)
+-			goto free;
+-
+-		/* Create TX SGL for tag and chain it to RX SGL. */
+-		areq->tsgl_entries = af_alg_count_tsgl(sk, processed,
+-						       processed - as);
+-		if (!areq->tsgl_entries)
+-			areq->tsgl_entries = 1;
+-		areq->tsgl = sock_kmalloc(sk, array_size(sizeof(*areq->tsgl),
+-							 areq->tsgl_entries),
+-					  GFP_KERNEL);
+-		if (!areq->tsgl) {
+-			err = -ENOMEM;
+-			goto free;
+-		}
+-		sg_init_table(areq->tsgl, areq->tsgl_entries);
+-
+-		/* Release TX SGL, except for tag data and reassign tag data. */
+-		af_alg_pull_tsgl(sk, processed, areq->tsgl, processed - as);
+-
+-		/* chain the areq TX SGL holding the tag with RX SGL */
+-		if (usedpages) {
+-			/* RX SGL present */
+-			struct af_alg_sgl *sgl_prev = &areq->last_rsgl->sgl;
+-			struct scatterlist *sg = sgl_prev->sgt.sgl;
+-
+-			sg_unmark_end(sg + sgl_prev->sgt.nents - 1);
+-			sg_chain(sg, sgl_prev->sgt.nents + 1, areq->tsgl);
+-		} else
+-			/* no RX SGL present (e.g. authentication only) */
+-			rsgl_src = areq->tsgl;
+-	}
++	memcpy_sglist(rsgl_src, tsgl_src, ctx->aead_assoclen);
+ 
+ 	/* Initialize the crypto operation */
+-	aead_request_set_crypt(&areq->cra_u.aead_req, rsgl_src,
+-			       areq->first_rsgl.sgl.sgt.sgl, used, ctx->iv);
++	aead_request_set_crypt(&areq->cra_u.aead_req, tsgl_src,
++			       areq->first_rsgl.sgl.sgt.sgl, used, iv);
+ 	aead_request_set_ad(&areq->cra_u.aead_req, ctx->aead_assoclen);
+ 	aead_request_set_tfm(&areq->cra_u.aead_req, tfm);
+ 
+@@ -379,7 +292,7 @@ static int aead_check_key(struct socket *sock)
+ 	int err = 0;
+ 	struct sock *psk;
+ 	struct alg_sock *pask;
+-	struct aead_tfm *tfm;
++	struct crypto_aead *tfm;
+ 	struct sock *sk = sock->sk;
+ 	struct alg_sock *ask = alg_sk(sk);
+ 
+@@ -393,7 +306,7 @@ static int aead_check_key(struct socket *sock)
+ 
+ 	err = -ENOKEY;
+ 	lock_sock_nested(psk, SINGLE_DEPTH_NESTING);
+-	if (crypto_aead_get_flags(tfm->aead) & CRYPTO_TFM_NEED_KEY)
++	if (crypto_aead_get_flags(tfm) & CRYPTO_TFM_NEED_KEY)
+ 		goto unlock;
+ 
+ 	atomic_dec(&pask->nokey_refcnt);
+@@ -454,54 +367,22 @@ static struct proto_ops algif_aead_ops_nokey = {
+ 
+ static void *aead_bind(const char *name, u32 type, u32 mask)
+ {
+-	struct aead_tfm *tfm;
+-	struct crypto_aead *aead;
+-	struct crypto_sync_skcipher *null_tfm;
+-
+-	tfm = kzalloc(sizeof(*tfm), GFP_KERNEL);
+-	if (!tfm)
+-		return ERR_PTR(-ENOMEM);
+-
+-	aead = crypto_alloc_aead(name, type, mask);
+-	if (IS_ERR(aead)) {
+-		kfree(tfm);
+-		return ERR_CAST(aead);
+-	}
+-
+-	null_tfm = crypto_get_default_null_skcipher();
+-	if (IS_ERR(null_tfm)) {
+-		crypto_free_aead(aead);
+-		kfree(tfm);
+-		return ERR_CAST(null_tfm);
+-	}
+-
+-	tfm->aead = aead;
+-	tfm->null_tfm = null_tfm;
+-
+-	return tfm;
++	return crypto_alloc_aead(name, type, mask);
+ }
+ 
+ static void aead_release(void *private)
+ {
+-	struct aead_tfm *tfm = private;
+-
+-	crypto_free_aead(tfm->aead);
+-	crypto_put_default_null_skcipher();
+-	kfree(tfm);
++	crypto_free_aead(private);
+ }
+ 
+ static int aead_setauthsize(void *private, unsigned int authsize)
+ {
+-	struct aead_tfm *tfm = private;
+-
+-	return crypto_aead_setauthsize(tfm->aead, authsize);
++	return crypto_aead_setauthsize(private, authsize);
+ }
+ 
+ static int aead_setkey(void *private, const u8 *key, unsigned int keylen)
+ {
+-	struct aead_tfm *tfm = private;
+-
+-	return crypto_aead_setkey(tfm->aead, key, keylen);
++	return crypto_aead_setkey(private, key, keylen);
+ }
+ 
+ static void aead_sock_destruct(struct sock *sk)
+@@ -510,11 +391,10 @@ static void aead_sock_destruct(struct sock *sk)
+ 	struct af_alg_ctx *ctx = ask->private;
+ 	struct sock *psk = ask->parent;
+ 	struct alg_sock *pask = alg_sk(psk);
+-	struct aead_tfm *aeadc = pask->private;
+-	struct crypto_aead *tfm = aeadc->aead;
++	struct crypto_aead *tfm = pask->private;
+ 	unsigned int ivlen = crypto_aead_ivsize(tfm);
+ 
+-	af_alg_pull_tsgl(sk, ctx->used, NULL, 0);
++	af_alg_pull_tsgl(sk, ctx->used, NULL);
+ 	sock_kzfree_s(sk, ctx->iv, ivlen);
+ 	sock_kfree_s(sk, ctx, ctx->len);
+ 	af_alg_release_parent(sk);
+@@ -524,10 +404,9 @@ static int aead_accept_parent_nokey(void *private, struct sock *sk)
+ {
+ 	struct af_alg_ctx *ctx;
+ 	struct alg_sock *ask = alg_sk(sk);
+-	struct aead_tfm *tfm = private;
+-	struct crypto_aead *aead = tfm->aead;
++	struct crypto_aead *tfm = private;
+ 	unsigned int len = sizeof(*ctx);
+-	unsigned int ivlen = crypto_aead_ivsize(aead);
++	unsigned int ivlen = crypto_aead_ivsize(tfm);
+ 
+ 	ctx = sock_kmalloc(sk, len, GFP_KERNEL);
+ 	if (!ctx)
+@@ -554,9 +433,9 @@ static int aead_accept_parent_nokey(void *private, struct sock *sk)
+ 
+ static int aead_accept_parent(void *private, struct sock *sk)
+ {
+-	struct aead_tfm *tfm = private;
++	struct crypto_aead *tfm = private;
+ 
+-	if (crypto_aead_get_flags(tfm->aead) & CRYPTO_TFM_NEED_KEY)
++	if (crypto_aead_get_flags(tfm) & CRYPTO_TFM_NEED_KEY)
+ 		return -ENOKEY;
+ 
+ 	return aead_accept_parent_nokey(private, sk);
+diff --git a/crypto/algif_hash.c b/crypto/algif_hash.c
+index e3f1a4852737..4d3dfc60a16a 100644
+--- a/crypto/algif_hash.c
++++ b/crypto/algif_hash.c
+@@ -416,9 +416,8 @@ static int hash_accept_parent_nokey(void *private, struct sock *sk)
+ 	if (!ctx)
+ 		return -ENOMEM;
+ 
+-	ctx->result = NULL;
++	memset(ctx, 0, len);
+ 	ctx->len = len;
+-	ctx->more = false;
+ 	crypto_init_wait(&ctx->wait);
+ 
+ 	ask->private = ctx;
+diff --git a/crypto/algif_rng.c b/crypto/algif_rng.c
+index 10c41adac3b1..1a86e40c8372 100644
+--- a/crypto/algif_rng.c
++++ b/crypto/algif_rng.c
+@@ -248,9 +248,8 @@ static int rng_accept_parent(void *private, struct sock *sk)
+ 	if (!ctx)
+ 		return -ENOMEM;
+ 
++	memset(ctx, 0, len);
+ 	ctx->len = len;
+-	ctx->addtl = NULL;
+-	ctx->addtl_len = 0;
+ 
+ 	/*
+ 	 * No seeding done at that point -- if multiple accepts are
+diff --git a/crypto/algif_skcipher.c b/crypto/algif_skcipher.c
+index 125d395c5e00..ba0a17fd95ac 100644
+--- a/crypto/algif_skcipher.c
++++ b/crypto/algif_skcipher.c
+@@ -130,6 +130,11 @@ static int _skcipher_recvmsg(struct socket *sock, struct msghdr *msg,
+ 	 * full block size buffers.
+ 	 */
+ 	if (ctx->more || len < ctx->used) {
++		if (len < bs) {
++			err = -EINVAL;
++			goto free;
++		}
++
+ 		len -= len % bs;
+ 		cflags |= CRYPTO_SKCIPHER_REQ_NOTFINAL;
+ 	}
+@@ -138,7 +143,7 @@ static int _skcipher_recvmsg(struct socket *sock, struct msghdr *msg,
+ 	 * Create a per request TX SGL for this request which tracks the
+ 	 * SG entries from the global TX SGL.
+ 	 */
+-	areq->tsgl_entries = af_alg_count_tsgl(sk, len, 0);
++	areq->tsgl_entries = af_alg_count_tsgl(sk, len);
+ 	if (!areq->tsgl_entries)
+ 		areq->tsgl_entries = 1;
+ 	areq->tsgl = sock_kmalloc(sk, array_size(sizeof(*areq->tsgl),
+@@ -149,7 +154,7 @@ static int _skcipher_recvmsg(struct socket *sock, struct msghdr *msg,
+ 		goto free;
+ 	}
+ 	sg_init_table(areq->tsgl, areq->tsgl_entries);
+-	af_alg_pull_tsgl(sk, len, areq->tsgl, 0);
++	af_alg_pull_tsgl(sk, len, areq->tsgl);
+ 
+ 	/* Initialize the crypto operation */
+ 	skcipher_request_set_tfm(&areq->cra_u.skcipher_req, tfm);
+@@ -363,7 +368,7 @@ static void skcipher_sock_destruct(struct sock *sk)
+ 	struct alg_sock *pask = alg_sk(psk);
+ 	struct crypto_skcipher *tfm = pask->private;
+ 
+-	af_alg_pull_tsgl(sk, ctx->used, NULL, 0);
++	af_alg_pull_tsgl(sk, ctx->used, NULL);
+ 	sock_kzfree_s(sk, ctx->iv, crypto_skcipher_ivsize(tfm));
+ 	if (ctx->state)
+ 		sock_kzfree_s(sk, ctx->state, crypto_skcipher_statesize(tfm));
+diff --git a/crypto/asymmetric_keys/asymmetric_type.c b/crypto/asymmetric_keys/asymmetric_type.c
+index 43af5fa510c0..7859b0692b42 100644
+--- a/crypto/asymmetric_keys/asymmetric_type.c
++++ b/crypto/asymmetric_keys/asymmetric_type.c
+@@ -11,6 +11,7 @@
+ #include <crypto/public_key.h>
+ #include <linux/seq_file.h>
+ #include <linux/module.h>
++#include <linux/overflow.h>
+ #include <linux/slab.h>
+ #include <linux/ctype.h>
+ #include <keys/system_keyring.h>
+@@ -151,12 +152,17 @@ struct asymmetric_key_id *asymmetric_key_generate_id(const void *val_1,
+ 						     size_t len_2)
+ {
+ 	struct asymmetric_key_id *kid;
+-
+-	kid = kmalloc(sizeof(struct asymmetric_key_id) + len_1 + len_2,
+-		      GFP_KERNEL);
++	size_t kid_sz;
++	size_t len;
++
++	if (check_add_overflow(len_1, len_2, &len))
++		return ERR_PTR(-EOVERFLOW);
++	if (check_add_overflow(sizeof(struct asymmetric_key_id), len, &kid_sz))
++		return ERR_PTR(-EOVERFLOW);
++	kid = kmalloc(kid_sz, GFP_KERNEL);
+ 	if (!kid)
+ 		return ERR_PTR(-ENOMEM);
+-	kid->len = len_1 + len_2;
++	kid->len = len;
+ 	memcpy(kid->data, val_1, len_1);
+ 	memcpy(kid->data + len_1, val_2, len_2);
+ 	return kid;
+diff --git a/crypto/asymmetric_keys/x509_cert_parser.c b/crypto/asymmetric_keys/x509_cert_parser.c
+index 7e0ce7bf68c9..98819ddcb3a8 100644
+--- a/crypto/asymmetric_keys/x509_cert_parser.c
++++ b/crypto/asymmetric_keys/x509_cert_parser.c
+@@ -585,10 +585,10 @@ int x509_process_extension(void *context, size_t hdrlen,
+ 		 *   0x04 is where keyCertSign lands in this bit string
+ 		 *   0x80 is where digitalSignature lands in this bit string
+ 		 */
+-		if (v[0] != ASN1_BTS)
+-			return -EBADMSG;
+ 		if (vlen < 4)
+ 			return -EBADMSG;
++		if (v[0] != ASN1_BTS)
++			return -EBADMSG;
+ 		if (v[2] >= 8)
+ 			return -EBADMSG;
+ 		if (v[3] & 0x80)
+@@ -621,10 +621,10 @@ int x509_process_extension(void *context, size_t hdrlen,
+ 		 *	(Expect 0xFF if the CA is TRUE)
+ 		 * vlen should match the entire extension size
+ 		 */
+-		if (v[0] != (ASN1_CONS_BIT | ASN1_SEQ))
+-			return -EBADMSG;
+ 		if (vlen < 2)
+ 			return -EBADMSG;
++		if (v[0] != (ASN1_CONS_BIT | ASN1_SEQ))
++			return -EBADMSG;
+ 		if (v[1] != vlen - 2)
+ 			return -EBADMSG;
+ 		/* Empty SEQUENCE means CA:FALSE (default value omitted per DER) */
+diff --git a/crypto/authenc.c b/crypto/authenc.c
+index 3aaf3ab4e360..f1f7886bb34c 100644
+--- a/crypto/authenc.c
++++ b/crypto/authenc.c
+@@ -9,7 +9,6 @@
+ #include <crypto/internal/hash.h>
+ #include <crypto/internal/skcipher.h>
+ #include <crypto/authenc.h>
+-#include <crypto/null.h>
+ #include <crypto/scatterwalk.h>
+ #include <linux/err.h>
+ #include <linux/init.h>
+@@ -28,7 +27,6 @@ struct authenc_instance_ctx {
+ struct crypto_authenc_ctx {
+ 	struct crypto_ahash *auth;
+ 	struct crypto_skcipher *enc;
+-	struct crypto_sync_skcipher *null;
+ };
+ 
+ struct authenc_request_ctx {
+@@ -39,7 +37,7 @@ struct authenc_request_ctx {
+ 
+ static void authenc_request_complete(struct aead_request *req, int err)
+ {
+-	if (err != -EINPROGRESS)
++	if (err != -EINPROGRESS && err != -EBUSY)
+ 		aead_request_complete(req, err);
+ }
+ 
+@@ -109,27 +107,42 @@ static int crypto_authenc_setkey(struct crypto_aead *authenc, const u8 *key,
+ 	return err;
+ }
+ 
+-static void authenc_geniv_ahash_done(void *data, int err)
++static void authenc_geniv_ahash_finish(struct aead_request *req)
+ {
+-	struct aead_request *req = data;
+ 	struct crypto_aead *authenc = crypto_aead_reqtfm(req);
+ 	struct aead_instance *inst = aead_alg_instance(authenc);
+ 	struct authenc_instance_ctx *ictx = aead_instance_ctx(inst);
+ 	struct authenc_request_ctx *areq_ctx = aead_request_ctx(req);
+ 	struct ahash_request *ahreq = (void *)(areq_ctx->tail + ictx->reqoff);
+ 
+-	if (err)
+-		goto out;
+-
+ 	scatterwalk_map_and_copy(ahreq->result, req->dst,
+ 				 req->assoclen + req->cryptlen,
+ 				 crypto_aead_authsize(authenc), 1);
++}
+ 
+-out:
++static void authenc_geniv_ahash_done(void *data, int err)
++{
++	struct aead_request *req = data;
++
++	if (!err)
++		authenc_geniv_ahash_finish(req);
+ 	aead_request_complete(req, err);
+ }
+ 
+-static int crypto_authenc_genicv(struct aead_request *req, unsigned int flags)
++/*
++ * Used when the ahash request was invoked in the async callback context
++ * of the previous skcipher request.  Eat any EINPROGRESS notifications.
++ */
++static void authenc_geniv_ahash_done2(void *data, int err)
++{
++	struct aead_request *req = data;
++
++	if (!err)
++		authenc_geniv_ahash_finish(req);
++	authenc_request_complete(req, err);
++}
++
++static int crypto_authenc_genicv(struct aead_request *req, unsigned int mask)
+ {
+ 	struct crypto_aead *authenc = crypto_aead_reqtfm(req);
+ 	struct aead_instance *inst = aead_alg_instance(authenc);
+@@ -138,6 +151,7 @@ static int crypto_authenc_genicv(struct aead_request *req, unsigned int flags)
+ 	struct crypto_ahash *auth = ctx->auth;
+ 	struct authenc_request_ctx *areq_ctx = aead_request_ctx(req);
+ 	struct ahash_request *ahreq = (void *)(areq_ctx->tail + ictx->reqoff);
++	unsigned int flags = aead_request_flags(req) & ~mask;
+ 	u8 *hash = areq_ctx->tail;
+ 	int err;
+ 
+@@ -145,7 +159,8 @@ static int crypto_authenc_genicv(struct aead_request *req, unsigned int flags)
+ 	ahash_request_set_crypt(ahreq, req->dst, hash,
+ 				req->assoclen + req->cryptlen);
+ 	ahash_request_set_callback(ahreq, flags,
+-				   authenc_geniv_ahash_done, req);
++				   mask ? authenc_geniv_ahash_done2 :
++					  authenc_geniv_ahash_done, req);
+ 
+ 	err = crypto_ahash_digest(ahreq);
+ 	if (err)
+@@ -161,30 +176,14 @@ static void crypto_authenc_encrypt_done(void *data, int err)
+ {
+ 	struct aead_request *areq = data;
+ 
+-	if (err)
+-		goto out;
+-
+-	err = crypto_authenc_genicv(areq, 0);
+-
+-out:
++	if (err) {
++		aead_request_complete(areq, err);
++		return;
++	}
++	err = crypto_authenc_genicv(areq, CRYPTO_TFM_REQ_MAY_SLEEP);
+ 	authenc_request_complete(areq, err);
+ }
+ 
+-static int crypto_authenc_copy_assoc(struct aead_request *req)
+-{
+-	struct crypto_aead *authenc = crypto_aead_reqtfm(req);
+-	struct crypto_authenc_ctx *ctx = crypto_aead_ctx(authenc);
+-	SYNC_SKCIPHER_REQUEST_ON_STACK(skreq, ctx->null);
+-
+-	skcipher_request_set_sync_tfm(skreq, ctx->null);
+-	skcipher_request_set_callback(skreq, aead_request_flags(req),
+-				      NULL, NULL);
+-	skcipher_request_set_crypt(skreq, req->src, req->dst, req->assoclen,
+-				   NULL);
+-
+-	return crypto_skcipher_encrypt(skreq);
+-}
+-
+ static int crypto_authenc_encrypt(struct aead_request *req)
+ {
+ 	struct crypto_aead *authenc = crypto_aead_reqtfm(req);
+@@ -203,10 +202,7 @@ static int crypto_authenc_encrypt(struct aead_request *req)
+ 	dst = src;
+ 
+ 	if (req->src != req->dst) {
+-		err = crypto_authenc_copy_assoc(req);
+-		if (err)
+-			return err;
+-
++		memcpy_sglist(req->dst, req->src, req->assoclen);
+ 		dst = scatterwalk_ffwd(areq_ctx->dst, req->dst, req->assoclen);
+ 	}
+ 
+@@ -219,11 +215,18 @@ static int crypto_authenc_encrypt(struct aead_request *req)
+ 	if (err)
+ 		return err;
+ 
+-	return crypto_authenc_genicv(req, aead_request_flags(req));
++	return crypto_authenc_genicv(req, 0);
++}
++
++static void authenc_decrypt_tail_done(void *data, int err)
++{
++	struct aead_request *req = data;
++
++	authenc_request_complete(req, err);
+ }
+ 
+ static int crypto_authenc_decrypt_tail(struct aead_request *req,
+-				       unsigned int flags)
++				       unsigned int mask)
+ {
+ 	struct crypto_aead *authenc = crypto_aead_reqtfm(req);
+ 	struct aead_instance *inst = aead_alg_instance(authenc);
+@@ -234,6 +237,7 @@ static int crypto_authenc_decrypt_tail(struct aead_request *req,
+ 	struct skcipher_request *skreq = (void *)(areq_ctx->tail +
+ 						  ictx->reqoff);
+ 	unsigned int authsize = crypto_aead_authsize(authenc);
++	unsigned int flags = aead_request_flags(req) & ~mask;
+ 	u8 *ihash = ahreq->result + authsize;
+ 	struct scatterlist *src, *dst;
+ 
+@@ -250,7 +254,9 @@ static int crypto_authenc_decrypt_tail(struct aead_request *req,
+ 
+ 	skcipher_request_set_tfm(skreq, ctx->enc);
+ 	skcipher_request_set_callback(skreq, flags,
+-				      req->base.complete, req->base.data);
++				      mask ? authenc_decrypt_tail_done :
++					     req->base.complete,
++				      mask ? req : req->base.data);
+ 	skcipher_request_set_crypt(skreq, src, dst,
+ 				   req->cryptlen - authsize, req->iv);
+ 
+@@ -261,12 +267,11 @@ static void authenc_verify_ahash_done(void *data, int err)
+ {
+ 	struct aead_request *req = data;
+ 
+-	if (err)
+-		goto out;
+-
+-	err = crypto_authenc_decrypt_tail(req, 0);
+-
+-out:
++	if (err) {
++		aead_request_complete(req, err);
++		return;
++	}
++	err = crypto_authenc_decrypt_tail(req, CRYPTO_TFM_REQ_MAY_SLEEP);
+ 	authenc_request_complete(req, err);
+ }
+ 
+@@ -293,7 +298,7 @@ static int crypto_authenc_decrypt(struct aead_request *req)
+ 	if (err)
+ 		return err;
+ 
+-	return crypto_authenc_decrypt_tail(req, aead_request_flags(req));
++	return crypto_authenc_decrypt_tail(req, 0);
+ }
+ 
+ static int crypto_authenc_init_tfm(struct crypto_aead *tfm)
+@@ -303,7 +308,6 @@ static int crypto_authenc_init_tfm(struct crypto_aead *tfm)
+ 	struct crypto_authenc_ctx *ctx = crypto_aead_ctx(tfm);
+ 	struct crypto_ahash *auth;
+ 	struct crypto_skcipher *enc;
+-	struct crypto_sync_skcipher *null;
+ 	int err;
+ 
+ 	auth = crypto_spawn_ahash(&ictx->auth);
+@@ -315,14 +319,8 @@ static int crypto_authenc_init_tfm(struct crypto_aead *tfm)
+ 	if (IS_ERR(enc))
+ 		goto err_free_ahash;
+ 
+-	null = crypto_get_default_null_skcipher();
+-	err = PTR_ERR(null);
+-	if (IS_ERR(null))
+-		goto err_free_skcipher;
+-
+ 	ctx->auth = auth;
+ 	ctx->enc = enc;
+-	ctx->null = null;
+ 
+ 	crypto_aead_set_reqsize(
+ 		tfm,
+@@ -336,8 +334,6 @@ static int crypto_authenc_init_tfm(struct crypto_aead *tfm)
+ 
+ 	return 0;
+ 
+-err_free_skcipher:
+-	crypto_free_skcipher(enc);
+ err_free_ahash:
+ 	crypto_free_ahash(auth);
+ 	return err;
+@@ -349,7 +345,6 @@ static void crypto_authenc_exit_tfm(struct crypto_aead *tfm)
+ 
+ 	crypto_free_ahash(ctx->auth);
+ 	crypto_free_skcipher(ctx->enc);
+-	crypto_put_default_null_skcipher();
+ }
+ 
+ static void crypto_authenc_free(struct aead_instance *inst)
+diff --git a/crypto/authencesn.c b/crypto/authencesn.c
+index 2cc933e2f790..c01cc3087919 100644
+--- a/crypto/authencesn.c
++++ b/crypto/authencesn.c
+@@ -12,7 +12,6 @@
+ #include <crypto/internal/hash.h>
+ #include <crypto/internal/skcipher.h>
+ #include <crypto/authenc.h>
+-#include <crypto/null.h>
+ #include <crypto/scatterwalk.h>
+ #include <linux/err.h>
+ #include <linux/init.h>
+@@ -31,7 +30,6 @@ struct crypto_authenc_esn_ctx {
+ 	unsigned int reqoff;
+ 	struct crypto_ahash *auth;
+ 	struct crypto_skcipher *enc;
+-	struct crypto_sync_skcipher *null;
+ };
+ 
+ struct authenc_esn_request_ctx {
+@@ -158,20 +156,6 @@ static void crypto_authenc_esn_encrypt_done(void *data, int err)
+ 	authenc_esn_request_complete(areq, err);
+ }
+ 
+-static int crypto_authenc_esn_copy(struct aead_request *req, unsigned int len)
+-{
+-	struct crypto_aead *authenc_esn = crypto_aead_reqtfm(req);
+-	struct crypto_authenc_esn_ctx *ctx = crypto_aead_ctx(authenc_esn);
+-	SYNC_SKCIPHER_REQUEST_ON_STACK(skreq, ctx->null);
+-
+-	skcipher_request_set_sync_tfm(skreq, ctx->null);
+-	skcipher_request_set_callback(skreq, aead_request_flags(req),
+-				      NULL, NULL);
+-	skcipher_request_set_crypt(skreq, req->src, req->dst, len, NULL);
+-
+-	return crypto_skcipher_encrypt(skreq);
+-}
+-
+ static int crypto_authenc_esn_encrypt(struct aead_request *req)
+ {
+ 	struct crypto_aead *authenc_esn = crypto_aead_reqtfm(req);
+@@ -185,15 +169,15 @@ static int crypto_authenc_esn_encrypt(struct aead_request *req)
+ 	struct scatterlist *src, *dst;
+ 	int err;
+ 
++	if (assoclen < 8)
++		return -EINVAL;
++
+ 	sg_init_table(areq_ctx->src, 2);
+ 	src = scatterwalk_ffwd(areq_ctx->src, req->src, assoclen);
+ 	dst = src;
+ 
+ 	if (req->src != req->dst) {
+-		err = crypto_authenc_esn_copy(req, assoclen);
+-		if (err)
+-			return err;
+-
++		memcpy_sglist(req->dst, req->src, assoclen);
+ 		sg_init_table(areq_ctx->dst, 2);
+ 		dst = scatterwalk_ffwd(areq_ctx->dst, req->dst, assoclen);
+ 	}
+@@ -223,6 +207,7 @@ static int crypto_authenc_esn_decrypt_tail(struct aead_request *req,
+ 	u8 *ohash = areq_ctx->tail;
+ 	unsigned int cryptlen = req->cryptlen - authsize;
+ 	unsigned int assoclen = req->assoclen;
++	struct scatterlist *src = req->src;
+ 	struct scatterlist *dst = req->dst;
+ 	u8 *ihash = ohash + crypto_ahash_digestsize(auth);
+ 	u32 tmp[2];
+@@ -230,23 +215,29 @@ static int crypto_authenc_esn_decrypt_tail(struct aead_request *req,
+ 	if (!authsize)
+ 		goto decrypt;
+ 
+-	/* Move high-order bits of sequence number back. */
+-	scatterwalk_map_and_copy(tmp, dst, 4, 4, 0);
+-	scatterwalk_map_and_copy(tmp + 1, dst, assoclen + cryptlen, 4, 0);
+-	scatterwalk_map_and_copy(tmp, dst, 0, 8, 1);
++	if (src == dst) {
++		/* Move high-order bits of sequence number back. */
++		scatterwalk_map_and_copy(tmp, dst, 4, 4, 0);
++		scatterwalk_map_and_copy(tmp + 1, dst, assoclen + cryptlen, 4, 0);
++		scatterwalk_map_and_copy(tmp, dst, 0, 8, 1);
++	} else
++		memcpy_sglist(dst, src, assoclen);
+ 
+ 	if (crypto_memneq(ihash, ohash, authsize))
+ 		return -EBADMSG;
+ 
+ decrypt:
+ 
+-	sg_init_table(areq_ctx->dst, 2);
+ 	dst = scatterwalk_ffwd(areq_ctx->dst, dst, assoclen);
++	if (req->src == req->dst)
++		src = dst;
++	else
++		src = scatterwalk_ffwd(areq_ctx->src, src, assoclen);
+ 
+ 	skcipher_request_set_tfm(skreq, ctx->enc);
+ 	skcipher_request_set_callback(skreq, flags,
+ 				      req->base.complete, req->base.data);
+-	skcipher_request_set_crypt(skreq, dst, dst, cryptlen, req->iv);
++	skcipher_request_set_crypt(skreq, src, dst, cryptlen, req->iv);
+ 
+ 	return crypto_skcipher_decrypt(skreq);
+ }
+@@ -271,31 +262,36 @@ static int crypto_authenc_esn_decrypt(struct aead_request *req)
+ 	unsigned int assoclen = req->assoclen;
+ 	unsigned int cryptlen = req->cryptlen;
+ 	u8 *ihash = ohash + crypto_ahash_digestsize(auth);
++	struct scatterlist *src = req->src;
+ 	struct scatterlist *dst = req->dst;
+ 	u32 tmp[2];
+ 	int err;
+ 
+-	cryptlen -= authsize;
++	if (assoclen < 8)
++		return -EINVAL;
+ 
+-	if (req->src != dst) {
+-		err = crypto_authenc_esn_copy(req, assoclen + cryptlen);
+-		if (err)
+-			return err;
+-	}
++	if (!authsize)
++		goto tail;
+ 
++	cryptlen -= authsize;
+ 	scatterwalk_map_and_copy(ihash, req->src, assoclen + cryptlen,
+ 				 authsize, 0);
+ 
+-	if (!authsize)
+-		goto tail;
+-
+ 	/* Move high-order bits of sequence number to the end. */
+-	scatterwalk_map_and_copy(tmp, dst, 0, 8, 0);
+-	scatterwalk_map_and_copy(tmp, dst, 4, 4, 1);
+-	scatterwalk_map_and_copy(tmp + 1, dst, assoclen + cryptlen, 4, 1);
+-
+-	sg_init_table(areq_ctx->dst, 2);
+-	dst = scatterwalk_ffwd(areq_ctx->dst, dst, 4);
++	scatterwalk_map_and_copy(tmp, src, 0, 8, 0);
++	if (src == dst) {
++		scatterwalk_map_and_copy(tmp, dst, 4, 4, 1);
++		scatterwalk_map_and_copy(tmp + 1, dst, assoclen + cryptlen, 4, 1);
++		dst = scatterwalk_ffwd(areq_ctx->dst, dst, 4);
++	} else {
++		scatterwalk_map_and_copy(tmp, dst, 0, 4, 1);
++		scatterwalk_map_and_copy(tmp + 1, dst, assoclen + cryptlen - 4, 4, 1);
++
++		src = scatterwalk_ffwd(areq_ctx->src, src, 8);
++		dst = scatterwalk_ffwd(areq_ctx->dst, dst, 4);
++		memcpy_sglist(dst, src, assoclen + cryptlen - 8);
++		dst = req->dst;
++	}
+ 
+ 	ahash_request_set_tfm(ahreq, auth);
+ 	ahash_request_set_crypt(ahreq, dst, ohash, assoclen + cryptlen);
+@@ -317,7 +313,6 @@ static int crypto_authenc_esn_init_tfm(struct crypto_aead *tfm)
+ 	struct crypto_authenc_esn_ctx *ctx = crypto_aead_ctx(tfm);
+ 	struct crypto_ahash *auth;
+ 	struct crypto_skcipher *enc;
+-	struct crypto_sync_skcipher *null;
+ 	int err;
+ 
+ 	auth = crypto_spawn_ahash(&ictx->auth);
+@@ -329,14 +324,8 @@ static int crypto_authenc_esn_init_tfm(struct crypto_aead *tfm)
+ 	if (IS_ERR(enc))
+ 		goto err_free_ahash;
+ 
+-	null = crypto_get_default_null_skcipher();
+-	err = PTR_ERR(null);
+-	if (IS_ERR(null))
+-		goto err_free_skcipher;
+-
+ 	ctx->auth = auth;
+ 	ctx->enc = enc;
+-	ctx->null = null;
+ 
+ 	ctx->reqoff = 2 * crypto_ahash_digestsize(auth);
+ 
+@@ -352,8 +341,6 @@ static int crypto_authenc_esn_init_tfm(struct crypto_aead *tfm)
+ 
+ 	return 0;
+ 
+-err_free_skcipher:
+-	crypto_free_skcipher(enc);
+ err_free_ahash:
+ 	crypto_free_ahash(auth);
+ 	return err;
+@@ -365,7 +352,6 @@ static void crypto_authenc_esn_exit_tfm(struct crypto_aead *tfm)
+ 
+ 	crypto_free_ahash(ctx->auth);
+ 	crypto_free_skcipher(ctx->enc);
+-	crypto_put_default_null_skcipher();
+ }
+ 
+ static void crypto_authenc_esn_free(struct aead_instance *inst)
+diff --git a/crypto/scatterwalk.c b/crypto/scatterwalk.c
+index 16f6ba896fb6..9f0b27005166 100644
+--- a/crypto/scatterwalk.c
++++ b/crypto/scatterwalk.c
+@@ -69,6 +69,100 @@ void scatterwalk_map_and_copy(void *buf, struct scatterlist *sg,
+ }
+ EXPORT_SYMBOL_GPL(scatterwalk_map_and_copy);
+ 
++/**
++ * memcpy_sglist() - Copy data from one scatterlist to another
++ * @dst: The destination scatterlist.  Can be NULL if @nbytes == 0.
++ * @src: The source scatterlist.  Can be NULL if @nbytes == 0.
++ * @nbytes: Number of bytes to copy
++ *
++ * The scatterlists can describe exactly the same memory, in which case this
++ * function is a no-op.  No other overlaps are supported.
++ *
++ * Context: Any context
++ */
++void memcpy_sglist(struct scatterlist *dst, struct scatterlist *src,
++		   unsigned int nbytes)
++{
++	unsigned int src_offset, dst_offset;
++
++	if (unlikely(nbytes == 0)) /* in case src and/or dst is NULL */
++		return;
++
++	src_offset = src->offset;
++	dst_offset = dst->offset;
++	for (;;) {
++		/* Compute the length to copy this step. */
++		unsigned int len = min3(src->offset + src->length - src_offset,
++					dst->offset + dst->length - dst_offset,
++					nbytes);
++		struct page *src_page = sg_page(src);
++		struct page *dst_page = sg_page(dst);
++		const void *src_virt;
++		void *dst_virt;
++
++		if (IS_ENABLED(CONFIG_HIGHMEM)) {
++			/* HIGHMEM: we may have to actually map the pages. */
++			const unsigned int src_oip = offset_in_page(src_offset);
++			const unsigned int dst_oip = offset_in_page(dst_offset);
++			const unsigned int limit = PAGE_SIZE;
++
++			/* Further limit len to not cross a page boundary. */
++			len = min3(len, limit - src_oip, limit - dst_oip);
++
++			/* Compute the source and destination pages. */
++			src_page += src_offset / PAGE_SIZE;
++			dst_page += dst_offset / PAGE_SIZE;
++
++			if (src_page != dst_page) {
++				/* Copy between different pages. */
++				memcpy_page(dst_page, dst_oip,
++					    src_page, src_oip, len);
++				flush_dcache_page(dst_page);
++			} else if (src_oip != dst_oip) {
++				/* Copy between different parts of same page. */
++				dst_virt = kmap_local_page(dst_page);
++				memcpy(dst_virt + dst_oip, dst_virt + src_oip,
++				       len);
++				kunmap_local(dst_virt);
++				flush_dcache_page(dst_page);
++			} /* Else, it's the same memory.  No action needed. */
++		} else {
++			/*
++			 * !HIGHMEM: no mapping needed.  Just work in the linear
++			 * buffer of each sg entry.  Note that we can cross page
++			 * boundaries, as they are not significant in this case.
++			 */
++			src_virt = page_address(src_page) + src_offset;
++			dst_virt = page_address(dst_page) + dst_offset;
++			if (src_virt != dst_virt) {
++				memcpy(dst_virt, src_virt, len);
++				if (ARCH_IMPLEMENTS_FLUSH_DCACHE_PAGE)
++					__scatterwalk_flush_dcache_pages(
++						dst_page, dst_offset, len);
++			} /* Else, it's the same memory.  No action needed. */
++		}
++		nbytes -= len;
++		if (nbytes == 0) /* No more to copy? */
++			break;
++
++		/*
++		 * There's more to copy.  Advance the offsets by the length
++		 * copied this step, and advance the sg entries as needed.
++		 */
++		src_offset += len;
++		if (src_offset >= src->offset + src->length) {
++			src = sg_next(src);
++			src_offset = src->offset;
++		}
++		dst_offset += len;
++		if (dst_offset >= dst->offset + dst->length) {
++			dst = sg_next(dst);
++			dst_offset = dst->offset;
++		}
++	}
++}
++EXPORT_SYMBOL_GPL(memcpy_sglist);
++
+ struct scatterlist *scatterwalk_ffwd(struct scatterlist dst[2],
+ 				     struct scatterlist *src,
+ 				     unsigned int len)
+diff --git a/crypto/seqiv.c b/crypto/seqiv.c
+index 17e11d51ddc3..04928df0095b 100644
+--- a/crypto/seqiv.c
++++ b/crypto/seqiv.c
+@@ -50,6 +50,7 @@ static int seqiv_aead_encrypt(struct aead_request *req)
+ 	struct aead_geniv_ctx *ctx = crypto_aead_ctx(geniv);
+ 	struct aead_request *subreq = aead_request_ctx(req);
+ 	crypto_completion_t compl;
++	bool unaligned_info;
+ 	void *data;
+ 	u8 *info;
+ 	unsigned int ivsize = 8;
+@@ -79,8 +80,9 @@ static int seqiv_aead_encrypt(struct aead_request *req)
+ 			return err;
+ 	}
+ 
+-	if (unlikely(!IS_ALIGNED((unsigned long)info,
+-				 crypto_aead_alignmask(geniv) + 1))) {
++	unaligned_info = !IS_ALIGNED((unsigned long)info,
++				     crypto_aead_alignmask(geniv) + 1);
++	if (unlikely(unaligned_info)) {
+ 		info = kmemdup(req->iv, ivsize, req->base.flags &
+ 			       CRYPTO_TFM_REQ_MAY_SLEEP ? GFP_KERNEL :
+ 			       GFP_ATOMIC);
+@@ -100,7 +102,7 @@ static int seqiv_aead_encrypt(struct aead_request *req)
+ 	scatterwalk_map_and_copy(info, req->dst, req->assoclen, ivsize, 1);
+ 
+ 	err = crypto_aead_encrypt(subreq);
+-	if (unlikely(info != req->iv))
++	if (unlikely(unaligned_info))
+ 		seqiv_aead_encrypt_complete2(req, err);
+ 	return err;
+ }
+diff --git a/crypto/tcrypt.c b/crypto/tcrypt.c
+index 05d1d83a3416..e9e7dceb606e 100644
+--- a/crypto/tcrypt.c
++++ b/crypto/tcrypt.c
+@@ -2314,12 +2314,6 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
+ 				generic_hash_speed_template);
+ 		if (mode > 300 && mode < 400) break;
+ 		fallthrough;
+-	case 329:
+-		test_hash_speed("crc64-iso3309", sec,
+-				generic_hash_speed_template);
+-		if (mode > 300 && mode < 400)
+-			break;
+-		fallthrough;
+ 	case 399:
+ 		break;
+ 
+diff --git a/crypto/testmgr.c b/crypto/testmgr.c
+index a72cb5211377..2f5f6b52b2d4 100644
+--- a/crypto/testmgr.c
++++ b/crypto/testmgr.c
+@@ -4703,13 +4703,6 @@ static const struct alg_test_desc alg_test_descs[] = {
+ 		.suite = {
+ 			.hash = __VECS(crc32c_tv_template)
+ 		}
+-	}, {
+-		.alg = "crc64-iso3309",
+-		.test = alg_test_hash,
+-		.fips_allowed = 1,
+-		.suite = {
+-			.hash = __VECS(crc64_iso3309_tv_template)
+-		}
+ 	}, {
+ 		.alg = "crc64-rocksoft",
+ 		.test = alg_test_hash,
+diff --git a/crypto/testmgr.h b/crypto/testmgr.h
+index 4951be5f7ef8..9b38501a17b2 100644
+--- a/crypto/testmgr.h
++++ b/crypto/testmgr.h
+@@ -5355,410 +5355,6 @@ static const struct hash_testvec rmd160_tv_template[] = {
+ 	}
+ };
+ 
+-static const struct hash_testvec crc64_iso3309_tv_template[] = {
+-	{
+-		.psize = 0,
+-		.digest = "\x00\x00\x00\x00\x00\x00\x00\x00",
+-	},
+-	{
+-		.plaintext = "\x01\x02\x03\x04\x05\x06\x07\x08"
+-			     "\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10"
+-			     "\x11\x12\x13\x14\x15\x16\x17\x18"
+-			     "\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20"
+-			     "\x21\x22\x23\x24\x25\x26\x27\x28",
+-		.psize = 40,
+-		.digest = "\xaf\x45\xba\x7d\xf2\xda\xa0\xaa",
+-	},
+-	{
+-		.plaintext = "\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30"
+-			     "\x31\x32\x33\x34\x35\x36\x37\x38"
+-			     "\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40"
+-			     "\x41\x42\x43\x44\x45\x46\x47\x48"
+-			     "\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50",
+-		.psize = 40,
+-		.digest = "\x81\x55\x2e\x76\xf8\xd0\xaa\xa0",
+-	},
+-	{
+-		.plaintext = "\x51\x52\x53\x54\x55\x56\x57\x58"
+-			     "\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60"
+-			     "\x61\x62\x63\x64\x65\x66\x67\x68"
+-			     "\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70"
+-			     "\x71\x72\x73\x74\x75\x76\x77\x78",
+-		.psize = 40,
+-		.digest = "\xc6\xb6\x26\x82\x0d\x25\x5f\x55",
+-	},
+-	{
+-		.plaintext = "\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80"
+-			     "\x81\x82\x83\x84\x85\x86\x87\x88"
+-			     "\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90"
+-			     "\x91\x92\x93\x94\x95\x96\x97\x98"
+-			     "\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0",
+-		.psize = 40,
+-		.digest = "\x20\x8a\xe6\x59\xdf\xf7\x8d\x87",
+-	},
+-	{
+-		.plaintext = "\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8"
+-			     "\xa9\xaa\xab\xac\xad\xae\xaf\xb0"
+-			     "\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8"
+-			     "\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0"
+-			     "\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8",
+-		.psize = 40,
+-		.digest = "\x19\x9e\xba\xff\x70\x58\x22\x28",
+-
+-	},
+-	{
+-		.plaintext = "\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0"
+-			     "\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8"
+-			     "\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0"
+-			     "\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8"
+-			     "\xe9\xea\xeb\xec\xed\xee\xef\xf0",
+-		.psize = 40,
+-		.digest = "\xa3\xdc\x11\x98\x16\x3e\x44\x4e",
+-	},
+-	{
+-		.plaintext = "\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30"
+-			     "\x31\x32\x33\x34\x35\x36\x37\x38"
+-			     "\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40"
+-			     "\x41\x42\x43\x44\x45\x46\x47\x48"
+-			     "\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50",
+-		.psize = 40,
+-		.digest = "\x81\x55\x2e\x76\xf8\xd0\xaa\xa0",
+-	},
+-	{
+-		.plaintext = "\x51\x52\x53\x54\x55\x56\x57\x58"
+-			     "\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60"
+-			     "\x61\x62\x63\x64\x65\x66\x67\x68"
+-			     "\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70"
+-			     "\x71\x72\x73\x74\x75\x76\x77\x78",
+-		.psize = 40,
+-		.digest = "\xc6\xb6\x26\x82\x0d\x25\x5f\x55",
+-	},
+-	{
+-		.plaintext = "\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80"
+-			     "\x81\x82\x83\x84\x85\x86\x87\x88"
+-			     "\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90"
+-			     "\x91\x92\x93\x94\x95\x96\x97\x98"
+-			     "\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0",
+-		.psize = 40,
+-		.digest = "\x20\x8a\xe6\x59\xdf\xf7\x8d\x87",
+-	},
+-	{
+-		.plaintext = "\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8"
+-			     "\xa9\xaa\xab\xac\xad\xae\xaf\xb0"
+-			     "\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8"
+-			     "\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0"
+-			     "\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8",
+-		.psize = 40,
+-		.digest = "\x19\x9e\xba\xff\x70\x58\x22\x28",
+-	},
+-	{
+-		.plaintext = "\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0"
+-			     "\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8"
+-			     "\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0"
+-			     "\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8"
+-			     "\xe9\xea\xeb\xec\xed\xee\xef\xf0",
+-		.psize = 40,
+-		.digest = "\xa3\xdc\x11\x98\x16\x3e\x44\x4e",
+-	},
+-	{
+-		.key = "\xff\xff\xff\xff\xff\xff\xff\xff",
+-		.ksize = 8,
+-		.plaintext = "\x01\x02\x03\x04\x05\x06\x07\x08"
+-			     "\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10"
+-			     "\x11\x12\x13\x14\x15\x16\x17\x18"
+-			     "\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20"
+-			     "\x21\x22\x23\x24\x25\x26\x27\x28"
+-			     "\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30"
+-			     "\x31\x32\x33\x34\x35\x36\x37\x38"
+-			     "\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40"
+-			     "\x41\x42\x43\x44\x45\x46\x47\x48"
+-			     "\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50"
+-			     "\x51\x52\x53\x54\x55\x56\x57\x58"
+-			     "\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60"
+-			     "\x61\x62\x63\x64\x65\x66\x67\x68"
+-			     "\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70"
+-			     "\x71\x72\x73\x74\x75\x76\x77\x78"
+-			     "\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80"
+-			     "\x81\x82\x83\x84\x85\x86\x87\x88"
+-			     "\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90"
+-			     "\x91\x92\x93\x94\x95\x96\x97\x98"
+-			     "\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0"
+-			     "\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8"
+-			     "\xa9\xaa\xab\xac\xad\xae\xaf\xb0"
+-			     "\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8"
+-			     "\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0"
+-			     "\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8"
+-			     "\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0"
+-			     "\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8"
+-			     "\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0"
+-			     "\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8"
+-			     "\xe9\xea\xeb\xec\xed\xee\xef\xf0",
+-		.psize = 240,
+-		.digest = "\x8b\xa6\xd7\x91\xb4\x74\x96\x84",
+-	}, {
+-		.key = "\xff\xff\xff\xff\xff\xff\xff\xff",
+-		.ksize = 8,
+-		.plaintext = "\x6e\x05\x79\x10\xa7\x1b\xb2\x49"
+-			     "\xe0\x54\xeb\x82\x19\x8d\x24\xbb"
+-			     "\x2f\xc6\x5d\xf4\x68\xff\x96\x0a"
+-			     "\xa1\x38\xcf\x43\xda\x71\x08\x7c"
+-			     "\x13\xaa\x1e\xb5\x4c\xe3\x57\xee"
+-			     "\x85\x1c\x90\x27\xbe\x32\xc9\x60"
+-			     "\xf7\x6b\x02\x99\x0d\xa4\x3b\xd2"
+-			     "\x46\xdd\x74\x0b\x7f\x16\xad\x21"
+-			     "\xb8\x4f\xe6\x5a\xf1\x88\x1f\x93"
+-			     "\x2a\xc1\x35\xcc\x63\xfa\x6e\x05"
+-			     "\x9c\x10\xa7\x3e\xd5\x49\xe0\x77"
+-			     "\x0e\x82\x19\xb0\x24\xbb\x52\xe9"
+-			     "\x5d\xf4\x8b\x22\x96\x2d\xc4\x38"
+-			     "\xcf\x66\xfd\x71\x08\x9f\x13\xaa"
+-			     "\x41\xd8\x4c\xe3\x7a\x11\x85\x1c"
+-			     "\xb3\x27\xbe\x55\xec\x60\xf7\x8e"
+-			     "\x02\x99\x30\xc7\x3b\xd2\x69\x00"
+-			     "\x74\x0b\xa2\x16\xad\x44\xdb\x4f"
+-			     "\xe6\x7d\x14\x88\x1f\xb6\x2a\xc1"
+-			     "\x58\xef\x63\xfa\x91\x05\x9c\x33"
+-			     "\xca\x3e\xd5\x6c\x03\x77\x0e\xa5"
+-			     "\x19\xb0\x47\xde\x52\xe9\x80\x17"
+-			     "\x8b\x22\xb9\x2d\xc4\x5b\xf2\x66"
+-			     "\xfd\x94\x08\x9f\x36\xcd\x41\xd8"
+-			     "\x6f\x06\x7a\x11\xa8\x1c\xb3\x4a"
+-			     "\xe1\x55\xec\x83\x1a\x8e\x25\xbc"
+-			     "\x30\xc7\x5e\xf5\x69\x00\x97\x0b"
+-			     "\xa2\x39\xd0\x44\xdb\x72\x09\x7d"
+-			     "\x14\xab\x1f\xb6\x4d\xe4\x58\xef"
+-			     "\x86\x1d\x91\x28\xbf\x33\xca\x61"
+-			     "\xf8\x6c\x03\x9a\x0e\xa5\x3c\xd3"
+-			     "\x47\xde\x75\x0c\x80\x17\xae\x22"
+-			     "\xb9\x50\xe7\x5b\xf2\x89\x20\x94"
+-			     "\x2b\xc2\x36\xcd\x64\xfb\x6f\x06"
+-			     "\x9d\x11\xa8\x3f\xd6\x4a\xe1\x78"
+-			     "\x0f\x83\x1a\xb1\x25\xbc\x53\xea"
+-			     "\x5e\xf5\x8c\x00\x97\x2e\xc5\x39"
+-			     "\xd0\x67\xfe\x72\x09\xa0\x14\xab"
+-			     "\x42\xd9\x4d\xe4\x7b\x12\x86\x1d"
+-			     "\xb4\x28\xbf\x56\xed\x61\xf8\x8f"
+-			     "\x03\x9a\x31\xc8\x3c\xd3\x6a\x01"
+-			     "\x75\x0c\xa3\x17\xae\x45\xdc\x50"
+-			     "\xe7\x7e\x15\x89\x20\xb7\x2b\xc2"
+-			     "\x59\xf0\x64\xfb\x92\x06\x9d\x34"
+-			     "\xcb\x3f\xd6\x6d\x04\x78\x0f\xa6"
+-			     "\x1a\xb1\x48\xdf\x53\xea\x81\x18"
+-			     "\x8c\x23\xba\x2e\xc5\x5c\xf3\x67"
+-			     "\xfe\x95\x09\xa0\x37\xce\x42\xd9"
+-			     "\x70\x07\x7b\x12\xa9\x1d\xb4\x4b"
+-			     "\xe2\x56\xed\x84\x1b\x8f\x26\xbd"
+-			     "\x31\xc8\x5f\xf6\x6a\x01\x98\x0c"
+-			     "\xa3\x3a\xd1\x45\xdc\x73\x0a\x7e"
+-			     "\x15\xac\x20\xb7\x4e\xe5\x59\xf0"
+-			     "\x87\x1e\x92\x29\xc0\x34\xcb\x62"
+-			     "\xf9\x6d\x04\x9b\x0f\xa6\x3d\xd4"
+-			     "\x48\xdf\x76\x0d\x81\x18\xaf\x23"
+-			     "\xba\x51\xe8\x5c\xf3\x8a\x21\x95"
+-			     "\x2c\xc3\x37\xce\x65\xfc\x70\x07"
+-			     "\x9e\x12\xa9\x40\xd7\x4b\xe2\x79"
+-			     "\x10\x84\x1b\xb2\x26\xbd\x54\xeb"
+-			     "\x5f\xf6\x8d\x01\x98\x2f\xc6\x3a"
+-			     "\xd1\x68\xff\x73\x0a\xa1\x15\xac"
+-			     "\x43\xda\x4e\xe5\x7c\x13\x87\x1e"
+-			     "\xb5\x29\xc0\x57\xee\x62\xf9\x90"
+-			     "\x04\x9b\x32\xc9\x3d\xd4\x6b\x02"
+-			     "\x76\x0d\xa4\x18\xaf\x46\xdd\x51"
+-			     "\xe8\x7f\x16\x8a\x21\xb8\x2c\xc3"
+-			     "\x5a\xf1\x65\xfc\x93\x07\x9e\x35"
+-			     "\xcc\x40\xd7\x6e\x05\x79\x10\xa7"
+-			     "\x1b\xb2\x49\xe0\x54\xeb\x82\x19"
+-			     "\x8d\x24\xbb\x2f\xc6\x5d\xf4\x68"
+-			     "\xff\x96\x0a\xa1\x38\xcf\x43\xda"
+-			     "\x71\x08\x7c\x13\xaa\x1e\xb5\x4c"
+-			     "\xe3\x57\xee\x85\x1c\x90\x27\xbe"
+-			     "\x32\xc9\x60\xf7\x6b\x02\x99\x0d"
+-			     "\xa4\x3b\xd2\x46\xdd\x74\x0b\x7f"
+-			     "\x16\xad\x21\xb8\x4f\xe6\x5a\xf1"
+-			     "\x88\x1f\x93\x2a\xc1\x35\xcc\x63"
+-			     "\xfa\x6e\x05\x9c\x10\xa7\x3e\xd5"
+-			     "\x49\xe0\x77\x0e\x82\x19\xb0\x24"
+-			     "\xbb\x52\xe9\x5d\xf4\x8b\x22\x96"
+-			     "\x2d\xc4\x38\xcf\x66\xfd\x71\x08"
+-			     "\x9f\x13\xaa\x41\xd8\x4c\xe3\x7a"
+-			     "\x11\x85\x1c\xb3\x27\xbe\x55\xec"
+-			     "\x60\xf7\x8e\x02\x99\x30\xc7\x3b"
+-			     "\xd2\x69\x00\x74\x0b\xa2\x16\xad"
+-			     "\x44\xdb\x4f\xe6\x7d\x14\x88\x1f"
+-			     "\xb6\x2a\xc1\x58\xef\x63\xfa\x91"
+-			     "\x05\x9c\x33\xca\x3e\xd5\x6c\x03"
+-			     "\x77\x0e\xa5\x19\xb0\x47\xde\x52"
+-			     "\xe9\x80\x17\x8b\x22\xb9\x2d\xc4"
+-			     "\x5b\xf2\x66\xfd\x94\x08\x9f\x36"
+-			     "\xcd\x41\xd8\x6f\x06\x7a\x11\xa8"
+-			     "\x1c\xb3\x4a\xe1\x55\xec\x83\x1a"
+-			     "\x8e\x25\xbc\x30\xc7\x5e\xf5\x69"
+-			     "\x00\x97\x0b\xa2\x39\xd0\x44\xdb"
+-			     "\x72\x09\x7d\x14\xab\x1f\xb6\x4d"
+-			     "\xe4\x58\xef\x86\x1d\x91\x28\xbf"
+-			     "\x33\xca\x61\xf8\x6c\x03\x9a\x0e"
+-			     "\xa5\x3c\xd3\x47\xde\x75\x0c\x80"
+-			     "\x17\xae\x22\xb9\x50\xe7\x5b\xf2"
+-			     "\x89\x20\x94\x2b\xc2\x36\xcd\x64"
+-			     "\xfb\x6f\x06\x9d\x11\xa8\x3f\xd6"
+-			     "\x4a\xe1\x78\x0f\x83\x1a\xb1\x25"
+-			     "\xbc\x53\xea\x5e\xf5\x8c\x00\x97"
+-			     "\x2e\xc5\x39\xd0\x67\xfe\x72\x09"
+-			     "\xa0\x14\xab\x42\xd9\x4d\xe4\x7b"
+-			     "\x12\x86\x1d\xb4\x28\xbf\x56\xed"
+-			     "\x61\xf8\x8f\x03\x9a\x31\xc8\x3c"
+-			     "\xd3\x6a\x01\x75\x0c\xa3\x17\xae"
+-			     "\x45\xdc\x50\xe7\x7e\x15\x89\x20"
+-			     "\xb7\x2b\xc2\x59\xf0\x64\xfb\x92"
+-			     "\x06\x9d\x34\xcb\x3f\xd6\x6d\x04"
+-			     "\x78\x0f\xa6\x1a\xb1\x48\xdf\x53"
+-			     "\xea\x81\x18\x8c\x23\xba\x2e\xc5"
+-			     "\x5c\xf3\x67\xfe\x95\x09\xa0\x37"
+-			     "\xce\x42\xd9\x70\x07\x7b\x12\xa9"
+-			     "\x1d\xb4\x4b\xe2\x56\xed\x84\x1b"
+-			     "\x8f\x26\xbd\x31\xc8\x5f\xf6\x6a"
+-			     "\x01\x98\x0c\xa3\x3a\xd1\x45\xdc"
+-			     "\x73\x0a\x7e\x15\xac\x20\xb7\x4e"
+-			     "\xe5\x59\xf0\x87\x1e\x92\x29\xc0"
+-			     "\x34\xcb\x62\xf9\x6d\x04\x9b\x0f"
+-			     "\xa6\x3d\xd4\x48\xdf\x76\x0d\x81"
+-			     "\x18\xaf\x23\xba\x51\xe8\x5c\xf3"
+-			     "\x8a\x21\x95\x2c\xc3\x37\xce\x65"
+-			     "\xfc\x70\x07\x9e\x12\xa9\x40\xd7"
+-			     "\x4b\xe2\x79\x10\x84\x1b\xb2\x26"
+-			     "\xbd\x54\xeb\x5f\xf6\x8d\x01\x98"
+-			     "\x2f\xc6\x3a\xd1\x68\xff\x73\x0a"
+-			     "\xa1\x15\xac\x43\xda\x4e\xe5\x7c"
+-			     "\x13\x87\x1e\xb5\x29\xc0\x57\xee"
+-			     "\x62\xf9\x90\x04\x9b\x32\xc9\x3d"
+-			     "\xd4\x6b\x02\x76\x0d\xa4\x18\xaf"
+-			     "\x46\xdd\x51\xe8\x7f\x16\x8a\x21"
+-			     "\xb8\x2c\xc3\x5a\xf1\x65\xfc\x93"
+-			     "\x07\x9e\x35\xcc\x40\xd7\x6e\x05"
+-			     "\x79\x10\xa7\x1b\xb2\x49\xe0\x54"
+-			     "\xeb\x82\x19\x8d\x24\xbb\x2f\xc6"
+-			     "\x5d\xf4\x68\xff\x96\x0a\xa1\x38"
+-			     "\xcf\x43\xda\x71\x08\x7c\x13\xaa"
+-			     "\x1e\xb5\x4c\xe3\x57\xee\x85\x1c"
+-			     "\x90\x27\xbe\x32\xc9\x60\xf7\x6b"
+-			     "\x02\x99\x0d\xa4\x3b\xd2\x46\xdd"
+-			     "\x74\x0b\x7f\x16\xad\x21\xb8\x4f"
+-			     "\xe6\x5a\xf1\x88\x1f\x93\x2a\xc1"
+-			     "\x35\xcc\x63\xfa\x6e\x05\x9c\x10"
+-			     "\xa7\x3e\xd5\x49\xe0\x77\x0e\x82"
+-			     "\x19\xb0\x24\xbb\x52\xe9\x5d\xf4"
+-			     "\x8b\x22\x96\x2d\xc4\x38\xcf\x66"
+-			     "\xfd\x71\x08\x9f\x13\xaa\x41\xd8"
+-			     "\x4c\xe3\x7a\x11\x85\x1c\xb3\x27"
+-			     "\xbe\x55\xec\x60\xf7\x8e\x02\x99"
+-			     "\x30\xc7\x3b\xd2\x69\x00\x74\x0b"
+-			     "\xa2\x16\xad\x44\xdb\x4f\xe6\x7d"
+-			     "\x14\x88\x1f\xb6\x2a\xc1\x58\xef"
+-			     "\x63\xfa\x91\x05\x9c\x33\xca\x3e"
+-			     "\xd5\x6c\x03\x77\x0e\xa5\x19\xb0"
+-			     "\x47\xde\x52\xe9\x80\x17\x8b\x22"
+-			     "\xb9\x2d\xc4\x5b\xf2\x66\xfd\x94"
+-			     "\x08\x9f\x36\xcd\x41\xd8\x6f\x06"
+-			     "\x7a\x11\xa8\x1c\xb3\x4a\xe1\x55"
+-			     "\xec\x83\x1a\x8e\x25\xbc\x30\xc7"
+-			     "\x5e\xf5\x69\x00\x97\x0b\xa2\x39"
+-			     "\xd0\x44\xdb\x72\x09\x7d\x14\xab"
+-			     "\x1f\xb6\x4d\xe4\x58\xef\x86\x1d"
+-			     "\x91\x28\xbf\x33\xca\x61\xf8\x6c"
+-			     "\x03\x9a\x0e\xa5\x3c\xd3\x47\xde"
+-			     "\x75\x0c\x80\x17\xae\x22\xb9\x50"
+-			     "\xe7\x5b\xf2\x89\x20\x94\x2b\xc2"
+-			     "\x36\xcd\x64\xfb\x6f\x06\x9d\x11"
+-			     "\xa8\x3f\xd6\x4a\xe1\x78\x0f\x83"
+-			     "\x1a\xb1\x25\xbc\x53\xea\x5e\xf5"
+-			     "\x8c\x00\x97\x2e\xc5\x39\xd0\x67"
+-			     "\xfe\x72\x09\xa0\x14\xab\x42\xd9"
+-			     "\x4d\xe4\x7b\x12\x86\x1d\xb4\x28"
+-			     "\xbf\x56\xed\x61\xf8\x8f\x03\x9a"
+-			     "\x31\xc8\x3c\xd3\x6a\x01\x75\x0c"
+-			     "\xa3\x17\xae\x45\xdc\x50\xe7\x7e"
+-			     "\x15\x89\x20\xb7\x2b\xc2\x59\xf0"
+-			     "\x64\xfb\x92\x06\x9d\x34\xcb\x3f"
+-			     "\xd6\x6d\x04\x78\x0f\xa6\x1a\xb1"
+-			     "\x48\xdf\x53\xea\x81\x18\x8c\x23"
+-			     "\xba\x2e\xc5\x5c\xf3\x67\xfe\x95"
+-			     "\x09\xa0\x37\xce\x42\xd9\x70\x07"
+-			     "\x7b\x12\xa9\x1d\xb4\x4b\xe2\x56"
+-			     "\xed\x84\x1b\x8f\x26\xbd\x31\xc8"
+-			     "\x5f\xf6\x6a\x01\x98\x0c\xa3\x3a"
+-			     "\xd1\x45\xdc\x73\x0a\x7e\x15\xac"
+-			     "\x20\xb7\x4e\xe5\x59\xf0\x87\x1e"
+-			     "\x92\x29\xc0\x34\xcb\x62\xf9\x6d"
+-			     "\x04\x9b\x0f\xa6\x3d\xd4\x48\xdf"
+-			     "\x76\x0d\x81\x18\xaf\x23\xba\x51"
+-			     "\xe8\x5c\xf3\x8a\x21\x95\x2c\xc3"
+-			     "\x37\xce\x65\xfc\x70\x07\x9e\x12"
+-			     "\xa9\x40\xd7\x4b\xe2\x79\x10\x84"
+-			     "\x1b\xb2\x26\xbd\x54\xeb\x5f\xf6"
+-			     "\x8d\x01\x98\x2f\xc6\x3a\xd1\x68"
+-			     "\xff\x73\x0a\xa1\x15\xac\x43\xda"
+-			     "\x4e\xe5\x7c\x13\x87\x1e\xb5\x29"
+-			     "\xc0\x57\xee\x62\xf9\x90\x04\x9b"
+-			     "\x32\xc9\x3d\xd4\x6b\x02\x76\x0d"
+-			     "\xa4\x18\xaf\x46\xdd\x51\xe8\x7f"
+-			     "\x16\x8a\x21\xb8\x2c\xc3\x5a\xf1"
+-			     "\x65\xfc\x93\x07\x9e\x35\xcc\x40"
+-			     "\xd7\x6e\x05\x79\x10\xa7\x1b\xb2"
+-			     "\x49\xe0\x54\xeb\x82\x19\x8d\x24"
+-			     "\xbb\x2f\xc6\x5d\xf4\x68\xff\x96"
+-			     "\x0a\xa1\x38\xcf\x43\xda\x71\x08"
+-			     "\x7c\x13\xaa\x1e\xb5\x4c\xe3\x57"
+-			     "\xee\x85\x1c\x90\x27\xbe\x32\xc9"
+-			     "\x60\xf7\x6b\x02\x99\x0d\xa4\x3b"
+-			     "\xd2\x46\xdd\x74\x0b\x7f\x16\xad"
+-			     "\x21\xb8\x4f\xe6\x5a\xf1\x88\x1f"
+-			     "\x93\x2a\xc1\x35\xcc\x63\xfa\x6e"
+-			     "\x05\x9c\x10\xa7\x3e\xd5\x49\xe0"
+-			     "\x77\x0e\x82\x19\xb0\x24\xbb\x52"
+-			     "\xe9\x5d\xf4\x8b\x22\x96\x2d\xc4"
+-			     "\x38\xcf\x66\xfd\x71\x08\x9f\x13"
+-			     "\xaa\x41\xd8\x4c\xe3\x7a\x11\x85"
+-			     "\x1c\xb3\x27\xbe\x55\xec\x60\xf7"
+-			     "\x8e\x02\x99\x30\xc7\x3b\xd2\x69"
+-			     "\x00\x74\x0b\xa2\x16\xad\x44\xdb"
+-			     "\x4f\xe6\x7d\x14\x88\x1f\xb6\x2a"
+-			     "\xc1\x58\xef\x63\xfa\x91\x05\x9c"
+-			     "\x33\xca\x3e\xd5\x6c\x03\x77\x0e"
+-			     "\xa5\x19\xb0\x47\xde\x52\xe9\x80"
+-			     "\x17\x8b\x22\xb9\x2d\xc4\x5b\xf2"
+-			     "\x66\xfd\x94\x08\x9f\x36\xcd\x41"
+-			     "\xd8\x6f\x06\x7a\x11\xa8\x1c\xb3"
+-			     "\x4a\xe1\x55\xec\x83\x1a\x8e\x25"
+-			     "\xbc\x30\xc7\x5e\xf5\x69\x00\x97"
+-			     "\x0b\xa2\x39\xd0\x44\xdb\x72\x09"
+-			     "\x7d\x14\xab\x1f\xb6\x4d\xe4\x58"
+-			     "\xef\x86\x1d\x91\x28\xbf\x33\xca"
+-			     "\x61\xf8\x6c\x03\x9a\x0e\xa5\x3c"
+-			     "\xd3\x47\xde\x75\x0c\x80\x17\xae"
+-			     "\x22\xb9\x50\xe7\x5b\xf2\x89\x20"
+-			     "\x94\x2b\xc2\x36\xcd\x64\xfb\x6f"
+-			     "\x06\x9d\x11\xa8\x3f\xd6\x4a\xe1"
+-			     "\x78\x0f\x83\x1a\xb1\x25\xbc\x53"
+-			     "\xea\x5e\xf5\x8c\x00\x97\x2e\xc5"
+-			     "\x39\xd0\x67\xfe\x72\x09\xa0\x14"
+-			     "\xab\x42\xd9\x4d\xe4\x7b\x12\x86"
+-			     "\x1d\xb4\x28\xbf\x56\xed\x61\xf8"
+-			     "\x8f\x03\x9a\x31\xc8\x3c\xd3\x6a"
+-			     "\x01\x75\x0c\xa3\x17\xae\x45\xdc"
+-			     "\x50\xe7\x7e\x15\x89\x20\xb7\x2b"
+-			     "\xc2\x59\xf0\x64\xfb\x92\x06\x9d"
+-			     "\x34\xcb\x3f\xd6\x6d\x04\x78\x0f"
+-			     "\xa6\x1a\xb1\x48\xdf\x53\xea\x81"
+-			     "\x18\x8c\x23\xba\x2e\xc5\x5c\xf3"
+-			     "\x67\xfe\x95\x09\xa0\x37\xce\x42"
+-			     "\xd9\x70\x07\x7b\x12\xa9\x1d\xb4"
+-			     "\x4b\xe2\x56\xed\x84\x1b\x8f\x26"
+-			     "\xbd\x31\xc8\x5f\xf6\x6a\x01\x98",
+-		.psize = 2048,
+-		.digest = "\x4b\x82\xa5\x0e\x72\x01\x0b\xc6",
+-	}
+-};
+-
+ static const u8 zeroes[4096] = { [0 ... 4095] = 0 };
+ static const u8 ones[4096] = { [0 ... 4095] = 0xff };
+ 
+@@ -21228,62 +20824,6 @@ static const struct cipher_testvec aes_ctr_rfc3686_tv_template[] = {
+ };
+ 
+ static const struct aead_testvec aes_gcm_tv_template[] = {
+-	{
+-		.key	= "\x16\xe1\x23\x12\x22\x08\xa7\xd6"
+-			  "\x59\xe8\xbc\x5f\x87\x7c\xe4\x8c"
+-			  "\xb2\x1a\x45\xa8\x65\x15\x70\x2d"
+-			  "\x61\x96\x35\xf2\x08\xf9\x3b\x46",
+-		.klen	= 32,
+-		.iv	= "\x75\x9e\xb4\x01\x75\x63\x1b\x68"
+-			  "\xfd\xb7\xa7\xaa",
+-		.ptext	= "\x9d\xa1",
+-		.plen	= 2,
+-		.assoc	= "\x9d",
+-		.alen	= 1,
+-		.ctext	= "\xb8\xd6\x41\x86\xde\x36\x88\x71"
+-			  "\xf8\xf8\x23\xe7\x93\x8a\x8b\x33"
+-			  "\xc0\xfc",
+-		.clen	= 18,
+-	}, {
+-		.key	= "\xdd\xee\xdd\xee\xdd\xee\xdd\xee"
+-			  "\xdd\xee\xdd\xee\xdd\xee\xdd\xee",
+-		.klen	= 16,
+-		.iv	= "\xbb\xcc\xbb\xcc\xbb\xcc\xbb\xcc"
+-			  "\xbb\xcc\xbb\xcc",
+-		.ptext	= "\xff\x00\xff\x00",
+-		.plen	= 4,
+-		.assoc	= "\xaa\xdd\xaa\xdd\xaa\xdd\xaa\xdd"
+-			  "\xaa\xdd\xaa\xdd\xaa\xdd\xaa\xdd",
+-		.alen	= 16,
+-		.ctext	= "\x38\x17\x1f\x91\xc0\x5a\x02\x7c"
+-			  "\x7c\x5f\xe3\xd1\x7d\x9a\x90\x14"
+-			  "\xfe\xbe\xb9\x6a",
+-		.clen	= 20,
+-	}, {
+-		.key	= "\xdd\xee\xdd\xee\xdd\xee\xdd\xee"
+-			  "\xdd\xee\xdd\xee\xdd\xee\xdd\xee",
+-		.klen	= 16,
+-		.iv	= "\xbb\xcc\xbb\xcc\xbb\xcc\xbb\xcc"
+-			  "\xbb\xcc\xbb\xcc",
+-		.ptext	= "\xff\x00\xff\x00",
+-		.plen	= 4,
+-		.ctext	= "\x38\x17\x1f\x91\xc6\xc3\x92\xf5"
+-			  "\xd8\xf4\x9c\x34\x2c\x67\x1c\x97"
+-			  "\x4f\x23\xb3\xcd",
+-		.clen	= 20,
+-	}, {
+-		.key	= "\xff\xff\xff\xff\xff\xff\xff\xff"
+-			  "\xff\xff\xff\xff\xff\xff\xff\xff",
+-		.klen	= 16,
+-		.iv	= "\xff\xff\xff\xff\xff\xff\xff\xff"
+-			  "\xff\xff\xff\xff",
+-		.ptext	= "\xff\x00\xff\x00",
+-		.plen	= 4,
+-		.ctext	= "\x24\x24\xab\x37"
+-			  "\xfd\x64\x3d\x2a\x76\x31\x4e\x34"
+-			  "\xdf\x5e\x3f\xdd\x95\xee\x1a\x97",
+-		.clen	= 20,
+-	},
+ 	{ /* From McGrew & Viega - http://citeseer.ist.psu.edu/656989.html */
+ 		.key    = zeroed_string,
+ 		.klen	= 16,
 diff --git a/drivers/crypto/Kconfig b/drivers/crypto/Kconfig
 index e80d5c441116..08b1238bcd7b 100644
 --- a/drivers/crypto/Kconfig

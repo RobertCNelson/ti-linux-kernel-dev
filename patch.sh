@@ -553,6 +553,7 @@ backports () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
+		cp -rv ~/linux-src/crypto/* ./crypto/
 		cp -rv ~/linux-src/drivers/crypto/* ./drivers/crypto/
 		cp -rv ~/linux-src/include/crypto/* ./include/crypto/
 		rm -rf ./drivers/crypto/ti/
