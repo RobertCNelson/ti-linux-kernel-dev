@@ -629,8 +629,7 @@ post_rpibackports () {
 }
 
 backports () {
-	#backport_tag="v6.6.137"
-	backport_tag="v6.6.92"
+	backport_tag="v6.6.137"
 
 	###FIXME: https://www.cve.org/CVERecord?id=CVE-2026-31431
 	subsystem="crypto"
@@ -638,9 +637,11 @@ backports () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/crypto/* ./crypto/
-		cp -rv ~/linux-src/drivers/crypto/* ./drivers/crypto/
-		cp -rv ~/linux-src/include/crypto/* ./include/crypto/
+		rsync -av --delete ~/linux-src/crypto/* ./crypto/
+		rsync -av --delete ~/linux-src/drivers/crypto/* ./drivers/crypto/
+		rsync -av --delete ~/linux-src/include/crypto/* ./include/crypto/
+		patch -p1 < ../patches/hacks/lzo/0001-lzo-undo-lzorle1x_1_compress_safe.patch
+		cp -v ~/linux-src/include/linux/math.h ./include/linux/
 
 		post_backports
 	else
