@@ -442,7 +442,7 @@ cd ${DIR}/KERNEL/
 
 #Rust
 ./scripts/config --disable CONFIG_MODVERSIONS
-./scripts/config --enable CONFIG_RUST
+./scripts/config --disable CONFIG_RUST
 
 #v7.1-rc1
 
