@@ -220,6 +220,7 @@ cd ${DIR}/KERNEL/
 ./scripts/config --module CONFIG_VIDEO_OV5645
 ./scripts/config --module CONFIG_VIDEO_IMX219
 ./scripts/config --module CONFIG_VIDEO_IMX390
+./scripts/config --module CONFIG_VIDEO_IMX708
 ./scripts/config --module CONFIG_VIDEO_OX05B1S
 
 #enable SPI/W1
@@ -443,7 +444,7 @@ cd ${DIR}/KERNEL/
 
 #Rust
 ./scripts/config --disable CONFIG_MODVERSIONS
-./scripts/config --enable CONFIG_RUST
+./scripts/config --disable CONFIG_RUST
 
 #v7.1-rc1
 
