@@ -634,10 +634,11 @@ backports () {
 	if [ "x${regenerate}" = "xenable" ] ; then
 		pre_backports
 
-		cp -rv ~/linux-src/crypto/* ./crypto/
-		cp -rv ~/linux-src/drivers/crypto/* ./drivers/crypto/
-		cp -rv ~/linux-src/include/crypto/* ./include/crypto/
-		#rm -rf ./drivers/crypto/ti/
+		rsync -av --delete ~/linux-src/crypto/* ./crypto/
+		rsync -av --delete ~/linux-src/drivers/crypto/* ./drivers/crypto/
+		rsync -av --delete ~/linux-src/include/crypto/* ./include/crypto/
+		patch -p1 < ../patches/hacks/lzo/0001-lzo-undo-lzorle1x_1_compress_safe.patch
+		cp -v ~/linux-src/include/linux/math.h ./include/linux/
 
 		post_backports
 	else
@@ -685,6 +686,7 @@ drivers () {
 	dir 'external/ti-amx3-cm3-pm-firmware'
 
 	dir 'drivers/fixes/mmc'
+	dir 'drivers/fixes/e5010'
 }
 
 ###
