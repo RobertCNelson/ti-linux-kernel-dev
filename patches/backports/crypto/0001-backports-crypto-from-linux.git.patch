@@ -1,6 +1,6 @@
-From 40005b27899c3b2bc8fe9920edc4b7c0ec4f4597 Mon Sep 17 00:00:00 2001
+From 926bfd0241f8e8bebeaaff46facaa9eeb5ace610 Mon Sep 17 00:00:00 2001
 From: Robert Nelson <robertcnelson@gmail.com>
-Date: Tue, 5 May 2026 17:33:43 -0500
+Date: Tue, 5 May 2026 19:04:05 -0500
 Subject: [PATCH] backports: crypto: from: linux.git
 
 Reference: v6.6.137
@@ -25,8 +25,6 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  crypto/essiv.c                                |  14 +-
  crypto/jitterentropy-kcapi.c                  |   9 +-
  crypto/lrw.c                                  |   4 +-
- crypto/lzo-rle.c                              |   2 +-
- crypto/lzo.c                                  |   2 +-
  crypto/pcrypt.c                               |  12 +-
  crypto/rng.c                                  |   8 +
  crypto/scatterwalk.c                          |  94 ++++
@@ -121,7 +119,8 @@ Signed-off-by: Robert Nelson <robertcnelson@gmail.com>
  include/crypto/internal/ecc.h                 |  10 +
  include/crypto/scatterwalk.h                  |  31 ++
  include/crypto/sha256_base.h                  |   2 +-
- 115 files changed, 1412 insertions(+), 1679 deletions(-)
+ include/linux/math.h                          |  90 +---
+ 114 files changed, 1424 insertions(+), 1753 deletions(-)
 
 diff --git a/crypto/Kconfig b/crypto/Kconfig
 index 5714f54e915d..f6eb33f22763 100644
@@ -1644,32 +1643,6 @@ index 59260aefed28..5536ec7bf18f 100644
  		int len;
  
  		len = strscpy(ecb_name, cipher_name + 4, sizeof(ecb_name));
-diff --git a/crypto/lzo-rle.c b/crypto/lzo-rle.c
-index 0631d975bfac..0abc2d87f042 100644
---- a/crypto/lzo-rle.c
-+++ b/crypto/lzo-rle.c
-@@ -55,7 +55,7 @@ static int __lzorle_compress(const u8 *src, unsigned int slen,
- 	size_t tmp_len = *dlen; /* size_t(ulong) <-> uint on 64 bit */
- 	int err;
- 
--	err = lzorle1x_1_compress(src, slen, dst, &tmp_len, ctx);
-+	err = lzorle1x_1_compress_safe(src, slen, dst, &tmp_len, ctx);
- 
- 	if (err != LZO_E_OK)
- 		return -EINVAL;
-diff --git a/crypto/lzo.c b/crypto/lzo.c
-index ebda132dd22b..8338851c7406 100644
---- a/crypto/lzo.c
-+++ b/crypto/lzo.c
-@@ -55,7 +55,7 @@ static int __lzo_compress(const u8 *src, unsigned int slen,
- 	size_t tmp_len = *dlen; /* size_t(ulong) <-> uint on 64 bit */
- 	int err;
- 
--	err = lzo1x_1_compress(src, slen, dst, &tmp_len, ctx);
-+	err = lzo1x_1_compress_safe(src, slen, dst, &tmp_len, ctx);
- 
- 	if (err != LZO_E_OK)
- 		return -EINVAL;
 diff --git a/crypto/pcrypt.c b/crypto/pcrypt.c
 index d0d954fe9d54..7fc79e7dce44 100644
 --- a/crypto/pcrypt.c
@@ -6928,6 +6901,123 @@ index ab904d82236f..0f5f3a6f79f0 100644
  
  		if (partial) {
  			int p = SHA256_BLOCK_SIZE - partial;
+diff --git a/include/linux/math.h b/include/linux/math.h
+index 2ab9489bba81..ee754ec3dc92 100644
+--- a/include/linux/math.h
++++ b/include/linux/math.h
+@@ -35,50 +35,16 @@
+ #define round_down(x, y) ((x) & ~__round_mask(x, y))
+ 
+ /**
+- * round_closest_up - round closest to be multiple of specified value (which is
+- *                    power of 2) with preference to rounding up
+- * @x: the value to round
+- * @y: multiple to round closest to (must be a power of 2)
+- *
+- * Rounds @x to closest multiple of @y (which must be a power of 2).
+- * The value can be either rounded up or rounded down depending upon rounded
+- * value's closeness to the specified value. If there are two closest possible
+- * values, i.e. the difference between the specified value and it's rounded up
+- * and rounded down values is same then preference is given to rounded up
+- * value.
+- *
+- * To perform arbitrary rounding to closest value (not multiple of 2), use
+- * roundclosest().
++ * DIV_ROUND_UP_POW2 - divide and round up
++ * @n: numerator
++ * @d: denominator (must be a power of 2)
+  *
+- * Examples:
+- * * round_closest_up(17, 4) = 16
+- * * round_closest_up(15, 4) = 16
+- * * round_closest_up(14, 4) = 16
++ * Divides @n by @d and rounds up to next multiple of @d (which must be a power
++ * of 2). Avoids integer overflows that may occur with __KERNEL_DIV_ROUND_UP().
++ * Performance is roughly equivalent to __KERNEL_DIV_ROUND_UP().
+  */
+-#define round_closest_up(x, y) round_down((x) + (y) / 2, (y))
+-
+-/**
+- * round_closest_down - round closest to be multiple of specified value (which
+- *			is power of 2) with preference to rounding down
+- * @x: the value to round
+- * @y: multiple to round closest to (must be a power of 2)
+- *
+- * Rounds @x to closest multiple of @y (which must be a power of 2).
+- * The value can be either rounded up or rounded down depending upon rounded
+- * value's closeness to the specified value. If there are two closest possible
+- * values, i.e. the difference between the specified value and it's rounded up
+- * and rounded down values is same then preference is given to rounded up
+- * value.
+- *
+- * To perform arbitrary rounding to closest value (not multiple of 2), use
+- * roundclosest().
+- *
+- * Examples:
+- * * round_closest_down(17, 4) = 16
+- * * round_closest_down(15, 4) = 16
+- * * round_closest_down(14, 4) = 12
+- */
+-#define round_closest_down(x, y) round_up((x) - (y) / 2, (y))
++#define DIV_ROUND_UP_POW2(n, d) \
++	((n) / (d) + !!((n) & ((d) - 1)))
+ 
+ #define DIV_ROUND_UP __KERNEL_DIV_ROUND_UP
+ 
+@@ -123,31 +89,9 @@
+ }							\
+ )
+ 
+-/**
+- * roundclosest - round to nearest multiple
+- * @x: the value to round
+- * @y: multiple to round nearest to
+- *
+- * Rounds @x to nearest multiple of @y.
+- * The rounded value can be greater than or less than @x depending
+- * upon it's nearness to @x. If @y will always be a power of 2, consider
+- * using the faster round_closest_up() or round_closest_down().
+- *
+- * Examples:
+- * * roundclosest(21, 5) = 20
+- * * roundclosest(19, 5) = 20
+- * * roundclosest(17, 5) = 15
+- */
+-#define roundclosest(x, y) rounddown((x) + (y) / 2, (y))
+-
+-/**
+- * DIV_ROUND_CLOSEST - Divide positive or negative dividend by positive or
+- *		       negative divisor and round to closest value
+- * @x: dividend value
+- * @divisor: divisor value
+- *
+- * Divide positive or negative dividend value @x by positive or negative
+- * @divisor value and round to closest integer. Result is undefined for negative
++/*
++ * Divide positive or negative dividend by positive or negative divisor
++ * and round to closest integer. Result is undefined for negative
+  * divisors if the dividend variable type is unsigned and for negative
+  * dividends if the divisor variable type is unsigned.
+  */
+@@ -162,15 +106,9 @@
+ 		(((__x) - ((__d) / 2)) / (__d));	\
+ }							\
+ )
+-
+-/**
+- * DIV_ROUND_CLOSEST_ULL - Divide 64-bit unsigned dividend by 32-bit divisor and
+- *			   round to closest value
+- * @x: unsigned 64-bit dividend
+- * @divisor: 32-bit divisor
+- *
+- * Divide unsigned 64-bit dividend value @x by 32-bit @divisor value
+- * and round to closest integer. Result is undefined for negative divisors.
++/*
++ * Same as above but for u64 dividends. divisor must be a 32-bit
++ * number.
+  */
+ #define DIV_ROUND_CLOSEST_ULL(x, divisor)(		\
+ {							\
 -- 
 2.53.0
 
