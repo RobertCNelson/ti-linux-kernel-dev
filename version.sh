@@ -1,4 +1,9 @@
 #!/bin/sh
+
+# SPDX-FileCopyrightText: Robert Nelson <robertcnelson@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 #
 ARCH=$(uname -m)
 
@@ -13,6 +18,7 @@ bborg_branch="6.1-rt-arm64"
 #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/Documentation/process/changes.rst?h=v6.1-rc1
 #
 #Cross Compilers
+#https://mirrors.edge.kernel.org/pub/tools/crosstool/files/bin/x86_64/
 #arm
 #KERNEL_ARCH=arm
 #DEBARCH=armhf
@@ -47,17 +53,20 @@ toolchain="gcc_12_aarch64"
 #toolchain="gcc_14_riscv64"
 #toolchain="gcc_15_riscv64"
 
+#Wireless:
+#https://git.kernel.org/pub/scm/linux/kernel/git/wens/wireless-regdb.git
+WIRELESS_REGDB="2026-03-18"
+
 #Kernel
 linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git"
-#linux_stable_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git"
-linux_stable_repo="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
+linux_stable_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux.git"
 #
 KERNEL_REL=6.1
 KERNEL_TAG=${KERNEL_REL}.83
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.1/
 kernel_rt=".83-rt28"
 #Kernel Build
-BUILD=${build_prefix}72
+BUILD=${build_prefix}72.1
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
@@ -71,5 +80,4 @@ DISTRO=xross
 sdk_git_old_release="2e423244f8c09173a344e7069f0fe2bdf26cccee"
 sdk_git_new_release="c1c2f1971fbf6ddad93a8c94314fe8221e7aa6be"
 SDK="09.02.00.010"
-
 #
