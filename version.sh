@@ -66,7 +66,7 @@ KERNEL_TAG=${KERNEL_REL}.83
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.1/
 kernel_rt=".83-rt28"
 #Kernel Build
-BUILD=${build_prefix}72.3
+BUILD=${build_prefix}73
 
 #v6.X-rcX + upto SHA
 #prev_KERNEL_SHA=""
