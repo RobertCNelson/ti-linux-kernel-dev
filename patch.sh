@@ -626,7 +626,9 @@ drivers () {
 	dir 'external/ti-amx3-cm3-pm-firmware'
 
 	dir 'drivers/fixes/mmc'
+
 	#Linux 6.1.170 CVE-2026-31431
+	dir 'drivers/b4-crypto'
 	dir 'drivers/crypto'
 }
 
