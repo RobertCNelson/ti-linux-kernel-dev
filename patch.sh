@@ -544,25 +544,6 @@ post_rpibackports () {
 }
 
 backports () {
-	backport_tag="v6.12.85"
-
-	###FIXME: testing with: https://git.kernel.org/pub/scm/network/wireless/iwd.git
-	### https://www.cve.org/CVERecord?id=CVE-2026-31431
-	subsystem="crypto"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		cp -rv ~/linux-src/crypto/* ./crypto/
-		cp -rv ~/linux-src/drivers/crypto/* ./drivers/crypto/
-		cp -rv ~/linux-src/include/crypto/* ./include/crypto/
-		rm -rf ./drivers/crypto/ti/
-
-		post_backports
-	else
-		patch_backports
-	fi
-
 	backport_tag="v6.16.12"
 
 	subsystem="tps65219"
@@ -612,6 +593,10 @@ drivers () {
 
 	dir 'drivers/tps65219'
 	dir 'drivers/configfs'
+
+	#Linux 6.6.137 CVE-2026-31431
+	dir 'drivers/b4-crypto'
+	dir 'drivers/crypto'
 }
 
 ###
