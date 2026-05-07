@@ -732,6 +732,10 @@ drivers () {
 
 	dir 'fixes/gcc'
 	dir 'fixes/gcc/13'
+
+	#Linux 5.10.254 CVE-2026-31431
+	dir 'drivers/b4-crypto'
+	dir 'drivers/crypto'
 }
 
 ###
