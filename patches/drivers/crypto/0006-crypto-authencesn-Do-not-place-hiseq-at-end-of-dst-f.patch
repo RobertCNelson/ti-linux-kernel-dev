@@ -1,4 +1,4 @@
-From 81df38b0168b7bfdf672d9f0316b61acfec1343a Mon Sep 17 00:00:00 2001
+From e9780f42a436521892699a348eccffd936dbd974 Mon Sep 17 00:00:00 2001
 From: Herbert Xu <herbert@gondor.apana.org.au>
 Date: Wed, 29 Apr 2026 23:27:28 -0700
 Subject: [PATCH 6/9] crypto: authencesn - Do not place hiseq at end of dst for
@@ -18,24 +18,14 @@ Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
 Signed-off-by: Eric Biggers <ebiggers@kernel.org>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 ---
- crypto/authencesn.c | 52 +++++++++++++++++++++++++++++----------------
- 1 file changed, 34 insertions(+), 18 deletions(-)
+ crypto/authencesn.c | 48 +++++++++++++++++++++++++++------------------
+ 1 file changed, 29 insertions(+), 19 deletions(-)
 
 diff --git a/crypto/authencesn.c b/crypto/authencesn.c
-index 43618f229d5a..5dc057cb0cdf 100644
+index fceee6d67d34..5dc057cb0cdf 100644
 --- a/crypto/authencesn.c
 +++ b/crypto/authencesn.c
-@@ -175,6 +175,9 @@ static int crypto_authenc_esn_encrypt(struct aead_request *req)
- 	struct scatterlist *src, *dst;
- 	int err;
- 
-+	if (assoclen < 8)
-+		return -EINVAL;
-+
- 	sg_init_table(areq_ctx->src, 2);
- 	src = scatterwalk_ffwd(areq_ctx->src, req->src, assoclen);
- 	dst = src;
-@@ -211,6 +214,7 @@ static int crypto_authenc_esn_decrypt_tail(struct aead_request *req,
+@@ -214,6 +214,7 @@ static int crypto_authenc_esn_decrypt_tail(struct aead_request *req,
  			      crypto_ahash_alignmask(auth) + 1);
  	unsigned int cryptlen = req->cryptlen - authsize;
  	unsigned int assoclen = req->assoclen;
@@ -43,7 +33,7 @@ index 43618f229d5a..5dc057cb0cdf 100644
  	struct scatterlist *dst = req->dst;
  	u8 *ihash = ohash + crypto_ahash_digestsize(auth);
  	u32 tmp[2];
-@@ -218,23 +222,27 @@ static int crypto_authenc_esn_decrypt_tail(struct aead_request *req,
+@@ -221,23 +222,27 @@ static int crypto_authenc_esn_decrypt_tail(struct aead_request *req,
  	if (!authsize)
  		goto decrypt;
  
@@ -77,7 +67,7 @@ index 43618f229d5a..5dc057cb0cdf 100644
  
  	return crypto_skcipher_decrypt(skreq);
  }
-@@ -261,28 +269,36 @@ static int crypto_authenc_esn_decrypt(struct aead_request *req)
+@@ -264,6 +269,7 @@ static int crypto_authenc_esn_decrypt(struct aead_request *req)
  	unsigned int assoclen = req->assoclen;
  	unsigned int cryptlen = req->cryptlen;
  	u8 *ihash = ohash + crypto_ahash_digestsize(auth);
@@ -85,11 +75,12 @@ index 43618f229d5a..5dc057cb0cdf 100644
  	struct scatterlist *dst = req->dst;
  	u32 tmp[2];
  	int err;
+@@ -271,24 +277,28 @@ static int crypto_authenc_esn_decrypt(struct aead_request *req)
+ 	if (assoclen < 8)
+ 		return -EINVAL;
  
 -	cryptlen -= authsize;
-+	if (assoclen < 8)
-+		return -EINVAL;
- 
+-
 -	if (req->src != dst)
 -		memcpy_sglist(dst, req->src, assoclen + cryptlen);
 +	if (!authsize)
