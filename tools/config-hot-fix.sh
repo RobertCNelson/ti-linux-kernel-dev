@@ -487,6 +487,9 @@ cd ${DIR}/KERNEL/
 
 ./scripts/config --module CONFIG_MWIFIEX_SDIO
 
+#Always broken with iwd..
+./scripts/config --disable CONFIG_CRYPTO_DEV_TI_MCRC64
+
 #v7.1-rc1
 
 ./scripts/config --disable CONFIG_ATM_CLIP

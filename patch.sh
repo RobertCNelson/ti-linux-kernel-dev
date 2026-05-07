@@ -629,25 +629,6 @@ post_rpibackports () {
 }
 
 backports () {
-	backport_tag="v6.6.137"
-
-	###FIXME: https://www.cve.org/CVERecord?id=CVE-2026-31431
-	subsystem="crypto"
-	#regenerate="enable"
-	if [ "x${regenerate}" = "xenable" ] ; then
-		pre_backports
-
-		rsync -av --delete ~/linux-src/crypto/* ./crypto/
-		rsync -av --delete ~/linux-src/drivers/crypto/* ./drivers/crypto/
-		rsync -av --delete ~/linux-src/include/crypto/* ./include/crypto/
-		patch -p1 < ../patches/hacks/lzo/0001-lzo-undo-lzorle1x_1_compress_safe.patch
-		cp -v ~/linux-src/include/linux/math.h ./include/linux/
-
-		post_backports
-	else
-		patch_backports
-	fi
-
 	backport_tag="rpi-6.6.y"
 
 	subsystem="edt-ft5x06"
@@ -678,6 +659,10 @@ drivers () {
 
 	dir 'drivers/fixes/mmc'
 	dir 'drivers/fixes/e5010'
+
+	#Linux 6.6.137 CVE-2026-31431
+	dir 'drivers/b4-crypto'
+	dir 'drivers/crypto'
 }
 
 ###
