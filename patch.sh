@@ -418,7 +418,6 @@ beagleboard_dtbs () {
 		#K3 Devices
 		device="k3-am67a-beagley-ai.dtb" ; k3_dtb_makefile_append
 		device="k3-am6232-pocketbeagle2.dtb" ; k3_dtb_makefile_append
-		device="k3-am625-sancloud-bbe-2.dtb" ; k3_dtb_makefile_append
 
 		${git_bin} add -f arch/arm/boot/dts/
 		${git_bin} add -f arch/arm64/boot/dts/
