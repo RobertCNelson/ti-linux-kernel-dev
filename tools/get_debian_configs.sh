@@ -33,7 +33,7 @@ dl_deb () {
 
 	if [ -f ./dl/linux-image-${abi}-${image}${unsigned}_${kernel}_${dpkg_arch}.deb ] ; then
 		dpkg -x ./dl/linux-image-${abi}-${image}${unsigned}_${kernel}_${dpkg_arch}.deb ./dl/tmp/
-		cp -v ./dl/tmp/boot/config-${abi}-${image} ./debian
+		cp -v ./dl/tmp/boot/config-${abi}-${image} ./patches/debian
 		rm -rf ./dl/tmp/ || true
 	fi
 }
