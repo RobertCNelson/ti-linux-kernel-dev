@@ -33,7 +33,7 @@ git_bin=$(which git)
 #git: --no-edit
 
 git="${git_bin} am"
-git_patchset="https://github.com/beagleboard/mirror-ti-linux-kernel.git"
+git_patchset="https://github.com/TexasInstruments/ti-linux-kernel.git"
 if [ "${USE_LOCAL_GIT_MIRROR}" ] ; then
 	git_patchset="http://forgejo.gfnd.rcn-ee.org:3000/TexasInstruments/ti-linux-kernel.git"
 fi
