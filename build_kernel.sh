@@ -116,8 +116,7 @@ make_kernel () {
 make_pkg () {
 	cd "${DIR}/KERNEL" || exit
 
-	deployfile="-${pkg}.tar.gz"
-	tar_options="--create --gzip --file"
+	deployfile="-${pkg}.tar.zst"
 
 	if [ -f "${DIR}/deploy/${KERNEL_UTS}${deployfile}" ] ; then
 		rm -rf "${DIR}/deploy/${KERNEL_UTS}${deployfile}" || true
@@ -142,7 +141,7 @@ make_pkg () {
 
 	echo "Compressing ${KERNEL_UTS}${deployfile}..."
 	cd "${DIR}/deploy/tmp" || true
-	tar ${tar_options} "../${KERNEL_UTS}${deployfile}" ./*
+	tar --use-compress-program='zstd -6' -cf "../${KERNEL_UTS}${deployfile}" ./*
 
 	cd "${DIR}/" || exit
 	rm -rf "${DIR}/deploy/tmp" || true
@@ -189,7 +188,7 @@ fi
 . "${DIR}/.CC"
 echo "CROSS_COMPILE=${CC}"
 if [ -f /usr/bin/ccache ] ; then
-	echo "ccache [enabled]"
+	echo "ccache: $(ccache --print-version)"
 	CC="ccache ${CC}"
 fi
 

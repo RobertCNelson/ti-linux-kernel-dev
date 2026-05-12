@@ -68,10 +68,6 @@ kernel_rt=".168-rt83"
 #Kernel Build
 BUILD=${build_prefix}84
 
-#v6.X-rcX + upto SHA
-#prev_KERNEL_SHA=""
-#KERNEL_SHA=""
-
 #git branch
 BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
