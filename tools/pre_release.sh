@@ -1,0 +1,24 @@
+#!/bin/sh
+
+TARGET_FILE="version.sh"
+
+CURRENT_LINE=$(grep "^BUILD=" "$TARGET_FILE")
+
+VALUE=${CURRENT_LINE#*=}
+
+BEFORE_DOT=${VALUE%%.*}
+
+BASE_VERSION=$(echo "$BEFORE_DOT" | sed 's/[^0-9]*//g')
+
+NEW_BASE=$((BASE_VERSION + 1))
+
+PREFIX_PART=${BEFORE_DOT%$BASE_VERSION*}
+
+NEW_LINE="BUILD=${PREFIX_PART}${NEW_BASE}"
+
+echo "$NEW_LINE" > "$TARGET_FILE.tmp"
+sed "s|^BUILD=.*|${NEW_LINE}|" "$TARGET_FILE" > "$TARGET_FILE.tmp" && mv "$TARGET_FILE.tmp" "$TARGET_FILE"
+
+echo "RELEASE TRIGGERED"
+echo "Old: $CURRENT_LINE"
+echo "New: $NEW_LINE"
