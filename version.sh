@@ -27,7 +27,7 @@ toolchain_version="14"
 
 #Wireless:
 #https://git.kernel.org/pub/scm/linux/kernel/git/wens/wireless-regdb.git
-WIRELESS_REGDB="2026-03-18"
+WIRELESS_REGDB="2026-09-03"
 
 #Kernel
 linux_repo="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux.git"
@@ -38,7 +38,7 @@ KERNEL_TAG=${KERNEL_REL}.57
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.12/
 kernel_rt=".57-rt14"
 #Kernel Build
-BUILD=${build_prefix}64.2
+BUILD=${build_prefix}64.3
 
 #git branch
 BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
