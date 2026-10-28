@@ -185,6 +185,51 @@ wireless_regdb () {
 	dir 'external/wireless_regdb'
 }
 
+linux_firmware () {
+	FIRMWARE_TAG="20260916"
+	#https://packages.debian.org/source/sid/firmware-nonfree
+	#https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/log/?h=20260916
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ -d ./src ] ; then
+			rm -rf ./src || true
+		fi
+
+		git clone -b ${FIRMWARE_TAG} https://forgejo.gfnd.rcn-ee.org:3000/kernel.org/linux-firmware.git ./src/ --depth=10
+
+		cd ./KERNEL/
+
+		mkdir -p ./firmware/cadence/ || true
+		cp -v ../src/cadence/mhdp8546.bin ./firmware/cadence/
+
+		#mkdir -p ./firmware/powervr/ || true
+		#cp -v ../src/powervr/*.fw ./firmware/powervr/
+
+		${git_bin} add -f ./firmware/cadence/*.bin
+		#${git_bin} add -f ./firmware/powervr/*.fw
+
+		${git_bin} commit -a -m 'linux-firmware: add firmware for embedded cores' -m "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/log/?h=${FIRMWARE_TAG}" -s
+
+		${git_bin} format-patch -1 -o ../patches/external/linux_firmware/
+		echo "FIRMWARE_TAG: https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/log/?h=${FIRMWARE_TAG}" > ../patches/external/git/FIRMWARE_TAG
+
+		rm -rf ../src/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/external/linux_firmware/0001-linux-firmware-add-firmware-for-embedded-cores.patch"
+
+		wdir="external/linux_firmware"
+		number=1
+		cleanup
+
+	fi
+	dir 'external/linux_firmware'
+}
+
 cleanup_dts_builds () {
 	rm -rf arch/arm/boot/dts/modules.order || true
 	rm -rf arch/arm/boot/dts/.*cmd || true
@@ -288,6 +333,7 @@ beagleboard_dtbs () {
 		#regenerate_arm_dtbo_list
 
 		device="AM3359-PWM012" ; arm_dtbo_makefile_append
+		device="AM335X-PRU-UIO-00A0" ; arm_dtbo_makefile_append
 		device="BB-ADC-00A0" ; arm_dtbo_makefile_append
 		device="BB-BBBW-WL1835-00A0" ; arm_dtbo_makefile_append
 		device="BB-BBGG-WL1835-00A0" ; arm_dtbo_makefile_append
@@ -296,6 +342,7 @@ beagleboard_dtbs () {
 		device="BB-BONE-4D5R-01-00A1" ; arm_dtbo_makefile_append
 		device="BB-BONE-eMMC1-01-00A0" ; arm_dtbo_makefile_append
 		device="BB-BONE-LCD4-01-00A1" ; arm_dtbo_makefile_append
+		device="BB-BONE-LCD7-01-00A3" ; arm_dtbo_makefile_append
 		device="BB-BONE-NH7C-01-A0" ; arm_dtbo_makefile_append
 		device="BB-CAN0-00A0" ; arm_dtbo_makefile_append
 		device="BB-CAN1-00A0" ; arm_dtbo_makefile_append
@@ -307,10 +354,12 @@ beagleboard_dtbs () {
 		device="BB-EQEP1" ; arm_dtbo_makefile_append
 		device="BB-EQEP2B" ; arm_dtbo_makefile_append
 		device="BB-EQEP2" ; arm_dtbo_makefile_append
+		device="BB-GREEN-HDMI-00A0" ; arm_dtbo_makefile_append
 		device="BB-HDMI-IT66121-00A0" ; arm_dtbo_makefile_append
 		device="BB-HDMI-IT66122-00A0" ; arm_dtbo_makefile_append
 		device="BB-HDMI-TDA998x-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C1-00A0" ; arm_dtbo_makefile_append
+		device="BB-I2C1-ADS1015-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C1-FAST-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C1-MCP7940X-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C1-RTC-DS3231" ; arm_dtbo_makefile_append
@@ -318,6 +367,7 @@ beagleboard_dtbs () {
 		device="BB-I2C2-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C2-BME680" ; arm_dtbo_makefile_append
 		device="BB-I2C2-FAST-00A0" ; arm_dtbo_makefile_append
+		device="BB-I2C2-MCP7940X-00A0" ; arm_dtbo_makefile_append
 		device="BB-I2C2-MPU6050" ; arm_dtbo_makefile_append
 		device="BB-I2C2-RTC-DS3231" ; arm_dtbo_makefile_append
 		device="BB-LCD-ADAFRUIT-24-SPI1-00A0" ; arm_dtbo_makefile_append
@@ -328,6 +378,7 @@ beagleboard_dtbs () {
 		device="BBORG_FAN-A000" ; arm_dtbo_makefile_append
 		device="BBORG_RELAY-00A2" ; arm_dtbo_makefile_append
 		device="BB-SPIDEV0-00A0" ; arm_dtbo_makefile_append
+		device="BB-SPIDEV1-00A0-CS1" ; arm_dtbo_makefile_append
 		device="BB-SPIDEV1-00A0" ; arm_dtbo_makefile_append
 		device="BB-UART1-00A0" ; arm_dtbo_makefile_append
 		device="BB-UART2-00A0" ; arm_dtbo_makefile_append
@@ -450,6 +501,7 @@ external_git
 mainline_patches
 rt
 wireless_regdb
+linux_firmware
 beagleboard_dtbs
 #local_patch
 
@@ -572,8 +624,6 @@ drivers () {
 	dir 'drivers/imx708'
 
 	dir 'external/android'
-	dir 'external/cadence'
-	dir 'external/gasket'
 
 	dir 'drivers/tps65219'
 	dir 'drivers/configfs'

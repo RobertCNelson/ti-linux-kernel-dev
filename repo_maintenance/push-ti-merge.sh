@@ -18,16 +18,16 @@ cat_files () {
 		cat ./patches/external/git/RT >> ${wfile}
 	fi
 
+	if [ -f ./patches/external/git/CC33XX_FIRMWARE ] ; then
+		cat ./patches/external/git/CC33XX_FIRMWARE >> ${wfile}
+	fi
+
 	if [ -f ./patches/external/git/WIRELESS_REGDB ] ; then
 		cat ./patches/external/git/WIRELESS_REGDB >> ${wfile}
 	fi
 
-	if [ -f ./patches/external/git/WPANUSB ] ; then
-		cat ./patches/external/git/WPANUSB >> ${wfile}
-	fi
-
-	if [ -f ./patches/external/git/BCFSERIAL ] ; then
-		cat ./patches/external/git/BCFSERIAL >> ${wfile}
+	if [ -f ./patches/external/git/FIRMWARE_TAG ] ; then
+		cat ./patches/external/git/FIRMWARE_TAG >> ${wfile}
 	fi
 }
 
@@ -36,6 +36,8 @@ git_bin=$(which git)
 repo="https://github.com/TexasInstruments/ti-linux-kernel/compare"
 
 if [ -e ${DIR}/version.sh ]; then
+	./tools/get_vulnerability.sh
+
 	unset BRANCH
 	unset KERNEL_SHA
 	. ${DIR}/version.sh
