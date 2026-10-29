@@ -185,6 +185,48 @@ wireless_regdb () {
 	dir 'external/wireless_regdb'
 }
 
+cc33xx_firmware () {
+	FIRMWARE_VERSION="1_0_2_17"
+	CC33XX_FIRMWARE="1.0.2.17"
+	#https://www.ti.com/tool/CC33XX-SOFTWARE
+	#https://www.ti.com/tool/download/CC33XX-LINUX-MPU/1.0.2.17
+	#https://github.com/beagleboard/CC33XX-LINUX-MPU
+	#regenerate="enable"
+	if [ "x${regenerate}" = "xenable" ] ; then
+		cd ../
+		if [ -d ./src ] ; then
+			rm -rf ./src || true
+		fi
+
+		git clone https://github.com/beagleboard/CC33XX-LINUX-MPU.git ./src/ --depth=10
+
+		cd ./KERNEL/
+
+		mkdir -p ./firmware/ti-connectivity/ || true
+		cp -v ../src/${FIRMWARE_VERSION}/firmware/ti-connectivity/*.bin ./firmware/ti-connectivity/
+		${git_bin} add -f ./firmware/ti-connectivity/*.bin
+
+		${git_bin} commit -a -m 'ti: add CC33XX-LINUX-MPU firmware' -m "https://www.ti.com/tool/download/CC33XX-LINUX-MPU/${CC33XX_FIRMWARE}" -s
+
+		${git_bin} format-patch -1 -o ../patches/external/cc33xx_firmware/
+		echo "CC33XX_FIRMWARE: https://www.ti.com/tool/download/CC33XX-LINUX-MPU/${CC33XX_FIRMWARE}" > ../patches/external/git/CC33XX_FIRMWARE
+
+		rm -rf ../src/ || true
+
+		${git_bin} reset --hard HEAD^
+
+		start_cleanup
+
+		${git} "${DIR}/patches/external/cc33xx_firmware/0001-ti-add-CC33XX-LINUX-MPU-firmware.patch"
+
+		wdir="external/cc33xx_firmware"
+		number=1
+		cleanup
+
+	fi
+	dir 'external/cc33xx_firmware'
+}
+
 linux_firmware () {
 	FIRMWARE_TAG="20260916"
 	#https://packages.debian.org/source/sid/firmware-nonfree
@@ -633,9 +675,22 @@ drivers () {
 	dir 'drivers/crypto'
 }
 
+cc33xx_drivers () {
+	#exit 2
+	#start_cleanup
+	#https://www.ti.com/tool/download/CC33XX-LINUX-MPU/1.0.2.17
+	dir 'drivers/cc33xx/1.0.2.17'
+
+	#exit 2
+	cc33xx_firmware
+
+	#exit 2
+}
+
 ###
 backports
 drivers
+cc33xx_drivers
 
 readme () {
 	#regenerate="enable"
