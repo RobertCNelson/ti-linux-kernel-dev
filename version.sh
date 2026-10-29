@@ -38,16 +38,16 @@ KERNEL_TAG=${KERNEL_REL}.57
 #https://mirrors.edge.kernel.org/pub/linux/kernel/projects/rt/6.12/
 kernel_rt=".57-rt14"
 #Kernel Build
-BUILD=${build_prefix}64.8
+BUILD=${build_prefix}64.9
 
 #git branch
 BRANCH="${branch_prefix}${KERNEL_REL}${branch_postfix}"
 
 DISTRO=xross
 
-sdk_git_old_release="98bbe0d37952d0ce1b6508f108c357ceb6d58bf3"
-sdk_git_new_release="7bbb58844e0ba096c6fc4f078fe20b5f9419bc6c"
-#https://forgejo.gfnd.rcn-ee.org:3000/TexasInstruments/ti-linux-kernel/commits/tag/11.02.16
-#https://forgejo.gfnd.rcn-ee.org:3000/TexasInstruments/ti-linux-kernel/compare/11.02.15...11.02.16
-SDK="11.02.16"
+sdk_git_old_release="7bbb58844e0ba096c6fc4f078fe20b5f9419bc6c"
+sdk_git_new_release="ca77f7291a4f1c5f6927fee4e47282b03a39ebfd"
+#https://forgejo.gfnd.rcn-ee.org:3000/TexasInstruments/ti-linux-kernel/commits/tag/11.02.17
+#https://forgejo.gfnd.rcn-ee.org:3000/TexasInstruments/ti-linux-kernel/compare/11.02.16...11.02.17
+SDK="11.02.17"
 #
